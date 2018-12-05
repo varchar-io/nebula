@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+# anything starting with .
+.*
+
+# build binary 
+bin/*
