@@ -13,17 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#pragma once
+#include "gtest/gtest.h"
 
 namespace nebula {
 namespace type {
-template <class T> class Tree {
-public:
-  Tree() {}
+namespace test {
 
-private:
-  T node;
-};
+TEST(TypeTest, Dummy) { EXPECT_EQ(4, 2 + 2); }
+
+} // namespace test
 } // namespace type
 } // namespace nebula

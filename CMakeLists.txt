@@ -16,15 +16,18 @@ include(ext/Gtest_Ext.cmake)
 # set up directory to search for headers
 include_directories(include ${GTEST_INCLUDE_DIRS})
 
+# build type library
+include(src/type/Type.cmake)
+
 # Main Test entry point
-add_executable(MainTest src/main.cpp)
+add_executable(MainTest src/Main.cpp)
 
 # install it into local bin folder
 install(TARGETS MainTest DESTINATION bin)
 
 # include google test module and build tests executable
 enable_testing()
-add_executable(tests test/usegtest.cpp)
+add_executable(tests test/UseGtest.cpp)
 target_link_libraries(tests ${GTEST_LIBRARY} ${GTEST_MAIN_LIBRARY})
 
 # so that "make test" will execute all tests 

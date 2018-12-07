@@ -16,14 +16,10 @@
 
 #pragma once
 
+#include "Tree.h"
+
 namespace nebula {
 namespace type {
-template <class T> class Tree {
-public:
-  Tree() {}
-
-private:
-  T node;
-};
+class Type : public Tree<Type> {};
 } // namespace type
 } // namespace nebula
