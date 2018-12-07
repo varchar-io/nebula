@@ -36,3 +36,6 @@
 
 # build binary 
 bin/*
+
+# build staging folder
+build/*
