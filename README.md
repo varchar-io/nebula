@@ -14,3 +14,12 @@ Use CMake to build the project
 - cmake ..
 - make
 - make install
+
+Use Facebook/folly library
+>
+Folly is complex library so we don't embed it in our build system
+Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/folly/build
+- git clone https://github.com/facebook/folly.git
+- ./folly/folly/build/bootstrap-osx-homebrew.sh
+- (may need sudo to grant permission)
+- "brew install folly" should just work for MacOS
