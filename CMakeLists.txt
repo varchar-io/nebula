@@ -10,6 +10,15 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # set_property(GLOBAL PROPERTY CXX_STANDARD 11)
 
+# add a dependency of glog
+include(ext/Gflags_Ext.cmake)
+
+# add a dependency of glog
+include(ext/Glog_Ext.cmake)
+
+# add a dependency of fmt 
+include(ext/Fmt_Ext.cmake)
+
 # add a basic gtest dependency
 include(ext/Gtest_Ext.cmake)
 

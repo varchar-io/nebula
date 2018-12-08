@@ -33,6 +33,12 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 - "clang-format.executable": "/absolute-path-to/clang-format"
 
 
+### Use Glog
+
+- https://github.com/google/glog/blob/master/cmake/INSTALL.md
+- 
+
+
 ### Code Convention
 
 - All path are in lower case - single word preferred.

@@ -13,13 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include "fmt/format.h"
 #include "gtest/gtest.h"
+#include "glog/logging.h"
 
-namespace nebula {
-namespace type {
-namespace test {
+namespace nebula
+{
+namespace type
+{
+namespace test
+{
 
-TEST(TypeTest, Dummy) { EXPECT_EQ(4, 2 + 2); }
+TEST(TypeTest, Dummy)
+{
+    EXPECT_EQ(4, 2 + 2);
+    EXPECT_EQ(fmt::format("a{}", 1), "a1");
+
+    LOG(INFO) << fmt::format("The date is {}", 9);
+
+    for (auto i = 0; i < 10; ++i)
+    {
+        LOG(INFO) << "COUNTING: " << i;
+    }
+}
 
 } // namespace test
 } // namespace type
