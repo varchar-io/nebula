@@ -14,34 +14,14 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
 #include "Errors.h"
-#include "Tree.h"
-#include "fmt/format.h"
-#include "glog/logging.h"
-
 namespace nebula {
-namespace type {
-namespace test {
-using namespace nebula::common;
-
-TEST(TypeTest, Dummy) {
-  EXPECT_EQ(4, 2 + 2);
-  EXPECT_EQ(fmt::format("a{}", 1), "a1");
-  N_ENSURE_EQ(4, 2 + 2);
-
-  LOG(INFO) << fmt::format("The date is {}", 9);
-
-  for (auto i = 0; i < 10; ++i) {
-    LOG(INFO) << "COUNTING: " << i;
-  }
+namespace common {
+NebulaException::NebulaException(const std::string& msg) : file_{ "NONE" },
+                                                           line_{ 0 },
+                                                           method_{ "UNKNOWN" },
+                                                           expr_{ "NONE" },
+                                                           msg_{ msg } {
 }
-
-TEST(TreeTest, Basic) {
-  Tree<int> tree(0);
-  EXPECT_EQ(tree.size(), 0);
-}
-
-} // namespace test
-} // namespace type
+} // namespace common
 } // namespace nebula

@@ -18,12 +18,31 @@
 
 namespace nebula {
 namespace type {
-template <class T> class Tree {
-public:
-  Tree() {}
 
-private:
-  T node;
+// Define a generic tree with NODE data typed as T
+// Difference between class and typename - declare template parameter type
+template <typename T>
+class Tree {
+public:
+  using NODE_PTR = std::unique_ptr<Tree<T>>;
+
+public:
+  Tree(T&& node) : node_{ std::move(node) } {}
+  virtual ~Tree() = default;
+
+  /* Basic Tree APIs */
+  Tree<T>& childAt(size_t index){
+
+  }
+  
+  size_t size() const {
+    return children_.size();
+  }
+
+protected:
+  T node_;
+  std::vector<NODE_PTR> children_;
 };
+
 } // namespace type
 } // namespace nebula

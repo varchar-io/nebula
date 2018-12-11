@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.13)
 
 # define project meta
 project(nebula)
+set(NEBULA_ROOT ${PROJECT_SOURCE_DIR})
+set(NEBULA_SRC ${NEBULA_ROOT}/src)
 
 # set compiler features - use C++ 11 and above
 # Valid values after CMake 3.8 for CMAKE_CXX_STANDARD are 98, 11 and 14, with 17
@@ -24,6 +26,9 @@ include(ext/Gtest_Ext.cmake)
 
 # set up directory to search for headers
 include_directories(include ${GTEST_INCLUDE_DIRS})
+
+# build common library
+include(src/common/Common.cmake)
 
 # build type library
 include(src/type/Type.cmake)

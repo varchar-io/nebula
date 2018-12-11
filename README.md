@@ -8,6 +8,8 @@
 - (MACOS: After intall the GUI, use this command to install the command line tool: sudo "/Applications/CMake.app/Contents/bin/cmake-gui" --install)
 - CMake Tutorial - https://cmake.org/cmake-tutorial/
 - CMake build system - https://cmake.org/cmake/help/latest/manual/cmake-buildsystem.7.html
+- Promote this video - https://www.youtube.com/watch?v=bsXLMQ6WgIk
+- A quick sample of quick module setup https://github.com/vargheseg/test
 
 ### Use CMake to build the project
 
