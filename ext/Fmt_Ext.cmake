@@ -15,6 +15,7 @@ ExternalProject_Add(
 ExternalProject_Get_Property(fmtproj SOURCE_DIR)
 ExternalProject_Get_Property(fmtproj BINARY_DIR)
 set(FMT_INCLUDE_DIRS ${SOURCE_DIR}/include)
+file(MAKE_DIRECTORY ${FMT_INCLUDE_DIRS})
 set(FMT_LIBRARY_PATH ${BINARY_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}fmt.a)
 set(FMT_LIBRARY fmt)
 add_library(${FMT_LIBRARY} UNKNOWN IMPORTED)

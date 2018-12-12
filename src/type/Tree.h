@@ -16,32 +16,66 @@
 
 #pragma once
 
+#include <vector>
+#include "Errors.h"
+
 namespace nebula {
 namespace type {
 
+using namespace nebula::common;
+
 // Define a generic tree with NODE data typed as T
 // Difference between class and typename - declare template parameter type
+// CRTP tree - we can use std::any or std::variant in C++17 to make a heterogenous tree
 template <typename T>
 class Tree {
 public:
-  using NODE_PTR = std::unique_ptr<Tree<T>>;
-
-public:
-  Tree(T&& node) : node_{ std::move(node) } {}
   virtual ~Tree() = default;
 
   /* Basic Tree APIs */
-  Tree<T>& childAt(size_t index){
-
+  template <typename R>
+  Tree<R>& childAt(size_t index) {
+    N_ENSURE_GE(index, 0, "index out of bound");
+    return static_cast<T*>(this)->childAtImpl(index);
   }
-  
+
   size_t size() const {
+    return static_cast<T*>(this)->sizeImpl();
+  }
+
+  template <typename R>
+  Tree<R>& addChild(std::unique_ptr<Tree<R>> child) {
+    return static_cast<T*>(this)->addChildImpl(std::move(child));
+  }
+};
+
+// how to do specialization so that it works for all scalar types?
+template <>
+class Tree<int> {
+public:
+  Tree(int node) : node_{ node } {}
+
+  Tree<int>& childAt(size_t index) {
+    N_ENSURE(index >= 0 && index < size(), "index out of bound");
+    return children_[index];
+  }
+
+  inline size_t size() const {
     return children_.size();
   }
 
+  Tree<int>& addChild(int v) {
+    children_.emplace_back(v);
+    return children_[size() - 1];
+  }
+
+  const int value() const {
+    return node_;
+  }
+
 protected:
-  T node_;
-  std::vector<NODE_PTR> children_;
+  int node_;
+  std::vector<Tree<int>> children_;
 };
 
 } // namespace type

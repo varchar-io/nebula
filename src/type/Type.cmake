@@ -25,9 +25,10 @@ include_directories(include ${FMT_INCLUDE_DIRS})
 include_directories(include ${GTEST_INCLUDE_DIRS})
 
 # include folders from types
-add_library(${NEBULA_TYPE} INTERFACE)
-target_sources(${NEBULA_TYPE} INTERFACE)
+add_library(${NEBULA_TYPE} STATIC ${NEBULA_SRC}/type/Type.cpp)
 target_include_directories(${NEBULA_TYPE} INTERFACE src/type)
+target_link_libraries(${NEBULA_TYPE}
+    PRIVATE ${NEBULA_COMMON})
 
 add_executable(TypeTests ${NEBULA_SRC}/type/test/TestType.cpp)
 target_link_libraries(TypeTests 
@@ -36,7 +37,7 @@ target_link_libraries(TypeTests
     PRIVATE ${FMT_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
-    PUBLIC ${NEBULA_COMMON}
+    PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_TYPE})
 
 # discover all gtests in this module

@@ -2,6 +2,8 @@ set(NEBULA_COMMON NCommon)
 
 add_library(${NEBULA_COMMON} STATIC ${NEBULA_SRC}/common/Errors.cpp)
 target_include_directories(${NEBULA_COMMON} INTERFACE src/common)
+target_link_libraries(${NEBULA_COMMON}
+    PRIVATE ${FMT_LIBRARY})
 
 # ask for gflags
 include_directories(include ${GFLAGS_INCLUDE_DIRS})

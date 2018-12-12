@@ -15,8 +15,11 @@
  */
 
 #include "gtest/gtest.h"
+#include <any>
+#include <vector>
 #include "Errors.h"
 #include "Tree.h"
+#include "Type.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
 
@@ -40,6 +43,34 @@ TEST(TypeTest, Dummy) {
 TEST(TreeTest, Basic) {
   Tree<int> tree(0);
   EXPECT_EQ(tree.size(), 0);
+
+  const auto& child = tree.addChild(3);
+  EXPECT_EQ(tree.size(), 1);
+  EXPECT_EQ(child.size(), 0);
+
+  const auto& first = tree.childAt(0);
+  EXPECT_EQ(first.value(), 3);
+
+  LOG(INFO) << "ROOT: " << tree.value();
+  LOG(INFO) << "CHILD: " << child.value();
+}
+
+TEST(TypeTest, Traits) {
+  EXPECT_EQ(TypeTraits<Kind::BOOLEAN>::typeKind, Kind::BOOLEAN);
+  EXPECT_EQ(TypeTraits<Kind::BOOLEAN>::isPrimitive, true);
+  EXPECT_EQ(TypeTraits<Kind::BOOLEAN>::width, 1);
+
+  // Type<ROW> row;
+  // EXPECT_EQ(row.kind(), Kind::STRUCT);
+  // EXPECT_EQ(row.isPrimitive(), false);
+  // EXPECT_EQ(row.isFixedWidth(), false);
+}
+
+TEST(VectorTest, CxxVersion) {
+  std::vector<std::any> vec;
+  vec.push_back(1);
+  vec.push_back("something");
+  EXPECT_EQ(vec.size(), 2);
 }
 
 } // namespace test

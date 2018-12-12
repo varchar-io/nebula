@@ -6,11 +6,12 @@ project(nebula)
 set(NEBULA_ROOT ${PROJECT_SOURCE_DIR})
 set(NEBULA_SRC ${NEBULA_ROOT}/src)
 
-# set compiler features - use C++ 11 and above
+# set compiler features - use C++ 17 and above
 # Valid values after CMake 3.8 for CMAKE_CXX_STANDARD are 98, 11 and 14, with 17
-set(CMAKE_CXX_STANDARD 14)
+# set_property(GLOBAL PROPERTY CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-# set_property(GLOBAL PROPERTY CXX_STANDARD 11)
+set(CMAKE_VERBOSE_MAKEFILE on)
 
 # add a dependency of glog
 include(ext/Gflags_Ext.cmake)
@@ -47,3 +48,6 @@ target_link_libraries(tests ${GTEST_LIBRARY} ${GTEST_MAIN_LIBRARY})
 # so that "make test" will execute all tests 
 include(GoogleTest)
 gtest_discover_tests(tests TEST_LIST ALL)
+
+# a command to install clang-format - not related to build
+# execute_process(COMMAND npm install clang-format)

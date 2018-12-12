@@ -14,6 +14,7 @@ ExternalProject_Add(
 ExternalProject_Get_Property(gflagsp SOURCE_DIR)
 ExternalProject_Get_Property(gflagsp BINARY_DIR)
 set(GFLAGS_INCLUDE_DIRS ${BINARY_DIR}/include)
+file(MAKE_DIRECTORY ${GFLAGS_INCLUDE_DIRS})
 set(GFLAGS_LIBRARY_PATH ${BINARY_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}gflags.a)
 set(GFLAGS_LIBRARY gflags)
 add_library(${GFLAGS_LIBRARY} UNKNOWN IMPORTED)
