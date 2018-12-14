@@ -17,10 +17,6 @@
 #include "Type.h"
 namespace nebula {
 namespace type {
-template <>
-std::string Type<Kind::BOOLEAN>::toString() const {
-  return TypeTraits<Kind::BOOLEAN>::name;
-}
 
 } // namespace type
 } // namespace nebula

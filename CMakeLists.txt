@@ -28,6 +28,12 @@ include(ext/Gtest_Ext.cmake)
 # set up directory to search for headers
 include_directories(include ${GTEST_INCLUDE_DIRS})
 
+# folly was installed manually through brew install folly
+# we should consider add it as an external target
+# add include folder here after manual installation
+set(FollyDir /usr/local/Cellar/folly/2018.09.24.00_2)
+include_directories(include ${FollyDir}/include)
+
 # build common library
 include(src/common/Common.cmake)
 

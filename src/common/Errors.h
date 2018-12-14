@@ -44,6 +44,11 @@ private:
   std::string msg_;
 };
 
+#define THROW_NOT_IMPLEMENTED()                                                    \
+  ({                                                                               \
+    throw NebulaException(__FILE__, __LINE__, __FUNCTION__, "NotImplemented", ""); \
+  })
+
 #define N_ENSURE(e, ...)                                                            \
   ({                                                                                \
     auto const& _tmp = (e);                                                         \

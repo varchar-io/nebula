@@ -46,3 +46,8 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 - All path are in lower case - single word preferred.
 - All files follow camel naming convention.
 - Every module has its own folder and its cmake file as {module}.cmake
+
+
+### C++ Patterns References
+- SNIFAE - http://jguegant.github.io/blogs/tech/sfinae-introduction.html
+- 

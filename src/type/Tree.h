@@ -16,8 +16,10 @@
 
 #pragma once
 
+#include <any>
 #include <vector>
 #include "Errors.h"
+#include "glog/logging.h"
 
 namespace nebula {
 namespace type {
@@ -30,52 +32,56 @@ using namespace nebula::common;
 template <typename T>
 class Tree {
 public:
+  Tree(T data) : data_{ data } {}
   virtual ~Tree() = default;
 
   /* Basic Tree APIs */
   template <typename R>
   Tree<R>& childAt(size_t index) {
-    N_ENSURE_GE(index, 0, "index out of bound");
-    return static_cast<T*>(this)->childAtImpl(index);
-  }
+    N_ENSURE(index >= 0 && index < children_.size(), "index out of bound");
 
-  size_t size() const {
-    return static_cast<T*>(this)->sizeImpl();
-  }
+    const auto& item = children_[index];
+    LOG(INFO) << "type of the item: " << item.type().name();
 
-  template <typename R>
-  Tree<R>& addChild(std::unique_ptr<Tree<R>> child) {
-    return static_cast<T*>(this)->addChildImpl(std::move(child));
-  }
-};
-
-// how to do specialization so that it works for all scalar types?
-template <>
-class Tree<int> {
-public:
-  Tree(int node) : node_{ node } {}
-
-  Tree<int>& childAt(size_t index) {
-    N_ENSURE(index >= 0 && index < size(), "index out of bound");
-    return children_[index];
+    return *std::any_cast<std::shared_ptr<Tree<R>>>(item);
   }
 
   inline size_t size() const {
     return children_.size();
   }
 
-  Tree<int>& addChild(int v) {
-    children_.emplace_back(v);
-    return children_[size() - 1];
+  const T& value() const {
+    return data_;
   }
 
-  const int value() const {
-    return node_;
+  template <typename R>
+  Tree<R>& addChild(std::shared_ptr<Tree<R>> child) {
+    children_.push_back(child);
+    return childAt<R>(size() - 1);
+  }
+
+  template <typename... S>
+  size_t addChildren(std::shared_ptr<Tree<S>>... children) {
+    auto size = children_.size();
+
+    // C++ 17: fold-expressions
+    auto one = [this](auto c) { children_.push_back(c); };
+    (one(children), ...);
+
+    // Otherwise we can use this method to do expansion
+    // each_arg([this](auto c) { children_.push_back(c); }, children...);
+    return children_.size() - size;
   }
 
 protected:
-  int node_;
-  std::vector<Tree<int>> children_;
+  T data_;
+  std::vector<std::any> children_;
+
+private:
+  template <typename F, typename... S>
+  void each_arg(F f, S&&... s) {
+    [](...) {}((f(std::forward<S>(s)), 0)...);
+  }
 };
 
 } // namespace type
