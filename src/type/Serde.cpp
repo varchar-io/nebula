@@ -34,6 +34,8 @@ TokenType Token::lookup(const std::string& token) {
     { "CHAR", TokenType::TTINYINT },
     { "SMALLINT", TokenType::TSMALLINT },
     { "SHORT", TokenType::TSMALLINT },
+    { "INTEGER", TokenType::TINTEGER },
+    { "INT", TokenType::TINTEGER },
     { "BIGINT", TokenType::TBIGINT },
     { "LONG", TokenType::TBIGINT },
     { "REAL", TokenType::TREAL },

@@ -225,6 +225,18 @@ TEST(TypeTest, TestSerdeRoundTrip) {
 
     EXPECT_EQ(schema, serialized);
   }
+
+    // test deserialization
+  {
+    auto schema = "ROW:STRUCT<id:int, map<key:long, value:string>, items:list<string>, flag:bool>";
+    auto expected = "ROW:STRUCT<id:INTEGER,MAP<key:BIGINT, value:VARCHAR>,items:ARRAY<VARCHAR>,flag:BOOLEAN>";
+    auto type = TypeSerializer::from(schema);
+    LOG(INFO) << "Deserialized a type tree with number of columns: " << type->size();
+    auto serialized = TypeSerializer::to(type);
+    LOG(INFO) << "Serialize the tree to schema: " << serialized;
+
+    EXPECT_EQ(expected, serialized);
+  }
 }
 
 TEST(VectorTest, CxxVersion) {
