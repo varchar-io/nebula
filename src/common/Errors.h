@@ -49,6 +49,11 @@ private:
     throw NebulaException(__FILE__, __LINE__, __FUNCTION__, "NotImplemented", ""); \
   })
 
+#define THROW_RUNTIME(MSG)                                                        \
+  ({                                                                              \
+    throw NebulaException(__FILE__, __LINE__, __FUNCTION__, "RuntimeError", MSG); \
+  })
+
 #define N_ENSURE(e, ...)                                                            \
   ({                                                                                \
     auto const& _tmp = (e);                                                         \

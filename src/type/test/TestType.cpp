@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 #include "Errors.h"
+#include "Serde.h"
 #include "Tree.h"
 #include "Type.h"
 #include "fmt/format.h"
@@ -67,42 +68,44 @@ TEST(TypeTest, Traits) {
   // single type as small int
   {
     auto type = ShortType::create("x");
-    EXPECT_EQ(type.kind(), Kind::SMALLINT);
-    EXPECT_EQ(type.isPrimitive(), true);
-    EXPECT_EQ(type.isFixedWidth(), true);
-    EXPECT_EQ(type.width(), 2);
+    EXPECT_EQ(type.kind, Kind::SMALLINT);
+    EXPECT_EQ(type.isPrimitive, true);
+    EXPECT_EQ(type.isFixedWidth, true);
+    EXPECT_EQ(type.width, 2);
     EXPECT_EQ(type.name(), "x");
   }
 
   // single type as double
   {
     auto type = DoubleType::create("y");
-    EXPECT_EQ(type.kind(), Kind::DOUBLE);
-    EXPECT_EQ(type.isPrimitive(), true);
-    EXPECT_EQ(type.isFixedWidth(), true);
-    EXPECT_EQ(type.width(), 8);
-    EXPECT_EQ(type.type(), "DOUBLE");
+    EXPECT_EQ(type.kind, Kind::DOUBLE);
+    EXPECT_EQ(type.isPrimitive, true);
+    EXPECT_EQ(type.isFixedWidth, true);
+    EXPECT_EQ(type.width, 8);
+    EXPECT_EQ(type.type, "DOUBLE");
   }
 
   // single type as string
   {
     auto type = StringType::create("z");
-    EXPECT_EQ(type.kind(), Kind::VARCHAR);
-    EXPECT_EQ(type.isPrimitive(), true);
-    EXPECT_EQ(type.isFixedWidth(), false);
-    EXPECT_EQ(type.width(), 0);
-    EXPECT_EQ(type.type(), "VARCHAR");
+    EXPECT_EQ(type.kind, Kind::VARCHAR);
+    EXPECT_EQ(type.isPrimitive, true);
+    EXPECT_EQ(type.isFixedWidth, false);
+    EXPECT_EQ(type.width, 0);
+    EXPECT_EQ(type.type, "VARCHAR");
   }
 
   // type of list
   {
+    // NOTE: create returns copy-elision object which will expire out of the scope
+    // in production code, we should use shared_ptr<StringType>(new Object), API refactor?
     auto itemType = std::make_shared<StringType>(StringType::create("item"));
     auto type = ListType::create("list", itemType);
-    EXPECT_EQ(type.kind(), Kind::ARRAY);
-    EXPECT_EQ(type.isPrimitive(), false);
-    EXPECT_EQ(type.isFixedWidth(), false);
-    EXPECT_EQ(type.width(), 0);
-    EXPECT_EQ(type.type(), "ARRAY");
+    EXPECT_EQ(type.kind, Kind::ARRAY);
+    EXPECT_EQ(type.isPrimitive, false);
+    EXPECT_EQ(type.isFixedWidth, false);
+    EXPECT_EQ(type.width, 0);
+    EXPECT_EQ(type.type, "ARRAY");
     EXPECT_EQ(type.name(), "list");
     EXPECT_EQ(type.size(), 1);
   }
@@ -113,11 +116,11 @@ TEST(TypeTest, Traits) {
     auto valueType = std::make_shared<StringType>(StringType::create("value"));
     auto type = MapType::create("map", keyType, valueType);
 
-    EXPECT_EQ(type.kind(), Kind::MAP);
-    EXPECT_EQ(type.isPrimitive(), false);
-    EXPECT_EQ(type.isFixedWidth(), false);
-    EXPECT_EQ(type.width(), 0);
-    EXPECT_EQ(type.type(), "MAP");
+    EXPECT_EQ(type.kind, Kind::MAP);
+    EXPECT_EQ(type.isPrimitive, false);
+    EXPECT_EQ(type.isFixedWidth, false);
+    EXPECT_EQ(type.width, 0);
+    EXPECT_EQ(type.type, "MAP");
     EXPECT_EQ(type.name(), "map");
     EXPECT_EQ(type.size(), 2);
   }
@@ -128,11 +131,11 @@ TEST(TypeTest, Traits) {
     auto f2Type = std::make_shared<StringType>(StringType::create("f2"));
     auto type = RowType::create("row", f1Type, f2Type);
 
-    EXPECT_EQ(type.kind(), Kind::STRUCT);
-    EXPECT_EQ(type.isPrimitive(), false);
-    EXPECT_EQ(type.isFixedWidth(), false);
-    EXPECT_EQ(type.width(), 0);
-    EXPECT_EQ(type.type(), "STRUCT");
+    EXPECT_EQ(type.kind, Kind::STRUCT);
+    EXPECT_EQ(type.isPrimitive, false);
+    EXPECT_EQ(type.isFixedWidth, false);
+    EXPECT_EQ(type.width, 0);
+    EXPECT_EQ(type.type, "STRUCT");
     EXPECT_EQ(type.name(), "row");
     EXPECT_EQ(type.size(), 2);
   }
@@ -148,37 +151,80 @@ TEST(TypeTest, Traits) {
     EXPECT_EQ(type.size(), 4);
     auto f1 = type.childAt<LongType::PType>(0).value();
     EXPECT_EQ(f1->name(), "f1");
-    EXPECT_EQ(f1->type(), "BIGINT");
+    EXPECT_EQ(f1->type, "BIGINT");
 
     auto f2 = type.childAt<StringType::PType>(1).value();
     EXPECT_EQ(f2->name(), "f2");
-    EXPECT_EQ(f2->type(), "VARCHAR");
+    EXPECT_EQ(f2->type, "VARCHAR");
 
     auto f3 = type.childAt<ShortType::PType>(2).value();
     EXPECT_EQ(f3->name(), "f3");
-    EXPECT_EQ(f3->type(), "SMALLINT");
+    EXPECT_EQ(f3->type, "SMALLINT");
 
     auto f4 = type.childAt<BoolType::PType>(3).value();
     EXPECT_EQ(f4->name(), "f4");
-    EXPECT_EQ(f4->type(), "BOOLEAN");
+    EXPECT_EQ(f4->type, "BOOLEAN");
   }
 }
 
-TEST(TypeTest, TypeTree) {
-  // Type<Kind::STRUCT> row;
-  // auto fInt = std::make_shared<Type<Kind::INTEGER>>();
-  // auto fStr = std::make_shared<Type<Kind::VARCHAR>>();
-  // auto& node1 = row.addChild<Type<Kind::INTEGER>*>(fInt);
-  // auto& node2 = row.addChild<Type<Kind::VARCHAR>*>(fStr);
+TEST(TypeTest, TestSerde) {
+  {
+    auto type = RowType::create("",
+                                std::make_shared<LongType>(LongType::create("f1")),
+                                std::make_shared<StringType>(StringType::create("f2")),
+                                std::make_shared<ShortType>(ShortType::create("f3")),
+                                std::make_shared<BoolType>(BoolType::create("f4")));
+    auto schema = TypeSerializer::to(std::make_shared<RowType>(type));
+    EXPECT_EQ(schema, "STRUCT<f1:BIGINT,f2:VARCHAR,f3:SMALLINT,f4:BOOLEAN>");
+  }
 
-  // EXPECT_EQ(row.size(), 2);
-  // EXPECT_EQ(node1.size(), 0);
-  // EXPECT_EQ(node2.size(), 0);
+  {
+    auto keyType = std::make_shared<LongType>(LongType::create("key"));
+    auto valueType = std::make_shared<StringType>(StringType::create("value"));
 
-  // auto& n1 = row.childAt<Type<Kind::INTEGER>*>(0);
-  // auto& n2 = row.childAt<Type<Kind::VARCHAR>*>(1);
-  // EXPECT_EQ(node1.value(), n1.value());
-  // EXPECT_EQ(node2.value(), n2.value());
+    auto itemType = std::make_shared<StringType>(StringType::create("item"));
+
+    auto type = RowType::create("",
+                                std::make_shared<LongType>(LongType::create("f1")),
+                                std::make_shared<MapType>(MapType::create("map", keyType, valueType)),
+                                std::make_shared<ListType>(ListType::create("list", itemType)),
+                                std::make_shared<BoolType>(BoolType::create("f4")));
+
+    auto expected = "STRUCT<f1:BIGINT,map:MAP<key:BIGINT, value:VARCHAR>,list:ARRAY<item:VARCHAR>,f4:BOOLEAN>";
+    auto schema = TypeSerializer::to(std::make_shared<RowType>(type));
+
+    EXPECT_EQ(schema, expected);
+  }
+
+  // test deserialization
+  {
+    auto schema = "STRUCT<f1:BIGINT,map:MAP<key:BIGINT, value:VARCHAR>,list:ARRAY<item:VARCHAR>,f4:BOOLEAN>";
+    auto type = TypeSerializer::from(schema);
+
+    EXPECT_EQ(type->size(), 4);
+    auto f1 = type->childAt<LongType::PType>(0).value();
+    EXPECT_EQ(f1->name(), "f1");
+    EXPECT_EQ(f1->type, "BIGINT");
+
+    LOG(INFO) << "get map type";
+    MapType::PType map = type->childAt<MapType::PType>(1).value();
+    EXPECT_EQ(map->type, "MAP");
+    LOG(INFO) << "passed type check";
+    EXPECT_EQ(map->name(), "map");
+  }
+}
+
+TEST(TypeTest, TestSerdeRoundTrip) {
+  // test deserialization
+  {
+    auto schema = "STRUCT<f1:BIGINT,map:MAP<key:BIGINT, value:VARCHAR>,list:ARRAY<item:VARCHAR>,f4:BOOLEAN>";
+    auto type = TypeSerializer::from(schema);
+    LOG(INFO) << "Deserialized a type tree with number of columns: " << type->size();
+    auto serialized = TypeSerializer::to(type);
+    LOG(INFO) << "Serialize the tree to schema: " << serialized;
+
+    EXPECT_EQ(schema, serialized);
+  }
 }
 
 TEST(VectorTest, CxxVersion) {

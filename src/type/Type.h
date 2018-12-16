@@ -32,11 +32,17 @@ enum class Kind {
   REAL = 6,
   DOUBLE = 7,
   VARCHAR = 8,
-  VARBINARY = 9,
-  TIMESTAMP = 10,
-  ARRAY = 11,
-  MAP = 12,
-  STRUCT = 13
+  ARRAY = 9,
+  MAP = 10,
+  STRUCT = 11
+
+  // why do we support these types?
+  // they can be substituted by string/long/struct respectively
+  // it's not about storage, it's about API conversion
+  // VARBINARY = 12,
+  // TIMESTAMP = 13,
+  // UNION = 14
+
 };
 
 /**
@@ -58,14 +64,14 @@ using FloatType = RealType;
 using DoubleType = Type<Kind::DOUBLE>;
 using VarcharType = Type<Kind::VARCHAR>;
 using StringType = VarcharType;
-using VarbinaryType = Type<Kind::VARBINARY>;
-using BinaryType = VarbinaryType;
-using TimestampType = Type<Kind::TIMESTAMP>;
 using ArrayType = Type<Kind::ARRAY>;
 using ListType = ArrayType;
 using MapType = Type<Kind::MAP>;
 using StructType = Type<Kind::STRUCT>;
 using RowType = StructType;
+// using VarbinaryType = Type<Kind::VARBINARY>;
+// using BinaryType = VarbinaryType;
+// using TimestampType = Type<Kind::TIMESTAMP>;
 
 /* 
 Every type kind has different traits
@@ -96,11 +102,11 @@ DEFINE_TYPE_TRAITS(BIGINT, true, 8)
 DEFINE_TYPE_TRAITS(REAL, true, 4)
 DEFINE_TYPE_TRAITS(DOUBLE, true, 8)
 DEFINE_TYPE_TRAITS(VARCHAR, true, 0)
-DEFINE_TYPE_TRAITS(VARBINARY, true, 0)
-DEFINE_TYPE_TRAITS(TIMESTAMP, true, 8)
 DEFINE_TYPE_TRAITS(ARRAY, false, 0)
 DEFINE_TYPE_TRAITS(MAP, false, 0)
 DEFINE_TYPE_TRAITS(STRUCT, false, 0)
+// DEFINE_TYPE_TRAITS(VARBINARY, true, 0)
+// DEFINE_TYPE_TRAITS(TIMESTAMP, true, 8)
 
 #undef DEFINE_TYPE_TRAITS
 
@@ -171,38 +177,38 @@ public:
     return type;
   }
 
+  // A generic way to provide type creation
+  static auto create(const std::string& name, const std::vector<std::shared_ptr<TreeBase>>& children)
+    -> std::shared_ptr<TreeBase> {
+    return std::shared_ptr<TreeBase>(new TType(name, children));
+  }
+
 public:
-  std::string
-    toString() const {
-    return fmt::format("[name={0}, width={1}]", name(), width());
-  }
+  // proxy of static properties
+  static constexpr auto kind = TypeTraits<KIND>::typeKind;
+  static constexpr auto type = TypeTraits<KIND>::name;
+  static constexpr auto isPrimitive = TypeTraits<KIND>::isPrimitive;
+  static constexpr auto isFixedWidth = TypeTraits<KIND>::width > 0;
+  static constexpr auto width = TypeTraits<KIND>::width;
 
-  Kind kind() const {
-    return TypeTraits<KIND>::typeKind;
-  }
-
-  std::string type() const {
-    return TypeTraits<KIND>::name;
-  }
-
-  bool isPrimitive() const {
-    return TypeTraits<KIND>::isPrimitive;
-  }
-
-  bool isFixedWidth() const {
-    return TypeTraits<KIND>::width > 0;
-  }
-
-  size_t width() const {
-    return TypeTraits<KIND>::width;
-  }
-
-  std::string name() const {
+  // methods to fetch runtime properties
+  inline const std::string& name() const {
     return name_;
   }
 
+  inline std::string toString() const {
+    return fmt::format("[name={0}, width={1}]", name(), width);
+  }
+
+  inline size_t id() const {
+    // TODO(cao): generate identifier for current type
+    return static_cast<size_t>(kind);
+  }
+
 protected:
-  Type(std::string name) : name_{ name }, Tree<PType>(this) {
+  Type(const std::string& name, const std::vector<std::shared_ptr<TreeBase>>& children)
+    : name_{ name }, Tree<PType>(this, children) {}
+  Type(const std::string& name) : name_{ name }, Tree<PType>(this) {
     LOG(INFO) << "Construct a type" << toString();
   }
 

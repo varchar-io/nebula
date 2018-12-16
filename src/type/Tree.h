@@ -26,24 +26,76 @@ namespace type {
 
 using namespace nebula::common;
 
+// Utility to check if an object has id() method
+template <typename T, typename = size_t>
+struct hasId : std::false_type {
+};
+
+template <typename T>
+struct hasId<T, decltype(std::declval<T>().id())> : std::true_type {
+};
+
+template <typename T>
+static auto fetchId(const T& t) -> typename std::enable_if<hasId<typename std::remove_pointer<T>::type>::value, size_t>::type {
+  if constexpr (std::is_pointer<T>::value) {
+    return t->id();
+  } else {
+    return t.id();
+  }
+}
+
+template <typename T>
+static auto fetchId(const T& t) -> typename std::enable_if<!hasId<typename std::remove_pointer<T>::type>::value, size_t>::type {
+  return static_cast<size_t>(t);
+}
+
+// Tree base for generic reference purpose
+class TreeBase {
+public:
+  TreeBase(size_t id) : id_{ id } {}
+  TreeBase(size_t id, const std::vector<std::shared_ptr<TreeBase>>& children)
+    : id_{ id }, children_(children.begin(), children.end()) {}
+  virtual ~TreeBase() = default;
+
+  // generic method
+  template <typename D>
+  D treeWalk(
+    std::function<void(const TreeBase&)> prev,
+    std::function<D(const TreeBase&, std::vector<D>&)> post) const {
+    prev(*this);
+    std::vector<D> results;
+    for (auto& child : children_) {
+      results.push_back(child->template treeWalk<D>(prev, post));
+    }
+
+    return post(*this, results);
+  }
+
+  inline size_t getId() const {
+    return id_;
+  }
+
+protected:
+  size_t id_;
+  std::vector<std::shared_ptr<TreeBase>> children_;
+}; // namespace type
+
 // Define a generic tree with NODE data typed as T
 // Difference between class and typename - declare template parameter type
 // CRTP tree - we can use std::any or std::variant in C++17 to make a heterogenous tree
 template <typename T>
-class Tree {
+class Tree : public TreeBase {
 public:
-  Tree(T data) : data_{ data } {}
+  Tree(T data, const std::vector<std::shared_ptr<TreeBase>>& children)
+    : TreeBase(fetchId(data), children), data_{ data } {}
+  Tree(T data) : TreeBase(fetchId(data)), data_{ data } {}
   virtual ~Tree() = default;
 
   /* Basic Tree APIs */
   template <typename R>
   Tree<R>& childAt(size_t index) {
     N_ENSURE(index >= 0 && index < children_.size(), "index out of bound");
-
-    const auto& item = children_[index];
-    LOG(INFO) << "type of the item: " << item.type().name();
-
-    return *std::any_cast<std::shared_ptr<Tree<R>>>(item);
+    return *std::static_pointer_cast<Tree<R>>(children_[index]);
   }
 
   inline size_t size() const {
@@ -75,7 +127,6 @@ public:
 
 protected:
   T data_;
-  std::vector<std::any> children_;
 
 private:
   template <typename F, typename... S>
