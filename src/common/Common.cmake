@@ -1,6 +1,9 @@
 set(NEBULA_COMMON NCommon)
 
-add_library(${NEBULA_COMMON} STATIC ${NEBULA_SRC}/common/Errors.cpp)
+# build nebula.common library
+add_library(${NEBULA_COMMON} STATIC 
+    ${NEBULA_SRC}/common/Errors.cpp 
+    ${NEBULA_SRC}/common/Memory.cpp)
 target_include_directories(${NEBULA_COMMON} INTERFACE src/common)
 target_link_libraries(${NEBULA_COMMON}
     PRIVATE ${FMT_LIBRARY})

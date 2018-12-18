@@ -15,7 +15,9 @@
  */
 
 #include "gtest/gtest.h"
+#include <valarray>
 #include "Errors.h"
+#include "Memory.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
 
@@ -65,6 +67,117 @@ TEST(ErrorTests, Ensures) {
   } catch (const NebulaException& ex) {
     LOG(INFO) << ex.toString();
   }
+}
+
+TEST(VectorComputing, TestValArray) {
+  std::valarray<double> a(1, 8);
+  std::valarray<double> b{ 1, 2, 3, 4, 5, 6, 7, 8 };
+  std::valarray<double> c = -b;
+
+  // literals must also be of type T (double in this case)
+  std::valarray<double> d = std::sqrt((b * b - 4.0 * a * c));
+  std::valarray<double> x1 = (-b - d) / (2.0 * a);
+  std::valarray<double> x2 = (-b + d) / (2.0 * a);
+  LOG(INFO) << "quadratic equation    root 1,  root 2";
+  for (size_t i = 0; i < a.size(); ++i) {
+    LOG(INFO) << a[i] << "x\u00B2 + " << b[i] << "x + " << c[i] << " = 0   " << x1[i] << ", " << x2[i];
+  }
+}
+
+class TestPadding {
+  bool is_cached_{};
+  double rank_{};
+  int id_{};
+};
+class TestVirualPadding {
+  bool is_cached_{};
+  char padding_bool_[7];
+  double rank_{};
+  int id_{};
+  char padding_int_[4];
+};
+class OptPadding {
+  bool is_cached_{};
+  int id_{};
+  double rank_{};
+};
+class OptPadding2 {
+  double rank_{};
+  int id_{};
+  bool is_cached_{};
+};
+
+TEST(MemoryTest, TestNewDeleteOps) {
+  auto* p = new char{ 'a' };
+  *p = 10;
+  delete p;
+
+  // alignment information
+  LOG(INFO) << "align of int: " << alignof(int) << ", align of double: " << alignof(double);
+
+  // size of object due to padding
+  auto size1 = sizeof(TestPadding);
+  LOG(INFO) << "size of TestPadding: " << size1;
+
+  auto size2 = sizeof(TestVirualPadding);
+  LOG(INFO) << "size of TestVirtualPadding: " << size2;
+
+  // A class padding/alignment requirement determined by the largest member alignment (double) here
+  EXPECT_EQ(size1, size2);
+
+  // keep member layout in the order of its size
+  auto size3 = sizeof(OptPadding);
+  LOG(INFO) << "size of OptPadding: " << size3;
+  EXPECT_EQ(size3, 16);
+
+  auto size4 = sizeof(OptPadding2);
+  LOG(INFO) << "size of OptPadding2: " << size4;
+  EXPECT_EQ(size4, 16);
+}
+
+TEST(MemoryTest, TestSliceAndPagedSlice) {
+  PagedSlice<1024> slice;
+  EXPECT_EQ(slice.capacity(), 1024);
+
+  size_t cursor = 0;
+  // write all differnt types of data and check their size
+  // LOG(INFO)<< "is bool scalar: " << std::is_scalar<bool>::value;
+  cursor += slice.write(cursor, true);
+  EXPECT_EQ(cursor, 1);
+  cursor += slice.write(cursor, 'a');
+  EXPECT_EQ(cursor, 2);
+  short s = 1;
+  cursor += slice.write(cursor, s);
+  EXPECT_EQ(cursor, 4);
+  cursor += slice.write(cursor, 3);
+  EXPECT_EQ(cursor, 8);
+  cursor += slice.write(cursor, 8L);
+  EXPECT_EQ(cursor, 16);
+  cursor += slice.write(cursor, 3.2f);
+  EXPECT_EQ(cursor, 20);
+  cursor += slice.write(cursor, 6.4);
+  EXPECT_EQ(cursor, 28);
+  cursor += slice.write(cursor, 8.9L);
+  EXPECT_EQ(cursor, 44);
+  auto str = "abcxyz";
+  cursor += slice.write(cursor, str, std::strlen(str));
+  EXPECT_EQ(cursor, 50);
+
+  // read all data written above
+  EXPECT_EQ(slice.read<bool>(0), true);
+  EXPECT_EQ(slice.read<char>(1), 'a');
+  EXPECT_EQ(slice.read<short>(2), 1);
+  EXPECT_EQ(slice.read<int>(4), 3);
+  EXPECT_EQ(slice.read<long>(8), 8L);
+  EXPECT_EQ(slice.read<float>(16), 3.2f);
+  EXPECT_EQ(slice.read<double>(20), 6.4);
+  EXPECT_EQ(slice.read<long double>(28), 8.9L);
+  EXPECT_EQ(slice.read(44, 6), "abcxyz");
+
+  // write to position overflow sinle slice - paged slice will auto grow
+  slice.write(1050, 1.0);
+  EXPECT_EQ(slice.read<double>(1050), 1.0);
+  EXPECT_EQ(slice.capacity(), 2048);
 }
 
 } // namespace test

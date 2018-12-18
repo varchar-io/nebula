@@ -116,6 +116,7 @@ template <Kind KIND>
 class Type : public Tree<Type<KIND>*> {
 public:
   using TType = Type<KIND>;
+  // TODO(cao): use safer std::weak_ptr here?
   using PType = TType*;
   virtual ~Type() = default;
 
