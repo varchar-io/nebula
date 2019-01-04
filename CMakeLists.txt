@@ -40,6 +40,9 @@ include(src/common/Common.cmake)
 # build type library
 include(src/type/Type.cmake)
 
+# build memory library
+include(src/memory/Memory.cmake)
+
 # Main Test entry point
 add_executable(MainTest src/Main.cpp)
 

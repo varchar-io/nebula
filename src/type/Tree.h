@@ -24,6 +24,9 @@
 namespace nebula {
 namespace type {
 
+// By default ROOT starts with 0 in the type tree
+static constexpr size_t ROOT = 0;
+
 using namespace nebula::common;
 
 // Utility to check if an object has id() method
@@ -49,12 +52,16 @@ static auto fetchId(const T& t) -> typename std::enable_if<!hasId<typename std::
   return static_cast<size_t>(t);
 }
 
+// Define a generic tree node type = a shared pointer of a tree base
+class TreeBase;
+using TreeNode = std::shared_ptr<TreeBase>;
+
 // Tree base for generic reference purpose
 class TreeBase {
 public:
-  TreeBase(size_t id) : id_{ id } {}
-  TreeBase(size_t id, const std::vector<std::shared_ptr<TreeBase>>& children)
-    : id_{ id }, children_(children.begin(), children.end()) {}
+  TreeBase(size_t id) : node_{ 0 }, id_{ id } {}
+  TreeBase(size_t id, const std::vector<TreeNode>& children)
+    : node_{ 0 }, id_{ id }, children_(children.begin(), children.end()) {}
   virtual ~TreeBase() = default;
 
   // generic method
@@ -62,22 +69,64 @@ public:
   D treeWalk(
     std::function<void(const TreeBase&)> prev,
     std::function<D(const TreeBase&, std::vector<D>&)> post) const {
-    prev(*this);
-    std::vector<D> results;
-    for (auto& child : children_) {
-      results.push_back(child->template treeWalk<D>(prev, post));
+    // only apply on valid PREV procedure
+    if (prev) {
+      prev(*this);
     }
 
-    return post(*this, results);
+    // only apply on valid POST procedure
+    if (post) {
+      std::vector<D> results;
+      for (auto& child : children_) {
+        results.push_back(child->template treeWalk<D>(prev, post));
+      }
+
+      return post(*this, results);
+    } else {
+      for (auto& child : children_) {
+        child->template treeWalk<D>(prev, {});
+      }
+
+      return D();
+    }
   }
 
   inline size_t getId() const {
     return id_;
   }
 
+  inline size_t getNode() const {
+    return node_;
+  }
+
+  // assign NODE ID to all nodes in the type tree
+  // The ID allocation is sequence number in depth-first tree traverse
+  // While ROOT has node ID as 0
+  // return largest NODE ID = number of nodes in the tree
+  size_t assignNodeId(size_t start = ROOT) {
+    size_t node = start;
+    auto last = treeWalk<size_t>(
+      [&node](const auto& v) { const_cast<TreeBase&>(v).node_ = node++; },
+      [&node](const auto& v, std::vector<size_t>& children) { return node; });
+
+    N_ENSURE_EQ(node, last, "last node should match");
+    return last;
+  }
+
+public:
+  // an open extension to allow client to augment any data structure.
+  // NOT USED internal at all - so no responsibility to manage this piece resource
+  std::any ext;
+
 protected:
+  // Internal NODE sequence ID
+  size_t node_;
+
+  // Arbitrary Id used by client
   size_t id_;
-  std::vector<std::shared_ptr<TreeBase>> children_;
+
+  // all children
+  std::vector<TreeNode> children_;
 }; // namespace type
 
 // Define a generic tree with NODE data typed as T
@@ -86,7 +135,7 @@ protected:
 template <typename T>
 class Tree : public TreeBase {
 public:
-  Tree(T data, const std::vector<std::shared_ptr<TreeBase>>& children)
+  Tree(T data, const std::vector<TreeNode>& children)
     : TreeBase(fetchId(data), children), data_{ data } {}
   Tree(T data) : TreeBase(fetchId(data)), data_{ data } {}
   virtual ~Tree() = default;
@@ -94,8 +143,12 @@ public:
   /* Basic Tree APIs */
   template <typename R>
   Tree<R>& childAt(size_t index) {
+    return *std::static_pointer_cast<Tree<R>>(childAt(index));
+  }
+
+  TreeNode childAt(size_t index) {
     N_ENSURE(index >= 0 && index < children_.size(), "index out of bound");
-    return *std::static_pointer_cast<Tree<R>>(children_[index]);
+    return children_[index];
   }
 
   inline size_t size() const {

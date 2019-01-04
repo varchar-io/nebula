@@ -226,12 +226,15 @@ TEST(TypeTest, TestSerdeRoundTrip) {
     EXPECT_EQ(schema, serialized);
   }
 
-    // test deserialization
+  // test deserialization
   {
     auto schema = "ROW:STRUCT<id:int, map<key:long, value:string>, items:list<string>, flag:bool>";
     auto expected = "ROW:STRUCT<id:INTEGER,MAP<key:BIGINT, value:VARCHAR>,items:ARRAY<VARCHAR>,flag:BOOLEAN>";
     auto type = TypeSerializer::from(schema);
     LOG(INFO) << "Deserialized a type tree with number of columns: " << type->size();
+    // assign node ID to the schema
+    LOG(INFO) << "Total Nodes: " << type->assignNodeId(0);
+    type->treeWalk<size_t>([](const auto& v) { LOG(INFO) << "NODE: n=" << v.getNode() << ",id=" << v.getId(); }, {});
     auto serialized = TypeSerializer::to(type);
     LOG(INFO) << "Serialize the tree to schema: " << serialized;
 

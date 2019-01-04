@@ -69,6 +69,8 @@ using ListType = ArrayType;
 using MapType = Type<Kind::MAP>;
 using StructType = Type<Kind::STRUCT>;
 using RowType = StructType;
+// define schema as shared pointer of row type
+using Schema = std::shared_ptr<RowType>;
 // using VarbinaryType = Type<Kind::VARBINARY>;
 // using BinaryType = VarbinaryType;
 // using TimestampType = Type<Kind::TIMESTAMP>;
@@ -110,10 +112,30 @@ DEFINE_TYPE_TRAITS(STRUCT, false, 0)
 
 #undef DEFINE_TYPE_TRAITS
 
+// a base properties of a type
+class TypeBase {
+public:
+  // methods to fetch runtime properties
+  inline const std::string& name() const {
+    return name_;
+  }
+
+  // virtual method to get kind of real type
+  virtual const Kind k() const = 0;
+
+protected:
+  TypeBase(const std::string& name) : name_{ name } {}
+  virtual ~TypeBase() = default;
+  std::string name_;
+};
+
+// define a type node - shared between TreeBase and TypeBase
+using TypeNode = std::shared_ptr<TypeBase>;
+
 // every type is templated by a KIND
 // We need an abstract type to do generic operations
 template <Kind KIND>
-class Type : public Tree<Type<KIND>*> {
+class Type : public TypeBase, public Tree<Type<KIND>*> {
 public:
   using TType = Type<KIND>;
   // TODO(cao): use safer std::weak_ptr here?
@@ -179,9 +201,16 @@ public:
   }
 
   // A generic way to provide type creation
-  static auto create(const std::string& name, const std::vector<std::shared_ptr<TreeBase>>& children)
-    -> std::shared_ptr<TreeBase> {
-    return std::shared_ptr<TreeBase>(new TType(name, children));
+  static auto create(const std::string& name, const std::vector<TreeNode>& children)
+    -> TreeNode {
+    return TreeNode(new TType(name, children));
+  }
+
+public:
+  TypeNode childType(size_t index) {
+    // Tip: "this->" is needed when accessing base's member and base is a template.
+    TreeNode node = this->childAt(index);
+    return std::dynamic_pointer_cast<TypeBase>(node);
   }
 
 public:
@@ -192,11 +221,6 @@ public:
   static constexpr auto isFixedWidth = TypeTraits<KIND>::width > 0;
   static constexpr auto width = TypeTraits<KIND>::width;
 
-  // methods to fetch runtime properties
-  inline const std::string& name() const {
-    return name_;
-  }
-
   inline std::string toString() const {
     return fmt::format("[name={0}, width={1}]", name(), width);
   }
@@ -206,15 +230,16 @@ public:
     return static_cast<size_t>(kind);
   }
 
-protected:
-  Type(const std::string& name, const std::vector<std::shared_ptr<TreeBase>>& children)
-    : name_{ name }, Tree<PType>(this, children) {}
-  Type(const std::string& name) : name_{ name }, Tree<PType>(this) {
-    LOG(INFO) << "Construct a type" << toString();
+  inline const Kind k() const {
+    return kind;
   }
 
 protected:
-  std::string name_;
+  Type(const std::string& name, const std::vector<TreeNode>& children)
+    : TypeBase(name), Tree<PType>(this, children) {}
+  Type(const std::string& name) : TypeBase(name), Tree<PType>(this) {
+    LOG(INFO) << "Construct a type" << toString();
+  }
 };
 
 } // namespace type
