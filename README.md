@@ -34,12 +34,12 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 - https://packagecontrol.io/packages/Clang%20Format
 - On MacOS (npm install clang-format) and edit user-settings with below settings
 - "clang-format.executable": "/absolute-path-to/clang-format"
+- If you don't have npm on your mac, install node from here https://nodejs.org/en/download/
 
 
 ### Use Glog
 
-- https://github.com/google/glog/blob/master/cmake/INSTALL.md
-- 
+- GLog https://github.com/google/glog/blob/master/cmake/INSTALL.md
 
 
 ### Code Convention
@@ -51,4 +51,3 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 
 ### C++ Patterns References
 - SNIFAE - http://jguegant.github.io/blogs/tech/sfinae-introduction.html
-- 
