@@ -25,6 +25,7 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 - ./folly/folly/build/bootstrap-osx-homebrew.sh
 - (may need sudo to grant permission)
 - "brew install folly" should just work for MacOS
+- If you don't have brew on your mac, install it from here https://brew.sh/
 
 ### Use clang-format
 
