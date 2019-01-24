@@ -40,6 +40,10 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 ### Use Glog
 
 - GLog https://github.com/google/glog/blob/master/cmake/INSTALL.md
+- Glog has an issue as external project of missing log_severity.h in interface folder, just copy it
+-- "~/nebula/build/glogp-prefix/src/glogp-build/glog/logging.h:512:10: fatal error: 'glog/log_severity.h' file not found"
+-- build> cp ./glogp-prefix/src/glogp/src/glog/log_severity.h glogp-prefix/src/glogp-build/glog/
+- (tip - apply to others too, failed to download *.git file? delete invisible special character in URL)
 
 
 ### Code Convention
