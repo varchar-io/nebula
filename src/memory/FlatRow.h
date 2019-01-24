@@ -59,7 +59,27 @@ static constexpr size_t SLICE_SIZE = 1024 * 1024;
  * List
  * 1byte flag + {4 bytes items if flag=0} + {4 bytes size if not null and having items} + repeat {item}
  */
-struct DataMeta;
+
+// Data Tree share the same memory slice
+// its data field is offset in the slice
+struct DataMeta {
+  DataMeta(const TypeNode& n, size_t c = 0)
+    : node{ n }, values{ c }, offset{ 0 }, length{ 0 } {}
+  ~DataMeta() = default;
+
+  // type node
+  TypeNode node;
+
+  // number of values in list/map
+  size_t values;
+
+  // offset in the memory chunk
+  size_t offset;
+
+  // length of all data for this node
+  size_t length;
+};
+
 class FlatRow {
 public:
   FlatRow(const Schema& schema) : schema_{ schema } {
@@ -92,7 +112,7 @@ public:
   size_t write(const std::string& name, const T& value) {
     // locate the name, check if currently in a un-named context
     // named context - stack top is "struct"
-    N_ENSURE(!stack_.empty() && stack_.top()->k() == Kind::STRUCT,
+    N_ENSURE(!stack_.empty() && stack_.top()->node->k() == Kind::STRUCT,
              "only support name lookup in struct context");
 
     // look up name in the tree
@@ -133,26 +153,6 @@ size_t FlatRow::write(const T& value) {
   onValueWritten();
   return 0;
 }
-
-// Data Tree share the same memory slice
-// its data field is offset in the slice
-struct DataMeta {
-  DataMeta(const TypeNode& n, size_t c = 0)
-    : node{ n }, values{ c }, offset{ 0 }, length{ 0 } {}
-  ~DataMeta() = default;
-
-  // type node
-  TypeNode node;
-
-  // number of values in list/map
-  size_t values;
-
-  // offset in the memory chunk
-  size_t offset;
-
-  // length of all data for this node
-  size_t length;
-};
 
 } // namespace memory
 } // namespace nebula

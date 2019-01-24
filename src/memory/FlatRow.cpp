@@ -34,13 +34,13 @@ void FlatRow::init() {
 void FlatRow::begin(const TypeNode& node, size_t items) {
   // push the the node KIND
   LOG(INFO) << "begin writing NODE: " << node->name() << " for items: " << items;
-  stack_.push(node);
+  stack_.push(std::make_unique<DataMeta>(node));
 }
 
 // return total size
 size_t FlatRow::end(const TypeNode& node) {
   // ensure poping the same node as pushed
-  N_ENSURE(node.get()==stack_.top().get(), "same node");
+  N_ENSURE(node.get() == (stack_.top()->node.get()), "same node");
   stack_.pop();
 
   LOG(INFO) << " end writing NDOE: " << node->name();
