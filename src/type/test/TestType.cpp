@@ -20,6 +20,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 #include "Errors.h"
 #include "Serde.h"
@@ -195,23 +196,24 @@ TEST(TypeTest, TestSerde) {
 
     EXPECT_EQ(schema, expected);
   }
+}
 
+TEST(TypeTest, TestDeser) {
   // test deserialization
-  {
-    auto schema = "STRUCT<f1:BIGINT,map:MAP<key:BIGINT, value:VARCHAR>,list:ARRAY<item:VARCHAR>,f4:BOOLEAN>";
-    auto type = TypeSerializer::from(schema);
+  auto schema = "STRUCT<f1:BIGINT,map:MAP<key:BIGINT, value:VARCHAR>,list:ARRAY<item:VARCHAR>,f4:BOOLEAN>";
+  auto type = TypeSerializer::from(schema);
 
-    EXPECT_EQ(type->size(), 4);
-    auto f1 = type->childAt<LongType::PType>(0).value();
-    EXPECT_EQ(f1->name(), "f1");
-    EXPECT_EQ(f1->type, "BIGINT");
+  EXPECT_EQ(type->size(), 4);
 
-    LOG(INFO) << "get map type";
-    MapType::PType map = type->childAt<MapType::PType>(1).value();
-    EXPECT_EQ(map->type, "MAP");
-    LOG(INFO) << "passed type check";
-    EXPECT_EQ(map->name(), "map");
-  }
+  auto f1 = type->childType(0);
+  EXPECT_EQ(f1->name(), "f1");
+  EXPECT_EQ(f1->k(), nebula::type::Kind::BIGINT);
+
+  LOG(INFO) << "get map type";
+  MapType::PType map = type->childAt<MapType::PType>(1).value();
+  EXPECT_EQ(map->type, "MAP");
+  LOG(INFO) << "passed type check";
+  EXPECT_EQ(map->name(), "map");
 }
 
 TEST(TypeTest, TestSerdeRoundTrip) {
@@ -325,6 +327,34 @@ TEST(TupleTest, TestTuple) {
   // test loop on each item
   auto t = std::make_tuple(10, true, "C++", 1.0);
   loop(t);
+}
+
+// Overload pattern from https://www.bfilipek.com/2019/02/2lines3featuresoverload.html
+template <class... Ts>
+struct overloaded : Ts... { using Ts::operator()...; };
+template <class... Ts>
+overloaded(Ts...)->overloaded<Ts...>;
+TEST(OverloadPatternTest, TestOverload) {
+  auto PrintVisitor = [](const auto& t) { std::cout << t << '\n'; };
+  std::variant<int, float, std::string> intFloatString{ "Hello" };
+  std::visit(overloaded{
+               [](int& i) { i *= 2; },
+               [](float& f) { f *= 2.0f; },
+               [](std::string& s) { s = s + s; } },
+             intFloatString);
+
+  std::visit(PrintVisitor, intFloatString);
+
+  // "custom" print:
+  auto lamb = overloaded{
+    [](const int& i) { std::cout << "int: " << i << '\n'; },
+    [](const float& f) { std::cout << "float: " << f << '\n'; },
+    [](const std::string& s) { std::cout << "string: " << s << '\n'; }
+  };
+  std::visit(lamb, intFloatString);
+
+  intFloatString = 3;
+  std::visit(lamb, intFloatString);
 }
 
 } // namespace test
