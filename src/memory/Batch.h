@@ -15,10 +15,26 @@
  */
 
 #pragma once
+#include "Type.h"
 
+/**
+ * A batch defines a logical data block represents N rows for a given table/category.
+ * For simplicity, a batch has fixed schema - 
+ * (to support schema compatibility, a table/category can have different batches with different schemas)
+ * 
+ * 
+ */
 namespace nebula {
 namespace memory {
+
+using nebula::type::Schema;
+
 class Batch {
+public:
+  Batch(const Schema& schema) : schema_{ schema } {}
+
+private:
+  Schema schema_;
 };
 } // namespace memory
 } // namespace nebula

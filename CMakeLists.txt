@@ -37,6 +37,9 @@ include_directories(include ${FollyDir}/include)
 # build common library
 include(src/common/Common.cmake)
 
+# build data surface - interfaces
+include(src/surface/Surface.cmake)
+
 # build type library
 include(src/type/Type.cmake)
 
