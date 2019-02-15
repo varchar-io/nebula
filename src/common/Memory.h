@@ -34,6 +34,11 @@
 namespace nebula {
 namespace common {
 
+// declare 3 classes defined in memory module
+class Pool;
+class Slice;
+class PagedSlice;
+
 class Pool {
 public:
   virtual ~Pool() = default;
@@ -70,7 +75,6 @@ private:
  * A slice represents a N sized memory chunk.
  * By default, a 64K page is provided. 
  */
-template <size_t N = 64 * 1024>
 class Slice {
 public:
   virtual ~Slice() {
@@ -79,7 +83,7 @@ public:
   }
 
 protected:
-  Slice() : pool_{ Pool::getDefault() }, ptr_{ static_cast<char*>(pool_.allocate(N)) } {}
+  Slice(size_t bytes) : pool_{ Pool::getDefault() }, size_{ bytes }, ptr_{ static_cast<char*>(pool_.allocate(bytes)) } {}
   Slice(Slice&) = delete;
   Slice(Slice&&) = delete;
   Slice& operator=(Slice&) = delete;
@@ -87,6 +91,10 @@ protected:
 
   // memory pool implementation
   Pool& pool_;
+
+  // size of current buffer
+  size_t size_;
+
   // memory pointer
   char* ptr_;
 };
@@ -95,10 +103,9 @@ protected:
  * A paged slice is a chain of slices with given sized slice of chunks.
  * A paged slice is a slice, and it can have more slices as extensions when necessary.
  */
-template <size_t N = 64 * 1024>
-class PagedSlice : public Slice<N> {
+class PagedSlice : public Slice {
 public:
-  PagedSlice() : slices_{ 1 }, Slice<N>() {}
+  PagedSlice(size_t page) : slices_{ 1 }, Slice(page) {}
   ~PagedSlice() = default;
 
   // append a bytes array of length bytes to position
@@ -136,7 +143,7 @@ public:
 
   // capacity
   size_t capacity() const {
-    return N * slices_;
+    return size_ * slices_;
   }
 
 private:
@@ -146,32 +153,6 @@ private:
 private:
   size_t slices_;
 };
-
-// not-threadsafe
-template <size_t N>
-void PagedSlice<N>::ensure(size_t size) {
-  if (size >= capacity()) {
-    auto slices = slices_;
-    while (slices * N <= size) {
-      ++slices;
-    }
-
-    N_ENSURE_GT(slices, slices_, "required slices should be more than existing capacity");
-    this->ptr_ = static_cast<char*>(this->pool_.extend(this->ptr_, capacity(), slices * N));
-    std::swap(slices, slices_);
-  }
-}
-
-// append a bytes array of length bytes to position
-template <size_t N>
-size_t PagedSlice<N>::write(size_t position, const char* data, size_t length) {
-  size_t cursor = position + length;
-  ensure(cursor);
-
-  // copy data into given place
-  std::memcpy(this->ptr_ + position, data, length);
-  return length;
-}
 
 } // namespace common
 } // namespace nebula

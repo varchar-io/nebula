@@ -45,21 +45,21 @@ public:
   virtual ~RowData() = default;
 
   // All intrefaces - string type has RVO, copy elision optimization
-  virtual bool isNull(const std::string& field) = 0;
-  virtual bool readBool(const std::string& field) = 0;
-  virtual int8_t readByte(const std::string& field) = 0;
-  virtual int16_t readShort(const std::string& field) = 0;
-  virtual int32_t readInt(const std::string& field) = 0;
-  virtual int64_t readLong(const std::string& field) = 0;
-  virtual float readFloat(const std::string& field) = 0;
-  virtual double readDouble(const std::string& field) = 0;
-  virtual std::string readString(const std::string& field) = 0;
+  virtual bool isNull(const std::string& field) const = 0;
+  virtual bool readBool(const std::string& field) const = 0;
+  virtual int8_t readByte(const std::string& field) const = 0;
+  virtual int16_t readShort(const std::string& field) const = 0;
+  virtual int32_t readInt(const std::string& field) const = 0;
+  virtual int64_t readLong(const std::string& field) const = 0;
+  virtual float readFloat(const std::string& field) const = 0;
+  virtual double readDouble(const std::string& field) const = 0;
+  virtual std::string readString(const std::string& field) const = 0;
 
   // compound types
-  virtual std::unique_ptr<ListData> readList(const std::string& field) = 0;
-  virtual std::unique_ptr<MapData> readMap(const std::string& field) = 0;
+  virtual std::unique_ptr<ListData> readList(const std::string& field) const = 0;
+  virtual std::unique_ptr<MapData> readMap(const std::string& field) const = 0;
   // NOT SUPPORT struct of struct type for now
-  // virtual RowData readStruct(const std::string& field) = 0;
+  // virtual RowData readStruct(const std::string& field) const = 0;
 };
 
 class ListData {
@@ -72,15 +72,15 @@ public:
   int getItems() const { return items_; }
 
   // all interfaces - not support list of compounds types for now
-  virtual bool isNull(uint32_t index) = 0;
-  virtual bool readBool(uint32_t index) = 0;
-  virtual int8_t readByte(uint32_t index) = 0;
-  virtual int16_t readShort(uint32_t index) = 0;
-  virtual int32_t readInt(uint32_t index) = 0;
-  virtual int64_t readLong(uint32_t index) = 0;
-  virtual float readFloat(uint32_t index) = 0;
-  virtual double readDouble(uint32_t index) = 0;
-  virtual std::string readString(uint32_t index) = 0;
+  virtual bool isNull(uint32_t index) const = 0;
+  virtual bool readBool(uint32_t index) const = 0;
+  virtual int8_t readByte(uint32_t index) const = 0;
+  virtual int16_t readShort(uint32_t index) const = 0;
+  virtual int32_t readInt(uint32_t index) const = 0;
+  virtual int64_t readLong(uint32_t index) const = 0;
+  virtual float readFloat(uint32_t index) const = 0;
+  virtual double readDouble(uint32_t index) const = 0;
+  virtual std::string readString(uint32_t index) const = 0;
 
 private:
   uint32_t items_;
@@ -96,8 +96,8 @@ public:
   int getItems() const { return items_; }
 
   // all interfaces - keys list and values list have the same number of items
-  virtual std::unique_ptr<ListData> readKeys() = 0;
-  virtual std::unique_ptr<ListData> readValues() = 0;
+  virtual std::unique_ptr<ListData> readKeys() const = 0;
+  virtual std::unique_ptr<ListData> readValues() const = 0;
 
 private:
   uint32_t items_;
@@ -107,40 +107,40 @@ private:
 // Supported compound types
 class MockRowData : public RowData {
 public:
-  bool isNull(const std::string& field) override;
-  bool readBool(const std::string& field) override;
-  int8_t readByte(const std::string& field) override;
-  int16_t readShort(const std::string& field) override;
-  int32_t readInt(const std::string& field) override;
-  int64_t readLong(const std::string& field) override;
-  float readFloat(const std::string& field) override;
-  double readDouble(const std::string& field) override;
-  std::string readString(const std::string& field) override;
+  bool isNull(const std::string& field) const override;
+  bool readBool(const std::string& field) const override;
+  int8_t readByte(const std::string& field) const override;
+  int16_t readShort(const std::string& field) const override;
+  int32_t readInt(const std::string& field) const override;
+  int64_t readLong(const std::string& field) const override;
+  float readFloat(const std::string& field) const override;
+  double readDouble(const std::string& field) const override;
+  std::string readString(const std::string& field) const override;
 
   // compound types
-  std::unique_ptr<ListData> readList(const std::string& field) override;
-  std::unique_ptr<MapData> readMap(const std::string& field) override;
+  std::unique_ptr<ListData> readList(const std::string& field) const override;
+  std::unique_ptr<MapData> readMap(const std::string& field) const override;
 };
 
 class MockListData : public ListData {
 public:
   MockListData(uint32_t items) : ListData(items) {}
-  bool isNull(uint32_t index) override;
-  bool readBool(uint32_t index) override;
-  std::int8_t readByte(uint32_t index) override;
-  int16_t readShort(uint32_t index) override;
-  int32_t readInt(uint32_t index) override;
-  int64_t readLong(uint32_t index) override;
-  float readFloat(uint32_t index) override;
-  double readDouble(uint32_t index) override;
-  std::string readString(uint32_t index) override;
+  bool isNull(uint32_t index) const override;
+  bool readBool(uint32_t index) const override;
+  std::int8_t readByte(uint32_t index) const override;
+  int16_t readShort(uint32_t index) const override;
+  int32_t readInt(uint32_t index) const override;
+  int64_t readLong(uint32_t index) const override;
+  float readFloat(uint32_t index) const override;
+  double readDouble(uint32_t index) const override;
+  std::string readString(uint32_t index) const override;
 };
 
 class MockMapData : public MapData {
 public:
   MockMapData(uint32_t items) : MapData(items) {}
-  std::unique_ptr<ListData> readKeys() override;
-  std::unique_ptr<ListData> readValues() override;
+  std::unique_ptr<ListData> readKeys() const override;
+  std::unique_ptr<ListData> readValues() const override;
 };
 } // namespace surface
 } // namespace nebula

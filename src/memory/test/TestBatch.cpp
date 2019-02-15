@@ -16,6 +16,9 @@
 
 #include "gtest/gtest.h"
 #include <valarray>
+#include "Batch.h"
+#include "DataNode.h"
+#include "DataSurface.h"
 #include "FlatRow.h"
 #include "Memory.h"
 #include "Serde.h"
@@ -26,23 +29,58 @@ namespace nebula {
 namespace memory {
 namespace test {
 
+using nebula::surface::MockRowData;
 using nebula::type::ROOT;
 using nebula::type::TypeSerializer;
+
+TEST(BatchTest, TestBatch) {
+  auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
+  Batch batch(schema);
+  // add 10 rows
+  auto rows = 10;
+  MockRowData row;
+  for (auto i = 0; i < rows; ++i) {
+    batch.add(row);
+  }
+
+  // verify batch data
+  EXPECT_EQ(batch.getRows(), rows);
+
+  // every row is the same, they are
+  auto id = row.readInt("id");
+  auto items = row.readList("items");
+  auto flag = row.readBool("flag");
+
+  for (auto i = 0; i < rows; ++i) {
+    // row cursor
+    const RowData& cursor = batch.row(i);
+
+    // check all column data
+    EXPECT_EQ(cursor.readInt("id"), id);
+
+    auto list = cursor.readList("items");
+    EXPECT_EQ(list->getItems(), items->getItems());
+    for (auto k = 0; k < items->getItems(); ++k) {
+      EXPECT_EQ(list->readString(k), items->readString(k));
+    }
+
+    EXPECT_EQ(cursor.readBool("flag"), flag);
+  }
+}
 
 TEST(RowTest, TestFlatRow) {
   // should be a covariant of TypeNode shared_ptr<RowType> -> shared_ptr<TypeBase>
   auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
 
   // initialize a flat row with given schema
-  FlatRow row(schema);  
+  FlatRow row(schema);
 
   // to achieve flexible writing APIs
   // here is a contract for each type
-  // 1. list - begin and write 
+  // 1. list - begin and write
   // 2. struct - all field writing need specifying name
   // 3. map - treat it like struct but with two special field name [KEY], [VALUE]
   // Before write(value) is called, the expected node should be placed in the stack
-  
 
   // write id as value 2
   row.write("id", 2);
@@ -60,6 +98,12 @@ TEST(RowTest, TestFlatRow) {
   row.seal();
 
   // row is ready to read now
+}
+
+TEST(DataTreeTest, TestBuildDataTree) {
+  auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
+  auto dataTree = nebula::memory::DataNode::buildDataTree(schema);
+  EXPECT_EQ(dataTree->size(), 3);
 }
 
 } // namespace test

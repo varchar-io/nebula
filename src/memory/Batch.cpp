@@ -15,3 +15,43 @@
  */
 
 #include "Batch.h"
+#include <numeric>
+
+namespace nebula {
+namespace memory {
+
+using nebula::surface::RowData;
+using nebula::type::TreeBase;
+
+// add a row into current batch
+// and return row ID of this row in current batch
+// thread-safe on sync guarded - exclusive lock?
+uint32_t Batch::add(const RowData& row) {
+  // read data from row data and save it to batch
+  auto result = data_->treeWalk<uint32_t, DataNode>(
+    [&row](const DataNode& v) {
+      // (TODO) read data from of current Node
+      return 1;
+    },
+    [](const DataNode& v, std::vector<uint32_t>& children) {
+      // read own size from data node
+      auto size = 1;
+
+      // accumulate data size including children
+      size += std::accumulate(children.begin(), children.end(), 0);
+      return size;
+    });
+
+  // record the row size
+  LOG(INFO) << "Total row size  = " << result;
+
+  return rows_++;
+}
+
+// random access to a row - may require internal seek
+RowData& Batch::row(uint32_t rowId) {
+  return cursor_;
+}
+
+} // namespace memory
+} // namespace nebula

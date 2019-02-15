@@ -234,6 +234,10 @@ public:
     return kind;
   }
 
+  inline const TypeBase& base() const {
+    return *this;
+  }
+
 protected:
   Type(const std::string& name, const std::vector<TreeNode>& children)
     : TypeBase(name), Tree<PType>(this, children) {}

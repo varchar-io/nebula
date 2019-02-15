@@ -18,9 +18,35 @@
 
 namespace nebula {
 namespace common {
+
 Pool& Pool::getDefault() {
   static Pool pool;
   return pool;
 }
+
+// not-threadsafe
+void PagedSlice::ensure(size_t size) {
+  if (size >= capacity()) {
+    auto slices = slices_;
+    while (slices * size_ <= size) {
+      ++slices;
+    }
+
+    N_ENSURE_GT(slices, slices_, "required slices should be more than existing capacity");
+    this->ptr_ = static_cast<char*>(this->pool_.extend(this->ptr_, capacity(), slices * size_));
+    std::swap(slices, slices_);
+  }
+}
+
+// append a bytes array of length bytes to position
+size_t PagedSlice::write(size_t position, const char* data, size_t length) {
+  size_t cursor = position + length;
+  ensure(cursor);
+
+  // copy data into given place
+  std::memcpy(this->ptr_ + position, data, length);
+  return length;
+}
+
 } // namespace common
 } // namespace nebula

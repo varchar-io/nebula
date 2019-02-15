@@ -227,10 +227,9 @@ std::shared_ptr<RowType> TypeSerializer::from(const std::string& text) {
   auto root = parser.parse();
 
   // walk this node tree before transforming it to a RowType
-  auto typeTree = root->treeWalk<std::shared_ptr<TreeBase>>(
-    [](const auto& v) {},
-    [](const auto& v, std::vector<std::shared_ptr<TreeBase>>& children) {
-      const auto& node = dynamic_cast<const Node&>(v);
+  auto typeTree = root->treeWalk<TreeNode, Node>(
+    [](const auto& node) {},
+    [](const auto& node, std::vector<TreeNode>& children) {
       switch (node.token.type) {
         SCALAR_TYPE_CREATE(TBOOLEAN, BoolType)
         SCALAR_TYPE_CREATE(TTINYINT, ByteType)

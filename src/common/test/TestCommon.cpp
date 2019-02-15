@@ -136,7 +136,7 @@ TEST(MemoryTest, TestNewDeleteOps) {
 }
 
 TEST(MemoryTest, TestSliceAndPagedSlice) {
-  PagedSlice<1024> slice;
+  nebula::common::PagedSlice slice(1024);
   EXPECT_EQ(slice.capacity(), 1024);
 
   size_t cursor = 0;

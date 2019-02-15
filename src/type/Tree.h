@@ -64,14 +64,15 @@ public:
     : node_{ 0 }, id_{ id }, children_(children.begin(), children.end()) {}
   virtual ~TreeBase() = default;
 
-  // generic method
-  template <typename D>
+  // avoid type conversion, so a tree Node should pass the exact type of the node as S
+  // use D to define the return type
+  template <typename D, typename S>
   D treeWalk(
-    std::function<void(const TreeBase&)> prev,
-    std::function<D(const TreeBase&, std::vector<D>&)> post) const {
+    std::function<void(const S&)> prev,
+    std::function<D(const S&, std::vector<D>&)> post) const {
     // only apply on valid PREV procedure
     if (prev) {
-      prev(*this);
+      prev(static_cast<const S&>(*this));
     }
 
     // only apply on valid POST procedure
@@ -81,7 +82,7 @@ public:
         results.push_back(child->template treeWalk<D>(prev, post));
       }
 
-      return post(*this, results);
+      return post(static_cast<const S&>(*this), results);
     } else {
       for (auto& child : children_) {
         child->template treeWalk<D>(prev, {});
@@ -89,6 +90,14 @@ public:
 
       return D();
     }
+  }
+
+  // generic method without knowing the node type
+  template <typename D>
+  D treeWalk(
+    std::function<void(const TreeBase&)> prev,
+    std::function<D(const TreeBase&, std::vector<D>&)> post) const {
+    return this->template treeWalk<D, TreeBase>(prev, post);
   }
 
   inline size_t getId() const {

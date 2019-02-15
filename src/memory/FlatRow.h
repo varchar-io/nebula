@@ -82,7 +82,7 @@ struct DataMeta {
 
 class FlatRow {
 public:
-  FlatRow(const Schema& schema) : schema_{ schema } {
+  FlatRow(const Schema& schema) : schema_{ schema }, slice_{ SLICE_SIZE } {
     // assign NODES from ROOT 0
     schema_->assignNodeId();
 
@@ -138,7 +138,7 @@ private:
 private:
   // data containers
   Schema schema_;
-  PagedSlice<SLICE_SIZE> slice_;
+  PagedSlice slice_;
 
   // write states
   size_t cursor_;

@@ -26,86 +26,86 @@ namespace surface {
 
 //------------ Mock Row
 // All intrefaces - string type has RVO, copy elision optimization
-bool MockRowData::isNull(const std::string& field) {
+bool MockRowData::isNull(const std::string& field) const {
   return false;
 }
 
-bool MockRowData::readBool(const std::string& field) {
+bool MockRowData::readBool(const std::string& field) const {
   return true;
 }
-int8_t MockRowData::readByte(const std::string& field) {
+int8_t MockRowData::readByte(const std::string& field) const {
   return 8;
 }
-int16_t MockRowData::readShort(const std::string& field) {
+int16_t MockRowData::readShort(const std::string& field) const {
   return 16;
 }
-int32_t MockRowData::readInt(const std::string& field) {
+int32_t MockRowData::readInt(const std::string& field) const {
   return 32;
 }
-int64_t MockRowData::readLong(const std::string& field) {
+int64_t MockRowData::readLong(const std::string& field) const {
   return 64;
 }
-float MockRowData::readFloat(const std::string& field) {
+float MockRowData::readFloat(const std::string& field) const {
   return 4.0;
 }
-double MockRowData::readDouble(const std::string& field) {
+double MockRowData::readDouble(const std::string& field) const {
   return 8.0;
 }
-std::string MockRowData::readString(const std::string& field) {
+std::string MockRowData::readString(const std::string& field) const {
   return "MOCK";
 }
 
 // compound types
-std::unique_ptr<ListData> MockRowData::readList(const std::string& field) {
+std::unique_ptr<ListData> MockRowData::readList(const std::string& field) const {
   // copy elision or seg fault?
   return std::make_unique<MockListData>(4);
 }
 
-std::unique_ptr<MapData> MockRowData::readMap(const std::string& field) {
+std::unique_ptr<MapData> MockRowData::readMap(const std::string& field) const {
   return std::make_unique<MockMapData>(2);
 }
 
 //------------ Mock List
-bool MockListData::isNull(uint32_t index) {
+bool MockListData::isNull(uint32_t index) const {
   return false;
 }
 
-bool MockListData::readBool(uint32_t index) {
+bool MockListData::readBool(uint32_t index) const {
   return index % 2 == 0;
 }
 
-int8_t MockListData::readByte(uint32_t index) {
+int8_t MockListData::readByte(uint32_t index) const {
   return 8 * (index + 2);
 }
 
-int16_t MockListData::readShort(uint32_t index) {
+int16_t MockListData::readShort(uint32_t index) const {
   return 16 * (index + 2);
 }
-int32_t MockListData::readInt(uint32_t index) {
+int32_t MockListData::readInt(uint32_t index) const {
   return 32 * (index + 2);
 }
 
-int64_t MockListData::readLong(uint32_t index) {
+int64_t MockListData::readLong(uint32_t index) const {
   return 64 * (index + 2);
 }
 
-float MockListData::readFloat(uint32_t index) {
+float MockListData::readFloat(uint32_t index) const {
   return 4.0 * (index + 2);
 }
 
-double MockListData::readDouble(uint32_t index) {
+double MockListData::readDouble(uint32_t index) const {
   return 8.0 * (index + 2);
 }
-std::string MockListData::readString(uint32_t index) {
+std::string MockListData::readString(uint32_t index) const {
   return fmt::format("LIST_{0}_MOCK", index);
 }
 
 //------------ Mock Map
-std::unique_ptr<ListData> MockMapData::readKeys() {
+std::unique_ptr<ListData> MockMapData::readKeys() const {
   return std::make_unique<MockListData>(getItems());
 }
 
-std::unique_ptr<ListData> MockMapData::readValues() {
+std::unique_ptr<ListData> MockMapData::readValues() const {
   return std::make_unique<MockListData>(getItems());
 }
 
