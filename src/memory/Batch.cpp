@@ -28,19 +28,7 @@ using nebula::type::TreeBase;
 // thread-safe on sync guarded - exclusive lock?
 uint32_t Batch::add(const RowData& row) {
   // read data from row data and save it to batch
-  auto result = data_->treeWalk<uint32_t, DataNode>(
-    [&row](const DataNode& v) {
-      // (TODO) read data from of current Node
-      return 1;
-    },
-    [](const DataNode& v, std::vector<uint32_t>& children) {
-      // read own size from data node
-      auto size = 1;
-
-      // accumulate data size including children
-      size += std::accumulate(children.begin(), children.end(), 0);
-      return size;
-    });
+  auto result = data_->append(row);
 
   // record the row size
   LOG(INFO) << "Total row size  = " << result;

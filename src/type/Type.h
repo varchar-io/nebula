@@ -42,7 +42,6 @@ enum class Kind {
   // VARBINARY = 12,
   // TIMESTAMP = 13,
   // UNION = 14
-
 };
 
 /**
@@ -82,9 +81,9 @@ Every type kind has different traits
 - type value width: 0-variable length
 - type name literals
 */
+
 template <Kind KIND>
-struct TypeTraits {
-};
+struct TypeTraits {};
 
 #define DEFINE_TYPE_TRAITS(NAME, PRIMITIVE, WIDTH) \
   template <>                                      \
@@ -111,6 +110,32 @@ DEFINE_TYPE_TRAITS(STRUCT, false, 0)
 // DEFINE_TYPE_TRAITS(TIMESTAMP, true, 8)
 
 #undef DEFINE_TYPE_TRAITS
+
+#define KIND_NAME_DISPATCH(KIND)         \
+  case Kind::KIND: {                     \
+    return TypeTraits<Kind::KIND>::name; \
+  }
+
+static auto KIND_NAME(Kind kind)
+  -> std::string {
+  switch (kind) {
+    KIND_NAME_DISPATCH(BOOLEAN)
+    KIND_NAME_DISPATCH(TINYINT)
+    KIND_NAME_DISPATCH(SMALLINT)
+    KIND_NAME_DISPATCH(INTEGER)
+    KIND_NAME_DISPATCH(BIGINT)
+    KIND_NAME_DISPATCH(REAL)
+    KIND_NAME_DISPATCH(DOUBLE)
+    KIND_NAME_DISPATCH(VARCHAR)
+    KIND_NAME_DISPATCH(ARRAY)
+    KIND_NAME_DISPATCH(MAP)
+    KIND_NAME_DISPATCH(STRUCT)
+  default:
+    throw NebulaException("Unsupported type in KIND_NAME.");
+  }
+}
+
+#undef KIND_NAME_DISPATCH
 
 // a base properties of a type
 class TypeBase {

@@ -32,9 +32,14 @@
 namespace nebula {
 namespace memory {
 
+// define DataTree type = shared pointer of a data node
+class DataNode;
+using DataTree = std::shared_ptr<DataNode>;
+using TDataNode = DataNode;
+using PDataNode = DataNode*;
+
 class DataNode : public nebula::type::Tree<DataNode*> {
 public:
-  using DataTree = std::shared_ptr<DataNode>;
   static DataTree buildDataTree(const nebula::type::Schema&);
 
 public:
@@ -60,6 +65,22 @@ public:
     // TODO(cao): generate identifier for current node
     return 0;
   }
+
+  // append all different type of data
+  // or we can use single base pointer to narrow the interfaces but paying cost of casting
+public:
+  uint32_t appendNull();
+  uint32_t append(const nebula::surface::RowData& row);
+  uint32_t append(const nebula::surface::ListData& list);
+  uint32_t append(const nebula::surface::MapData& map);
+  uint32_t append(bool b);
+  uint32_t append(int8_t b);
+  uint32_t append(int16_t s);
+  uint32_t append(int32_t i);
+  uint32_t append(int64_t l);
+  uint32_t append(float f);
+  uint32_t append(double d);
+  uint32_t append(const std::string& str);
 
 private:
   // pointing to a node in the schema tree which is supposed to be shared.

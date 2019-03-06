@@ -30,6 +30,7 @@ namespace nebula {
 namespace memory {
 
 using nebula::memory::DataNode;
+using nebula::memory::DataTree;
 using nebula::surface::ListData;
 using nebula::surface::MapData;
 using nebula::surface::RowData;
@@ -55,7 +56,7 @@ public:
 
 private:
   Schema schema_;
-  DataNode::DataTree data_;
+  DataTree data_;
   uint32_t rows_;
 
   // friend class or nested class
