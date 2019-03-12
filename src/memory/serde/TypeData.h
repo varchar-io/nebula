@@ -16,15 +16,37 @@
 
 #pragma once
 
+#include "Likely.h"
+#include "Memory.h"
 #include "Type.h"
+#include "glog/logging.h"
 
 namespace nebula {
 namespace memory {
 namespace serde {
+
+using IndexType = size_t;
+using nebula::type::NebulaException;
+
 /**
- * A data serde to desribe real data for a given type
+ * A data serde to desribe real data for a given type.
+ * The base type acts like a proxy to delegate corresponding typed data.
  */
 class TypeData {
+public:
+  TypeData() : size_{ 0 } {};
+  virtual ~TypeData() = default;
+
+public:
+  inline size_t size() const {
+    return size_;
+  }
+
+  virtual size_t capacity() const = 0;
+
+protected:
+  // data size in slice_
+  size_t size_;
 };
 
 // type metadata implementation for each type kind
@@ -45,6 +67,85 @@ using StringData = TypeDataImpl<nebula::type::Kind::VARCHAR>;
 
 template <nebula::type::Kind KIND>
 class TypeDataImpl : public TypeData {
+public:
+  TypeDataImpl();
+  virtual ~TypeDataImpl() = default;
+
+public:
+  template <typename T>
+  void add(IndexType, T);
+
+  void addVoid(IndexType);
+
+  template <typename T>
+  T read(IndexType);
+
+  inline std::string read(IndexType offset, IndexType size) {
+    return slice_.read(offset, size);
+  }
+
+  inline size_t capacity() const override {
+    return slice_.capacity();
+  }
+
+private:
+  // memory chunk managed by paged slice
+  nebula::common::PagedSlice slice_;
+};
+
+/**
+ * A proxy is used to dispatch different methods.
+ * Bad part -> these functions can't be inline due to full specification of template. 
+ */
+
+class TypeDataProxy {
+  using PTypeData = std::unique_ptr<TypeData>;
+
+public:
+  TypeDataProxy(PTypeData);
+  virtual ~TypeDataProxy() = default;
+
+public:
+  template <typename T>
+  void add(IndexType, T);
+
+  void add(IndexType, const std::string&);
+
+  inline void addVoid(IndexType index) {
+    if (LIKELY(void_ != nullptr)) {
+      void_(index);
+    }
+  }
+
+public:
+  template <typename T>
+  T read(IndexType);
+
+  inline std::string read(IndexType offset, IndexType size) {
+    return std_->read(offset, size);
+  }
+
+public:
+  inline size_t size() const {
+    return data_->size();
+  }
+
+  inline size_t capacity() const {
+    return data_->capacity();
+  }
+
+private:
+  // data_ is owned object while other plain pointers are internal refs
+  PTypeData data_;
+  BoolData* bd_;
+  ByteData* btd_;
+  ShortData* sd_;
+  IntData* id_;
+  LongData* ld_;
+  FloatData* fd_;
+  DoubleData* dd_;
+  StringData* std_;
+  std::function<void(IndexType)> void_;
 };
 
 } // namespace serde

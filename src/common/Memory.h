@@ -18,6 +18,7 @@
 
 #include <iostream>
 #include "Errors.h"
+#include "Likely.h"
 #include "glog/logging.h"
 
 // TODO(cao): import jemalloc for global new/delete allocation
@@ -33,11 +34,6 @@
 
 namespace nebula {
 namespace common {
-
-// declare 3 classes defined in memory module
-class Pool;
-class Slice;
-class PagedSlice;
 
 class Pool {
 public:
@@ -56,7 +52,7 @@ public:
 
     // extend the memory if possible
     void* newP = std::realloc(p, newSize);
-    if (!newP) {
+    if (UNLIKELY(!newP)) {
       free(p);
       throw std::bad_alloc();
     }

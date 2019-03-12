@@ -20,6 +20,7 @@
 #include "Memory.h"
 #include "Tree.h"
 #include "Type.h"
+#include "encode/Encoder.h"
 #include "glog/logging.h"
 #include "serde/TypeData.h"
 #include "serde/TypeDataFactory.h"
@@ -34,11 +35,12 @@ namespace memory {
 
 // define DataTree type = shared pointer of a data node
 class DataNode;
+using nebula::surface::IndexType;
 using DataTree = std::shared_ptr<DataNode>;
 using TDataNode = DataNode;
 using PDataNode = DataNode*;
 
-class DataNode : public nebula::type::Tree<DataNode*> {
+class DataNode : public nebula::type::Tree<PDataNode> {
 public:
   static DataTree buildDataTree(const nebula::type::Schema&);
 
@@ -47,16 +49,21 @@ public:
     : type_{ type },
       meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k()) },
       data_{ nebula::memory::serde::TypeDataFactory::createData(type.k()) },
-      nebula::type::Tree<DataNode*>(this) {
-    LOG(INFO) << "created a data node without children for type: " << type.name();
+      count_{ 0 },
+      rawSize_{ 0 },
+      nebula::type::Tree<PDataNode>(this) {
+    LOG(INFO) << fmt::format("Create data node w/o children [{0}].", type.name());
   }
 
   DataNode(const nebula::type::TypeBase& type, const std::vector<nebula::type::TreeNode>& children)
     : type_{ type },
       meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k()) },
       data_{ nebula::memory::serde::TypeDataFactory::createData(type.k()) },
+      count_{ 0 },
+      rawSize_{ 0 },
       nebula::type::Tree<DataNode*>(this, children) {
-    LOG(INFO) << "created a data node for type: " << type.name() << " with children: " << children.size();
+    LOG(INFO) << fmt::format("Create data node [N={0}, T={1}] with children {2}",
+                             type.name(), (int)type.k(), children.size());
   }
 
   virtual ~DataNode() = default;
@@ -66,21 +73,58 @@ public:
     return 0;
   }
 
-  // append all different type of data
-  // or we can use single base pointer to narrow the interfaces but paying cost of casting
-public:
-  uint32_t appendNull();
-  uint32_t append(const nebula::surface::RowData& row);
-  uint32_t append(const nebula::surface::ListData& list);
-  uint32_t append(const nebula::surface::MapData& map);
-  uint32_t append(bool b);
-  uint32_t append(int8_t b);
-  uint32_t append(int16_t s);
-  uint32_t append(int32_t i);
-  uint32_t append(int64_t l);
-  uint32_t append(float f);
-  uint32_t append(double d);
-  uint32_t append(const std::string& str);
+public: // data appending API
+  size_t appendNull();
+
+  template <typename T>
+  size_t append(T v);
+
+  size_t append(const std::string&);
+
+public: // data reading API
+  // use std::optional to simplify the interface
+  // instead of
+  // if(!isNull(index)) {
+  //    type = read()
+  // }
+  // we can do
+  // std::Optional<Type> type = read();
+  inline bool isNull(size_t index) {
+    return meta_->isNull(index);
+  }
+
+  template <typename T>
+  T read(size_t index);
+
+public: // basic metadata exposure
+  inline size_t entries() const {
+    return count_;
+  }
+
+  inline size_t rawSize() const {
+    return rawSize_;
+  }
+
+  inline size_t storageSize() const {
+    // count metadata size in?
+    // not including children's size - API provide access any node in the tree
+    return data_ == nullptr ? 0 : data_->size();
+  }
+
+  inline size_t storageAllocation() const {
+    return data_ == nullptr ? 0 : data_->capacity();
+  }
+
+  // list/map retrieve child's offset and length at some position
+  inline std::tuple<IndexType, IndexType> offsetSize(IndexType index) {
+    return meta_->offsetSize(index);
+  }
+
+private:
+  // called for every single value added in current node
+  inline size_t cursorAndAdvance() {
+    return count_++;
+  }
 
 private:
   // pointing to a node in the schema tree which is supposed to be shared.
@@ -91,7 +135,13 @@ private:
   std::unique_ptr<nebula::memory::serde::TypeMetadata> meta_;
 
   // real data
-  std::unique_ptr<nebula::memory::serde::TypeData> data_;
+  std::unique_ptr<nebula::memory::serde::TypeDataProxy> data_;
+
+  // number of values in current data node
+  size_t count_;
+
+  // raw size of data accumulation
+  size_t rawSize_;
 };
 } // namespace memory
 } // namespace nebula

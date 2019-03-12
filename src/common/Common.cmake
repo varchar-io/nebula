@@ -17,15 +17,22 @@ include_directories(include ${GLOG_INCLUDE_DIRS})
 # it depends on fmt
 include_directories(include ${FMT_INCLUDE_DIRS})
 
+# it depends on roaring
+include_directories(include ${ROARING_INCLUDE_DIRS})
+
 # set up directory to search for headers
 include_directories(include ${GTEST_INCLUDE_DIRS})
 
 # build test binary
-add_executable(CommonTests ${NEBULA_SRC}/common/test/TestCommon.cpp)
+add_executable(CommonTests 
+    ${NEBULA_SRC}/common/test/TestCommon.cpp
+    ${NEBULA_SRC}/common/test/TestExts.cpp)
+
 target_link_libraries(CommonTests 
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
     PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${ROARING_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${NEBULA_COMMON})

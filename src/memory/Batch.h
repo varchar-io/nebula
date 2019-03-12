@@ -15,6 +15,7 @@
  */
 
 #pragma once
+#include <unordered_map>
 #include "DataNode.h"
 #include "DataSurface.h"
 #include "Type.h"
@@ -23,50 +24,60 @@
  * A batch defines a logical data block represents N rows for a given table/category.
  * For simplicity, a batch has fixed schema - 
  * (to support schema compatibility, a table/category can have different batches with different schemas)
- * 
- * 
  */
 namespace nebula {
 namespace memory {
 
+using nebula::common::NebulaException;
 using nebula::memory::DataNode;
 using nebula::memory::DataTree;
 using nebula::surface::ListData;
 using nebula::surface::MapData;
 using nebula::surface::RowData;
 using nebula::type::Schema;
+using nebula::type::TypeBase;
+using DnMap = std::unordered_map<std::string, PDataNode>;
+using nebula::surface::IndexType;
 
+class RowAccessor;
 class Batch {
-public:
-  Batch(const Schema& schema) : schema_{ schema }, data_{ DataNode::buildDataTree(schema) }, rows_{ 0 } {
-    // build data tree nodes
-  }
+public: // read row from and write row to
+  Batch(const Schema&);
   virtual ~Batch() = default;
 
   // add a row into current batch
-  uint32_t add(const RowData& row);
+  size_t add(const RowData& row);
 
   // random access to a row - may require internal seek
-  RowData& row(uint32_t rowId);
+  RowData& row(size_t rowId);
 
+public: // basic metrics / meta of the batch
   // get total rows in the batch
-  uint32_t getRows() const {
+  inline size_t getRows() const {
     return rows_;
   }
+
+  // basic metrics in JSON
+  std::string state() const;
 
 private:
   Schema schema_;
   DataTree data_;
-  uint32_t rows_;
+  size_t rows_;
 
-  // friend class or nested class
+  // A row accessor cursor to read data of given row
   friend class RowAccessor;
+  std::unique_ptr<RowAccessor> cursor_;
 
-  // (TODO) replace with batch cursor implementatation
-  surface::MockRowData cursor_;
+  // fast lookup from column name to column index
+  DnMap fields_;
 };
 
 class RowAccessor : public RowData {
+public:
+  RowAccessor(Batch& batch) : batch_{ batch }, dnMap_{ batch_.fields_ } {}
+  virtual ~RowAccessor() = default;
+
 public:
   bool isNull(const std::string& field) const override;
   bool readBool(const std::string& field) const override;
@@ -81,25 +92,38 @@ public:
   // compound types
   std::unique_ptr<ListData> readList(const std::string& field) const override;
   std::unique_ptr<MapData> readMap(const std::string& field) const override;
+
+public:
+  RowAccessor& seek(size_t);
+
+private:
+  Batch& batch_;
+  DnMap& dnMap_;
+  size_t current_;
 };
 
 class ListAccessor : public ListData {
 public:
-  ListAccessor(uint32_t items) : ListData(items) {}
-  bool isNull(uint32_t index) const override;
-  bool readBool(uint32_t index) const override;
-  std::int8_t readByte(uint32_t index) const override;
-  int16_t readShort(uint32_t index) const override;
-  int32_t readInt(uint32_t index) const override;
-  int64_t readLong(uint32_t index) const override;
-  float readFloat(uint32_t index) const override;
-  double readDouble(uint32_t index) const override;
-  std::string readString(uint32_t index) const override;
+  ListAccessor(IndexType offset, IndexType items, PDataNode node)
+    : ListData(items), node_{ node }, offset_{ offset } {}
+  bool isNull(IndexType index) const override;
+  bool readBool(IndexType index) const override;
+  std::int8_t readByte(IndexType index) const override;
+  int16_t readShort(IndexType index) const override;
+  int32_t readInt(IndexType index) const override;
+  int64_t readLong(IndexType index) const override;
+  float readFloat(IndexType index) const override;
+  double readDouble(IndexType index) const override;
+  std::string readString(IndexType index) const override;
+
+private:
+  PDataNode node_;
+  IndexType offset_;
 };
 
 class MapAccessor : public MapData {
 public:
-  MapAccessor(uint32_t items) : MapData(items) {}
+  MapAccessor(IndexType items) : MapData(items) {}
   std::unique_ptr<ListData> readKeys() const override;
   std::unique_ptr<ListData> readValues() const override;
 };

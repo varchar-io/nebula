@@ -17,6 +17,7 @@
 #include "gtest/gtest.h"
 #include <valarray>
 #include "DataSurface.h"
+#include "Evidence.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
 
@@ -49,6 +50,20 @@ TEST(SurfaceTest, TestDataSurface) {
 
   for (auto i = 0, size = map->getItems(); i < size; ++i) {
     LOG(INFO) << "map: key=" << keys->readInt(i) << ",value=" << values->readString(i);
+  }
+}
+
+TEST(SurfaceTest, TestSameMockDataWithSameSeed) {
+  const auto seed = Evidence::unix_timestamp();
+  nebula::surface::MockRowData mock1(seed);
+  nebula::surface::MockRowData mock2(seed);
+
+  for (auto i = 0; i < 1024; ++i) {
+    EXPECT_EQ(mock1.readBool("b"), mock2.readBool("b"));
+    EXPECT_EQ(mock1.readByte("b"), mock2.readByte("b"));
+    EXPECT_EQ(mock1.readInt("b"), mock2.readInt("b"));
+    EXPECT_EQ(mock1.readFloat("b"), mock2.readFloat("b"));
+    EXPECT_EQ(mock1.readString("b"), mock2.readString("b"));
   }
 }
 

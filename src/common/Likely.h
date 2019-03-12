@@ -16,25 +16,13 @@
 
 #pragma once
 
-#include "TypeData.h"
-#include "TypeMetadata.h"
+#undef LIKELY
+#undef UNLIKELY
 
-namespace nebula {
-namespace memory {
-namespace serde {
-
-/**
- * A factory to create typed data and metadata
- */
-class TypeDataFactory {
-public:
-  static std::unique_ptr<TypeDataProxy> createData(nebula::type::Kind);
-  static std::unique_ptr<TypeMetadata> createMeta(nebula::type::Kind);
-
-private:
-  TypeDataFactory() = default;
-  virtual ~TypeDataFactory() = default;
-};
-} // namespace serde
-} // namespace memory
-} // namespace nebula
+#if defined(__GNUC__)
+#define LIKELY(x) (__builtin_expect((x), 1))
+#define UNLIKELY(x) (__builtin_expect((x), 0))
+#else
+#define LIKELY(x) (x)
+#define UNLIKELY(x) (x)
+#endif

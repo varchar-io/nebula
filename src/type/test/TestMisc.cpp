@@ -14,27 +14,23 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include "TypeData.h"
-#include "TypeMetadata.h"
+#include "gtest/gtest.h"
+#include "glog/logging.h"
 
 namespace nebula {
-namespace memory {
-namespace serde {
+namespace type {
+namespace test {
+TEST(MiscTest, StringUtf8) {
+  std::string str1 = "abcd";
+  EXPECT_EQ(str1.size(), 4);
 
-/**
- * A factory to create typed data and metadata
- */
-class TypeDataFactory {
-public:
-  static std::unique_ptr<TypeDataProxy> createData(nebula::type::Kind);
-  static std::unique_ptr<TypeMetadata> createMeta(nebula::type::Kind);
-
-private:
-  TypeDataFactory() = default;
-  virtual ~TypeDataFactory() = default;
-};
-} // namespace serde
-} // namespace memory
+  std::string str2 = "星云";
+  EXPECT_EQ(str2.size(), 6);
+  auto bytes = str2.data();
+  for (auto i = 0; i < str2.size(); ++i) {
+    LOG(INFO) << "CHAR: " << ((int)str2.at(i));
+  }
+}
+} // namespace test
+} // namespace type
 } // namespace nebula

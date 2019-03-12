@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include "Errors.h"
+#include "Evidence.h"
 
 /**
  * Define a Row data API to read data from
@@ -29,6 +30,7 @@ namespace nebula {
 namespace surface {
 
 using namespace nebula::common;
+using IndexType = size_t;
 
 // Supported compound types
 class RowData;
@@ -64,7 +66,7 @@ public:
 
 class ListData {
 public:
-  ListData(uint32_t items) : items_{ items } {
+  ListData(IndexType items) : items_{ items } {
     N_ENSURE(items > 0, "empty list treated as NULL");
   }
   virtual ~ListData() = default;
@@ -72,23 +74,23 @@ public:
   int getItems() const { return items_; }
 
   // all interfaces - not support list of compounds types for now
-  virtual bool isNull(uint32_t index) const = 0;
-  virtual bool readBool(uint32_t index) const = 0;
-  virtual int8_t readByte(uint32_t index) const = 0;
-  virtual int16_t readShort(uint32_t index) const = 0;
-  virtual int32_t readInt(uint32_t index) const = 0;
-  virtual int64_t readLong(uint32_t index) const = 0;
-  virtual float readFloat(uint32_t index) const = 0;
-  virtual double readDouble(uint32_t index) const = 0;
-  virtual std::string readString(uint32_t index) const = 0;
+  virtual bool isNull(IndexType index) const = 0;
+  virtual bool readBool(IndexType index) const = 0;
+  virtual int8_t readByte(IndexType index) const = 0;
+  virtual int16_t readShort(IndexType index) const = 0;
+  virtual int32_t readInt(IndexType index) const = 0;
+  virtual int64_t readLong(IndexType index) const = 0;
+  virtual float readFloat(IndexType index) const = 0;
+  virtual double readDouble(IndexType index) const = 0;
+  virtual std::string readString(IndexType index) const = 0;
 
 private:
-  uint32_t items_;
+  IndexType items_;
 };
 
 class MapData {
 public:
-  MapData(uint32_t items) : items_{ items } {
+  MapData(IndexType items) : items_{ items } {
     N_ENSURE(items > 0, "empty map treated as NULL");
   }
   virtual ~MapData() = default;
@@ -100,12 +102,24 @@ public:
   virtual std::unique_ptr<ListData> readValues() const = 0;
 
 private:
-  uint32_t items_;
+  IndexType items_;
 };
 
 ////////////////////////////////////////////////// MOCK DATA //////////////////////////////////////////////////
+class MockData {
+public:
+  MockData(size_t seed = 0) : rand_{ nebula::common::Evidence::rand(seed == 0 ? Evidence::ticks() : seed) } {}
+  virtual ~MockData() = default;
+
+protected:
+  std::function<double()> rand_;
+};
+
 // Supported compound types
-class MockRowData : public RowData {
+class MockRowData : public RowData, protected MockData {
+public:
+  MockRowData(size_t seed = 0) : seed_{ seed }, MockData(seed) {}
+
 public:
   bool isNull(const std::string& field) const override;
   bool readBool(const std::string& field) const override;
@@ -120,25 +134,28 @@ public:
   // compound types
   std::unique_ptr<ListData> readList(const std::string& field) const override;
   std::unique_ptr<MapData> readMap(const std::string& field) const override;
+
+private:
+  size_t seed_;
 };
 
-class MockListData : public ListData {
+class MockListData : public ListData, protected MockData {
 public:
-  MockListData(uint32_t items) : ListData(items) {}
-  bool isNull(uint32_t index) const override;
-  bool readBool(uint32_t index) const override;
-  std::int8_t readByte(uint32_t index) const override;
-  int16_t readShort(uint32_t index) const override;
-  int32_t readInt(uint32_t index) const override;
-  int64_t readLong(uint32_t index) const override;
-  float readFloat(uint32_t index) const override;
-  double readDouble(uint32_t index) const override;
-  std::string readString(uint32_t index) const override;
+  MockListData(IndexType items, size_t seed = 0) : ListData(items), MockData(seed) {}
+  bool isNull(IndexType index) const override;
+  bool readBool(IndexType index) const override;
+  std::int8_t readByte(IndexType index) const override;
+  int16_t readShort(IndexType index) const override;
+  int32_t readInt(IndexType index) const override;
+  int64_t readLong(IndexType index) const override;
+  float readFloat(IndexType index) const override;
+  double readDouble(IndexType index) const override;
+  std::string readString(IndexType index) const override;
 };
 
-class MockMapData : public MapData {
+class MockMapData : public MapData, protected MockData {
 public:
-  MockMapData(uint32_t items) : MapData(items) {}
+  MockMapData(IndexType items, size_t seed = 0) : MapData(items), MockData(seed) {}
   std::unique_ptr<ListData> readKeys() const override;
   std::unique_ptr<ListData> readValues() const override;
 };

@@ -30,7 +30,10 @@ target_include_directories(${NEBULA_TYPE} INTERFACE src/type)
 target_link_libraries(${NEBULA_TYPE}
     PRIVATE ${NEBULA_COMMON})
 
-add_executable(TypeTests ${NEBULA_SRC}/type/test/TestType.cpp)
+add_executable(TypeTests 
+    ${NEBULA_SRC}/type/test/TestType.cpp
+    ${NEBULA_SRC}/type/test/TestMisc.cpp)
+
 target_link_libraries(TypeTests 
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 

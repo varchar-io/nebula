@@ -22,6 +22,9 @@ include(ext/Glog_Ext.cmake)
 # add a dependency of fmt 
 include(ext/Fmt_Ext.cmake)
 
+# add a dependency of roaring
+include(ext/Roaring_Ext.cmake)
+
 # add a basic gtest dependency
 include(ext/Gtest_Ext.cmake)
 

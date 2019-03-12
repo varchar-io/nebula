@@ -26,7 +26,7 @@ Pool& Pool::getDefault() {
 
 // not-threadsafe
 void PagedSlice::ensure(size_t size) {
-  if (size >= capacity()) {
+  if (UNLIKELY(size >= capacity())) {
     auto slices = slices_;
     while (slices * size_ <= size) {
       ++slices;

@@ -5,6 +5,8 @@ add_library(${NEBULA_MEMORY} STATIC
     ${NEBULA_SRC}/memory/FlatRow.cpp
     ${NEBULA_SRC}/memory/DataNode.cpp
     ${NEBULA_SRC}/memory/Batch.cpp
+    ${NEBULA_SRC}/memory/Accessor.cpp
+    ${NEBULA_SRC}/memory/serde/TypeData.cpp
     ${NEBULA_SRC}/memory/serde/TypeDataFactory.cpp)
 target_include_directories(${NEBULA_MEMORY} INTERFACE src/memory)
 target_link_libraries(${NEBULA_MEMORY}
@@ -26,11 +28,15 @@ include_directories(include ${FMT_INCLUDE_DIRS})
 include_directories(include ${GTEST_INCLUDE_DIRS})
 
 # build test binary
-add_executable(MemoryTests ${NEBULA_SRC}/memory/test/TestBatch.cpp)
+add_executable(MemoryTests 
+    ${NEBULA_SRC}/memory/test/TestBatch.cpp
+    ${NEBULA_SRC}/memory/test/TestEncoder.cpp
+    )
 target_link_libraries(MemoryTests 
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
     PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${ROARING_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${NEBULA_COMMON}

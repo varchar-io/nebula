@@ -21,13 +21,36 @@ namespace memory {
 namespace serde {
 
 using nebula::type::Kind;
-std::unique_ptr<TypeData> TypeDataFactory::createData(Kind kind) {
-  return nullptr;
+#define TYPE_DATA_PROXY(KIND, TYPE)                                                \
+  case Kind::KIND: {                                                               \
+    return std::make_unique<TypeDataProxy>(std::unique_ptr<TypeData>(new TYPE())); \
+  }
+
+std::unique_ptr<TypeDataProxy> TypeDataFactory::createData(Kind kind) {
+  switch (kind) {
+    TYPE_DATA_PROXY(BOOLEAN, BoolData)
+    TYPE_DATA_PROXY(TINYINT, ByteData)
+    TYPE_DATA_PROXY(SMALLINT, ShortData)
+    TYPE_DATA_PROXY(INTEGER, IntData)
+    TYPE_DATA_PROXY(BIGINT, LongData)
+    TYPE_DATA_PROXY(REAL, FloatData)
+    TYPE_DATA_PROXY(DOUBLE, DoubleData)
+    TYPE_DATA_PROXY(VARCHAR, StringData)
+    TYPE_DATA_PROXY(ARRAY, EmptyData)
+    TYPE_DATA_PROXY(MAP, EmptyData)
+    TYPE_DATA_PROXY(STRUCT, EmptyData)
+  default:
+    // other types has no data
+    return nullptr;
+  }
 }
 
+#undef TYPE_DATA_PROXY
+
 std::unique_ptr<TypeMetadata> TypeDataFactory::createMeta(Kind kind) {
-  return nullptr;
+  return std::make_unique<TypeMetadata>(kind);
 }
+
 } // namespace serde
 } // namespace memory
 } // namespace nebula

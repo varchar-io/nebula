@@ -22,7 +22,9 @@ namespace nebula {
 namespace type {
 
 // All supported types in nebula
-enum class Kind {
+// enum class is strong typed enum, lose the strong type
+enum Kind {
+  // scalar types are in range[1, 10]
   INVALID = 0,
   BOOLEAN = 1,
   TINYINT = 2,
@@ -31,10 +33,12 @@ enum class Kind {
   BIGINT = 5,
   REAL = 6,
   DOUBLE = 7,
-  VARCHAR = 8,
-  ARRAY = 9,
-  MAP = 10,
-  STRUCT = 11
+  // var length types are in range [11, 20]
+  VARCHAR = 11,
+  // compound types are in range [21, 30]
+  ARRAY = 21,
+  MAP = 22,
+  STRUCT = 23
 
   // why do we support these types?
   // they can be substituted by string/long/struct respectively
@@ -147,6 +151,15 @@ public:
 
   // virtual method to get kind of real type
   virtual const Kind k() const = 0;
+
+public:
+  static constexpr bool isCompound(Kind kind) {
+    return kind == Kind::ARRAY || kind == Kind::MAP || kind == Kind::STRUCT;
+  }
+
+  static constexpr bool isScalar(Kind kind) {
+    return kind > 0 && kind <= 10;
+  }
 
 protected:
   TypeBase(const std::string& name) : name_{ name } {}

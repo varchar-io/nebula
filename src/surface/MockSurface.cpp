@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include "DataSurface.h"
+#include "Evidence.h"
 #include "fmt/format.h"
 
 /**
@@ -27,77 +28,79 @@ namespace surface {
 //------------ Mock Row
 // All intrefaces - string type has RVO, copy elision optimization
 bool MockRowData::isNull(const std::string& field) const {
-  return false;
+  // 10% nulls
+  return rand_() < 0.1;
 }
 
 bool MockRowData::readBool(const std::string& field) const {
-  return true;
+  // half of trues
+  return rand_() < 0.5;
 }
 int8_t MockRowData::readByte(const std::string& field) const {
-  return 8;
+  return std::numeric_limits<int8_t>::max() * rand_();
 }
 int16_t MockRowData::readShort(const std::string& field) const {
-  return 16;
+  return std::numeric_limits<int16_t>::max() * rand_();
 }
 int32_t MockRowData::readInt(const std::string& field) const {
-  return 32;
+  return std::numeric_limits<int32_t>::max() * rand_();
 }
 int64_t MockRowData::readLong(const std::string& field) const {
-  return 64;
+  return std::numeric_limits<int64_t>::max() * rand_();
 }
 float MockRowData::readFloat(const std::string& field) const {
-  return 4.0;
+  return rand_();
 }
 double MockRowData::readDouble(const std::string& field) const {
-  return 8.0;
+  return rand_();
 }
 std::string MockRowData::readString(const std::string& field) const {
-  return "MOCK";
+  return std::string(rand_() * 10, 'N');
 }
 
 // compound types
 std::unique_ptr<ListData> MockRowData::readList(const std::string& field) const {
   // copy elision or seg fault?
-  return std::make_unique<MockListData>(4);
+  return std::make_unique<MockListData>(4, seed_);
 }
 
 std::unique_ptr<MapData> MockRowData::readMap(const std::string& field) const {
-  return std::make_unique<MockMapData>(2);
+  return std::make_unique<MockMapData>(2, seed_);
 }
 
 //------------ Mock List
-bool MockListData::isNull(uint32_t index) const {
-  return false;
+bool MockListData::isNull(IndexType index) const {
+  return rand_() < 0.1;
 }
 
-bool MockListData::readBool(uint32_t index) const {
-  return index % 2 == 0;
+bool MockListData::readBool(IndexType index) const {
+  return rand_() < 0.3;
 }
 
-int8_t MockListData::readByte(uint32_t index) const {
-  return 8 * (index + 2);
+int8_t MockListData::readByte(IndexType index) const {
+  return std::numeric_limits<int8_t>::max() * rand_();
 }
 
-int16_t MockListData::readShort(uint32_t index) const {
-  return 16 * (index + 2);
+int16_t MockListData::readShort(IndexType index) const {
+  return std::numeric_limits<int16_t>::max() * rand_();
 }
-int32_t MockListData::readInt(uint32_t index) const {
-  return 32 * (index + 2);
-}
-
-int64_t MockListData::readLong(uint32_t index) const {
-  return 64 * (index + 2);
+int32_t MockListData::readInt(IndexType index) const {
+  return std::numeric_limits<int32_t>::max() * rand_();
 }
 
-float MockListData::readFloat(uint32_t index) const {
-  return 4.0 * (index + 2);
+int64_t MockListData::readLong(IndexType index) const {
+  return std::numeric_limits<int64_t>::max() * rand_();
 }
 
-double MockListData::readDouble(uint32_t index) const {
-  return 8.0 * (index + 2);
+float MockListData::readFloat(IndexType index) const {
+  return rand_();
 }
-std::string MockListData::readString(uint32_t index) const {
-  return fmt::format("LIST_{0}_MOCK", index);
+
+double MockListData::readDouble(IndexType index) const {
+  return rand_();
+}
+std::string MockListData::readString(IndexType index) const {
+  return std::string(rand_() * 10, 'N');
 }
 
 //------------ Mock Map

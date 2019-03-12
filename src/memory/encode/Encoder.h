@@ -16,25 +16,40 @@
 
 #pragma once
 
-#include "TypeData.h"
-#include "TypeMetadata.h"
+#include "Type.h"
 
 namespace nebula {
 namespace memory {
-namespace serde {
+namespace encode {
+/**
+ * A base class to encode data streams into another data.
+ */
+class Encoder {
+};
 
 /**
- * A factory to create typed data and metadata
+ * Bool encoder - bool value usually ends in a bit map
  */
-class TypeDataFactory {
-public:
-  static std::unique_ptr<TypeDataProxy> createData(nebula::type::Kind);
-  static std::unique_ptr<TypeMetadata> createMeta(nebula::type::Kind);
-
-private:
-  TypeDataFactory() = default;
-  virtual ~TypeDataFactory() = default;
+class BoolEncoder : public Encoder {
 };
-} // namespace serde
+
+/**
+ * Integer numbers encoder - int width of 1, 2, 4, 8 bytes
+ */
+class IntEncoder : public Encoder {
+};
+
+/**
+ * Float number encoder - 4 bytes float or 8 bytes double
+ */
+class FloatEncoder : public Encoder {
+};
+
+/**
+ * Byte sequence encoder captures bytes serialized data like strings
+ */
+class BytesEncoder : public Encoder {
+};
+} // namespace encode
 } // namespace memory
 } // namespace nebula

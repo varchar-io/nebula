@@ -17,6 +17,8 @@
 #include "gtest/gtest.h"
 #include <valarray>
 #include "Errors.h"
+#include "Evidence.h"
+#include "Likely.h"
 #include "Memory.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
@@ -178,6 +180,39 @@ TEST(MemoryTest, TestSliceAndPagedSlice) {
   slice.write(1050, 1.0);
   EXPECT_EQ(slice.read<double>(1050), 1.0);
   EXPECT_EQ(slice.capacity(), 2048);
+}
+
+TEST(SliceTest, TestSliceWrite) {
+  nebula::common::PagedSlice slice(1024);
+
+  auto value = 1699213050;
+  slice.write(0, value);
+  EXPECT_EQ(slice.read<int>(0), value);
+}
+
+TEST(EvidenceTest, TestRand) {
+  LOG(INFO) << "unix time now: " << Evidence::unix_timestamp();
+
+  // a range of [0,100]
+  auto rand1 = Evidence::rand(0, 100);
+  for (auto i = 0; i < 1000; ++i) {
+    size_t val = rand1();
+    EXPECT_GE(val, 0);
+    EXPECT_LE(val, 100);
+    if (UNLIKELY(val < 2)) {
+      LOG(INFO) << "val: " << val;
+    }
+  }
+
+  LOG(INFO) << "finish";
+  auto rand2 = Evidence::rand();
+  for (auto i = 0; i < 1000; ++i) {
+    auto val = rand2();
+    EXPECT_TRUE(val >= 0 && val < 1);
+    if (UNLIKELY(val > 0.98)) {
+      LOG(INFO) << "val: " << val;
+    }
+  }
 }
 
 } // namespace test

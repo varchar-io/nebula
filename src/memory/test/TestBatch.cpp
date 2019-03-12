@@ -29,42 +29,184 @@ namespace nebula {
 namespace memory {
 namespace test {
 
+using nebula::common::Evidence;
+using nebula::surface::IndexType;
 using nebula::surface::MockRowData;
 using nebula::type::ROOT;
 using nebula::type::TypeSerializer;
 
-TEST(BatchTest, TestBatch) {
-  auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
-  Batch batch(schema);
-  // add 10 rows
-  auto rows = 10;
-  MockRowData row;
-  for (auto i = 0; i < rows; ++i) {
-    batch.add(row);
+#define NOT_IMPL_FUNC(TYPE, NAME)             \
+  TYPE NAME(IndexType index) const override { \
+    throw NebulaException("x");               \
   }
 
-  // verify batch data
-  EXPECT_EQ(batch.getRows(), rows);
+class StaticList : public ListData {
+public:
+  StaticList(std::vector<std::string> data) : ListData(data.size()), data_{ std::move(data) } {
+  }
 
-  // every row is the same, they are
-  auto id = row.readInt("id");
-  auto items = row.readList("items");
-  auto flag = row.readBool("flag");
+  bool isNull(IndexType index) const override {
+    return false;
+  }
 
-  for (auto i = 0; i < rows; ++i) {
-    // row cursor
-    const RowData& cursor = batch.row(i);
+  std::string readString(IndexType index) const override {
+    return data_.at(index);
+  }
 
-    // check all column data
-    EXPECT_EQ(cursor.readInt("id"), id);
+  NOT_IMPL_FUNC(bool, readBool)
+  NOT_IMPL_FUNC(int8_t, readByte)
+  NOT_IMPL_FUNC(int16_t, readShort)
+  NOT_IMPL_FUNC(int32_t, readInt)
+  NOT_IMPL_FUNC(int64_t, readLong)
+  NOT_IMPL_FUNC(float, readFloat)
+  NOT_IMPL_FUNC(double, readDouble)
 
-    auto list = cursor.readList("items");
-    EXPECT_EQ(list->getItems(), items->getItems());
-    for (auto k = 0; k < items->getItems(); ++k) {
-      EXPECT_EQ(list->readString(k), items->readString(k));
+private:
+  std::vector<std::string> data_;
+};
+
+#undef NOT_IMPL_FUNC
+
+#define NOT_IMPL_FUNC(TYPE, NAME)                      \
+  TYPE NAME(const std::string& field) const override { \
+    throw NebulaException("x");                        \
+  }
+
+class StaticRow : public RowData {
+public:
+  StaticRow(int i, std::unique_ptr<ListData> list, bool f)
+    : id_{ i }, flag_{ f } {
+    items_.reserve(list->getItems());
+    for (auto k = 0; k < items_.capacity(); ++k) {
+      items_.push_back(list->readString(k));
+    }
+  }
+
+  // All intrefaces - string type has RVO, copy elision optimization
+  bool
+    isNull(const std::string& field) const override {
+    return false;
+  }
+
+  bool readBool(const std::string& field) const override {
+    return flag_;
+  }
+
+  int32_t readInt(const std::string& field) const override {
+    return id_;
+  }
+
+  std::unique_ptr<ListData> readList(const std::string& field) const override {
+    return std::make_unique<StaticList>(items_);
+  }
+
+  NOT_IMPL_FUNC(int8_t, readByte)
+  NOT_IMPL_FUNC(int16_t, readShort)
+  NOT_IMPL_FUNC(int64_t, readLong)
+  NOT_IMPL_FUNC(float, readFloat)
+  NOT_IMPL_FUNC(double, readDouble)
+  NOT_IMPL_FUNC(std::string, readString)
+  NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
+
+private:
+  int id_;
+  std::vector<std::string> items_;
+  bool flag_;
+};
+
+#undef NOT_IMPL_FUNC
+
+TEST(BatchTest, TestBatch) {
+  auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
+  Batch batch1(schema);
+  Batch batch2(schema);
+
+  // add 10 rows
+  auto rows = 10;
+
+  // use the specified seed so taht the data can repeat
+  auto seed = Evidence::unix_timestamp();
+
+  // do write
+  {
+    MockRowData row(seed);
+    for (auto i = 0; i < rows; ++i) {
+      batch1.add(row);
     }
 
-    EXPECT_EQ(cursor.readBool("flag"), flag);
+    // verify batch data
+    EXPECT_EQ(batch1.getRows(), rows);
+
+    // print out the batch state
+    LOG(INFO) << "Batch: " << batch1.state();
+  }
+
+  {
+    MockRowData row(seed);
+    for (auto i = 0; i < rows; ++i) {
+      batch2.add(row);
+    }
+
+    // verify batch data
+    EXPECT_EQ(batch2.getRows(), rows);
+
+    // print out the batch state
+    LOG(INFO) << "Batch: " << batch2.state();
+  }
+
+  EXPECT_EQ(batch1.state(), batch2.state());
+}
+
+TEST(BatchTest, TestBatchRead) {
+  // need some stable data set to write out and can be verified
+  auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
+  Batch batch(schema);
+
+  // add 10 rows
+  auto count = 10240;
+
+  // use the specified seed so taht the data can repeat
+  auto seed = Evidence::unix_timestamp();
+  std::vector<StaticRow> rows;
+  MockRowData row;
+  // fill rows
+  for (auto i = 0; i < count; ++i) {
+    rows.push_back({ row.readInt("n"), row.readList("n"), row.readBool("n") });
+  }
+
+  // print single row as string.
+  auto line = [](const RowData& r) {
+    const auto list = r.readList("items");
+    std::string s;
+    for (auto k = 0; k < list->getItems(); ++k) {
+      s += list->readString(k) + ",";
+    }
+
+    return fmt::format("({0}, [{1}], {2})", r.readInt("id"), s, r.readBool("flag"));
+  };
+
+  // do write
+  {
+    for (size_t i = 0, size = rows.size(); i < size; ++i) {
+      batch.add(rows[i]);
+    }
+
+    // verify batch data
+    EXPECT_EQ(batch.getRows(), count);
+
+    // print out the batch state
+    LOG(INFO) << "Batch: " << batch.state();
+  }
+
+  // do read verification
+  {
+    for (auto i = 0; i < count; ++i) {
+      const auto& r1 = rows[i];
+      const auto& r2 = batch.row(i);
+      EXPECT_EQ(line(r1), line(r2));
+    }
+
+    LOG(INFO) << "Verified total rows: " << count;
   }
 }
 

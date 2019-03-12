@@ -61,7 +61,7 @@ private:
     _tmp ? _tmp : throw NebulaException(__FILE__, __LINE__, __FUNCTION__, #e, msg); \
   })
 
-#define DWIO_ENSURE_NOT_NULL(p, ...) \
+#define N_ENSURE_NOT_NULL(p, ...) \
   N_ENSURE(p != nullptr, "[Null pointer] : ", ##__VA_ARGS__);
 
 #define N_ENSURE_NE(l, r, ...)        \
