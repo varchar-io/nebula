@@ -60,9 +60,9 @@ public:
     auto size = offsetSize_->size();
     auto last = offsetSize_->at(size - 1);
 
-    // NULLS
-    if (UNLIKELY(index > size)) {
-      while (++size <= index) {
+    // NULLS in the hole
+    if (LIKELY(index >= size)) {
+      while (size++ <= index) {
         offsetSize_->push_back(last);
       }
     }

@@ -190,7 +190,8 @@ size_t DataNode::append(const nebula::surface::ListData& list) {
   }
 
   // return the raw size just added to current list
-  meta_->setOffsetSize(cursorAndAdvance(), items);
+  const auto index = cursorAndAdvance();
+  meta_->setOffsetSize(index, items);
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
 
