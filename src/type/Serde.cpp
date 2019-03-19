@@ -15,7 +15,7 @@
  */
 #include "Serde.h"
 #include <stack>
-#include "Errors.h"
+#include "common/Errors.h"
 
 namespace nebula {
 namespace type {

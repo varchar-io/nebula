@@ -12,6 +12,10 @@ message(STATUS "NEBULA_SRC : ${NEBULA_SRC}")
 # message(STATUS "CMAKE_BINARY_DIR : ${CMAKE_BINARY_DIR}")
 # message(STATUS "CMAKE_CURRENT_LIST_DIR : ${CMAKE_CURRENT_LIST_DIR}")
 
+# include itself for headers in different folders
+# set(NTYPE_INCLUDE_DIRS ${NEBULA_SRC}/type)
+# include_directories(include ${NTYPE_INCLUDE_DIRS})
+
 # ask for gflags
 include_directories(include ${GFLAGS_INCLUDE_DIRS})
 
@@ -25,8 +29,10 @@ include_directories(include ${FMT_INCLUDE_DIRS})
 include_directories(include ${GTEST_INCLUDE_DIRS})
 
 # include folders from types
-add_library(${NEBULA_TYPE} STATIC ${NEBULA_SRC}/type/Type.cpp ${NEBULA_SRC}/type/Serde.cpp)
-target_include_directories(${NEBULA_TYPE} INTERFACE src/type)
+# target_include_directories(${NEBULA_TYPE} INTERFACE src/type)
+add_library(${NEBULA_TYPE} STATIC 
+    ${NEBULA_SRC}/type/Type.cpp 
+    ${NEBULA_SRC}/type/Serde.cpp)
 target_link_libraries(${NEBULA_TYPE}
     PRIVATE ${NEBULA_COMMON})
 

@@ -1,6 +1,7 @@
 set(NEBULA_MEMORY NMemory)
 
 # build nebula.memory library - data representation in memory
+# target_include_directories(${NEBULA_MEMORY} INTERFACE src/memory)
 add_library(${NEBULA_MEMORY} STATIC 
     ${NEBULA_SRC}/memory/FlatRow.cpp
     ${NEBULA_SRC}/memory/DataNode.cpp
@@ -8,12 +9,15 @@ add_library(${NEBULA_MEMORY} STATIC
     ${NEBULA_SRC}/memory/Accessor.cpp
     ${NEBULA_SRC}/memory/serde/TypeData.cpp
     ${NEBULA_SRC}/memory/serde/TypeDataFactory.cpp)
-target_include_directories(${NEBULA_MEMORY} INTERFACE src/memory)
 target_link_libraries(${NEBULA_MEMORY}
     PRIVATE ${FMT_LIBRARY}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_TYPE}
     PRIVATE ${NEBULA_SURFACE})
+
+# include itself for headers in different folders
+# set(NMEMORY_INCLUDE_DIRS ${NEBULA_SRC}/memory)
+# include_directories(include ${NMEMORY_INCLUDE_DIRS})
 
 # ask for gflags
 include_directories(include ${GFLAGS_INCLUDE_DIRS})

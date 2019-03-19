@@ -16,40 +16,22 @@
 
 #pragma once
 
-#include "type/Type.h"
+#include "glog/logging.h"
 
+/**
+ * Define nebula table and system metadata 
+ * which manages what data segments are loaded in memory for each table
+ * This meta data can persist and sync with external DB system such as MYSQL or RocksDB
+ * (A KV store is necessary for Nebula to manage all metadata)
+ * 
+ * (Also - Is this responsibility of zookeeper?)
+ */
 namespace nebula {
-namespace memory {
-namespace encode {
-/**
- * A base class to encode data streams into another data.
- */
-class Encoder {
-};
+namespace execution {
+namespace execution {
 
-/**
- * Bool encoder - bool value usually ends in a bit map
- */
-class BoolEncoder : public Encoder {
-};
-
-/**
- * Integer numbers encoder - int width of 1, 2, 4, 8 bytes
- */
-class IntEncoder : public Encoder {
-};
-
-/**
- * Float number encoder - 4 bytes float or 8 bytes double
- */
-class FloatEncoder : public Encoder {
-};
-
-/**
- * Byte sequence encoder captures bytes serialized data like strings
- */
-class BytesEncoder : public Encoder {
-};
-} // namespace encode
-} // namespace memory
+// operator to do compute unit
+class Operator {};
+} // namespace execution
+} // namespace execution
 } // namespace nebula

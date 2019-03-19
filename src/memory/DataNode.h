@@ -16,15 +16,16 @@
 
 #pragma once
 
-#include "DataSurface.h"
-#include "Memory.h"
-#include "Tree.h"
-#include "Type.h"
+#include "common/Errors.h"
+#include "common/Memory.h"
 #include "encode/Encoder.h"
 #include "glog/logging.h"
 #include "serde/TypeData.h"
 #include "serde/TypeDataFactory.h"
 #include "serde/TypeMetadata.h"
+#include "surface/DataSurface.h"
+#include "type/Tree.h"
+#include "type/Type.h"
 
 /**
  * A data node holds real memory data for each node in the schema tree

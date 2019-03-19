@@ -14,13 +14,19 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include "type/Type.h"
-
+#include "Expressions.h"
 namespace nebula {
-namespace memory {
-namespace encode {
+namespace api {
+namespace dsl {
+Expression<bool> BaseExpression::eq(const std::string& str) {
+  return eq(ConstExpression<std::string>(str));
 }
-} // namespace memory
+
+template <typename T>
+Expression<bool> BaseExpression::eq(const Expression<T>& expr) {
+  return Expression<bool>();
+}
+
+} // namespace dsl
+} // namespace api
 } // namespace nebula

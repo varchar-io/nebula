@@ -14,13 +14,20 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "Table.h"
+#include "fmt/format.h"
 
-#include "type/Type.h"
-
+/**
+ * Nebula runtime / online meta data.
+ */
 namespace nebula {
-namespace memory {
-namespace encode {
+namespace meta {
+
+using nebula::common::NebulaException;
+
+void Table::loadTable() {
+  // TODO(cao) - really build up meta service to servce this function
+  throw NebulaException("Meta service not implemented yet.");
 }
-} // namespace memory
+} // namespace meta
 } // namespace nebula

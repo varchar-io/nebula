@@ -14,13 +14,27 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "ExecutionPlan.h"
+#include "fmt/format.h"
 
-#include "type/Type.h"
-
+/**
+ * Nebula execution.
+ */
 namespace nebula {
-namespace memory {
-namespace encode {
+namespace execution {
+
+using nebula::common::Cursor;
+using nebula::common::NebulaException;
+using nebula::surface::RowData;
+
+void ExecutionPlan::display() const {
+  //TODO(cao) - display executuin plan details in different phases
+  LOG(INFO) << "Display current executin plan";
 }
-} // namespace memory
+
+Cursor<RowData&> ExecutionPlan::execute(const std::string& server) {
+  throw NebulaException("not impl");
+}
+
+} // namespace execution
 } // namespace nebula

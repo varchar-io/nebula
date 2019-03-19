@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include "type/Type.h"
+#include "gtest/gtest.h"
+#include "fmt/format.h"
+#include "glog/logging.h"
+#include "meta/Table.h"
 
 namespace nebula {
-namespace memory {
-namespace encode {
+namespace meta {
+namespace test {
+TEST(MetaTest, TestTable) {
+  LOG(INFO) << "Table provides table logic data and physical data";
 }
-} // namespace memory
+} // namespace test
+} // namespace meta
 } // namespace nebula

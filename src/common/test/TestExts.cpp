@@ -15,10 +15,10 @@
  */
 
 #include "gtest/gtest.h"
-#include "Errors.h"
-#include "roaring.hh"
+#include "common/Errors.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
+#include "roaring.hh"
 
 /**
  * Test namespace for testing external dependency APIs

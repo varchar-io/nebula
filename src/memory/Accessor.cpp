@@ -16,7 +16,7 @@
 
 #include <numeric>
 #include "Batch.h"
-#include "Errors.h"
+#include "common/Errors.h"
 
 namespace nebula {
 namespace memory {

@@ -16,40 +16,25 @@
 
 #pragma once
 
-#include "type/Type.h"
+#include "glog/logging.h"
 
+/**
+ * Define expressions used in the nebula DSL.
+ */
 namespace nebula {
-namespace memory {
-namespace encode {
-/**
- * A base class to encode data streams into another data.
- */
-class Encoder {
+namespace api {
+// base class for an UDAF
+enum class UDAFRegistry {
+  COUNT,
+  MIN,
+  MAX,
+  AVG
 };
 
-/**
- * Bool encoder - bool value usually ends in a bit map
- */
-class BoolEncoder : public Encoder {
+struct UDAF {
+  UDAF(UDAFRegistry r) : registry{ r } {}
+  UDAFRegistry registry;
 };
 
-/**
- * Integer numbers encoder - int width of 1, 2, 4, 8 bytes
- */
-class IntEncoder : public Encoder {
-};
-
-/**
- * Float number encoder - 4 bytes float or 8 bytes double
- */
-class FloatEncoder : public Encoder {
-};
-
-/**
- * Byte sequence encoder captures bytes serialized data like strings
- */
-class BytesEncoder : public Encoder {
-};
-} // namespace encode
-} // namespace memory
+} // namespace api
 } // namespace nebula

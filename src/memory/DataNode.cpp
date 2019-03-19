@@ -15,7 +15,6 @@
  */
 
 #include "DataNode.h"
-#include "Errors.h"
 
 /**
  * A data node holds real memory data for each node in the schema tree

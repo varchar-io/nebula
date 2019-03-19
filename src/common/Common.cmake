@@ -1,12 +1,16 @@
 set(NEBULA_COMMON NCommon)
 
 # build nebula.common library
+# target_include_directories(${NEBULA_COMMON} INTERFACE src/common)
 add_library(${NEBULA_COMMON} STATIC 
     ${NEBULA_SRC}/common/Errors.cpp 
     ${NEBULA_SRC}/common/Memory.cpp)
-target_include_directories(${NEBULA_COMMON} INTERFACE src/common)
 target_link_libraries(${NEBULA_COMMON}
     PRIVATE ${FMT_LIBRARY})
+
+# include itself for headers in different folders
+# set(NCOMMON_INCLUDE_DIRS ${NEBULA_SRC}/common)
+# include_directories(include ${NCOMMON_INCLUDE_DIRS})
 
 # ask for gflags
 include_directories(include ${GFLAGS_INCLUDE_DIRS})

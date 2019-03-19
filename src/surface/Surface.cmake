@@ -1,13 +1,18 @@
 set(NEBULA_SURFACE NSurface)
 
 # build nebula.surface library - data exchange surface API
+# target_include_directories(${NEBULA_SURFACE} INTERFACE src/surface)
 add_library(${NEBULA_SURFACE} STATIC 
     ${NEBULA_SRC}/surface/MockSurface.cpp)
-target_include_directories(${NEBULA_SURFACE} INTERFACE src/surface)
 target_link_libraries(${NEBULA_SURFACE}
     PRIVATE ${FMT_LIBRARY}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_TYPE})
+
+
+# include itself for headers in different folders
+# set(NSURFACE_INCLUDE_DIRS ${NEBULA_SRC}/surface)
+# include_directories(include ${NSURFACE_INCLUDE_DIRS})
 
 # ask for gflags
 include_directories(include ${GFLAGS_INCLUDE_DIRS})

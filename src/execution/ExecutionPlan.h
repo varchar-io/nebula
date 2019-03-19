@@ -16,40 +16,22 @@
 
 #pragma once
 
-#include "type/Type.h"
+#include "common/Cursor.h"
+#include "glog/logging.h"
+#include "surface/DataSurface.h"
 
+/**
+ * Define nebula execution runtime.
+ * Every single node will receive the plan and know what execution unit it needs to run on top of its data range.
+ */
 namespace nebula {
-namespace memory {
-namespace encode {
-/**
- * A base class to encode data streams into another data.
- */
-class Encoder {
+namespace execution {
+// An execution plan that can be serialized and passed around
+// protobuf?
+class ExecutionPlan {
+public:
+  void display() const;
+  nebula::common::Cursor<nebula::surface::RowData&> execute(const std::string& server);
 };
-
-/**
- * Bool encoder - bool value usually ends in a bit map
- */
-class BoolEncoder : public Encoder {
-};
-
-/**
- * Integer numbers encoder - int width of 1, 2, 4, 8 bytes
- */
-class IntEncoder : public Encoder {
-};
-
-/**
- * Float number encoder - 4 bytes float or 8 bytes double
- */
-class FloatEncoder : public Encoder {
-};
-
-/**
- * Byte sequence encoder captures bytes serialized data like strings
- */
-class BytesEncoder : public Encoder {
-};
-} // namespace encode
-} // namespace memory
+} // namespace execution
 } // namespace nebula

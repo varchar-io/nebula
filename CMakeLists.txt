@@ -6,6 +6,13 @@ project(nebula)
 set(NEBULA_ROOT ${PROJECT_SOURCE_DIR})
 set(NEBULA_SRC ${NEBULA_ROOT}/src)
 
+# define all headers should seek under SRC 
+# so that we have to use full namespace to reference them
+# NOTE: there are different options to setup interface/imple separations
+# one clean way is to organize all headers under {root}/include but 
+# it will duplicate all the module's strucutre, hence here we choose to expose whole SRC
+include_directories(include ${NEBULA_SRC})
+
 # set compiler features - use C++ 17 and above
 # Valid values after CMake 3.8 for CMAKE_CXX_STANDARD are 98, 11 and 14, with 17
 # set_property(GLOBAL PROPERTY CXX_STANDARD 17)
@@ -30,6 +37,7 @@ include(ext/Gtest_Ext.cmake)
 
 # set up directory to search for headers
 include_directories(include ${GTEST_INCLUDE_DIRS})
+include_directories(include ${GMOCK_INCLUDE_DIRS})
 
 # folly was installed manually through brew install folly
 # we should consider add it as an external target
@@ -49,6 +57,15 @@ include(src/type/Type.cmake)
 # build memory library
 include(src/memory/Memory.cmake)
 
+# build meta module
+include(src/meta/Meta.cmake)
+
+# build meta module
+include(src/execution/Execution.cmake)
+
+# build api library
+include(src/api/Api.cmake)
+
 # Main Test entry point
 add_executable(MainTest src/Main.cpp)
 
@@ -58,7 +75,7 @@ install(TARGETS MainTest DESTINATION bin)
 # include google test module and build tests executable
 enable_testing()
 add_executable(tests test/UseGtest.cpp)
-target_link_libraries(tests ${GTEST_LIBRARY} ${GTEST_MAIN_LIBRARY})
+target_link_libraries(tests ${GTEST_LIBRARY} ${GMOCK_LIBRARY} ${GTEST_MAIN_LIBRARY})
 
 # so that "make test" will execute all tests 
 include(GoogleTest)

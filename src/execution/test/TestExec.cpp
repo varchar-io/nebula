@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include "type/Type.h"
+#include "gtest/gtest.h"
+#include "fmt/format.h"
+#include "glog/logging.h"
 
 namespace nebula {
-namespace memory {
-namespace encode {
+namespace execution {
+namespace test {
+TEST(ExecutionTest, TestOperator) {
+  LOG(INFO) << "Execution provides physical executuin units at any stage";
 }
-} // namespace memory
+} // namespace test
+} // namespace execution
 } // namespace nebula

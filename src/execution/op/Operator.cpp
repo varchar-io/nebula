@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "Operator.h"
+#include "fmt/format.h"
 
-#include "type/Type.h"
-
+/**
+ * Nebula runtime / online meta data.
+ */
 namespace nebula {
-namespace memory {
-namespace encode {
+namespace execution {
+namespace execution {
 }
-} // namespace memory
+} // namespace execution
 } // namespace nebula

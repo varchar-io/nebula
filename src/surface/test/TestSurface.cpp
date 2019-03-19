@@ -16,10 +16,10 @@
 
 #include "gtest/gtest.h"
 #include <valarray>
-#include "DataSurface.h"
-#include "Evidence.h"
+#include "common/Evidence.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
+#include "surface/DataSurface.h"
 
 namespace nebula {
 namespace memory {

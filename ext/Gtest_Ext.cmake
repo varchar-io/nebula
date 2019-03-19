@@ -39,7 +39,7 @@ set_target_properties(${GTEST_MAIN_LIBRARY} PROPERTIES
     "INTERFACE_INCLUDE_DIRECTORIES" "${GTEST_INCLUDE_DIRS}")
 add_dependencies(${GTEST_MAIN_LIBRARY} googletest)
 
-set(GMOCK_LIBRARY_PATH ${binary_dir}/googlemock/${CMAKE_FIND_LIBRARY_PREFIXES}gmock.a)
+set(GMOCK_LIBRARY_PATH ${binary_dir}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}gmock.a)
 set(GMOCK_LIBRARY gmock)
 add_library(${GMOCK_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${GMOCK_LIBRARY} PROPERTIES
@@ -48,7 +48,7 @@ set_target_properties(${GMOCK_LIBRARY} PROPERTIES
     "INTERFACE_INCLUDE_DIRECTORIES" "${GMOCK_INCLUDE_DIRS}")
 add_dependencies(${GMOCK_LIBRARY} googletest)
 
-set(GMOCK_MAIN_LIBRARY_PATH ${binary_dir}/googlemock/${CMAKE_FIND_LIBRARY_PREFIXES}gmock_main.a)
+set(GMOCK_MAIN_LIBRARY_PATH ${binary_dir}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}gmock_main.a)
 set(GMOCK_MAIN_LIBRARY gmock_main)
 add_library(${GMOCK_MAIN_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${GMOCK_MAIN_LIBRARY} PROPERTIES
@@ -56,3 +56,4 @@ set_target_properties(${GMOCK_MAIN_LIBRARY} PROPERTIES
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${GMOCK_INCLUDE_DIRS}")
 add_dependencies(${GMOCK_MAIN_LIBRARY} ${GTEST_LIBRARY})
+add_dependencies(${GMOCK_MAIN_LIBRARY} googletest)

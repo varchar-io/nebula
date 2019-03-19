@@ -17,8 +17,8 @@
 #pragma once
 
 #include <stack>
-#include "Memory.h"
-#include "Type.h"
+#include "common/Memory.h"
+#include "type/Type.h"
 
 // DEFINE_int32(SLICE_SIZE, 64 * 1024, "slice size in bytes");
 

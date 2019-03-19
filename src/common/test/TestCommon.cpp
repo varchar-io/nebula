@@ -16,10 +16,10 @@
 
 #include "gtest/gtest.h"
 #include <valarray>
-#include "Errors.h"
-#include "Evidence.h"
-#include "Likely.h"
-#include "Memory.h"
+#include "common/Errors.h"
+#include "common/Evidence.h"
+#include "common/Likely.h"
+#include "common/Memory.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
 

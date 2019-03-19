@@ -15,9 +15,9 @@
  */
 
 #pragma once
-#include "Likely.h"
-#include "Type.h"
+#include "common/Likely.h"
 #include "roaring.hh"
+#include "type/Type.h"
 
 namespace nebula {
 namespace memory {

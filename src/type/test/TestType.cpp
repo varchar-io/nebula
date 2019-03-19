@@ -22,12 +22,12 @@
 #include <utility>
 #include <variant>
 #include <vector>
-#include "Errors.h"
-#include "Serde.h"
-#include "Tree.h"
-#include "Type.h"
+#include "common/Errors.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
+#include "type/Serde.h"
+#include "type/Tree.h"
+#include "type/Type.h"
 
 namespace nebula {
 namespace type {
@@ -355,6 +355,17 @@ TEST(OverloadPatternTest, TestOverload) {
 
   intFloatString = 3;
   std::visit(lamb, intFloatString);
+}
+
+template <class... S>
+decltype(auto) simple_pp(S... s) {
+  return std::vector<size_t>{ ((size_t)(s + 1))... };
+};
+
+TEST(ParameterPacksTest, SimpleExample) {
+  auto v = simple_pp(0, 2, 4, 8);
+  EXPECT_EQ(v.size(), 4);
+  EXPECT_EQ(v[2], 5);
 }
 
 } // namespace test

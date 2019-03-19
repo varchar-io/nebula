@@ -44,21 +44,21 @@ private:
   std::string msg_;
 };
 
-#define THROW_NOT_IMPLEMENTED()                                                    \
-  ({                                                                               \
-    throw NebulaException(__FILE__, __LINE__, __FUNCTION__, "NotImplemented", ""); \
+#define THROW_NOT_IMPLEMENTED()                                                                    \
+  ({                                                                                               \
+    throw nebula::common::NebulaException(__FILE__, __LINE__, __FUNCTION__, "NotImplemented", ""); \
   })
 
-#define THROW_RUNTIME(MSG)                                                        \
-  ({                                                                              \
-    throw NebulaException(__FILE__, __LINE__, __FUNCTION__, "RuntimeError", MSG); \
+#define THROW_RUNTIME(MSG)                                                                        \
+  ({                                                                                              \
+    throw nebula::common::NebulaException(__FILE__, __LINE__, __FUNCTION__, "RuntimeError", MSG); \
   })
 
-#define N_ENSURE(e, ...)                                                            \
-  ({                                                                                \
-    auto const& _tmp = (e);                                                         \
-    auto msg = fmt::format(",", __VA_ARGS__);                                       \
-    _tmp ? _tmp : throw NebulaException(__FILE__, __LINE__, __FUNCTION__, #e, msg); \
+#define N_ENSURE(e, ...)                                                                            \
+  ({                                                                                                \
+    auto const& _tmp = (e);                                                                         \
+    auto msg = fmt::format(",", __VA_ARGS__);                                                       \
+    _tmp ? _tmp : throw nebula::common::NebulaException(__FILE__, __LINE__, __FUNCTION__, #e, msg); \
   })
 
 #define N_ENSURE_NOT_NULL(p, ...) \

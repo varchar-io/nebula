@@ -15,10 +15,11 @@
  */
 
 #pragma once
+
 #include <unordered_map>
 #include "DataNode.h"
-#include "DataSurface.h"
-#include "Type.h"
+#include "surface/DataSurface.h"
+#include "type/Type.h"
 
 /**
  * A batch defines a logical data block represents N rows for a given table/category.

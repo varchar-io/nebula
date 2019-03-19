@@ -16,14 +16,14 @@
 
 #include "gtest/gtest.h"
 #include <valarray>
-#include "Batch.h"
-#include "DataNode.h"
-#include "DataSurface.h"
-#include "FlatRow.h"
-#include "Memory.h"
-#include "Serde.h"
+#include "common/Memory.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
+#include "memory/Batch.h"
+#include "memory/DataNode.h"
+#include "memory/FlatRow.h"
+#include "surface/DataSurface.h"
+#include "type/Serde.h"
 
 namespace nebula {
 namespace memory {

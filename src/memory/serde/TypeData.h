@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include "Likely.h"
-#include "Memory.h"
-#include "Type.h"
+#include "common/Likely.h"
+#include "common/Memory.h"
 #include "glog/logging.h"
+#include "type/Type.h"
 
 namespace nebula {
 namespace memory {

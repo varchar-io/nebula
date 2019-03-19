@@ -17,8 +17,8 @@
 #pragma once
 
 #include <cstdint>
-#include "Errors.h"
-#include "Evidence.h"
+#include "common/Errors.h"
+#include "common/Evidence.h"
 
 /**
  * Define a Row data API to read data from
