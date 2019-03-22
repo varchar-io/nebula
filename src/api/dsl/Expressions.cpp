@@ -15,17 +15,23 @@
  */
 
 #include "Expressions.h"
+
 namespace nebula {
 namespace api {
 namespace dsl {
-Expression<bool> BaseExpression::eq(const std::string& str) {
-  return eq(ConstExpression<std::string>(str));
-}
+// for column expression
+#define LOGICAL_OP_STRING(OP, TYPE)                                                                                                           \
+  auto ColumnExpression::operator OP(const std::string& value)->LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string>> { \
+    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string>>(*this, ConstExpression<std::string>(value));           \
+  }
 
-template <typename T>
-Expression<bool> BaseExpression::eq(const Expression<T>& expr) {
-  return Expression<bool>();
-}
+LOGICAL_OP_STRING(==, EQ)
+LOGICAL_OP_STRING(>, GT)
+LOGICAL_OP_STRING(>=, GE)
+LOGICAL_OP_STRING(<, LT)
+LOGICAL_OP_STRING(<=, LE)
+
+#undef LOGICAL_OP_STRING
 
 } // namespace dsl
 } // namespace api

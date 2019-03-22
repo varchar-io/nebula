@@ -215,10 +215,10 @@ std::shared_ptr<Node> Parser::parse() {
   return nodes.top();
 }
 
-#define SCALAR_TYPE_CREATE(TT, TYPE)                                                                  \
-  case TokenType::TT: {                                                                               \
-    N_ENSURE(children.size() == 0, "scalar type has no children");                                    \
-    return std::static_pointer_cast<TreeBase>(std::make_shared<TYPE>(TYPE::create(node.identifier))); \
+#define SCALAR_TYPE_CREATE(TT, TYPE)                               \
+  case TokenType::TT: {                                            \
+    N_ENSURE(children.size() == 0, "scalar type has no children"); \
+    return TYPE::createTree(node.identifier);                      \
   }
 
 std::shared_ptr<RowType> TypeSerializer::from(const std::string& text) {
@@ -252,7 +252,7 @@ std::shared_ptr<RowType> TypeSerializer::from(const std::string& text) {
         return RowType::create(node.identifier, children);
       }
       default:
-        throw NebulaException(fmt::format("Not supported type: {0}", node.token.token));
+        throw NException(fmt::format("Not supported type: {0}", node.token.token));
       }
     });
 
@@ -319,7 +319,7 @@ std::string TypeSerializer::to(const std::shared_ptr<RowType> row) {
         return name.length() > 0 ? fmt::format("{0}:STRUCT<{1}>", name, buffer.str()) : fmt::format("STRUCT<{0}>", buffer.str());
       }
       default:
-        throw NebulaException(fmt::format("Not supported type: {0}", id));
+        throw NException(fmt::format("Not supported type: {0}", id));
       }
     });
 }

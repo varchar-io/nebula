@@ -37,7 +37,8 @@ include_directories(include ${GMOCK_INCLUDE_DIRS})
 
 # build test binary
 add_executable(ApiTests 
-    ${NEBULA_SRC}/api/test/TestApi.cpp)
+    ${NEBULA_SRC}/api/test/TestApi.cpp
+    ${NEBULA_SRC}/api/test/TestExpressions.cpp)
 
 target_link_libraries(ApiTests 
     PRIVATE ${GTEST_LIBRARY} 

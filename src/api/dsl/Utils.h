@@ -16,42 +16,27 @@
 
 #pragma once
 
+#include "api/UDAF.h"
+#include "common/Errors.h"
 #include "glog/logging.h"
-#include "type/Type.h"
+#include "meta/Table.h"
+#include "type/Tree.h"
 
 /**
  * Define expressions used in the nebula DSL.
  */
 namespace nebula {
 namespace api {
-// base class for an UDAF
-enum class UDAFRegistry {
-  COUNT,
-  MIN,
-  MAX,
-  AVG
-};
+namespace dsl {
 
-struct UDAF {
-  UDAF(UDAFRegistry r) : registry{ r } {}
-  UDAFRegistry registry;
-};
+#ifndef THIS_TYPE
+#define THIS_TYPE typename std::remove_reference<decltype(*this)>::type
+#endif
 
-#define UDAF_TRAITS(UDAF, INNER, KIND)                                   \
-  template <>                                                            \
-  struct UDAFTraits<UDAFRegistry::UDAF> {                                \
-    static constexpr bool requireInner = INNER;                          \
-    static constexpr nebula::type::Kind type = nebula::type::Kind::KIND; \
-  };
+#ifndef IS_T_LITERAL
+#define IS_T_LITERAL(T) std::is_same<char*, std::decay_t<T>>::value
+#endif
 
-template <UDAFRegistry R>
-struct UDAFTraits {};
-
-UDAF_TRAITS(COUNT, false, BIGINT)
-UDAF_TRAITS(MIN, true, INVALID)
-UDAF_TRAITS(MAX, true, INVALID)
-UDAF_TRAITS(AVG, true, INVALID)
-
-#undef UDAF_TRAITS
+} // namespace dsl
 } // namespace api
 } // namespace nebula

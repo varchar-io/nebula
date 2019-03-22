@@ -74,8 +74,11 @@ private:
 class Slice {
 public:
   virtual ~Slice() {
-    N_ENSURE(!!ptr_, "a slice should hold a valid pointer");
-    pool_.free(static_cast<void*>(ptr_));
+    if (!!ptr_) {
+      pool_.free(static_cast<void*>(ptr_));
+    } else {
+      LOG(ERROR) << "A slice should hold a valid pointer";
+    }
   }
 
 protected:

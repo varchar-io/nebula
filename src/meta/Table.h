@@ -32,34 +32,29 @@ namespace nebula {
 namespace meta {
 
 using nebula::type::Schema;
+
 class Table {
 public:
-  Table(const std::string& name) : name_{ name } {
+  Table(const std::string& name) : name_{ name }, schema_{ nullptr } {
+    // TODO(cao) - load table properties from meta data service
+    loadTable();
   }
   virtual ~Table() = default;
 
 public:
-  virtual Schema getSchema() {
-    // lazy metadata loading (not threadsafe)
-    if (schema_ == nullptr) {
-      // visit meta service to fetch schema and data distribution
-      // these properties are stateful since they can change as time goes.
-      // so to refres a table property, just re-create table instance to fetch current state.
-      loadTable();
-    }
-
+  virtual Schema getSchema() const {
     N_ENSURE_NOT_NULL(schema_, fmt::format("invalid table not found = {0}", name_));
     return schema_;
   }
-
-protected:
-  virtual void loadTable();
 
 protected:
   // table name is global unique, but it can be organized by some namespace style naming convention
   // such as "nebula.test"
   std::string name_;
   Schema schema_;
+
+private:
+  void loadTable();
 };
 } // namespace meta
 } // namespace nebula

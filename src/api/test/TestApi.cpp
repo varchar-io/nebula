@@ -15,6 +15,7 @@
  */
 
 #include "gtest/gtest.h"
+#include "MockTable.h"
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "common/Cursor.h"
@@ -39,36 +40,15 @@ using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
-class MockTable : public nebula::meta::Table {
-public:
-  MockTable(const std::string& name) : Table(name) {
-    schema_ = nullptr;
-  }
-  virtual ~MockTable() = default;
-
-  MOCK_METHOD0(loadTable, void());
-  MOCK_METHOD0(getSchema, Schema());
-};
-
 TEST(ApiTest, TestQueryStructure) {
   // set up table for testing
-  MockTable mt("nebula.test");
-  EXPECT_CALL(mt, getSchema())
-    .WillRepeatedly(testing::Return(
-      TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>")));
-
-  auto schema = mt.getSchema();
-  LOG(INFO) << " Test table has columns: " << (schema == nullptr ? 0 : schema->size());
-
-  // this test only targets single batch/cell loaded in memory
-  // TODO(cao) - we need to enforce a time range to make sure the data to be queried is limited.
-  // If data cells are not in memory we need to load and restore it from storage.
-  auto& query = table("nebula.test")
-                  .where(col("event").eq("NN"))
-                  .select(col("flag"), max(col("id") * 2).as("max_id"))
-                  .groupby({ 1 })
-                  .sortby({ 2 })
-                  .limit(100);
+  auto ms = std::make_shared<MockMs>();
+  const auto query = table("nebula.test", ms)
+                       .where(col("event") == "NN")
+                       .select(col("flag"), max(col("id") * 2).as("max_id"))
+                       .groupby({ 1 })
+                       .sortby({ 2 })
+                       .limit(100);
 
   // compile the query into an execution plan
   auto plan = query.compile();

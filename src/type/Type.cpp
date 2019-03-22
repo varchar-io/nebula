@@ -15,8 +15,8 @@
  */
 
 #include "Type.h"
+
 namespace nebula {
 namespace type {
-
 } // namespace type
 } // namespace nebula

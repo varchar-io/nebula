@@ -23,11 +23,9 @@
 namespace nebula {
 namespace meta {
 
-using nebula::common::NebulaException;
-
 void Table::loadTable() {
   // TODO(cao) - really build up meta service to servce this function
-  throw NebulaException("Meta service not implemented yet.");
+  // throw NebulaException("Meta service not implemented yet.");
 }
 } // namespace meta
 } // namespace nebula

@@ -135,7 +135,7 @@ static auto KIND_NAME(Kind kind)
     KIND_NAME_DISPATCH(MAP)
     KIND_NAME_DISPATCH(STRUCT)
   default:
-    throw NebulaException("Unsupported type in KIND_NAME.");
+    throw NException("Unsupported type in KIND_NAME.");
   }
 }
 
@@ -161,6 +161,11 @@ public:
     return kind > 0 && kind <= 10;
   }
 
+  inline static Kind k(TreeNode node) {
+    // every type tree node carries kind in its ID field
+    return static_cast<nebula::type::Kind>(node->getId());
+  }
+
 protected:
   TypeBase(const std::string& name) : name_{ name } {}
   virtual ~TypeBase() = default;
@@ -178,6 +183,9 @@ public:
   using TType = Type<KIND>;
   // TODO(cao): use safer std::weak_ptr here?
   using PType = TType*;
+  Type(const std::string& name, const std::vector<TreeNode>& children)
+    : TypeBase(name), Tree<PType>(this, children) {}
+  Type(const std::string& name) : TypeBase(name), Tree<PType>(this) {}
   virtual ~Type() = default;
 
   // different KIND has different create method
@@ -241,7 +249,12 @@ public:
   // A generic way to provide type creation
   static auto create(const std::string& name, const std::vector<TreeNode>& children)
     -> TreeNode {
-    return TreeNode(new TType(name, children));
+    return std::dynamic_pointer_cast<TreeBase>(std::make_shared<TType>(name, children));
+  }
+
+  static auto createTree(const std::string& name)
+    -> TreeNode {
+    return std::dynamic_pointer_cast<TreeBase>(std::make_shared<TType>(name));
   }
 
 public:
@@ -249,6 +262,21 @@ public:
     // Tip: "this->" is needed when accessing base's member and base is a template.
     TreeNode node = this->childAt(index);
     return std::dynamic_pointer_cast<TypeBase>(node);
+  }
+
+  // look up direct child which matches the name and execute work /function on it
+  void onChild(const std::string& name, std::function<void(const TypeNode&)> func) {
+    N_ENSURE(KIND == Kind::STRUCT, "only support working on row type");
+
+    // build a field name to data node
+    for (size_t i = 0, s = this->size(); i < s; ++i) {
+      // name match
+      auto columnType = childType(i);
+      if (name == columnType->name()) {
+        func(columnType);
+        break;
+      }
+    }
   }
 
 public:
@@ -275,14 +303,33 @@ public:
   inline const TypeBase& base() const {
     return *this;
   }
-
-protected:
-  Type(const std::string& name, const std::vector<TreeNode>& children)
-    : TypeBase(name), Tree<PType>(this, children) {}
-  Type(const std::string& name) : TypeBase(name), Tree<PType>(this) {
-    LOG(INFO) << "Construct a type" << toString();
-  }
 };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+template <typename T>
+struct TypeDetect {};
+
+#define DEFINE_TYPE_DETECT(KIND, NAME, TYPE)                                               \
+  template <>                                                                              \
+  struct TypeDetect<KIND> {                                                                \
+    static constexpr Kind kind = Kind::NAME;                                               \
+    static constexpr auto name = #NAME;                                                    \
+    static constexpr auto type = [](const std::string& n) { return TYPE::createTree(n); }; \
+  };
+
+// TODO(cao) - guidelines for nebula API usage
+// define all traits for each KIND - incomplete list
+DEFINE_TYPE_DETECT(bool, BOOLEAN, BoolType)
+DEFINE_TYPE_DETECT(int8_t, TINYINT, ByteType)
+DEFINE_TYPE_DETECT(int16_t, SMALLINT, ShortType)
+DEFINE_TYPE_DETECT(int32_t, INTEGER, IntType)
+DEFINE_TYPE_DETECT(int64_t, BIGINT, LongType)
+DEFINE_TYPE_DETECT(float, REAL, FloatType)
+DEFINE_TYPE_DETECT(double, DOUBLE, DoubleType)
+DEFINE_TYPE_DETECT(std::string, VARCHAR, StringType)
+DEFINE_TYPE_DETECT(const char*, VARCHAR, StringType)
+
+#undef DEFINE_TYPE_DETECT
 
 } // namespace type
 } // namespace nebula

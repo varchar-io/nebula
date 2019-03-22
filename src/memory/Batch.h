@@ -29,7 +29,6 @@
 namespace nebula {
 namespace memory {
 
-using nebula::common::NebulaException;
 using nebula::memory::DataNode;
 using nebula::memory::DataTree;
 using nebula::surface::ListData;

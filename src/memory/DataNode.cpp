@@ -23,7 +23,6 @@
 namespace nebula {
 namespace memory {
 
-using nebula::common::NebulaException;
 using nebula::surface::ListData;
 using nebula::surface::MapData;
 using nebula::surface::RowData;
@@ -175,7 +174,7 @@ size_t DataNode::append(const nebula::surface::ListData& list) {
     DISPATCH_KIND(DOUBLE, lambda, child, list.readDouble)
     DISPATCH_KIND(VARCHAR, lambda, child, list.readString)
   default:
-    throw NebulaException(fmt::format("Not supported type: {0}", nebula::type::KIND_NAME(kind)));
+    throw NException(fmt::format("Not supported type: {0}", nebula::type::KIND_NAME(kind)));
   }
 
   for (auto i = 0; i < items; ++i) {
@@ -263,7 +262,7 @@ size_t DataNode::append(const nebula::surface::RowData& row) {
       break;
     }
     default:
-      throw NebulaException(fmt::format("Not supported type: {0}", name));
+      throw NException(fmt::format("Not supported type: {0}", name));
     }
   }
 

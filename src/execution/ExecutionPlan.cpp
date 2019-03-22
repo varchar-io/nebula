@@ -24,7 +24,6 @@ namespace nebula {
 namespace execution {
 
 using nebula::common::Cursor;
-using nebula::common::NebulaException;
 using nebula::surface::RowData;
 
 void ExecutionPlan::display() const {
@@ -33,7 +32,7 @@ void ExecutionPlan::display() const {
 }
 
 Cursor<RowData&> ExecutionPlan::execute(const std::string& server) {
-  throw NebulaException("not impl");
+  throw NException("not impl");
 }
 
 } // namespace execution

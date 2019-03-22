@@ -33,7 +33,7 @@ TEST(ErrorTests, Ensures) {
   try {
     N_ENSURE(2 > 3, "false");
   } catch (const NebulaException& ex) {
-    LOG(INFO) << ex.toString();
+    LOG(INFO) << ex.what();
   }
 
   // test ensure equals
@@ -41,7 +41,7 @@ TEST(ErrorTests, Ensures) {
   try {
     N_ENSURE_EQ((3 + 3), 7, "3+3 should not be 7");
   } catch (const NebulaException& ex) {
-    LOG(INFO) << ex.toString();
+    LOG(INFO) << ex.what();
   }
 
   // test ensure greater or equals
@@ -50,7 +50,7 @@ TEST(ErrorTests, Ensures) {
   try {
     N_ENSURE_GE((3 + 3), 7, "3+3 should not be 7");
   } catch (const NebulaException& ex) {
-    LOG(INFO) << ex.toString();
+    LOG(INFO) << ex.what();
   }
 
   // test ensure less than
@@ -59,7 +59,7 @@ TEST(ErrorTests, Ensures) {
   try {
     N_ENSURE_LT((3 + 3), 6, "3+3 should not be less than 6");
   } catch (const NebulaException& ex) {
-    LOG(INFO) << ex.toString();
+    LOG(INFO) << ex.what();
   }
 
   // test
@@ -67,7 +67,7 @@ TEST(ErrorTests, Ensures) {
   try {
     N_ENSURE_NE((3 + 3), 6, "3+3 should equal 6");
   } catch (const NebulaException& ex) {
-    LOG(INFO) << ex.toString();
+    LOG(INFO) << ex.what();
   }
 }
 

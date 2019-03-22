@@ -20,45 +20,60 @@
 
 namespace nebula {
 namespace common {
-class NebulaException {
+
+class NebulaException : public std::exception {
 public:
-  NebulaException(const std::string& msg);
   NebulaException(const std::string& file,
                   const uint32_t line,
                   const std::string& method,
                   const std::string& expr,
-                  const std::string& msg) : file_{ file }, line_{ line }, method_{ method }, expr_{ expr }, msg_{ msg } {
-  }
+                  const std::string& msg);
   virtual ~NebulaException() = default;
 
-  std::string toString() const {
-    return fmt::format("[FILE={0}][LINE={1}][FUNC={2}] Failed on \"{3}\": {4}",
-                       file_, line_, method_, expr_, msg_);
+  virtual const char* what() const noexcept override {
+    return format_.c_str();
   }
 
 private:
-  std::string file_;
-  uint32_t line_;
-  std::string method_;
-  std::string expr_;
-  std::string msg_;
+  std::string format_;
 };
 
-#define THROW_NOT_IMPLEMENTED()                                                                    \
-  ({                                                                                               \
-    throw nebula::common::NebulaException(__FILE__, __LINE__, __FUNCTION__, "NotImplemented", ""); \
-  })
+// fetch file name only
+using cstr = const char* const;
+static constexpr size_t length(cstr str) {
+  return *str ? 1 + length(str + 1) : 0;
+}
 
-#define THROW_RUNTIME(MSG)                                                                        \
-  ({                                                                                              \
-    throw nebula::common::NebulaException(__FILE__, __LINE__, __FUNCTION__, "RuntimeError", MSG); \
-  })
+static constexpr cstr lslash(cstr str, size_t pos) noexcept {
+  while (pos > 0 && *(str + pos) != '/') {
+    --pos;
+  }
+  return (str + pos + 1);
+}
 
-#define N_ENSURE(e, ...)                                                                            \
+static constexpr cstr lslash(cstr str) {
+  return lslash(str, length(str));
+}
+#define __NFILE__ ({constexpr nebula::common::cstr nf__ {nebula::common::lslash(__FILE__)}; nf__; })
+
+#define NException(msg) \
+  nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, "None", msg)
+
+#define THROW_NOT_IMPLEMENTED()                                                                     \
   ({                                                                                                \
-    auto const& _tmp = (e);                                                                         \
-    auto msg = fmt::format(",", __VA_ARGS__);                                                       \
-    _tmp ? _tmp : throw nebula::common::NebulaException(__FILE__, __LINE__, __FUNCTION__, #e, msg); \
+    throw nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, "NotImplemented", ""); \
+  })
+
+#define THROW_RUNTIME(MSG)                                                                         \
+  ({                                                                                               \
+    throw nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, "RuntimeError", MSG); \
+  })
+
+#define N_ENSURE(e, ...)                                                                             \
+  ({                                                                                                 \
+    auto const& _tmp = (e);                                                                          \
+    auto msg = fmt::format(",", __VA_ARGS__);                                                        \
+    _tmp ? _tmp : throw nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, #e, msg); \
   })
 
 #define N_ENSURE_NOT_NULL(p, ...) \

@@ -17,6 +17,7 @@
 #include "Dsl.h"
 #include "common/Cursor.h"
 #include "surface/DataSurface.h"
+#include "type/Serde.h"
 
 namespace nebula {
 namespace api {
@@ -24,13 +25,9 @@ namespace dsl {
 
 using nebula::execution::ExecutionPlan;
 using nebula::surface::RowData;
-
-// a filter accepts a bool expression as its parameter to evaluate.
-Query& Query::where(const Expression<bool>& filter) {
-  // apply filter and return myself
-  filter_ = std::make_unique<Expression<bool>>(filter);
-  return *this;
-}
+using nebula::type::RowType;
+using nebula::type::Schema;
+using nebula::type::TreeNode;
 
 // execute current query to get result list
 std::unique_ptr<ExecutionPlan> Query::compile() const {
@@ -43,8 +40,33 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // 2. limit should be always placed?
 
   // fetch schema of the table first
-  // Meta
-  // table_
+  // validate
+  auto schema = table_->getSchema();
+
+  // build output schema tree
+  const auto numOutputFields = this->selects_.size();
+  N_ENSURE_GT(numOutputFields, 0, "at least one column select");
+  std::vector<TreeNode> children;
+  children.reserve(numOutputFields);
+
+  // aggColumns - agg column is marked as true, otherwise false
+  std::vector<bool> aggColumns;
+  aggColumns.reserve(numOutputFields);
+
+  // std::make_shared<LongType>(LongType::create("f1")),
+  // std::make_shared<MapType>(MapType::create("map", keyType, valueType)),
+  // std::make_shared<ListType>(ListType::create("list", itemType)),
+  // std::make_shared<BoolType>(BoolType::create("f4")));
+  std::for_each(selects_.begin(), selects_.end(), [&children, &aggColumns, this](const auto& itr) {
+    children.push_back(itr->type(*table_));
+    aggColumns.push_back(itr->isAgg());
+  });
+
+  // create output schema
+  LOG(INFO) << " got children: " << children.size();
+  auto output = std::static_pointer_cast<RowType>(nebula::type::RowType::create("", children));
+  LOG(INFO) << "Query output schema: " << nebula::type::TypeSerializer::to(output);
+
   return nullptr;
 }
 

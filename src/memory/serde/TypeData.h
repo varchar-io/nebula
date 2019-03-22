@@ -26,7 +26,6 @@ namespace memory {
 namespace serde {
 
 using IndexType = size_t;
-using nebula::type::NebulaException;
 
 /**
  * A data serde to desribe real data for a given type.

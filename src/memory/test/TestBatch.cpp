@@ -37,7 +37,7 @@ using nebula::type::TypeSerializer;
 
 #define NOT_IMPL_FUNC(TYPE, NAME)             \
   TYPE NAME(IndexType index) const override { \
-    throw NebulaException("x");               \
+    throw NException("x");                    \
   }
 
 class StaticList : public ListData {
@@ -69,7 +69,7 @@ private:
 
 #define NOT_IMPL_FUNC(TYPE, NAME)                      \
   TYPE NAME(const std::string& field) const override { \
-    throw NebulaException("x");                        \
+    throw NException("x");                             \
   }
 
 // Mock static row for schema "ROW<id:int, event:string, items:list<string>, flag:bool>"

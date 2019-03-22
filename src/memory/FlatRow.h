@@ -28,7 +28,6 @@
 namespace nebula {
 namespace memory {
 
-using nebula::common::NebulaException;
 using nebula::common::PagedSlice;
 using nebula::type::Kind;
 using nebula::type::Schema;

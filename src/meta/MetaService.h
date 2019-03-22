@@ -14,17 +14,26 @@
  * limitations under the License.
  */
 
-#include "Errors.h"
-namespace nebula {
-namespace common {
+#pragma once
 
-NebulaException::NebulaException(const std::string& file,
-                                 const uint32_t line,
-                                 const std::string& method,
-                                 const std::string& expr,
-                                 const std::string& msg)
-  : format_{ fmt::format("[{0}:{1} at function {2}] Nebula Exception={3}: {4}",
-                         file, line, method, expr, msg) } {
-}
-} // namespace common
+#include "Table.h"
+#include "glog/logging.h"
+
+/**
+ * Define nebula table and system metadata 
+ * which manages what data segments are loaded in memory for each table
+ * This meta data can persist and sync with external DB system such as MYSQL or RocksDB
+ * (A KV store is necessary for Nebula to manage all metadata)
+ * 
+ * (Also - Is this responsibility of zookeeper?)
+ */
+namespace nebula {
+namespace meta {
+class MetaService {
+public:
+  virtual std::shared_ptr<Table> query(const std::string& name) {
+    return nullptr;
+  }
+};
+} // namespace meta
 } // namespace nebula
