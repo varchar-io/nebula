@@ -24,6 +24,7 @@
 #include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "meta/MetaService.h"
+#include "meta/NNode.h"
 #include "meta/Table.h"
 #include "type/Serde.h"
 
@@ -36,7 +37,7 @@ using nebula::type::TypeSerializer;
 class MockTable : public nebula::meta::Table {
 public:
   MockTable(const std::string& name) : Table(name) {
-    schema_ = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
+    schema_ = TypeSerializer::from("ROW<id:int, event:string, items:list<string>, flag:bool>");
   }
   virtual ~MockTable() = default;
 };
@@ -45,6 +46,12 @@ class MockMs : public nebula::meta::MetaService {
 public:
   virtual std::shared_ptr<nebula::meta::Table> query(const std::string& name) override {
     return std::make_shared<MockTable>(name);
+  }
+
+  virtual std::vector<nebula::meta::NNode> queryNodes(
+    const std::shared_ptr<nebula::meta::Table> table,
+    std::function<bool(const nebula::meta::NNode&)> predicate) override {
+    return { nebula::meta::local() };
   }
 };
 } // namespace test

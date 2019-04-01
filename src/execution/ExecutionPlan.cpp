@@ -24,7 +24,15 @@ namespace nebula {
 namespace execution {
 
 using nebula::common::Cursor;
+using nebula::meta::NNode;
 using nebula::surface::RowData;
+
+ExecutionPlan::ExecutionPlan(
+  std::unique_ptr<Phase> plan,
+  std::vector<NNode> nodes)
+  : plan_{ std::move(plan) },
+    nodes_{ std::move(nodes) } {
+}
 
 void ExecutionPlan::display() const {
   //TODO(cao) - display executuin plan details in different phases

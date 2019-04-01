@@ -16,27 +16,28 @@
 
 #pragma once
 
-#include "api/UDAF.h"
-#include "common/Errors.h"
+#include "Table.h"
 #include "glog/logging.h"
-#include "meta/Table.h"
-#include "type/Tree.h"
 
 /**
- * Define expressions used in the nebula DSL.
+ * Define nebula table and system metadata 
+ * which manages what data segments are loaded in memory for each table
+ * This meta data can persist and sync with external DB system such as MYSQL or RocksDB
+ * (A KV store is necessary for Nebula to manage all metadata)
+ * 
+ * (Also - Is this responsibility of zookeeper?)
  */
 namespace nebula {
-namespace api {
-namespace dsl {
+namespace meta {
 
-#ifndef THIS_TYPE
-#define THIS_TYPE typename std::remove_reference<decltype(*this)>::type
-#endif
+struct NNode {
+  // node basics - server and port
+  std::string server;
+  size_t port;
+};
 
-#ifndef IS_T_LITERAL
-#define IS_T_LITERAL(T) std::is_same<char*, std::decay_t<T>>::value
-#endif
-
-} // namespace dsl
-} // namespace api
+static NNode local() {
+  return NNode{ "localhost", 9190 };
+}
+} // namespace meta
 } // namespace nebula

@@ -89,57 +89,38 @@ Every type kind has different traits
 template <Kind KIND>
 struct TypeTraits {};
 
-#define DEFINE_TYPE_TRAITS(NAME, PRIMITIVE, WIDTH) \
-  template <>                                      \
-  struct TypeTraits<Kind::NAME> {                  \
-    static constexpr Kind typeKind = Kind::NAME;   \
-    static constexpr bool isPrimitive = PRIMITIVE; \
-    static constexpr size_t width = WIDTH;         \
-    static constexpr auto name = #NAME;            \
+#define DEFINE_TYPE_TRAITS(NAME, PRIMITIVE, WIDTH, CPP) \
+  template <>                                           \
+  struct TypeTraits<Kind::NAME> {                       \
+    static constexpr Kind typeKind = Kind::NAME;        \
+    static constexpr bool isPrimitive = PRIMITIVE;      \
+    static constexpr size_t width = WIDTH;              \
+    static constexpr auto name = #NAME;                 \
+    using CppType = CPP;                                \
   };
 
-// define all traits for each KIND
-DEFINE_TYPE_TRAITS(BOOLEAN, true, 1)
-DEFINE_TYPE_TRAITS(TINYINT, true, 1)
-DEFINE_TYPE_TRAITS(SMALLINT, true, 2)
-DEFINE_TYPE_TRAITS(INTEGER, true, 4)
-DEFINE_TYPE_TRAITS(BIGINT, true, 8)
-DEFINE_TYPE_TRAITS(REAL, true, 4)
-DEFINE_TYPE_TRAITS(DOUBLE, true, 8)
-DEFINE_TYPE_TRAITS(VARCHAR, true, 0)
-DEFINE_TYPE_TRAITS(ARRAY, false, 0)
-DEFINE_TYPE_TRAITS(MAP, false, 0)
-DEFINE_TYPE_TRAITS(STRUCT, false, 0)
+// define all traits for each KIND, we don't have examples for compound types here
+// since they requires runtime composition with child types
+DEFINE_TYPE_TRAITS(BOOLEAN, true, 1, bool)
+DEFINE_TYPE_TRAITS(TINYINT, true, 1, int8_t)
+DEFINE_TYPE_TRAITS(SMALLINT, true, 2, int16_t)
+DEFINE_TYPE_TRAITS(INTEGER, true, 4, int32_t)
+DEFINE_TYPE_TRAITS(BIGINT, true, 8, int64_t)
+DEFINE_TYPE_TRAITS(REAL, true, 4, float)
+DEFINE_TYPE_TRAITS(DOUBLE, true, 8, double)
+DEFINE_TYPE_TRAITS(VARCHAR, true, 0, char*)
+DEFINE_TYPE_TRAITS(ARRAY, false, 0, void)
+DEFINE_TYPE_TRAITS(MAP, false, 0, void)
+DEFINE_TYPE_TRAITS(STRUCT, false, 0, void)
 // DEFINE_TYPE_TRAITS(VARBINARY, true, 0)
 // DEFINE_TYPE_TRAITS(TIMESTAMP, true, 8)
 
 #undef DEFINE_TYPE_TRAITS
 
-#define KIND_NAME_DISPATCH(KIND)         \
+#define KIND_DISPATCH(KIND, PROP)        \
   case Kind::KIND: {                     \
-    return TypeTraits<Kind::KIND>::name; \
+    return TypeTraits<Kind::KIND>::PROP; \
   }
-
-static auto KIND_NAME(Kind kind)
-  -> std::string {
-  switch (kind) {
-    KIND_NAME_DISPATCH(BOOLEAN)
-    KIND_NAME_DISPATCH(TINYINT)
-    KIND_NAME_DISPATCH(SMALLINT)
-    KIND_NAME_DISPATCH(INTEGER)
-    KIND_NAME_DISPATCH(BIGINT)
-    KIND_NAME_DISPATCH(REAL)
-    KIND_NAME_DISPATCH(DOUBLE)
-    KIND_NAME_DISPATCH(VARCHAR)
-    KIND_NAME_DISPATCH(ARRAY)
-    KIND_NAME_DISPATCH(MAP)
-    KIND_NAME_DISPATCH(STRUCT)
-  default:
-    throw NException("Unsupported type in KIND_NAME.");
-  }
-}
-
-#undef KIND_NAME_DISPATCH
 
 // a base properties of a type
 class TypeBase {
@@ -153,11 +134,31 @@ public:
   virtual const Kind k() const = 0;
 
 public:
-  static constexpr bool isCompound(Kind kind) {
+#define KIND_NAME_DISPATCH(K) KIND_DISPATCH(K, name)
+  static std::string kname(Kind kind) {
+    switch (kind) {
+      KIND_NAME_DISPATCH(BOOLEAN)
+      KIND_NAME_DISPATCH(TINYINT)
+      KIND_NAME_DISPATCH(SMALLINT)
+      KIND_NAME_DISPATCH(INTEGER)
+      KIND_NAME_DISPATCH(BIGINT)
+      KIND_NAME_DISPATCH(REAL)
+      KIND_NAME_DISPATCH(DOUBLE)
+      KIND_NAME_DISPATCH(VARCHAR)
+      KIND_NAME_DISPATCH(ARRAY)
+      KIND_NAME_DISPATCH(MAP)
+      KIND_NAME_DISPATCH(STRUCT)
+    default:
+      throw NException("Unsupported type in kname.");
+    }
+  }
+#undef KIND_NAME_DISPATCH
+
+  static constexpr bool isCompound(Kind kind) noexcept {
     return kind == Kind::ARRAY || kind == Kind::MAP || kind == Kind::STRUCT;
   }
 
-  static constexpr bool isScalar(Kind kind) {
+  static constexpr bool isScalar(Kind kind) noexcept {
     return kind > 0 && kind <= 10;
   }
 
@@ -171,6 +172,8 @@ protected:
   virtual ~TypeBase() = default;
   std::string name_;
 };
+
+#undef KIND_DISPATCH
 
 // define a type node - shared between TreeBase and TypeBase
 using TypeNode = std::shared_ptr<TypeBase>;

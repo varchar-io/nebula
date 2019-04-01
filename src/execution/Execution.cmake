@@ -32,7 +32,8 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 
 # build test binary
 add_executable(ExecTests
-    ${NEBULA_SRC}/execution/test/TestExec.cpp)
+    ${NEBULA_SRC}/execution/test/TestExec.cpp
+    ${NEBULA_SRC}/execution/test/TestValueEvalTree.cpp)
 
 target_link_libraries(ExecTests 
     PRIVATE ${GTEST_LIBRARY} 

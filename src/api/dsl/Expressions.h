@@ -16,9 +16,11 @@
 
 #pragma once
 
-#include "Utils.h"
-#include "api/UDAF.h"
+#include "Base.h"
+#include "api/UDF.h"
 #include "common/Errors.h"
+#include "common/Likely.h"
+#include "execution/eval/ValueEval.h"
 #include "glog/logging.h"
 #include "meta/Table.h"
 #include "type/Tree.h"
@@ -29,27 +31,6 @@
 namespace nebula {
 namespace api {
 namespace dsl {
-
-// supported arthmetic operations
-enum class ArthmeticOp {
-  ADD,
-  SUB,
-  MUL,
-  DIV,
-  MOD,
-  NEG
-};
-
-// supported logical operations
-enum class LogicalOp {
-  EQ,
-  GT,
-  GE,
-  LT,
-  LE,
-  AND,
-  OR
-};
 
 // Note: (problems in designing the interfaces here)
 // 1. we're using operator override to enable expressions with supported operations
@@ -166,26 +147,41 @@ class LogicalExpression;
 // Right now, std::remove_reference<decltype(*this)>::type doesn't resolve runtime type but the current type
 // where the method is called - if somehow we can figure out THIS_TYPE for runtime, we can save lots of duplicate code
 // meaning we only need these operator defined in base expression.
-
 class Expression {
 public:
-  Expression() = default;
+  Expression() : alias_{}, kind_{ nebula::type::Kind::INVALID } {}
   virtual ~Expression() = default;
 
 public:
   // TODO(cao): need to rework to introduce context and visitor pattern
   // to deduce the type of this expression
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) const = 0;
+  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) = 0;
   virtual bool isAgg() const = 0;
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const = 0;
+  virtual std::vector<std::string> columnRefs() const {
+    return {};
+  };
 
 public:
   std::string alias() const {
     return alias_;
   }
 
+  nebula::type::Kind kind() const {
+    return kind_;
+  }
+
 protected:
+  void saveKind(nebula::type::TreeNode node) {
+    kind_ = nebula::type::TypeBase::k(node);
+    LOG(INFO) << " KIND = " << nebula::type::TypeBase::kname(kind_);
+  }
+
   // only one alias can be updated if client calls "as" multiple times
   std::string alias_;
+
+  // set by type() method
+  nebula::type::Kind kind_;
 };
 
 // arthmetic op traits will provide result KIND given left and right kind on given OP
@@ -215,53 +211,38 @@ public: // all operations
 
   IS_AGG(false)
 
-public:
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) const override {
-    const auto& type1 = op1_.type(table);
-    const auto& type2 = op2_.type(table);
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+    auto v1 = op1_.asEval();
+    auto v2 = op2_.asEval();
+    N_ENSURE(v1 != nullptr, "op1 value eval is null");
+    N_ENSURE(v2 != nullptr, "op2 value eval is null");
 
-    auto kind1 = nebula::type::TypeBase::k(type1);
-    auto kind2 = nebula::type::TypeBase::k(type2);
-
-#define TYPE_OPRAND_OP(KIND)                                \
-  case nebula::type::Kind::KIND: {                          \
-    return validateAndGen<nebula::type::Kind::KIND>(kind2); \
+    // forward to the correct version of value eval creation
+    return forward3<op>(kind(), op1_.kind(), op2_.kind(), std::move(v1), std::move(v2));
   }
 
-    switch (kind1) {
-      TYPE_OPRAND_OP(TINYINT)
-      TYPE_OPRAND_OP(SMALLINT)
-      TYPE_OPRAND_OP(INTEGER)
-      TYPE_OPRAND_OP(BIGINT)
-      TYPE_OPRAND_OP(REAL)
-      TYPE_OPRAND_OP(DOUBLE)
-    default:
-      throw NException("not supported type in arthmetic operations");
+  virtual std::vector<std::string> columnRefs() const override {
+    auto v1 = op1_.columnRefs();
+    auto v2 = op2_.columnRefs();
+    std::vector<std::string> merge;
+    merge.reserve(v1.size() + v2.size());
+
+    if (v1.size() > 0) {
+      merge.insert(merge.end(), v1.begin(), v1.end());
     }
-  }
-#undef TYPE_OPRAND_OP
 
-protected:
-#define RESULT_TYPE_ON_OPERANDS(RIGHT)                                     \
-  case nebula::type::RIGHT: {                                              \
-    result = ArthmeticOpTraits<op, kind, nebula::type::RIGHT>::ResultKind; \
-    break;                                                                 \
-  }
-
-  template <nebula::type::Kind kind>
-  nebula::type::TreeNode validateAndGen(nebula::type::Kind kind2) const {
-    auto result = nebula::type::INVALID;
-    switch (kind2) {
-      RESULT_TYPE_ON_OPERANDS(TINYINT)
-      RESULT_TYPE_ON_OPERANDS(SMALLINT)
-      RESULT_TYPE_ON_OPERANDS(INTEGER)
-      RESULT_TYPE_ON_OPERANDS(BIGINT)
-      RESULT_TYPE_ON_OPERANDS(REAL)
-      RESULT_TYPE_ON_OPERANDS(DOUBLE)
-    default:
-      throw NException("not supported type in arthmetic operations");
+    if (v2.size() > 0) {
+      merge.insert(merge.end(), v2.begin(), v2.end());
     }
-#undef RESULT_TYPE_ON_OPERANDS
+
+    return merge;
+  }
+
+  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+    op1_.type(table);
+    op2_.type(table);
+
+    kind_ = nebula::api::dsl::ArthmeticCombination::result(op1_.kind(), op2_.kind());
 
 #define TYPE_CREATE_NODE(KIND, TYPE)               \
   case nebula::type::KIND: {                       \
@@ -269,7 +250,7 @@ protected:
   }
 
     // no result should have the final type KIND
-    switch (result) {
+    switch (kind_) {
       TYPE_CREATE_NODE(TINYINT, ByteType)
       TYPE_CREATE_NODE(SMALLINT, ShortType)
       TYPE_CREATE_NODE(INTEGER, IntType)
@@ -277,7 +258,8 @@ protected:
       TYPE_CREATE_NODE(REAL, FloatType)
       TYPE_CREATE_NODE(DOUBLE, DoubleType)
     default:
-      throw NException("not supported type in arthmetic operations");
+      throw NException(fmt::format("not supported type {0} in arthmetic operations",
+                                   nebula::type::TypeBase::kname(kind_)));
     }
 #undef TYPE_CREATE_NODE
   }
@@ -285,58 +267,7 @@ protected:
 private:
   T1 op1_;
   T2 op2_;
-}; // namespace dsl
-
-#define ARTHMETIC_TYPE_COMBINATION_RESULT(LEFT, RIGHT, RESULT)                        \
-  template <ArthmeticOp OP>                                                           \
-  struct ArthmeticOpTraits<OP, nebula::type::Kind::LEFT, nebula::type::Kind::RIGHT> { \
-    static constexpr nebula::type::Kind ResultKind = nebula::type::Kind::RESULT;      \
-  };
-
-// byte+byte=byte for any arthmetic type
-ARTHMETIC_TYPE_COMBINATION_RESULT(TINYINT, TINYINT, TINYINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(TINYINT, SMALLINT, SMALLINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(TINYINT, INTEGER, INTEGER)
-ARTHMETIC_TYPE_COMBINATION_RESULT(TINYINT, BIGINT, BIGINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(TINYINT, REAL, REAL)
-ARTHMETIC_TYPE_COMBINATION_RESULT(TINYINT, DOUBLE, DOUBLE)
-
-ARTHMETIC_TYPE_COMBINATION_RESULT(SMALLINT, TINYINT, SMALLINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(SMALLINT, SMALLINT, SMALLINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(SMALLINT, INTEGER, INTEGER)
-ARTHMETIC_TYPE_COMBINATION_RESULT(SMALLINT, BIGINT, BIGINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(SMALLINT, REAL, REAL)
-ARTHMETIC_TYPE_COMBINATION_RESULT(SMALLINT, DOUBLE, DOUBLE)
-
-ARTHMETIC_TYPE_COMBINATION_RESULT(INTEGER, TINYINT, INTEGER)
-ARTHMETIC_TYPE_COMBINATION_RESULT(INTEGER, SMALLINT, INTEGER)
-ARTHMETIC_TYPE_COMBINATION_RESULT(INTEGER, INTEGER, INTEGER)
-ARTHMETIC_TYPE_COMBINATION_RESULT(INTEGER, BIGINT, BIGINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(INTEGER, REAL, REAL)
-ARTHMETIC_TYPE_COMBINATION_RESULT(INTEGER, DOUBLE, DOUBLE)
-
-ARTHMETIC_TYPE_COMBINATION_RESULT(BIGINT, TINYINT, BIGINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(BIGINT, SMALLINT, BIGINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(BIGINT, INTEGER, BIGINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(BIGINT, BIGINT, BIGINT)
-ARTHMETIC_TYPE_COMBINATION_RESULT(BIGINT, REAL, REAL)
-ARTHMETIC_TYPE_COMBINATION_RESULT(BIGINT, DOUBLE, DOUBLE)
-
-ARTHMETIC_TYPE_COMBINATION_RESULT(REAL, TINYINT, REAL)
-ARTHMETIC_TYPE_COMBINATION_RESULT(REAL, SMALLINT, REAL)
-ARTHMETIC_TYPE_COMBINATION_RESULT(REAL, INTEGER, REAL)
-ARTHMETIC_TYPE_COMBINATION_RESULT(REAL, BIGINT, REAL)
-ARTHMETIC_TYPE_COMBINATION_RESULT(REAL, REAL, REAL)
-ARTHMETIC_TYPE_COMBINATION_RESULT(REAL, DOUBLE, DOUBLE)
-
-ARTHMETIC_TYPE_COMBINATION_RESULT(DOUBLE, TINYINT, DOUBLE)
-ARTHMETIC_TYPE_COMBINATION_RESULT(DOUBLE, SMALLINT, DOUBLE)
-ARTHMETIC_TYPE_COMBINATION_RESULT(DOUBLE, INTEGER, DOUBLE)
-ARTHMETIC_TYPE_COMBINATION_RESULT(DOUBLE, BIGINT, DOUBLE)
-ARTHMETIC_TYPE_COMBINATION_RESULT(DOUBLE, REAL, DOUBLE)
-ARTHMETIC_TYPE_COMBINATION_RESULT(DOUBLE, DOUBLE, DOUBLE)
-
-#undef ARTHMETIC_TYPE_COMBINATION_RESULT
+};
 
 // logical expression definition
 template <LogicalOp op, typename T1, typename T2>
@@ -360,31 +291,61 @@ public: // all logical operations
 
   IS_AGG(false)
 
-public:
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) const override {
+  // convert to value eval
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+    auto v1 = op1_.asEval();
+    auto v2 = op2_.asEval();
+    N_ENSURE(v1 != nullptr, "op1 value eval is null");
+    N_ENSURE(v2 != nullptr, "op2 value eval is null");
+
+    // forward to the correct version of value eval creation
+    return forward2<op>(op1_.kind(), op2_.kind(), std::move(v1), std::move(v2));
+  }
+
+  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+    op1_.type(table);
+    op2_.type(table);
+
     // validate non-comparison case.
     // unlike programming language, we don't allow implicity type conversion
     // so for AND and OR operations, we have to validate left and right are both bool type
     validate(table);
 
     // logical expression will always in bool type
+    kind_ = nebula::type::Kind::BOOLEAN;
     return nebula::type::BoolType::createTree(alias_);
   }
 
-protected:
-#define BOTH_OPRANDS_BOOL()                                                             \
-  N_ENSURE_EQ(nebula::type::TypeBase::k(op1_.type(table)), nebula::type::Kind::BOOLEAN, \
-              "AND/OR operations requires bool typed left and right oprands");          \
-  N_ENSURE_EQ(nebula::type::TypeBase::k(op2_.type(table)), nebula::type::Kind::BOOLEAN, \
+#define BOTH_OPRANDS_BOOL()                                                    \
+  N_ENSURE_EQ(op1_.kind(), nebula::type::Kind::BOOLEAN,                        \
+              "AND/OR operations requires bool typed left and right oprands"); \
+  N_ENSURE_EQ(op2_.kind(), nebula::type::Kind::BOOLEAN,                        \
               "AND/OR operations requires bool typed left and right oprands");
 
-  void validate(const nebula::meta::Table& table) const {
+  void validate(const nebula::meta::Table& table) {
     if constexpr (op == LogicalOp::AND || op == LogicalOp::OR) {
       BOTH_OPRANDS_BOOL()
     }
   }
 
 #undef BOTH_OPRANDS_BOOL
+
+  virtual std::vector<std::string> columnRefs() const override {
+    auto v1 = op1_.columnRefs();
+    auto v2 = op2_.columnRefs();
+    std::vector<std::string> merge;
+    merge.reserve(v1.size() + v2.size());
+
+    if (v1.size() > 0) {
+      merge.insert(merge.end(), v1.begin(), v1.end());
+    }
+
+    if (v2.size() > 0) {
+      merge.insert(merge.end(), v2.begin(), v2.end());
+    }
+
+    return merge;
+  }
 
 private:
   T1 op1_;
@@ -407,20 +368,10 @@ public: // all logical operations
 
   IS_AGG(false)
 
-public:
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) const override {
-    // TODO(cao) - respect passed in alias to rename current column expression
-    // for example: select col1 as COOL from table
-
-    // look up the table schema to deduce the table
-    const auto& schema = table.getSchema();
-    nebula::type::TreeNode nodeType;
-    schema->onChild(column_, [&nodeType](const nebula::type::TypeNode& found) {
-      nodeType = std::dynamic_pointer_cast<nebula::type::TreeBase>(found);
-    });
-
-    N_ENSURE_NOT_NULL(nodeType, fmt::format("column not found: {0}", column_));
-    return nodeType;
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override;
+  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override;
+  inline virtual std::vector<std::string> columnRefs() const override {
+    return std::vector<std::string>{ column_ };
   }
 
 private:
@@ -435,49 +386,93 @@ public:
   virtual ~ConstExpression() = default;
 
 public:
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) const override {
-    // duduce from T to nebula::type::Type
-    return nebula::type::TypeDetect<T>::type(alias_);
-  }
-
   ALIAS()
 
   IS_AGG(false)
+
+  // convert to value eval
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+    return nebula::execution::eval::constant<T>(value_);
+  }
+
+  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+    // duduce from T to nebula::type::Type
+    auto node = nebula::type::TypeDetect<T>::type(alias_);
+    kind_ = nebula::type::TypeBase::k(node);
+    return node;
+  }
 
 private:
   T value_;
 };
 
-// An UDAF expression
+template <nebula::type::Kind KIND>
+class UDFExpression : public Expression {
+public:
+  UDFExpression(std::shared_ptr<UDF<KIND>> udf) : udf_{ udf } {}
+  virtual ~UDFExpression() = default;
+
+public:
+  ALIAS()
+
+  IS_AGG(false)
+
+  // convert to value eval
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+    // TODO(cao) - moving udf out of expression is buggy
+    // depends on when we finalize the serialization story for expression and expression->eval
+    // this dynamic cast to common interface should be avoided too.
+    return nebula::execution::eval::udf(std::dynamic_pointer_cast<nebula::execution::eval::KindEval<KIND>>(udf_));
+  }
+
+  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+    kind_ = KIND;
+    return nebula::type::Type<KIND>::createTree(alias_);
+  }
+
+  virtual std::vector<std::string> columnRefs() const override {
+    return udf_->columns();
+  }
+
+protected:
+  std::shared_ptr<UDF<KIND>> udf_;
+};
+
+// An UDAF expression - some UDAF knows its type regardless inner type
+// such as percentile (P50, P90), the majority UDAF infers type from its inner expression.
+// So here - we will implement this first. When necessary, we may want to introduce different expresssion type.
 // TODO(cao) - need rework this since we need to come up with a framework
 // to allow customized UDAFs to be plugged in
-template <typename T, IS_EXPRESSION(T)>
 class UDAFExpression : public Expression {
 public:
-  UDAFExpression(const T& inner, nebula::api::UDAF udaf)
-    : inner_{ inner }, udaf_{ udaf } {
-    alias_ = inner_.alias();
+  UDAFExpression(UDAF_REG udaf, std::shared_ptr<Expression> inner)
+    : udaf_{ udaf }, inner_{ inner } {
   }
   virtual ~UDAFExpression() = default;
 
 public:
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) const override {
-    // count will not rely on inner type
-    if (udaf_.registry == UDAFRegistry::COUNT) {
-      return nebula::type::LongType::createTree(alias_);
-    }
-
-    LOG(INFO) << " UDAF alias: " << alias_;
-    return inner_.type(table);
-  }
-
   ALIAS()
 
   IS_AGG(true)
 
+  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+    auto innerType = inner_->type(table);
+
+    // inner type is
+    kind_ = inner_->kind();
+    return innerType;
+  }
+
+  inline virtual std::vector<std::string> columnRefs() const override {
+    return inner_->columnRefs();
+  }
+
+  // convert to value eval
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override;
+
 private:
-  T inner_;
-  nebula::api::UDAF udaf_;
+  UDAF_REG udaf_;
+  std::shared_ptr<Expression> inner_;
 };
 
 #undef ARTHMETIC_OP_CONST

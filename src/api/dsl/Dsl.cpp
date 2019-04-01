@@ -15,6 +15,7 @@
  */
 
 #include "Dsl.h"
+#include <algorithm>
 #include "common/Cursor.h"
 #include "surface/DataSurface.h"
 #include "type/Serde.h"
@@ -24,6 +25,10 @@ namespace api {
 namespace dsl {
 
 using nebula::execution::ExecutionPlan;
+using nebula::execution::Phase;
+using nebula::execution::PhaseType;
+using nebula::execution::eval::ValueEval;
+using nebula::meta::NNode;
 using nebula::surface::RowData;
 using nebula::type::RowType;
 using nebula::type::Schema;
@@ -52,22 +57,66 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // aggColumns - agg column is marked as true, otherwise false
   std::vector<bool> aggColumns;
   aggColumns.reserve(numOutputFields);
+  size_t numAggColumns = 0;
 
-  // std::make_shared<LongType>(LongType::create("f1")),
-  // std::make_shared<MapType>(MapType::create("map", keyType, valueType)),
-  // std::make_shared<ListType>(ListType::create("list", itemType)),
-  // std::make_shared<BoolType>(BoolType::create("f4")));
-  std::for_each(selects_.begin(), selects_.end(), [&children, &aggColumns, this](const auto& itr) {
-    children.push_back(itr->type(*table_));
-    aggColumns.push_back(itr->isAgg());
-  });
+  std::for_each(selects_.begin(), selects_.end(),
+                [&children, &aggColumns, &numAggColumns, this](const auto& itr) {
+                  children.push_back(itr->type(*table_));
+                  auto isAgg = itr->isAgg();
+                  aggColumns.push_back(isAgg);
+                  if (isAgg) {
+                    numAggColumns += 1;
+                  }
+                });
 
   // create output schema
-  LOG(INFO) << " got children: " << children.size();
   auto output = std::static_pointer_cast<RowType>(nebula::type::RowType::create("", children));
-  LOG(INFO) << "Query output schema: " << nebula::type::TypeSerializer::to(output);
+  LOG(INFO) << "Query output schema: " << nebula::type::TypeSerializer::to(output) << " w/ agg columns: " << numAggColumns;
 
-  return nullptr;
+  // validations
+  // 1. group by index has to be all those columns that are not aggregate columns
+  // group by count has to be the same as non-agg column count
+  N_ENSURE_EQ(groups_.size(), numOutputFields - numAggColumns);
+
+  // check the index are correct values
+  for (auto& index : groups_) {
+    // group/sort by index are all 1-based index
+    N_ENSURE(!aggColumns[(index - 1)], "group by column should not be aggregate column");
+  }
+
+  // sort columns can be any of the final column
+  for (auto& index : sorts_) {
+    N_ENSURE(index > 0 && index <= numOutputFields, "sort by column is out of range");
+  }
+
+  // build block level compute phase
+  // TODO(cao) - for some query or aggregate type such as AVG
+  // we need to revise the plan to use sum and count to replace.
+  // x y, max(z)
+  // filter by filter predicate, compute by keys: agg functions
+  std::vector<std::unique_ptr<ValueEval>> fields;
+  std::transform(selects_.begin(), selects_.end(), std::back_inserter(fields),
+                 [](std::shared_ptr<Expression> expr) -> std::unique_ptr<ValueEval> { return expr->asEval(); });
+  auto block = std::make_unique<Phase>(PhaseType::COMPUTE, schema);
+  filter_->type(*table_);
+  (*block).scan(table_->name()).filter(filter_->asEval()).keys(groups_).compute(std::move(fields));
+
+  // partial aggrgation, keys and agg methods
+  auto node = std::make_unique<Phase>(PhaseType::PARTIAL, std::move(block));
+  (*node).agg();
+
+  // global aggregation, keys and agg methods
+  auto controller = std::make_unique<Phase>(PhaseType::GLOBAL, std::move(node));
+  (*controller).agg().sort(sorts_).limit(limit_);
+
+  //1. get total nodes that we will run the query, filter_ will help prune results
+  auto nodeList = ms_->queryNodes(table_, [](const NNode&) { return true; });
+
+  // 2. gen phase 3 (bottom up) work needs to be done in controller
+  LOG(INFO) << "found nodes to execute the query: " << nodeList.size();
+
+  // make an execution plan from a few phases
+  return std::make_unique<ExecutionPlan>(std::move(controller), std::move(nodeList));
 }
 
 } // namespace dsl

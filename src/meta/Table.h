@@ -47,6 +47,10 @@ public:
     return schema_;
   }
 
+  inline std::string name() const {
+    return name_;
+  }
+
 protected:
   // table name is global unique, but it can be organized by some namespace style naming convention
   // such as "nebula.test"

@@ -140,6 +140,39 @@ TEST(ExpressionsTest, TestExpressionType) {
   LOG(INFO) << "PASS: constant string with alias";
 }
 
+#define VERIFY_ITEM_I(I)                                                                               \
+  {                                                                                                    \
+    constexpr auto item = std::get<I>(expectations);                                                   \
+    constexpr nebula::type::Kind R = nebula::api::dsl::ArthmeticCombination::result(item[0], item[1]); \
+    EXPECT_EQ(R, item[2]);                                                                             \
+  }
+
+TEST(ExpressionsTest, TestArthmeticTypeCombination) {
+  // NOT SURE why - but we need double bracets to put the initializer list
+  constexpr std::array<std::array<nebula::type::Kind, 3>, 5> expectations
+    = { { { { nebula::type::Kind::TINYINT, nebula::type::Kind::INTEGER, nebula::type::Kind::INTEGER } },
+          { { nebula::type::Kind::SMALLINT, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT } },
+          { { nebula::type::Kind::DOUBLE, nebula::type::Kind::BIGINT, nebula::type::Kind::DOUBLE } },
+          { { nebula::type::Kind::DOUBLE, nebula::type::Kind::REAL, nebula::type::Kind::DOUBLE } },
+          { { nebula::type::Kind::INTEGER, nebula::type::Kind::REAL, nebula::type::Kind::REAL } } } };
+
+  VERIFY_ITEM_I(0)
+  VERIFY_ITEM_I(1)
+  VERIFY_ITEM_I(2)
+  VERIFY_ITEM_I(3)
+  VERIFY_ITEM_I(4)
+
+  // check if non compile time works
+  {
+    auto k1 = nebula::type::Kind::SMALLINT;
+    auto k2 = nebula::type::Kind::REAL;
+    nebula::type::Kind R = nebula::api::dsl::ArthmeticCombination::result(k1, k2);
+    LOG(INFO) << "result type: " << static_cast<size_t>(R);
+  }
+}
+
+#undef VERIFY_ITEM_I
+
 } // namespace test
 } // namespace api
 } // namespace nebula

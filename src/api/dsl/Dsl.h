@@ -17,7 +17,7 @@
 #pragma once
 
 #include "Expressions.h"
-#include "Utils.h"
+#include "api/udf/MyUdf.h"
 #include "common/Cursor.h"
 #include "execution/ExecutionPlan.h"
 #include "glog/logging.h"
@@ -54,7 +54,7 @@ public:
                     table_{ q.table_ },
                     filter_{ std::move(q.filter_) },
                     selects_{ std::move(q.selects_) },
-                    groupbys_{ std::move(q.groupbys_) },
+                    groups_{ std::move(q.groups_) },
                     sorts_{ std::move(q.sorts_) },
                     sortType_{ q.sortType_ },
                     limit_{ q.limit_ } {
@@ -85,7 +85,7 @@ public:
 
   // group by a list of columns
   Query& groupby(const std::vector<size_t>& groups) {
-    groupbys_ = groups;
+    groups_ = groups;
     return *this;
   }
 
@@ -100,6 +100,7 @@ public:
     return *this;
   }
 
+public:
   // compile the query into an execution plan
   std::unique_ptr<nebula::execution::ExecutionPlan> compile() const;
 
@@ -114,7 +115,7 @@ private:
   std::vector<std::shared_ptr<Expression>> selects_;
 
   // select index in select list
-  std::vector<size_t> groupbys_;
+  std::vector<size_t> groups_;
 
   // sorting information
   std::vector<size_t> sorts_;
@@ -145,11 +146,21 @@ static ColumnExpression col(const std::string& column) {
   return ColumnExpression(column);
 }
 
-// aggregation function - this should be extendable
+// TODO(cao) - we probably want to make this DSL api type agnostic
+// a UDF/UDAF return type can be runtime determined
+// by default, max works for int type
 template <typename T>
-static UDAFExpression<T> max(const T& expr) {
+static UDAFExpression max(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return UDAFExpression(expr, UDAF(UDAFRegistry::MAX));
+  return UDAFExpression(UDAF_REG::MAX, std::shared_ptr<Expression>(new T(expr)));
+}
+
+// TODO(cao) - we should move UDF creation out of DSL as it's logical concept
+// follow example of UDAF to be consistent
+template <typename T>
+static UDFExpression<nebula::type::Kind::BOOLEAN> reverse(const T& expr) {
+  return UDFExpression<nebula::type::Kind::BOOLEAN>(
+    std::make_shared<nebula::api::udf::Not>(std::shared_ptr<Expression>(new T(expr))));
 }
 
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>

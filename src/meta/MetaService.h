@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "NNode.h"
 #include "Table.h"
 #include "glog/logging.h"
 
@@ -33,6 +34,10 @@ class MetaService {
 public:
   virtual std::shared_ptr<Table> query(const std::string& name) {
     return nullptr;
+  }
+
+  virtual std::vector<NNode> queryNodes(const std::shared_ptr<Table> table, std::function<bool(const NNode&)> predicate) {
+    return {};
   }
 };
 } // namespace meta
