@@ -17,9 +17,9 @@
 #pragma once
 
 #include "Base.h"
-#include "api/UDF.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
+#include "execution/eval/UDF.h"
 #include "execution/eval/ValueEval.h"
 #include "glog/logging.h"
 #include "meta/Table.h"
@@ -172,9 +172,25 @@ public:
   }
 
 protected:
-  void saveKind(nebula::type::TreeNode node) {
-    kind_ = nebula::type::TypeBase::k(node);
-    LOG(INFO) << " KIND = " << nebula::type::TypeBase::kname(kind_);
+  static nebula::type::TreeNode typeCreate(nebula::type::Kind kind, std::string& alias) {
+#define TYPE_CREATE_NODE(KIND, TYPE)              \
+  case nebula::type::KIND: {                      \
+    return nebula::type::TYPE::createTree(alias); \
+  }
+
+    // no result should have the final type KIND
+    switch (kind) {
+      TYPE_CREATE_NODE(TINYINT, ByteType)
+      TYPE_CREATE_NODE(SMALLINT, ShortType)
+      TYPE_CREATE_NODE(INTEGER, IntType)
+      TYPE_CREATE_NODE(BIGINT, LongType)
+      TYPE_CREATE_NODE(REAL, FloatType)
+      TYPE_CREATE_NODE(DOUBLE, DoubleType)
+    default:
+      throw NException(fmt::format("not supported type {0} in arthmetic operations",
+                                   nebula::type::TypeBase::kname(kind)));
+    }
+#undef TYPE_CREATE_NODE
   }
 
   // only one alias can be updated if client calls "as" multiple times
@@ -218,7 +234,7 @@ public: // all operations
     N_ENSURE(v2 != nullptr, "op2 value eval is null");
 
     // forward to the correct version of value eval creation
-    return forward3<op>(kind(), op1_.kind(), op2_.kind(), std::move(v1), std::move(v2));
+    return arthmetic_forward()(op, op1_.kind(), op2_.kind(), std::move(v1), std::move(v2));
   }
 
   virtual std::vector<std::string> columnRefs() const override {
@@ -243,25 +259,7 @@ public: // all operations
     op2_.type(table);
 
     kind_ = nebula::api::dsl::ArthmeticCombination::result(op1_.kind(), op2_.kind());
-
-#define TYPE_CREATE_NODE(KIND, TYPE)               \
-  case nebula::type::KIND: {                       \
-    return nebula::type::TYPE::createTree(alias_); \
-  }
-
-    // no result should have the final type KIND
-    switch (kind_) {
-      TYPE_CREATE_NODE(TINYINT, ByteType)
-      TYPE_CREATE_NODE(SMALLINT, ShortType)
-      TYPE_CREATE_NODE(INTEGER, IntType)
-      TYPE_CREATE_NODE(BIGINT, LongType)
-      TYPE_CREATE_NODE(REAL, FloatType)
-      TYPE_CREATE_NODE(DOUBLE, DoubleType)
-    default:
-      throw NException(fmt::format("not supported type {0} in arthmetic operations",
-                                   nebula::type::TypeBase::kname(kind_)));
-    }
-#undef TYPE_CREATE_NODE
+    return typeCreate(kind_, alias_);
   }
 
 private:
@@ -299,7 +297,7 @@ public: // all logical operations
     N_ENSURE(v2 != nullptr, "op2 value eval is null");
 
     // forward to the correct version of value eval creation
-    return forward2<op>(op1_.kind(), op2_.kind(), std::move(v1), std::move(v2));
+    return logical_forward()(op, op1_.kind(), op2_.kind(), std::move(v1), std::move(v2));
   }
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
@@ -409,7 +407,7 @@ private:
 template <nebula::type::Kind KIND>
 class UDFExpression : public Expression {
 public:
-  UDFExpression(std::shared_ptr<UDF<KIND>> udf) : udf_{ udf } {}
+  UDFExpression(std::shared_ptr<nebula::execution::eval::UDF<KIND>> udf) : udf_{ udf } {}
   virtual ~UDFExpression() = default;
 
 public:
@@ -419,10 +417,8 @@ public:
 
   // convert to value eval
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    // TODO(cao) - moving udf out of expression is buggy
-    // depends on when we finalize the serialization story for expression and expression->eval
-    // this dynamic cast to common interface should be avoided too.
-    return nebula::execution::eval::udf(std::dynamic_pointer_cast<nebula::execution::eval::KindEval<KIND>>(udf_));
+    // TODO(cao): NEED to consolidate with UDAF
+    return nullptr;
   }
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
@@ -435,7 +431,7 @@ public:
   }
 
 protected:
-  std::shared_ptr<UDF<KIND>> udf_;
+  std::shared_ptr<nebula::execution::eval::UDF<KIND>> udf_;
 };
 
 // An UDAF expression - some UDAF knows its type regardless inner type
@@ -445,7 +441,7 @@ protected:
 // to allow customized UDAFs to be plugged in
 class UDAFExpression : public Expression {
 public:
-  UDAFExpression(UDAF_REG udaf, std::shared_ptr<Expression> inner)
+  UDAFExpression(nebula::execution::eval::UDAF_REG udaf, std::shared_ptr<Expression> inner)
     : udaf_{ udaf }, inner_{ inner } {
   }
   virtual ~UDAFExpression() = default;
@@ -460,7 +456,7 @@ public:
 
     // inner type is
     kind_ = inner_->kind();
-    return innerType;
+    return typeCreate(kind_, alias_);
   }
 
   inline virtual std::vector<std::string> columnRefs() const override {
@@ -471,7 +467,7 @@ public:
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override;
 
 private:
-  UDAF_REG udaf_;
+  nebula::execution::eval::UDAF_REG udaf_;
   std::shared_ptr<Expression> inner_;
 };
 

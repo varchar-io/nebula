@@ -72,7 +72,7 @@ static constexpr cstr lslash(cstr str) {
 #define N_ENSURE(e, ...)                                                                             \
   ({                                                                                                 \
     auto const& _tmp = (e);                                                                          \
-    auto msg = fmt::format(",", __VA_ARGS__);                                                        \
+    auto msg = fmt::format(__VA_ARGS__);                                                             \
     _tmp ? _tmp : throw nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, #e, msg); \
   })
 

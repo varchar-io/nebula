@@ -16,29 +16,28 @@
 
 #pragma once
 
-#include "NNode.h"
-#include "Table.h"
+#include "execution/ExecutionPlan.h"
 #include "glog/logging.h"
+#include "memory/Batch.h"
+#include "meta/NBlock.h"
+#include "meta/TestTable.h"
 
 /**
- * Define nebula table and system metadata 
- * which manages what data segments are loaded in memory for each table
- * This meta data can persist and sync with external DB system such as MYSQL or RocksDB
- * (A KV store is necessary for Nebula to manage all metadata)
- * 
- * (Also - Is this responsibility of zookeeper?)
+ * This node executor accepts one request of an execution plan.
+ * And starts to conduct block scan and partial agg operations and return results to the requester.
  */
 namespace nebula {
-namespace meta {
-class MetaService {
+namespace execution {
+namespace io {
+// load a NBlock into memory
+class BlockLoader {
 public:
-  virtual std::shared_ptr<Table> query(const std::string& name) {
-    return std::make_shared<Table>(name);
-  }
+  std::unique_ptr<nebula::memory::Batch> load(const nebula::meta::NBlock&);
 
-  virtual std::vector<NNode> queryNodes(const std::shared_ptr<Table> table, std::function<bool(const NNode&)> predicate) {
-    return {};
-  }
+private:
+  std::unique_ptr<nebula::memory::Batch> loadTestBlock();
 };
-} // namespace meta
+
+} // namespace io
+} // namespace execution
 } // namespace nebula

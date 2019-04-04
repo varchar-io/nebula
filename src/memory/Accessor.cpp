@@ -36,12 +36,12 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
 bool RowAccessor::isNull(const std::string& field) const {
   // check if field existing
   N_ENSURE(dnMap_.find(field) != dnMap_.end(), fmt::format("field {0} not found!", field));
-  return dnMap_[field]->isNull(current_);
+  return dnMap_.at(field)->isNull(current_);
 }
 
 #define READ_TYPE_BY_FIELD(TYPE, FUNC)                     \
   TYPE RowAccessor::FUNC(const std::string& field) const { \
-    return dnMap_[field]->read<TYPE>(current_);            \
+    return dnMap_.at(field)->read<TYPE>(current_);         \
   }
 
 READ_TYPE_BY_FIELD(bool, readBool)
@@ -60,7 +60,7 @@ READ_TYPE_BY_FIELD(std::string, readString)
 // we may want to maintain single instance and return a reference instead
 std::unique_ptr<ListData> RowAccessor::readList(const std::string& field) const {
   // initilize a list data with child data node with
-  auto listNode = dnMap_[field];
+  auto listNode = dnMap_.at(field);
 
   // list node has only one child - can be saved if list accessor is created once
   auto child = listNode->childAt<PDataNode>(0).value();

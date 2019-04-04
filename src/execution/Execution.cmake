@@ -3,12 +3,21 @@ set(NEBULA_EXEC NExec)
 # build nebula.exec library
 # target_include_directories(${NEBULA_EXEC} INTERFACE src/execution)
 add_library(${NEBULA_EXEC} STATIC 
-    ${NEBULA_SRC}/execution/ExecutionPlan.cpp    
-    ${NEBULA_SRC}/execution/op/Operator.cpp)
+    ${NEBULA_SRC}/execution/core/BlockExecutor.cpp    
+    ${NEBULA_SRC}/execution/core/NodeClient.cpp    
+    ${NEBULA_SRC}/execution/core/NodeExecutor.cpp    
+    ${NEBULA_SRC}/execution/core/ServerExecutor.cpp    
+    ${NEBULA_SRC}/execution/io/BlockLoader.cpp
+    ${NEBULA_SRC}/execution/op/Operator.cpp
+    ${NEBULA_SRC}/execution/BlockManager.cpp
+    ${NEBULA_SRC}/execution/ExecutionPlan.cpp)
 
 target_link_libraries(${NEBULA_EXEC}
     PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${NEBULA_COMMON}
+    PRIVATE ${NEBULA_META}
+    PRIVATE ${NEBULA_MEMORY}
     PRIVATE ${NEBULA_SURFACE})
 
 # include its own root directory for searching headers
@@ -39,11 +48,14 @@ target_link_libraries(ExecTests
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
     PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${ROARING_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_SURFACE}
+    PRIVATE ${NEBULA_META}
+    PRIVATE ${NEBULA_MEMORY}
     PRIVATE ${NEBULA_EXEC})
 
 # discover all gtests in this module

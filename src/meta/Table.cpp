@@ -15,7 +15,9 @@
  */
 
 #include "Table.h"
+#include "TestTable.h"
 #include "fmt/format.h"
+#include "type/Serde.h"
 
 /**
  * Nebula runtime / online meta data.
@@ -23,9 +25,16 @@
 namespace nebula {
 namespace meta {
 
+using nebula::type::TypeSerializer;
+
 void Table::loadTable() {
   // TODO(cao) - really build up meta service to servce this function
   // throw NebulaException("Meta service not implemented yet.");
+
+  // for integration testing only
+  if (name_ == TestTable::name()) {
+    schema_ = TypeSerializer::from(TestTable::schema());
+  }
 }
 } // namespace meta
 } // namespace nebula

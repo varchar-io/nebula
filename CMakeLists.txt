@@ -20,6 +20,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_VERBOSE_MAKEFILE on)
 
+# by default using clang, turn this line on to use gcc
+set(CMAKE_CXX_COMPILER /usr/bin/g++)
+
+# include basic boost library
+# set(Boost_USE_STATIC_LIBS        ON) # only find static libs
+# set(Boost_USE_MULTITHREADED      ON)
+# set(Boost_USE_STATIC_RUNTIME    OFF)
+# find_package(Boost 1.69.0)
+# if(Boost_FOUND)
+#   include_directories(${Boost_INCLUDE_DIRS})
+#   # depenency as ${Boost_LIBRARIES}
+# endif()
+
 # add a dependency of glog
 include(ext/Gflags_Ext.cmake)
 
@@ -39,11 +52,22 @@ include(ext/Gtest_Ext.cmake)
 include_directories(include ${GTEST_INCLUDE_DIRS})
 include_directories(include ${GMOCK_INCLUDE_DIRS})
 
-# folly was installed manually through brew install folly
-# we should consider add it as an external target
-# add include folder here after manual installation
-set(FollyDir /usr/local/Cellar/folly/2018.09.24.00_2)
-include_directories(include ${FollyDir}/include)
+# include pre-installed folly
+include(ext/Folly_Ext.cmake)
+
+# "brew install conan" first - it's great after migrating to conan
+# at least for folly - thanks conan, how to solve conflicts with existing lib like gflags?.
+# use conan to install the dependency
+# and use CONAN_PKG::folly to reference installed module
+# before that please run "conan install .." in build dir
+# or "conan install <path of conanfile.txt>"
+# include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+# conan_basic_setup(TARGETS)
+# # use folly library that managed by conan
+# set (FOLLY_LIBRARY  CONAN_PKG::folly)
+
+# below are modules in current project: their order matters which aligns with dependency order.
+# otherwise we may see linker error.
 
 # build common library
 include(src/common/Common.cmake)
@@ -54,11 +78,11 @@ include(src/surface/Surface.cmake)
 # build type library
 include(src/type/Type.cmake)
 
-# build memory library
-include(src/memory/Memory.cmake)
-
 # build meta module
 include(src/meta/Meta.cmake)
+
+# build memory library
+include(src/memory/Memory.cmake)
 
 # build meta module
 include(src/execution/Execution.cmake)
@@ -75,7 +99,11 @@ install(TARGETS MainTest DESTINATION bin)
 # include google test module and build tests executable
 enable_testing()
 add_executable(tests test/UseGtest.cpp)
-target_link_libraries(tests ${GTEST_LIBRARY} ${GMOCK_LIBRARY} ${GTEST_MAIN_LIBRARY})
+target_link_libraries(tests 
+    ${FOLLY_LIBRARY}
+    ${GTEST_LIBRARY} 
+    ${GMOCK_LIBRARY} 
+    ${GTEST_MAIN_LIBRARY})
 
 # so that "make test" will execute all tests 
 include(GoogleTest)

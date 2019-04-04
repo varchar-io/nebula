@@ -19,7 +19,8 @@
 #include "glog/logging.h"
 
 /**
- * Define expressions used in the nebula DSL.
+ * A cursor template that help iterating a container.
+ * (should we use std::iterator instead?)
  */
 namespace nebula {
 namespace common {
@@ -29,8 +30,60 @@ namespace common {
 template <typename T>
 class Cursor {
 public:
-  Cursor() {}
+  Cursor(size_t size) : index_{ 0 }, size_{ size } {}
   virtual ~Cursor() = default;
+
+  inline bool hasNext() const {
+    return index_ < size_;
+  }
+
+  // TODO(cao) - might be too expensive if there are many items/rows to iterate on
+  virtual const T& next() = 0;
+
+  inline size_t size() const {
+    return size_;
+  }
+
+protected:
+  size_t index_;
+  size_t size_;
 };
+
+template <typename T>
+class CompositeCursor : public Cursor<T> {
+  using CursorPtr = std::shared_ptr<Cursor<T>>;
+
+public:
+  CompositeCursor() : Cursor<T>(0), cursor_{ 0 }, innerIndex_{ 0 } {}
+  virtual ~CompositeCursor() = default;
+
+  void combine(CursorPtr another) {
+    this->size_ += another->size();
+    lists_.push_back(another);
+  }
+
+  // TODO(cao) - might be too expensive if there are many items/rows to iterate on
+  virtual const T& next() override {
+    // boundary check
+    {
+      auto& current = lists_[cursor_];
+      if (innerIndex_ == current->size()) {
+        ++cursor_;
+        innerIndex_ = 0;
+      }
+    }
+
+    // always increment for global check
+    this->index_++;
+    innerIndex_++;
+    return lists_[cursor_]->next();
+  }
+
+private:
+  size_t innerIndex_;
+  size_t cursor_;
+  std::vector<CursorPtr> lists_;
+};
+
 } // namespace common
 } // namespace nebula

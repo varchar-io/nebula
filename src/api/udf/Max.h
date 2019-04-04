@@ -18,10 +18,10 @@
 
 #include <algorithm>
 #include <array>
-#include "api/UDF.h"
 #include "api/dsl/Expressions.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
+#include "execution/eval/UDF.h"
 #include "glog/logging.h"
 #include "meta/Table.h"
 #include "type/Tree.h"
@@ -35,13 +35,17 @@ namespace udf {
 
 // UDAF - max
 template <nebula::type::Kind KIND>
-class Max : public UDAF<KIND> {
-  using NativeType = typename nebula::execution::eval::KindEval<KIND>::NativeType;
+class Max : public nebula::execution::eval::UDAF<KIND> {
+  using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
 
 public:
   Max(std::shared_ptr<nebula::api::dsl::Expression> expr)
-    : expr_{ expr->asEval() }, colrefs_{ std::move(expr->columnRefs()) }, count_{ 0 }, max_{} {
-  }
+    : expr_{ expr->asEval() },
+      colrefs_{ std::move(expr->columnRefs()) },
+      max_{},
+      nebula::execution::eval::UDAF<KIND>([](NativeType ov, NativeType nv) {
+        return std::max<NativeType>(ov, nv);
+      }) {}
   virtual ~Max() = default;
 
 public:
@@ -51,21 +55,8 @@ public:
   }
 
   // apply a row data to get result
-  virtual NativeType eval(const nebula::surface::RowData& row) override {
-    auto entry = expr_->eval<NativeType>(row);
-    LOG(INFO) << "GOT An ENTRY IN MAX: " << entry;
-    // TODO(cao) - use default comparator, can we introduce customized comparor
-    if (UNLIKELY(count_ == 0)) {
-      max_ = entry;
-    }
-
-    if (entry > max_) {
-      max_ = entry;
-    }
-
-    count_++;
-    // return max_ value so far
-    return max_;
+  virtual NativeType run(const nebula::surface::RowData& row) const override {
+    return expr_->eval<NativeType>(row);
   }
 
   // partial aggregate
@@ -83,9 +74,8 @@ private:
   std::vector<std::string> colrefs_;
 
   // max value seen so far with last count_ values
-  size_t count_;
   NativeType max_;
-}; // namespace udf
+};
 
 } // namespace udf
 } // namespace api

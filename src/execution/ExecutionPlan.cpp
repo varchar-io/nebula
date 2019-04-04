@@ -15,7 +15,10 @@
  */
 
 #include "ExecutionPlan.h"
+#include "common/Likely.h"
+#include "core/ServerExecutor.h"
 #include "fmt/format.h"
+#include "type/Serde.h"
 
 /**
  * Nebula execution.
@@ -26,21 +29,93 @@ namespace execution {
 using nebula::common::Cursor;
 using nebula::meta::NNode;
 using nebula::surface::RowData;
+using nebula::type::TypeSerializer;
 
 ExecutionPlan::ExecutionPlan(
-  std::unique_ptr<Phase> plan,
+  std::unique_ptr<ExecutionPhase> plan,
   std::vector<NNode> nodes)
-  : plan_{ std::move(plan) },
+  : uuid_{ "<uuid>" },
+    plan_{ std::move(plan) },
     nodes_{ std::move(nodes) } {
 }
 
 void ExecutionPlan::display() const {
-  //TODO(cao) - display executuin plan details in different phases
-  LOG(INFO) << "Display current executin plan";
+  LOG(INFO) << "Query will be executed in nodes: " << nodes_.size();
+
+  // display plan phases
+  plan_->display();
 }
 
-Cursor<RowData&> ExecutionPlan::execute(const std::string& server) {
-  throw NException("not impl");
+const ExecutionPhase& ExecutionPlan::fetch(PhaseType type) const {
+  // start from plan_ and along up stream to match phase type
+  const auto& l1 = *plan_;
+  if (l1.type() == type) {
+    return l1;
+  }
+
+  const auto& l2 = l1.upstream();
+  if (l2.type() == type) {
+    return l2;
+  }
+
+  const auto& l3 = l2.upstream();
+  if (l3.type() == type) {
+    return l3;
+  }
+
+  throw NException("Phase not found in plan.");
+}
+
+template <>
+const BlockPhase& ExecutionPlan::fetch<PhaseType::COMPUTE>() const {
+  return dynamic_cast<const BlockPhase&>(fetch(PhaseType::COMPUTE));
+}
+
+template <>
+const NodePhase& ExecutionPlan::fetch<PhaseType::PARTIAL>() const {
+  return dynamic_cast<const NodePhase&>(fetch(PhaseType::PARTIAL));
+}
+
+template <>
+const FinalPhase& ExecutionPlan::fetch<PhaseType::GLOBAL>() const {
+  return dynamic_cast<const FinalPhase&>(fetch(PhaseType::GLOBAL));
+}
+
+void Phase<PhaseType::COMPUTE>::display() const {
+  // display current phase type
+  LOG(INFO) << "PHASE: " << PhaseTraits<PhaseType::COMPUTE>::name;
+  LOG(INFO) << indent4 << "INPUT: " << TypeSerializer::to(input_);
+  LOG(INFO) << indent4 << "OUTPUT: " << TypeSerializer::to(outputSchema());
+  LOG(INFO) << indent4 << "SCAN: " << table_;
+  LOG(INFO) << indent4 << "FILTER: " << bliteral(filter_ != nullptr);
+  const auto hasAgg = (keys_.size() < fields_.size());
+  LOG(INFO) << indent4 << "GROUP: " << bliteral(hasAgg);
+  if (LIKELY(hasAgg)) {
+    LOG(INFO) << indent4 << indent4 << "KEYS: " << join(keys_);
+  }
+}
+
+void Phase<PhaseType::PARTIAL>::display() const {
+  upstream_->display();
+
+  LOG(INFO) << "PHASE: " << PhaseTraits<PhaseType::PARTIAL>::name;
+  LOG(INFO) << indent4 << "INPUT: " << TypeSerializer::to(input_);
+  LOG(INFO) << indent4 << "OUTPUT: " << TypeSerializer::to(outputSchema());
+  LOG(INFO) << indent4 << "AGG: partial";
+}
+
+void Phase<PhaseType::GLOBAL>::display() const {
+  upstream_->display();
+
+  LOG(INFO) << "PHASE: " << PhaseTraits<PhaseType::GLOBAL>::name;
+  LOG(INFO) << indent4 << "INPUT: " << TypeSerializer::to(input_);
+  LOG(INFO) << indent4 << "OUTPUT: " << TypeSerializer::to(outputSchema());
+  LOG(INFO) << indent4 << "AGG: global";
+  const auto hasSort = sorts_.size() > 0;
+  LOG(INFO) << indent4 << "SORT : " << bliteral(hasSort);
+  if (LIKELY(hasSort)) {
+    LOG(INFO) << indent4 << indent4 << "KEYS: " << join(sorts_);
+  }
 }
 
 } // namespace execution

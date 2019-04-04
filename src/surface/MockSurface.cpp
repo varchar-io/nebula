@@ -68,6 +68,49 @@ std::unique_ptr<MapData> MockRowData::readMap(const std::string& field) const {
   return std::make_unique<MockMapData>(2, seed_);
 }
 
+//------------ Mock Row
+// All intrefaces - string type has RVO, copy elision optimization
+bool MockRowData::isNull(IndexType index) const {
+  // 10% nulls
+  return rand_() < 0.1;
+}
+
+bool MockRowData::readBool(IndexType index) const {
+  // half of trues
+  return rand_() < 0.5;
+}
+int8_t MockRowData::readByte(IndexType index) const {
+  return std::numeric_limits<int8_t>::max() * rand_();
+}
+int16_t MockRowData::readShort(IndexType index) const {
+  return std::numeric_limits<int16_t>::max() * rand_();
+}
+int32_t MockRowData::readInt(IndexType index) const {
+  return std::numeric_limits<int32_t>::max() * rand_();
+}
+int64_t MockRowData::readLong(IndexType index) const {
+  return std::numeric_limits<int64_t>::max() * rand_();
+}
+float MockRowData::readFloat(IndexType index) const {
+  return rand_();
+}
+double MockRowData::readDouble(IndexType index) const {
+  return rand_();
+}
+std::string MockRowData::readString(IndexType index) const {
+  return std::string(rand_() * 10, 'N');
+}
+
+// compound types
+std::unique_ptr<ListData> MockRowData::readList(IndexType index) const {
+  // copy elision or seg fault?
+  return std::make_unique<MockListData>(4, seed_);
+}
+
+std::unique_ptr<MapData> MockRowData::readMap(IndexType index) const {
+  return std::make_unique<MockMapData>(2, seed_);
+}
+
 //------------ Mock List
 bool MockListData::isNull(IndexType index) const {
   return rand_() < 0.1;

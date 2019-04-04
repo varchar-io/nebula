@@ -18,12 +18,15 @@
 #include "fmt/format.h"
 #include "glog/logging.h"
 #include "meta/Table.h"
+#include "meta/TestTable.h"
 
 namespace nebula {
 namespace meta {
 namespace test {
 TEST(MetaTest, TestTable) {
   LOG(INFO) << "Table provides table logic data and physical data";
+  LOG(INFO) << "Test table name: " << TestTable::name();
+  LOG(INFO) << "Test table schema: " << TestTable::schema();
 }
 } // namespace test
 } // namespace meta

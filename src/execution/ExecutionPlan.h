@@ -18,6 +18,7 @@
 
 #include "common/Cursor.h"
 #include "eval/ValueEval.h"
+#include "folly/FBString.h"
 #include "glog/logging.h"
 #include "meta/NNode.h"
 #include "surface/DataSurface.h"
@@ -50,34 +51,84 @@ enum class PhaseType {
   GLOBAL
 };
 
-class Phase;
+template <PhaseType PHASE>
+struct PhaseTraits {};
+
+class ExecutionPhase;
+
+// phase plan
+template <PhaseType PT>
+class Phase {};
 
 // An execution plan that can be serialized and passed around
 // protobuf?
 class ExecutionPlan {
 public:
-  ExecutionPlan(std::unique_ptr<Phase> plan, std::vector<nebula::meta::NNode> nodes);
+  ExecutionPlan(std::unique_ptr<ExecutionPhase> plan, std::vector<nebula::meta::NNode> nodes);
   virtual ~ExecutionPlan() = default;
 
 public:
   void display() const;
-  nebula::common::Cursor<nebula::surface::RowData&> execute(const std::string& server);
+
+  template <PhaseType PT>
+  const Phase<PT>& fetch() const;
+
+  const std::vector<nebula::meta::NNode>& getNodes() const {
+    return nodes_;
+  }
+
+  const folly::fbstring& id() const {
+    return uuid_;
+  }
 
 private:
-  std::unique_ptr<Phase> plan_;
+  const ExecutionPhase& fetch(PhaseType type) const;
+
+private:
+  const folly::fbstring uuid_;
+  std::unique_ptr<ExecutionPhase> plan_;
   std::vector<nebula::meta::NNode> nodes_;
 };
 
-// phase plan
-class Phase {
+// base execution phase definition - templated lambda - looking for C++ 20?
+static constexpr auto indent4 = "    ";
+static constexpr auto bliteral = [](bool lv) { return lv ? "YES" : "NO"; };
+static constexpr auto join = [](const std::vector<size_t>& vector) {
+  return std::accumulate(vector.begin(), vector.end(), std::string(""), [](const std::string& s, size_t x) {
+    return fmt::format("{0}, {1}", s, x);
+  });
+};
+
+class ExecutionPhase {
 public:
-  Phase(PhaseType type, const nebula::type::Schema input) : type_{ type }, schema_{ input } {
+  ExecutionPhase(nebula::type::Schema input, std::unique_ptr<ExecutionPhase> upstream)
+    : input_{ input }, upstream_{ std::move(upstream) } {
+    N_ENSURE_NOT_NULL(input_, "input schema can't be null");
+  }
+  virtual ~ExecutionPhase() = default;
+
+  virtual nebula::type::Schema outputSchema() const {
+    return input_;
   }
 
-  Phase(PhaseType type, std::unique_ptr<Phase> upstream)
-    : type_{ type }, upstream_{ std::move(upstream) }, schema_{ upstream_->outputSchema() } {
-    // input schema is upstream's output schema
+  inline const ExecutionPhase& upstream() const {
+    return *upstream_;
   }
+
+  virtual void display() const = 0;
+
+  virtual PhaseType type() const = 0;
+
+protected:
+  nebula::type::Schema input_;
+  std::unique_ptr<ExecutionPhase> upstream_;
+};
+
+template <>
+class Phase<PhaseType::COMPUTE> : public ExecutionPhase {
+public:
+  Phase(const nebula::type::Schema input, const nebula::type::Schema output)
+    : ExecutionPhase(input, nullptr), output_{ output } {}
   virtual ~Phase() = default;
 
 public:
@@ -101,6 +152,65 @@ public:
     return *this;
   }
 
+  virtual nebula::type::Schema outputSchema() const override {
+    return output_;
+  }
+
+  virtual void display() const override;
+
+  inline virtual PhaseType type() const override {
+    return PhaseType::COMPUTE;
+  }
+
+public:
+  inline const std::string& table() const {
+    return table_;
+  }
+
+  inline const std::vector<size_t>& keys() const {
+    return keys_;
+  }
+
+  inline const std::vector<std::unique_ptr<eval::ValueEval>>& fields() const {
+    return fields_;
+  }
+
+private:
+  std::string table_;
+  std::vector<std::unique_ptr<eval::ValueEval>> fields_;
+  std::unique_ptr<eval::ValueEval> filter_;
+  std::vector<size_t> keys_;
+  nebula::type::Schema output_;
+};
+
+template <>
+class Phase<PhaseType::PARTIAL> : public ExecutionPhase {
+public:
+  Phase(std::unique_ptr<ExecutionPhase> upstream)
+    : ExecutionPhase(upstream->outputSchema(), std::move(upstream)) {}
+
+  virtual ~Phase() = default;
+
+public:
+  Phase& agg() {
+    return *this;
+  }
+
+  virtual void display() const override;
+  inline virtual PhaseType type() const override {
+    return PhaseType::PARTIAL;
+  }
+};
+
+template <>
+class Phase<PhaseType::GLOBAL> : public ExecutionPhase {
+public:
+  Phase(std::unique_ptr<ExecutionPhase> upstream)
+    : ExecutionPhase(upstream->outputSchema(), std::move(upstream)) {}
+
+  virtual ~Phase() = default;
+
+public:
   Phase& agg() {
     return *this;
   }
@@ -115,21 +225,34 @@ public:
     return *this;
   }
 
-public:
-  nebula::type::Schema outputSchema() const {
-    return nullptr;
+  virtual void display() const override;
+
+  inline virtual PhaseType type() const override {
+    return PhaseType::GLOBAL;
   }
 
 private:
-  PhaseType type_;
-  std::unique_ptr<Phase> upstream_;
-  std::vector<std::unique_ptr<eval::ValueEval>> fields_;
-  std::unique_ptr<eval::ValueEval> filter_;
-  std::vector<size_t> keys_;
   std::vector<size_t> sorts_;
-  std::string table_;
   size_t limit_;
-  nebula::type::Schema schema_;
+};
+
+using BlockPhase = Phase<PhaseType::COMPUTE>;
+using NodePhase = Phase<PhaseType::PARTIAL>;
+using FinalPhase = Phase<PhaseType::GLOBAL>;
+
+template <>
+struct PhaseTraits<PhaseType::GLOBAL> {
+  static constexpr auto name = "GLOBAL";
+};
+
+template <>
+struct PhaseTraits<PhaseType::PARTIAL> {
+  static constexpr auto name = "PARTIAL";
+};
+
+template <>
+struct PhaseTraits<PhaseType::COMPUTE> {
+  static constexpr auto name = "COMPUTE";
 };
 
 } // namespace execution

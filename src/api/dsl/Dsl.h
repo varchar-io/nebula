@@ -152,7 +152,7 @@ static ColumnExpression col(const std::string& column) {
 template <typename T>
 static UDAFExpression max(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return UDAFExpression(UDAF_REG::MAX, std::shared_ptr<Expression>(new T(expr)));
+  return UDAFExpression(nebula::execution::eval::UDAF_REG::MAX, std::shared_ptr<Expression>(new T(expr)));
 }
 
 // TODO(cao) - we should move UDF creation out of DSL as it's logical concept

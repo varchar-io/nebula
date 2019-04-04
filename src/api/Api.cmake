@@ -3,10 +3,12 @@ set(NEBULA_API NApi)
 # build nebula.api library
 # target_include_directories(${NEBULA_API} INTERFACE src/api)
 add_library(${NEBULA_API} STATIC 
+    ${NEBULA_SRC}/api/dsl/Base.cpp
     ${NEBULA_SRC}/api/dsl/Dsl.cpp
     ${NEBULA_SRC}/api/dsl/Expressions.cpp)
 target_link_libraries(${NEBULA_API}
     PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${NEBULA_TYPE}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_SURFACE}
@@ -49,6 +51,7 @@ target_link_libraries(ApiTests
     PRIVATE ${ROARING_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${NEBULA_TYPE}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_SURFACE}

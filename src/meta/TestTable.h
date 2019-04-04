@@ -16,29 +16,20 @@
 
 #pragma once
 
-#include "NNode.h"
-#include "Table.h"
-#include "glog/logging.h"
+#include <string>
 
 /**
- * Define nebula table and system metadata 
- * which manages what data segments are loaded in memory for each table
- * This meta data can persist and sync with external DB system such as MYSQL or RocksDB
- * (A KV store is necessary for Nebula to manage all metadata)
- * 
- * (Also - Is this responsibility of zookeeper?)
+ * Nebula test table used for integration test.
+ * Used to turn on/off test hooks.
  */
 namespace nebula {
 namespace meta {
-class MetaService {
-public:
-  virtual std::shared_ptr<Table> query(const std::string& name) {
-    return std::make_shared<Table>(name);
-  }
 
-  virtual std::vector<NNode> queryNodes(const std::shared_ptr<Table> table, std::function<bool(const NNode&)> predicate) {
-    return {};
-  }
+class TestTable {
+public:
+  static const std::string& name();
+  static const std::string& schema();
 };
+
 } // namespace meta
 } // namespace nebula

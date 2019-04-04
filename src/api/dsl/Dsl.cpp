@@ -24,9 +24,10 @@ namespace nebula {
 namespace api {
 namespace dsl {
 
+using nebula::execution::BlockPhase;
 using nebula::execution::ExecutionPlan;
-using nebula::execution::Phase;
-using nebula::execution::PhaseType;
+using nebula::execution::FinalPhase;
+using nebula::execution::NodePhase;
 using nebula::execution::eval::ValueEval;
 using nebula::meta::NNode;
 using nebula::surface::RowData;
@@ -97,16 +98,16 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   std::vector<std::unique_ptr<ValueEval>> fields;
   std::transform(selects_.begin(), selects_.end(), std::back_inserter(fields),
                  [](std::shared_ptr<Expression> expr) -> std::unique_ptr<ValueEval> { return expr->asEval(); });
-  auto block = std::make_unique<Phase>(PhaseType::COMPUTE, schema);
+  auto block = std::make_unique<BlockPhase>(schema, output);
   filter_->type(*table_);
   (*block).scan(table_->name()).filter(filter_->asEval()).keys(groups_).compute(std::move(fields));
 
   // partial aggrgation, keys and agg methods
-  auto node = std::make_unique<Phase>(PhaseType::PARTIAL, std::move(block));
+  auto node = std::make_unique<NodePhase>(std::move(block));
   (*node).agg();
 
   // global aggregation, keys and agg methods
-  auto controller = std::make_unique<Phase>(PhaseType::GLOBAL, std::move(node));
+  auto controller = std::make_unique<FinalPhase>(std::move(node));
   (*controller).agg().sort(sorts_).limit(limit_);
 
   //1. get total nodes that we will run the query, filter_ will help prune results

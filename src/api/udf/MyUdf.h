@@ -18,9 +18,9 @@
 
 #include <algorithm>
 #include <array>
-#include "api/UDF.h"
 #include "api/dsl/Expressions.h"
 #include "common/Errors.h"
+#include "execution/eval/UDF.h"
 #include "glog/logging.h"
 #include "meta/Table.h"
 #include "type/Tree.h"
@@ -32,9 +32,11 @@ namespace nebula {
 namespace api {
 namespace udf {
 // Used for demo purpose - revert the bool value
-class Not : public UDF<nebula::type::Kind::BOOLEAN> {
+class Not : public nebula::execution::eval::UDF<nebula::type::Kind::BOOLEAN> {
 public:
-  Not(std::shared_ptr<nebula::api::dsl::Expression> expr) : expr_{ expr->asEval() }, colrefs_{ std::move(expr->columnRefs()) } {
+  using NativeType = nebula::type::TypeTraits<nebula::type::Kind::BOOLEAN>::CppType;
+  Not(std::shared_ptr<nebula::api::dsl::Expression> expr)
+    : expr_{ expr->asEval() }, colrefs_{ std::move(expr->columnRefs()) } {
   }
   virtual ~Not() = default;
 
@@ -45,7 +47,7 @@ public:
   }
 
   // apply a row data to get result
-  virtual NativeType eval(const nebula::surface::RowData& row) override {
+  virtual NativeType run(const nebula::surface::RowData& row) const override {
     auto origin = (expr_->eval<bool>(row));
     LOG(INFO) << "origin=" << origin << ", reverse=" << !origin;
     return !origin;

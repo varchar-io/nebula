@@ -17,8 +17,8 @@
 #pragma once
 
 #include "Max.h"
-#include "api/UDF.h"
 #include "api/dsl/Expressions.h"
+#include "execution/eval/UDF.h"
 #include "execution/eval/ValueEval.h"
 #include "type/Type.h"
 
@@ -32,11 +32,11 @@ namespace udf {
 class UDFFactory {
 public:
   template <nebula::type::Kind KIND>
-  static typename std::shared_ptr<nebula::execution::eval::KindEval<KIND>>
-    createUDAF(UDAF_REG reg, std::shared_ptr<nebula::api::dsl::Expression> expr) {
+  static typename std::unique_ptr<nebula::execution::eval::UDF<KIND>>
+    createUDAF(nebula::execution::eval::UDAF_REG reg, std::shared_ptr<nebula::api::dsl::Expression> expr) {
     switch (reg) {
-    case UDAF_REG::MAX: {
-      return std::shared_ptr<nebula::execution::eval::KindEval<KIND>>(new Max<KIND>(expr));
+    case nebula::execution::eval::UDAF_REG::MAX: {
+      return std::unique_ptr<nebula::execution::eval::UDF<KIND>>(new Max<KIND>(expr));
     }
     default:
       throw NException("UDAF is not registered");

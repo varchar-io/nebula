@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include "common/Cursor.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
 
@@ -36,6 +37,9 @@ using IndexType = size_t;
 class RowData;
 class ListData;
 class MapData;
+
+// define a row cursor type, using pointer to allow poly
+using RowCursor = typename std::shared_ptr<nebula::common::Cursor<RowData>>;
 
 // (TODO) CRTP - avoid virtual methods?
 class RowData {
@@ -60,8 +64,28 @@ public:
   // compound types
   virtual std::unique_ptr<ListData> readList(const std::string& field) const = 0;
   virtual std::unique_ptr<MapData> readMap(const std::string& field) const = 0;
-  // NOT SUPPORT struct of struct type for now
-  // virtual RowData readStruct(const std::string& field) const = 0;
+// NOT SUPPORT struct of struct type for now
+// virtual RowData readStruct(const std::string& field) const = 0;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////
+#define NOT_IMPL_FUNC(TYPE, FUNC)                                 \
+  virtual TYPE FUNC(IndexType index) const {                      \
+    throw NException(#FUNC " (IndexType index) not implemented"); \
+  }
+
+  NOT_IMPL_FUNC(bool, isNull)
+  NOT_IMPL_FUNC(bool, readBool)
+  NOT_IMPL_FUNC(int8_t, readByte)
+  NOT_IMPL_FUNC(int16_t, readShort)
+  NOT_IMPL_FUNC(int32_t, readInt)
+  NOT_IMPL_FUNC(int64_t, readLong)
+  NOT_IMPL_FUNC(float, readFloat)
+  NOT_IMPL_FUNC(double, readDouble)
+  NOT_IMPL_FUNC(std::string, readString)
+  NOT_IMPL_FUNC(std::unique_ptr<ListData>, readList)
+  NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
+
+#undef NOT_IMPL_FUNC
 };
 
 class ListData {
@@ -135,8 +159,35 @@ public:
   std::unique_ptr<ListData> readList(const std::string& field) const override;
   std::unique_ptr<MapData> readMap(const std::string& field) const override;
 
+  bool isNull(IndexType index) const override;
+  bool readBool(IndexType index) const override;
+  int8_t readByte(IndexType index) const override;
+  int16_t readShort(IndexType index) const override;
+  int32_t readInt(IndexType index) const override;
+  int64_t readLong(IndexType index) const override;
+  float readFloat(IndexType index) const override;
+  double readDouble(IndexType index) const override;
+  std::string readString(IndexType index) const override;
+
+  // compound types
+  std::unique_ptr<ListData> readList(IndexType index) const override;
+  std::unique_ptr<MapData> readMap(IndexType index) const override;
+
 private:
   size_t seed_;
+};
+
+class MockRowCursor : public nebula::common::Cursor<RowData> {
+public:
+  MockRowCursor() : Cursor<RowData>(8) {
+  }
+
+  virtual const RowData& next() {
+    return rowData_;
+  }
+
+private:
+  MockRowData rowData_;
 };
 
 class MockListData : public ListData, protected MockData {

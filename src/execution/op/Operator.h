@@ -28,10 +28,11 @@
  */
 namespace nebula {
 namespace execution {
-namespace execution {
+namespace op {
 
 // operator to do compute unit
 class Operator {};
-} // namespace execution
+
+} // namespace op
 } // namespace execution
 } // namespace nebula

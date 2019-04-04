@@ -62,10 +62,7 @@ public:
       data_{ nebula::memory::serde::TypeDataFactory::createData(type.k()) },
       count_{ 0 },
       rawSize_{ 0 },
-      nebula::type::Tree<DataNode*>(this, children) {
-    LOG(INFO) << fmt::format("Create data node [N={0}, T={1}] with children {2}",
-                             type.name(), (int)type.k(), children.size());
-  }
+      nebula::type::Tree<DataNode*>(this, children) {}
 
   virtual ~DataNode() = default;
 

@@ -31,27 +31,16 @@ namespace eval {
 template <typename T>
 class TypeValueEval;
 
-// a pure interface to evalue value based on type kind
-template <nebula::type::Kind KIND>
-class KindEval {
-public:
-  using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
-  virtual ~KindEval() = default;
-  virtual NativeType eval(const nebula::surface::RowData&) = 0;
-};
-
 // this is a tree, with each node to be either macro/value or operator
 // this is translated from expression.
 struct ValueEval {
-  ValueEval(std::vector<std::unique_ptr<ValueEval>> children) : children_{ std::move(children) } {}
+  ValueEval() = default;
   virtual ~ValueEval() = default;
 
   template <typename T>
   T eval(const nebula::surface::RowData& row) {
-    return static_cast<TypeValueEval<T>*>(this)->eval(row, children_);
+    return static_cast<TypeValueEval<T>*>(this)->eval(row);
   }
-
-  std::vector<std::unique_ptr<ValueEval>> children_;
 };
 
 // two utilities
@@ -66,15 +55,16 @@ struct TypeValueEval : public ValueEval {
   TypeValueEval(
     const OPT& op,
     std::vector<std::unique_ptr<ValueEval>> children)
-    : op_{ op }, ValueEval(std::move(children)) {}
+    : op_{ op }, children_{ std::move(children) } {}
 
   virtual ~TypeValueEval() = default;
 
-  inline T eval(const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>& children) {
-    return op_(row, children);
+  inline T eval(const nebula::surface::RowData& row) {
+    return op_(row, this->children_);
   }
 
   OPT op_;
+  std::vector<std::unique_ptr<ValueEval>> children_;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -148,7 +138,6 @@ static std::unique_ptr<ValueEval> column(const std::string& name) {
                              auto v1 = children[0]->eval<T1>(row);                                       \
                              auto v2 = children[1]->eval<T2>(row);                                       \
                              auto v3 = v1 SIGN v2;                                                       \
-                             LOG(INFO) << "v1=" << v1 << ", v2=" << v2 << ", v3=" << v3;                 \
                              return v3;                                                                  \
                            }),                                                                           \
                            std::move(branch)));                                                          \
@@ -188,17 +177,6 @@ COMPARE_VE(band, &&)
 COMPARE_VE(bor, ||)
 
 #undef COMPARE_VE
-
-template <nebula::type::Kind KIND>
-static std::unique_ptr<ValueEval> udf(std::shared_ptr<KindEval<KIND>> udf) {
-  return std::unique_ptr<ValueEval>(
-    new TypeValueEval<typename KindEval<KIND>::NativeType>(
-      [udf](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>& children) -> decltype(auto) {
-        // call the UDF to evalue the result
-        return udf->eval(row);
-      },
-      {}));
-}
 
 } // namespace eval
 } // namespace execution

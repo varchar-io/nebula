@@ -125,8 +125,11 @@ public:
     return size;
   }
 
+  // NOTE: (found a g++ bug)
+  // It declares the method is not mark as const if we change the signature as
+  // auto read(size_t position) -> typename std::enable_if<std::is_scalar<T>::value, T&>::type const {
   template <typename T>
-  auto read(size_t position) -> typename std::enable_if<std::is_scalar<T>::value, T&>::type const {
+  typename std::enable_if<std::is_scalar<T>::value, T&>::type read(size_t position) const {
     constexpr size_t size = sizeof(T);
     N_ENSURE(position + size <= capacity(), "invalid position to read data");
 
@@ -134,7 +137,7 @@ public:
   }
 
   std::string read(size_t position, size_t length) const {
-    N_ENSURE(position + length <= capacity(), "invalid position to read data");
+    N_ENSURE(position + length <= capacity(), "invalid position ({0}, {1}) to read data", position, length);
 
     // build data using copy elision
     return std::string(this->ptr_ + position, length);

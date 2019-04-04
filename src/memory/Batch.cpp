@@ -34,9 +34,6 @@ Batch::Batch(const Schema& schema)
     auto f = dynamic_cast<TypeBase*>(schema_->childAt(i).get());
     fields_[f->name()] = data_->childAt<PDataNode>(i).value();
   }
-
-  // create an accessor for row reading
-  cursor_ = std::make_unique<RowAccessor>(*this);
 }
 
 // add a row into current batch
@@ -53,8 +50,8 @@ size_t Batch::add(const RowData& row) {
 }
 
 // random access to a row - may require internal seek
-RowData& Batch::row(size_t rowId) {
-  return cursor_->seek(rowId);
+std::unique_ptr<RowAccessor> Batch::makeAccessor() const {
+  return std::make_unique<RowAccessor>(const_cast<const Batch&>(*this));
 }
 
 std::string Batch::state() const {

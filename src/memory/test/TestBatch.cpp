@@ -22,7 +22,9 @@
 #include "memory/Batch.h"
 #include "memory/DataNode.h"
 #include "memory/FlatRow.h"
+#include "meta/TestTable.h"
 #include "surface/DataSurface.h"
+#include "surface/StaticData.h"
 #include "type/Serde.h"
 
 namespace nebula {
@@ -34,93 +36,6 @@ using nebula::surface::IndexType;
 using nebula::surface::MockRowData;
 using nebula::type::ROOT;
 using nebula::type::TypeSerializer;
-
-#define NOT_IMPL_FUNC(TYPE, NAME)             \
-  TYPE NAME(IndexType index) const override { \
-    throw NException("x");                    \
-  }
-
-class StaticList : public ListData {
-public:
-  StaticList(std::vector<std::string> data) : ListData(data.size()), data_{ std::move(data) } {
-  }
-
-  bool isNull(IndexType index) const override {
-    return false;
-  }
-
-  std::string readString(IndexType index) const override {
-    return data_.at(index);
-  }
-
-  NOT_IMPL_FUNC(bool, readBool)
-  NOT_IMPL_FUNC(int8_t, readByte)
-  NOT_IMPL_FUNC(int16_t, readShort)
-  NOT_IMPL_FUNC(int32_t, readInt)
-  NOT_IMPL_FUNC(int64_t, readLong)
-  NOT_IMPL_FUNC(float, readFloat)
-  NOT_IMPL_FUNC(double, readDouble)
-
-private:
-  std::vector<std::string> data_;
-};
-
-#undef NOT_IMPL_FUNC
-
-#define NOT_IMPL_FUNC(TYPE, NAME)                      \
-  TYPE NAME(const std::string& field) const override { \
-    throw NException("x");                             \
-  }
-
-// Mock static row for schema "ROW<id:int, event:string, items:list<string>, flag:bool>"
-class StaticRow : public RowData {
-public:
-  StaticRow(int i, std::string s, std::unique_ptr<ListData> list, bool f)
-    : id_{ i }, event_{ std::move(s) }, flag_{ f } {
-    if (list != nullptr) {
-      items_.reserve(list->getItems());
-      for (auto k = 0; k < items_.capacity(); ++k) {
-        items_.push_back(list->readString(k));
-      }
-    }
-  }
-
-  // All intrefaces - string type has RVO, copy elision optimization
-  bool isNull(const std::string& field) const override {
-    return field == "items" && items_.size() == 0;
-  }
-
-  bool readBool(const std::string& field) const override {
-    return flag_;
-  }
-
-  int32_t readInt(const std::string& field) const override {
-    return id_;
-  }
-
-  std::string readString(const std::string& field) const override {
-    return event_;
-  }
-
-  std::unique_ptr<ListData> readList(const std::string& field) const override {
-    return items_.size() == 0 ? nullptr : std::make_unique<StaticList>(items_);
-  }
-
-  NOT_IMPL_FUNC(int8_t, readByte)
-  NOT_IMPL_FUNC(int16_t, readShort)
-  NOT_IMPL_FUNC(int64_t, readLong)
-  NOT_IMPL_FUNC(float, readFloat)
-  NOT_IMPL_FUNC(double, readDouble)
-  NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
-
-private:
-  int id_;
-  std::string event_;
-  std::vector<std::string> items_;
-  bool flag_;
-};
-
-#undef NOT_IMPL_FUNC
 
 TEST(BatchTest, TestBatch) {
   auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
@@ -165,7 +80,7 @@ TEST(BatchTest, TestBatch) {
 
 TEST(BatchTest, TestBatchRead) {
   // need some stable data set to write out and can be verified
-  auto schema = TypeSerializer::from("ROW<id:int, event:string, items:list<string>, flag:bool>");
+  auto schema = TypeSerializer::from(nebula::meta::TestTable::schema());
   Batch batch(schema);
 
   // add 10 rows
@@ -173,7 +88,7 @@ TEST(BatchTest, TestBatchRead) {
 
   // use the specified seed so taht the data can repeat
   auto seed = Evidence::unix_timestamp();
-  std::vector<StaticRow> rows;
+  std::vector<nebula::surface::StaticRow> rows;
   MockRowData row;
   // fill rows
   for (auto i = 0; i < count; ++i) {
@@ -214,9 +129,10 @@ TEST(BatchTest, TestBatchRead) {
   // do read verification
   {
     LOG(INFO) << "ROW 0: " << line(rows[0]);
+    auto accessor = batch.makeAccessor();
     for (auto i = 0; i < count; ++i) {
       const auto& r1 = rows[i];
-      const auto& r2 = batch.row(i);
+      const auto& r2 = accessor->seek(i);
       // LOG(INFO) << "r1: " << line(r1);
       // LOG(INFO) << "r2: " << line(r2);
       EXPECT_EQ(line(r1), line(r2));

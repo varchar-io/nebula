@@ -3,7 +3,8 @@ set(NEBULA_META NMeta)
 # build nebula.api library
 # target_include_directories(${NEBULA_META} INTERFACE src/meta)
 add_library(${NEBULA_META} STATIC 
-    ${NEBULA_SRC}/meta/Table.cpp)
+    ${NEBULA_SRC}/meta/Table.cpp
+    ${NEBULA_SRC}/meta/TestTable.cpp)
 target_link_libraries(${NEBULA_META}
     PRIVATE ${FMT_LIBRARY}
     PRIVATE ${NEBULA_TYPE}

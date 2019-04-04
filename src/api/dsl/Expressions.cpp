@@ -23,7 +23,6 @@ namespace dsl {
 
 using nebula::api::udf::UDFFactory;
 using nebula::execution::eval::column;
-using nebula::execution::eval::udf;
 using nebula::execution::eval::ValueEval;
 using nebula::meta::Table;
 using nebula::type::Kind;
@@ -94,9 +93,9 @@ std::unique_ptr<ValueEval> ColumnExpression::asEval() const {
 #undef KIND_CASE_VE
 
 //////////////////////////////////////// UDAF Expression Impl /////////////////////////////////////
-#define CASE_KIND_UDAF(KIND)                                       \
-  case Kind::KIND: {                                               \
-    return udf(UDFFactory::createUDAF<Kind::KIND>(udaf_, inner_)); \
+#define CASE_KIND_UDAF(KIND)                                  \
+  case Kind::KIND: {                                          \
+    return UDFFactory::createUDAF<Kind::KIND>(udaf_, inner_); \
   }
 
 std::unique_ptr<ValueEval> UDAFExpression::asEval() const {

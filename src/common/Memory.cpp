@@ -26,10 +26,24 @@ Pool& Pool::getDefault() {
 
 // not-threadsafe
 void PagedSlice::ensure(size_t size) {
+  // increase 10 slices requests, logging warning, increase over 30 slices requests, logging error.
+  static constexpr int errors[] = { 10, 20 };
   if (UNLIKELY(size >= capacity())) {
     auto slices = slices_;
+    auto detects = 0;
     while (slices * size_ <= size) {
       ++slices;
+
+      if (UNLIKELY(++detects >= errors[0])) {
+        if (UNLIKELY(detects == errors[0])) {
+          LOG(WARNING) << "Slices increased too fast in single request";
+        }
+
+        // over error bound - fail it
+        if (UNLIKELY(detects > errors[1])) {
+          LOG(FATAL) << "Slices increased too fast: it is a code bug or page size is too small";
+        }
+      }
     }
 
     N_ENSURE_GT(slices, slices_, "required slices should be more than existing capacity");

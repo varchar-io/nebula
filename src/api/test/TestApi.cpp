@@ -15,6 +15,7 @@
  */
 
 #include "gtest/gtest.h"
+#include <sys/mman.h>
 #include "MockTable.h"
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
@@ -22,10 +23,13 @@
 #include "common/Errors.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
+#include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
+#include "execution/core/ServerExecutor.h"
 #include "fmt/format.h"
 #include "glog/logging.h"
 #include "gmock/gmock.h"
+#include "meta/NBlock.h"
 #include "meta/Table.h"
 #include "surface/DataSurface.h"
 #include "type/Serde.h"
@@ -36,14 +40,18 @@ namespace test {
 
 using namespace nebula::api::dsl;
 using nebula::common::Cursor;
+using nebula::execution::BlockManager;
+using nebula::execution::core::ServerExecutor;
+using nebula::meta::NBlock;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
 TEST(ApiTest, TestQueryStructure) {
+  auto tbl = "nebula.test";
   // set up table for testing
   auto ms = std::make_shared<MockMs>();
-  const auto query = table("nebula.test", ms)
+  const auto query = table(tbl, ms)
                        .where(col("event") == "NN")
                        .select(col("flag"), max(col("id") * 2).as("max_id"))
                        .groupby({ 1 })
@@ -54,13 +62,34 @@ TEST(ApiTest, TestQueryStructure) {
   auto plan = query.compile();
 
   // print out the plan through logging
-  LOG(INFO) << "plan is empty: " << (plan == nullptr);
-  // plan->display();
+  plan->display();
+
+  auto tick = nebula::common::Evidence::ticks();
+  // load test data to run this query
+  auto bm = BlockManager::init();
+  auto ptable = ms->query(tbl);
+
+  // ensure block 0 of the test table (load from storage if not in memory)
+  NBlock block(*ptable, 0);
+  bm->add(block);
 
   // execute a plan on a server: for demo, we run the server on localhost:9190
-  // auto result = plan->execute("localhost:9190");
+  auto duration1 = (nebula::common::Evidence::ticks() - tick) / 1000;
+  LOG(INFO) << "Loaded 100K rows data using " << duration1 << " ms";
+  tick = nebula::common::Evidence::ticks();
+
+  // pass the query plan to a server to execute - usually it is itself
+  auto result = ServerExecutor("localhost:9190").execute(*plan);
 
   // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << duration << " ms";
+  LOG(INFO) << "col: FLAG | MAX_ID";
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << "row: " << row.readBool("flag") << " | " << row.readInt("max_id");
+  }
 }
 
 TEST(ApiTest, TestExprValueEval) {

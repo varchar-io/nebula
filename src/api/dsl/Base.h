@@ -18,8 +18,9 @@
 
 #include <algorithm>
 #include <array>
-#include "api/UDF.h"
+#include <unordered_map>
 #include "common/Errors.h"
+#include "execution/eval/UDF.h"
 #include "glog/logging.h"
 #include "meta/Table.h"
 #include "type/Tree.h"
@@ -95,205 +96,53 @@ public:
   }
 };
 
-// TODO(cao) - This explosion of the switch case probably will slow down compilation time a lot
-// Looking for a way to speed this up
-
-#define N_DEFAULT_CASE_EXP \
-  default:                 \
-    throw NException("type not supported");
-
-#define N_CASE_3RD_TYPE(F, T1, T2, KIND, T, ...) \
-  case nebula::type::Kind::KIND: {               \
-    return F<T1, T2, T>(__VA_ARGS__);            \
-  }
-
-// NOTE: we don't use N_CASE_3RD_TYPE here for expansion speed
-// compilation speed is to slow
-#define N_CASE_2ND_TYPE(F, T1, KIND, T, K3, ...)                \
-  case nebula::type::Kind::KIND: {                              \
-    switch (K3) {                                               \
-      N_CASE_3RD_TYPE(F, T1, T, TINYINT, int8_t, __VA_ARGS__)   \
-      N_CASE_3RD_TYPE(F, T1, T, SMALLINT, int16_t, __VA_ARGS__) \
-      N_CASE_3RD_TYPE(F, T1, T, INTEGER, int32_t, __VA_ARGS__)  \
-      N_CASE_3RD_TYPE(F, T1, T, BIGINT, int64_t, __VA_ARGS__)   \
-      N_CASE_3RD_TYPE(F, T1, T, REAL, float, __VA_ARGS__)       \
-      N_CASE_3RD_TYPE(F, T1, T, DOUBLE, double, __VA_ARGS__)    \
-      N_DEFAULT_CASE_EXP                                        \
-    }                                                           \
-  }
-
-#define N_CASE_1ST_TYPE(F, KIND, T, K2, K3, ...)                \
-  case nebula::type::Kind::KIND: {                              \
-    switch (K2) {                                               \
-      N_CASE_2ND_TYPE(F, T, TINYINT, int8_t, K3, __VA_ARGS__)   \
-      N_CASE_2ND_TYPE(F, T, SMALLINT, int16_t, K3, __VA_ARGS__) \
-      N_CASE_2ND_TYPE(F, T, INTEGER, int32_t, K3, __VA_ARGS__)  \
-      N_CASE_2ND_TYPE(F, T, BIGINT, int64_t, K3, __VA_ARGS__)   \
-      N_CASE_2ND_TYPE(F, T, REAL, float, K3, __VA_ARGS__)       \
-      N_CASE_2ND_TYPE(F, T, DOUBLE, double, K3, __VA_ARGS__)    \
-      N_DEFAULT_CASE_EXP                                        \
-    }                                                           \
-  }
-
-// closure to translate 3 kinds into 3 types in the func template and call it
-#define N_FUNC_3_BY_KIND(FUNC_3, K1, K2, K3, ...)                     \
-  [&]() {                                                             \
-    switch (K1) {                                                     \
-      N_CASE_1ST_TYPE(FUNC_3, TINYINT, int8_t, K2, K3, __VA_ARGS__)   \
-      N_CASE_1ST_TYPE(FUNC_3, SMALLINT, int16_t, K2, K3, __VA_ARGS__) \
-      N_CASE_1ST_TYPE(FUNC_3, INTEGER, int32_t, K2, K3, __VA_ARGS__)  \
-      N_CASE_1ST_TYPE(FUNC_3, BIGINT, int64_t, K2, K3, __VA_ARGS__)   \
-      N_CASE_1ST_TYPE(FUNC_3, REAL, float, K2, K3, __VA_ARGS__)       \
-      N_CASE_1ST_TYPE(FUNC_3, DOUBLE, double, K2, K3, __VA_ARGS__)    \
-      N_DEFAULT_CASE_EXP                                              \
-    }                                                                 \
-  }()
-
-// NOTE: NO floating values expansion
-#define NF_CASE_2ND_TYPE(F, T1, KIND, T, K3, ...)               \
-  case nebula::type::Kind::KIND: {                              \
-    switch (K3) {                                               \
-      N_CASE_3RD_TYPE(F, T1, T, TINYINT, int8_t, __VA_ARGS__)   \
-      N_CASE_3RD_TYPE(F, T1, T, SMALLINT, int16_t, __VA_ARGS__) \
-      N_CASE_3RD_TYPE(F, T1, T, INTEGER, int32_t, __VA_ARGS__)  \
-      N_CASE_3RD_TYPE(F, T1, T, BIGINT, int64_t, __VA_ARGS__)   \
-      N_DEFAULT_CASE_EXP                                        \
-    }                                                           \
-  }
-
-#define NF_CASE_1ST_TYPE(F, KIND, T, K2, K3, ...)                \
-  case nebula::type::Kind::KIND: {                               \
-    switch (K2) {                                                \
-      NF_CASE_2ND_TYPE(F, T, TINYINT, int8_t, K3, __VA_ARGS__)   \
-      NF_CASE_2ND_TYPE(F, T, SMALLINT, int16_t, K3, __VA_ARGS__) \
-      NF_CASE_2ND_TYPE(F, T, INTEGER, int32_t, K3, __VA_ARGS__)  \
-      NF_CASE_2ND_TYPE(F, T, BIGINT, int64_t, K3, __VA_ARGS__)   \
-      N_DEFAULT_CASE_EXP                                         \
-    }                                                            \
-  }
-
-// closure to translate 3 kinds into 3 types in the func template and call it
-#define NF_FUNC_3_BY_KIND(FUNC_3, K1, K2, K3, ...)                     \
-  [&]() {                                                              \
-    switch (K1) {                                                      \
-      NF_CASE_1ST_TYPE(FUNC_3, TINYINT, int8_t, K2, K3, __VA_ARGS__)   \
-      NF_CASE_1ST_TYPE(FUNC_3, SMALLINT, int16_t, K2, K3, __VA_ARGS__) \
-      NF_CASE_1ST_TYPE(FUNC_3, INTEGER, int32_t, K2, K3, __VA_ARGS__)  \
-      NF_CASE_1ST_TYPE(FUNC_3, BIGINT, int64_t, K2, K3, __VA_ARGS__)   \
-      N_DEFAULT_CASE_EXP                                               \
-    }                                                                  \
-  }()
-
-// TODO(cao) - VARCHAR type should be included in logical expression
-// because they can be used for comparison and other logical ops
-#define N_CASE_K2(F, T1, KIND, T, ...) \
-  case nebula::type::Kind::KIND: {     \
-    return F<T1, T>(__VA_ARGS__);      \
-  }
-
-#define N_CASE_K1(F, KIND, T, K2, ...)                \
-  case nebula::type::Kind::KIND: {                    \
-    switch (K2) {                                     \
-      N_CASE_K2(F, T, BOOLEAN, bool, __VA_ARGS__)     \
-      N_CASE_K2(F, T, TINYINT, int8_t, __VA_ARGS__)   \
-      N_CASE_K2(F, T, SMALLINT, int16_t, __VA_ARGS__) \
-      N_CASE_K2(F, T, INTEGER, int32_t, __VA_ARGS__)  \
-      N_CASE_K2(F, T, BIGINT, int64_t, __VA_ARGS__)   \
-      N_CASE_K2(F, T, REAL, float, __VA_ARGS__)       \
-      N_CASE_K2(F, T, DOUBLE, double, __VA_ARGS__)    \
-      N_DEFAULT_CASE_EXP                              \
-    }                                                 \
-  }
-
-#define N_FUNC_2_BY_KIND(FUNC_2, K1, K2, ...)               \
-  [&]() {                                                   \
-    switch (K1) {                                           \
-      N_CASE_K1(FUNC_2, BOOLEAN, bool, K2, __VA_ARGS__)     \
-      N_CASE_K1(FUNC_2, TINYINT, int8_t, K2, __VA_ARGS__)   \
-      N_CASE_K1(FUNC_2, SMALLINT, int16_t, K2, __VA_ARGS__) \
-      N_CASE_K1(FUNC_2, INTEGER, int32_t, K2, __VA_ARGS__)  \
-      N_CASE_K1(FUNC_2, BIGINT, int64_t, K2, __VA_ARGS__)   \
-      N_CASE_K1(FUNC_2, REAL, float, K2, __VA_ARGS__)       \
-      N_CASE_K1(FUNC_2, DOUBLE, double, K2, __VA_ARGS__)    \
-    case nebula::type::Kind::VARCHAR: {                     \
-      return FUNC_2<std::string, std::string>(__VA_ARGS__); \
-    }                                                       \
-      N_DEFAULT_CASE_EXP                                    \
-    }                                                       \
-  }()
-
 ////////////////////////////////////////// FORWARD ARTH  //////////////////////////////////////////
-template <ArthmeticOp OP>
-static std::unique_ptr<nebula::execution::eval::ValueEval> forward3(
-  nebula::type::Kind k1,
-  nebula::type::Kind k2,
-  nebula::type::Kind k3,
-  std::unique_ptr<nebula::execution::eval::ValueEval> v1,
-  std::unique_ptr<nebula::execution::eval::ValueEval> v2) {
-  throw NException("Arthmetic op not implemented in value eval");
-}
+struct arthmetic_forward {
+  using Key = std::tuple<ArthmeticOp, nebula::type::Kind, nebula::type::Kind>;
+  using Value = std::function<
+    std::unique_ptr<nebula::execution::eval::ValueEval>(
+      std::unique_ptr<nebula::execution::eval::ValueEval>,
+      std::unique_ptr<nebula::execution::eval::ValueEval>)>;
+  struct Hash {
+    size_t operator()(const Key& k) const {
+      return ((size_t)std::get<0>(k) << 32) | (std::get<1>(k) << 16) | (std::get<2>(k));
+    }
+  };
+  using Map = std::unordered_map<Key, Value, Hash>;
 
-#define FORWARD_EVAL(MC, OP, NAME)                                                                                    \
-  template <>                                                                                                         \
-  std::unique_ptr<nebula::execution::eval::ValueEval> forward3<ArthmeticOp::OP>(                                      \
-    nebula::type::Kind k1, nebula::type::Kind k2, nebula::type::Kind k3,                                              \
-    std::unique_ptr<nebula::execution::eval::ValueEval> v1, std::unique_ptr<nebula::execution::eval::ValueEval> v2) { \
-    return MC(nebula::execution::eval::NAME, k1, k2, k3, std::move(v1), std::move(v2));                               \
-  }
+  static const Map& map();
 
-FORWARD_EVAL(N_FUNC_3_BY_KIND, ADD, add)
-FORWARD_EVAL(N_FUNC_3_BY_KIND, SUB, sub)
-FORWARD_EVAL(N_FUNC_3_BY_KIND, MUL, mul)
-FORWARD_EVAL(N_FUNC_3_BY_KIND, DIV, div)
-FORWARD_EVAL(NF_FUNC_3_BY_KIND, MOD, mod)
-
-#undef FORWARD_EVAL
+  std::unique_ptr<nebula::execution::eval::ValueEval> operator()(
+    ArthmeticOp op,
+    nebula::type::Kind k1,
+    nebula::type::Kind k2,
+    std::unique_ptr<nebula::execution::eval::ValueEval> v1,
+    std::unique_ptr<nebula::execution::eval::ValueEval> v2);
+};
 
 ////////////////////////////////////////// FORWARD LOGI  //////////////////////////////////////////
-template <LogicalOp OP>
-static std::unique_ptr<nebula::execution::eval::ValueEval> forward2(
-  nebula::type::Kind k1,
-  nebula::type::Kind k2,
-  std::unique_ptr<nebula::execution::eval::ValueEval> v1,
-  std::unique_ptr<nebula::execution::eval::ValueEval> v2) {
-  throw NException("Logical op not implemented in value eval");
-}
+struct logical_forward {
+  using Key = std::tuple<LogicalOp, nebula::type::Kind, nebula::type::Kind>;
+  using Value = std::function<
+    std::unique_ptr<nebula::execution::eval::ValueEval>(
+      std::unique_ptr<nebula::execution::eval::ValueEval>,
+      std::unique_ptr<nebula::execution::eval::ValueEval>)>;
+  struct Hash {
+    size_t operator()(const Key& k) const {
+      return ((size_t)std::get<0>(k) << 32) | (std::get<1>(k) << 16) | (std::get<2>(k));
+    }
+  };
+  using Map = std::unordered_map<Key, Value, Hash>;
 
-#define FORWARD_EVAL(OP, NAME)                                                                    \
-  template <>                                                                                     \
-  std::unique_ptr<nebula::execution::eval::ValueEval> forward2<LogicalOp::OP>(                    \
-    nebula::type::Kind k1,                                                                        \
-    nebula::type::Kind k2,                                                                        \
-    std::unique_ptr<nebula::execution::eval::ValueEval> v1,                                       \
-    std::unique_ptr<nebula::execution::eval::ValueEval> v2) {                                     \
-    return N_FUNC_2_BY_KIND(nebula::execution::eval::NAME, k1, k2, std::move(v1), std::move(v2)); \
-  }
+  static const Map& map();
 
-FORWARD_EVAL(EQ, eq)
-FORWARD_EVAL(GT, gt)
-FORWARD_EVAL(GE, ge)
-FORWARD_EVAL(LT, lt)
-FORWARD_EVAL(LE, le)
-
-#undef FORWARD_EVAL
-
-template <>
-std::unique_ptr<nebula::execution::eval::ValueEval> forward2<LogicalOp::AND>(
-  nebula::type::Kind k1,
-  nebula::type::Kind k2,
-  std::unique_ptr<nebula::execution::eval::ValueEval> v1,
-  std::unique_ptr<nebula::execution::eval::ValueEval> v2) {
-  return nebula::execution::eval::band<bool, bool>(std::move(v1), std::move(v2));
-}
-
-template <>
-std::unique_ptr<nebula::execution::eval::ValueEval> forward2<LogicalOp::OR>(
-  nebula::type::Kind k1,
-  nebula::type::Kind k2,
-  std::unique_ptr<nebula::execution::eval::ValueEval> v1,
-  std::unique_ptr<nebula::execution::eval::ValueEval> v2) {
-  return nebula::execution::eval::bor<bool, bool>(std::move(v1), std::move(v2));
-}
+  std::unique_ptr<nebula::execution::eval::ValueEval> operator()(
+    LogicalOp op,
+    nebula::type::Kind k1,
+    nebula::type::Kind k2,
+    std::unique_ptr<nebula::execution::eval::ValueEval> v1,
+    std::unique_ptr<nebula::execution::eval::ValueEval> v2);
+};
 
 } // namespace dsl
 } // namespace api

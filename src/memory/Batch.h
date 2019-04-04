@@ -49,7 +49,7 @@ public: // read row from and write row to
   size_t add(const RowData& row);
 
   // random access to a row - may require internal seek
-  RowData& row(size_t rowId);
+  std::unique_ptr<RowAccessor> makeAccessor() const;
 
 public: // basic metrics / meta of the batch
   // get total rows in the batch
@@ -67,7 +67,6 @@ private:
 
   // A row accessor cursor to read data of given row
   friend class RowAccessor;
-  std::unique_ptr<RowAccessor> cursor_;
 
   // fast lookup from column name to column index
   DnMap fields_;
@@ -75,7 +74,7 @@ private:
 
 class RowAccessor : public RowData {
 public:
-  RowAccessor(Batch& batch) : batch_{ batch }, dnMap_{ batch_.fields_ } {}
+  RowAccessor(const Batch& batch) : batch_{ batch }, dnMap_{ batch_.fields_ } {}
   virtual ~RowAccessor() = default;
 
 public:
@@ -97,8 +96,8 @@ public:
   RowAccessor& seek(size_t);
 
 private:
-  Batch& batch_;
-  DnMap& dnMap_;
+  const Batch& batch_;
+  const DnMap& dnMap_;
   size_t current_;
 };
 

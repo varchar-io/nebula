@@ -26,6 +26,7 @@
 #include "meta/MetaService.h"
 #include "meta/NNode.h"
 #include "meta/Table.h"
+#include "meta/TestTable.h"
 #include "type/Serde.h"
 
 namespace nebula {
@@ -37,7 +38,7 @@ using nebula::type::TypeSerializer;
 class MockTable : public nebula::meta::Table {
 public:
   MockTable(const std::string& name) : Table(name) {
-    schema_ = TypeSerializer::from("ROW<id:int, event:string, items:list<string>, flag:bool>");
+    schema_ = TypeSerializer::from(nebula::meta::TestTable::schema());
   }
   virtual ~MockTable() = default;
 };
