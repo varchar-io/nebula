@@ -41,7 +41,7 @@ std::unique_ptr<nebula::memory::Batch> BlockLoader::loadTestBlock() {
   auto block = std::make_unique<Batch>(schema);
 
   // use 1024 rows for testing
-  auto rows = 100000;
+  auto rows = 10000;
 
   // use the specified seed so taht the data can repeat
   auto seed = nebula::common::Evidence::unix_timestamp();

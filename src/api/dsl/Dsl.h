@@ -155,6 +155,12 @@ static UDAFExpression max(const T& expr) {
   return UDAFExpression(nebula::execution::eval::UDAF_REG::MAX, std::shared_ptr<Expression>(new T(expr)));
 }
 
+template <typename T>
+static UDAFExpression min(const T& expr) {
+  // TODO(cao) - model UDAF/UDF with existing expression
+  return UDAFExpression(nebula::execution::eval::UDAF_REG::MIN, std::shared_ptr<Expression>(new T(expr)));
+}
+
 // TODO(cao) - we should move UDF creation out of DSL as it's logical concept
 // follow example of UDAF to be consistent
 template <typename T>

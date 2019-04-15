@@ -17,6 +17,7 @@
 #pragma once
 
 #include "Max.h"
+#include "Min.h"
 #include "api/dsl/Expressions.h"
 #include "execution/eval/UDF.h"
 #include "execution/eval/ValueEval.h"
@@ -37,6 +38,9 @@ public:
     switch (reg) {
     case nebula::execution::eval::UDAF_REG::MAX: {
       return std::unique_ptr<nebula::execution::eval::UDF<KIND>>(new Max<KIND>(expr));
+    }
+    case nebula::execution::eval::UDAF_REG::MIN: {
+      return std::unique_ptr<nebula::execution::eval::UDF<KIND>>(new Min<KIND>(expr));
     }
     default:
       throw NException("UDAF is not registered");

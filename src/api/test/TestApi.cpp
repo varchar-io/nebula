@@ -53,7 +53,7 @@ TEST(ApiTest, TestQueryStructure) {
   auto ms = std::make_shared<MockMs>();
   const auto query = table(tbl, ms)
                        .where(col("event") == "NN")
-                       .select(col("flag"), max(col("id") * 2).as("max_id"))
+                       .select(col("flag"), max(col("id") * 2).as("max_id"), min(col("id") + 1).as("min_id"))
                        .groupby({ 1 })
                        .sortby({ 2 })
                        .limit(100);
@@ -85,10 +85,13 @@ TEST(ApiTest, TestQueryStructure) {
   LOG(INFO) << "----------------------------------------------------------------";
   auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
   LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << duration << " ms";
-  LOG(INFO) << "col: FLAG | MAX_ID";
+  LOG(INFO) << "col: FLAG | MAX_ID | MIN_ID";
   while (result->hasNext()) {
     const auto& row = result->next();
-    LOG(INFO) << "row: " << row.readBool("flag") << " | " << row.readInt("max_id");
+    LOG(INFO) << fmt::format("row: {0} | {1} | {2}",
+                             row.readBool("flag"),
+                             row.readInt("max_id"),
+                             row.readInt("min_id"));
   }
 }
 
