@@ -25,18 +25,18 @@ namespace nebula {
 namespace api {
 namespace udf {
 
-// UDAF - max
+// UDAF - count
 template <nebula::type::Kind KIND>
-class Min : public CommonUDAF<KIND> {
+class Count : public CommonUDAF<KIND> {
   using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
 
 public:
-  Min(std::shared_ptr<nebula::api::dsl::Expression> expr)
+  Count(std::shared_ptr<nebula::api::dsl::Expression> expr)
     : CommonUDAF<KIND>(expr,
                        [](NativeType ov, NativeType nv) {
-                         return std::min<NativeType>(ov, nv);
+                         return ov + 1;
                        }) {}
-  virtual ~Min() = default;
+  virtual ~Count() = default;
 };
 
 } // namespace udf

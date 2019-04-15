@@ -404,21 +404,22 @@ bool FlatBuffer::equal(size_t row1, size_t row2, const std::vector<size_t>& cols
 
 // copy data of row1 into row2
 bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, const std::vector<size_t>& cols) {
+  // LOG(INFO) << "copy row " << row1 << " into " << row2;
   auto row1Offset = std::get<0>(rows_[row1]);
   auto row2Offset = std::get<0>(rows_[row2]);
   FlatColumnProps colProps1 = columnProps(row1, row1Offset);
   FlatColumnProps colProps2 = columnProps(row2, row2Offset);
 
-#define UPDATE_COLUMN(COLUMN, KIND, TYPE)                           \
-  case Kind::KIND: {                                                \
-    auto targetOffset = row2Offset + colOffset2;                    \
-    auto col1 = main_.slice.read<TYPE>(row1Offset + colOffset1);    \
-    auto col2 = main_.slice.read<TYPE>(targetOffset);               \
-    TYPE x;                                                         \
-    auto feedback = callback(COLUMN, Kind::KIND, &col1, &col2, &x); \
-    N_ENSURE(feedback, "callback should always return true");       \
-    main_.slice.write<TYPE>(targetOffset, x);                       \
-    break;                                                          \
+#define UPDATE_COLUMN(COLUMN, KIND, TYPE)                       \
+  case Kind::KIND: {                                            \
+    auto targetOffset = row2Offset + colOffset2;                \
+    auto nv = main_.slice.read<TYPE>(row1Offset + colOffset1);  \
+    auto ov = main_.slice.read<TYPE>(targetOffset);             \
+    TYPE x;                                                     \
+    auto feedback = callback(COLUMN, Kind::KIND, &ov, &nv, &x); \
+    N_ENSURE(feedback, "callback should always return true");   \
+    main_.slice.write<TYPE>(targetOffset, x);                   \
+    break;                                                      \
   }
 
   for (size_t i = 0, size = schema_->size(); i < size; ++i) {

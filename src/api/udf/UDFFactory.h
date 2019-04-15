@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "Count.h"
 #include "Max.h"
 #include "Min.h"
 #include "api/dsl/Expressions.h"
@@ -41,6 +42,9 @@ public:
     }
     case nebula::execution::eval::UDAF_REG::MIN: {
       return std::unique_ptr<nebula::execution::eval::UDF<KIND>>(new Min<KIND>(expr));
+    }
+    case nebula::execution::eval::UDAF_REG::COUNT: {
+      return std::unique_ptr<nebula::execution::eval::UDF<KIND>>(new Count<KIND>(expr));
     }
     default:
       throw NException("UDAF is not registered");

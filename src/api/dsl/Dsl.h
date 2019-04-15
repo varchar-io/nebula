@@ -57,14 +57,10 @@ public:
                     groups_{ std::move(q.groups_) },
                     sorts_{ std::move(q.sorts_) },
                     sortType_{ q.sortType_ },
-                    limit_{ q.limit_ } {
-    LOG(INFO) << "Query copied - original is destroyed.";
-  }
+                    limit_{ q.limit_ } {}
 
   Query(const Query&) = delete;
-  virtual ~Query() {
-    LOG(INFO) << "Query instance destroyed";
-  }
+  virtual ~Query() = default;
 
 public:
   // a filter accepts a bool expression as its parameter to evaluate.
@@ -159,6 +155,13 @@ template <typename T>
 static UDAFExpression min(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
   return UDAFExpression(nebula::execution::eval::UDAF_REG::MIN, std::shared_ptr<Expression>(new T(expr)));
+}
+
+template <typename T>
+static UDAFExpression count(const T& expr) {
+  // TODO(cao) - we may support column expression as well for count
+  return UDAFExpression(nebula::execution::eval::UDAF_REG::COUNT,
+                        std::make_shared<ConstExpression<T>>(expr));
 }
 
 // TODO(cao) - we should move UDF creation out of DSL as it's logical concept

@@ -53,11 +53,22 @@ TEST(ApiTest, TestQueryStructure) {
   auto ms = std::make_shared<MockMs>();
   const auto query = table(tbl, ms)
                        .where(col("event") == "NN")
-                       .select(col("flag"), max(col("id") * 2).as("max_id"), min(col("id") + 1).as("min_id"))
-                       .groupby({ 1 })
-                       .sortby({ 2 })
+                       .select(
+                         col("event"),
+                         col("flag"),
+                         max(col("id") * 2).as("max_id"),
+                         min(col("id") + 1).as("min_id"),
+                         count(1).as("count"))
+                       .groupby({ 1, 2 })
+                       .sortby({ 5 })
                        .limit(100);
 
+  LOG(INFO) << "Compiling query: ";
+  LOG(INFO) << "                  select event, flag, max(id*2) as max_id, min(id+1) as min_id, count(1) as count";
+  LOG(INFO) << "                  from nebula.test";
+  LOG(INFO) << "                  group by 1, 2 ";
+  LOG(INFO) << "                  order by 5";
+  LOG(INFO) << "                  limit 100";
   // compile the query into an execution plan
   auto plan = query.compile();
 
@@ -85,13 +96,15 @@ TEST(ApiTest, TestQueryStructure) {
   LOG(INFO) << "----------------------------------------------------------------";
   auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
   LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << duration << " ms";
-  LOG(INFO) << "col: FLAG | MAX_ID | MIN_ID";
+  LOG(INFO) << fmt::format("col: {0:12} | {1:12} | {2:12} | {3:12} | {4:12}", "EVENT", "FLAG", "MAX_ID", "MIN_ID", "COUNT");
   while (result->hasNext()) {
     const auto& row = result->next();
-    LOG(INFO) << fmt::format("row: {0} | {1} | {2}",
+    LOG(INFO) << fmt::format("row: {0:12} | {1:12} | {2:12} | {3:12} | {4:12}",
+                             row.isNull("event") ? "<NULL>" : row.readString("event"),
                              row.readBool("flag"),
                              row.readInt("max_id"),
-                             row.readInt("min_id"));
+                             row.readInt("min_id"),
+                             row.readInt("count"));
   }
 }
 

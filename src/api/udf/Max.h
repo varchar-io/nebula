@@ -16,15 +16,7 @@
 
 #pragma once
 
-#include <algorithm>
-#include <array>
-#include "api/dsl/Expressions.h"
-#include "common/Errors.h"
-#include "common/Likely.h"
-#include "execution/eval/UDF.h"
-#include "glog/logging.h"
-#include "meta/Table.h"
-#include "type/Tree.h"
+#include "CommonUDAF.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -35,46 +27,16 @@ namespace udf {
 
 // UDAF - max
 template <nebula::type::Kind KIND>
-class Max : public nebula::execution::eval::UDAF<KIND> {
+class Max : public CommonUDAF<KIND> {
   using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
 
 public:
   Max(std::shared_ptr<nebula::api::dsl::Expression> expr)
-    : expr_{ expr->asEval() },
-      colrefs_{ std::move(expr->columnRefs()) },
-      max_{},
-      nebula::execution::eval::UDAF<KIND>([](NativeType ov, NativeType nv) {
-        return std::max<NativeType>(ov, nv);
-      }) {}
+    : CommonUDAF<KIND>(expr,
+                       [](NativeType ov, NativeType nv) {
+                         return std::max<NativeType>(ov, nv);
+                       }) {}
   virtual ~Max() = default;
-
-public:
-  // columns referenced
-  virtual std::vector<std::string> columns() const override {
-    return colrefs_;
-  }
-
-  // apply a row data to get result
-  virtual NativeType run(const nebula::surface::RowData& row) const override {
-    return expr_->eval<NativeType>(row);
-  }
-
-  // partial aggregate
-  virtual void partial(const nebula::surface::RowData&) override {
-    throw NException("partial agg exception");
-  }
-
-  // global aggregate
-  virtual void global(const nebula::surface::RowData&) override {
-    throw NException("global agg exception");
-  }
-
-private:
-  std::unique_ptr<nebula::execution::eval::ValueEval> expr_;
-  std::vector<std::string> colrefs_;
-
-  // max value seen so far with last count_ values
-  NativeType max_;
 };
 
 } // namespace udf

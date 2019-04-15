@@ -214,7 +214,6 @@ public:
     }
 
     // get alias from the first valid op
-    LOG(INFO) << "op1 alias: " << op1_.alias();
     alias_ = op1_.alias().size() > 0 ? op1_.alias() : op2_.alias();
   }
   virtual ~ArthmeticExpression() = default;
