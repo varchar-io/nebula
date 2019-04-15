@@ -145,7 +145,7 @@ private:
 };
 
 template <typename T>
-size_t FlatRow::write(const T& value) {
+size_t FlatRow::write(const T&) {
   LOG(INFO) << "write-value called";
 
   // report a value written

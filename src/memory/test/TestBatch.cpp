@@ -15,10 +15,10 @@
  */
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
 #include <valarray>
 #include "common/Memory.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
 #include "memory/Batch.h"
 #include "memory/DataNode.h"
 #include "memory/FlatRow.h"
@@ -87,7 +87,6 @@ TEST(BatchTest, TestBatchRead) {
   auto count = 1000;
 
   // use the specified seed so taht the data can repeat
-  auto seed = Evidence::unix_timestamp();
   std::vector<nebula::surface::StaticRow> rows;
   MockRowData row;
   // fill rows

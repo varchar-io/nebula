@@ -14,9 +14,22 @@
  * limitations under the License.
  */
 
-#include "Type.h"
+#include "UDFFactory.h"
 
+/**
+ * Create UDF/UDAF object based on parameters
+ */
 namespace nebula {
-namespace type {
-} // namespace type
+namespace api {
+namespace udf {
+
+// FULL specialization is not template any more, the definition should come to cpp file
+template <>
+typename std::unique_ptr<nebula::execution::eval::UDF<TypeKind::BOOLEAN>>
+  UDFFactory::createUDF<UDFKind::NOT, TypeKind::BOOLEAN>(std::shared_ptr<nebula::api::dsl::Expression> expr) {
+  return std::make_unique<Not>(expr);
+}
+
+} // namespace udf
+} // namespace api
 } // namespace nebula

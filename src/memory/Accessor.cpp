@@ -70,7 +70,7 @@ std::unique_ptr<ListData> RowAccessor::readList(const std::string& field) const 
   return std::make_unique<ListAccessor>(std::get<0>(offsetSize), std::get<1>(offsetSize), child);
 }
 
-std::unique_ptr<MapData> RowAccessor::readMap(const std::string& field) const {
+std::unique_ptr<MapData> RowAccessor::readMap(const std::string&) const {
   return nullptr;
 }
 

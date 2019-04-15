@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "glog/logging.h"
+#include <memory>
 
 /**
  * A cursor template that help iterating a container.
@@ -80,8 +80,8 @@ public:
   }
 
 private:
-  size_t innerIndex_;
   size_t cursor_;
+  size_t innerIndex_;
   std::vector<CursorPtr> lists_;
 };
 

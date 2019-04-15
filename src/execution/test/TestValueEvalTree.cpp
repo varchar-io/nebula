@@ -18,7 +18,7 @@
 #include "common/Evidence.h"
 #include "execution/eval/ValueEval.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 #include "surface/DataSurface.h"
 
 namespace nebula {

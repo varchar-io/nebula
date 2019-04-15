@@ -17,7 +17,7 @@
 #include "gtest/gtest.h"
 #include "common/Errors.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 #include "roaring.hh"
 
 /**

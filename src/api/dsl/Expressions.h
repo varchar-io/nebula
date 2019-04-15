@@ -16,12 +16,13 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "Base.h"
+#include "api/udf/UDFFactory.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
 #include "execution/eval/UDF.h"
 #include "execution/eval/ValueEval.h"
-#include "glog/logging.h"
 #include "meta/Table.h"
 #include "type/Tree.h"
 
@@ -46,7 +47,6 @@ namespace dsl {
 // to embrace dynamic and virtual function dispatch
 // all API and data exchange part should use shared pointer
 // we're not using unique ptr because it's dealing with schema
-class Expression;
 
 // A macro to limit the type to be base expression
 #define IS_EXPRESSION(T) typename std::enable_if_t<std::is_base_of_v<Expression, T>, bool> = true
@@ -140,65 +140,6 @@ class LogicalExpression;
   virtual bool isAgg() const override { \
     return T_F;                         \
   }
-
-// NOTE:
-// TODO(cao) - we put all these operator definitions in each concrete types
-// IS only because the THIS_TYPE resolusion
-// Right now, std::remove_reference<decltype(*this)>::type doesn't resolve runtime type but the current type
-// where the method is called - if somehow we can figure out THIS_TYPE for runtime, we can save lots of duplicate code
-// meaning we only need these operator defined in base expression.
-class Expression {
-public:
-  Expression() : alias_{}, kind_{ nebula::type::Kind::INVALID } {}
-  virtual ~Expression() = default;
-
-public:
-  // TODO(cao): need to rework to introduce context and visitor pattern
-  // to deduce the type of this expression
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) = 0;
-  virtual bool isAgg() const = 0;
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const = 0;
-  virtual std::vector<std::string> columnRefs() const {
-    return {};
-  };
-
-public:
-  std::string alias() const {
-    return alias_;
-  }
-
-  nebula::type::Kind kind() const {
-    return kind_;
-  }
-
-protected:
-  static nebula::type::TreeNode typeCreate(nebula::type::Kind kind, std::string& alias) {
-#define TYPE_CREATE_NODE(KIND, TYPE)              \
-  case nebula::type::KIND: {                      \
-    return nebula::type::TYPE::createTree(alias); \
-  }
-
-    // no result should have the final type KIND
-    switch (kind) {
-      TYPE_CREATE_NODE(TINYINT, ByteType)
-      TYPE_CREATE_NODE(SMALLINT, ShortType)
-      TYPE_CREATE_NODE(INTEGER, IntType)
-      TYPE_CREATE_NODE(BIGINT, LongType)
-      TYPE_CREATE_NODE(REAL, FloatType)
-      TYPE_CREATE_NODE(DOUBLE, DoubleType)
-    default:
-      throw NException(fmt::format("not supported type {0} in arthmetic operations",
-                                   nebula::type::TypeBase::kname(kind)));
-    }
-#undef TYPE_CREATE_NODE
-  }
-
-  // only one alias can be updated if client calls "as" multiple times
-  std::string alias_;
-
-  // set by type() method
-  nebula::type::Kind kind_;
-};
 
 // arthmetic op traits will provide result KIND given left and right kind on given OP
 template <ArthmeticOp OP, nebula::type::Kind LEFT, nebula::type::Kind RIGHT>
@@ -319,7 +260,7 @@ public: // all logical operations
   N_ENSURE_EQ(op2_.kind(), nebula::type::Kind::BOOLEAN,                        \
               "AND/OR operations requires bool typed left and right oprands");
 
-  void validate(const nebula::meta::Table& table) {
+  void validate(const nebula::meta::Table&) {
     if constexpr (op == LogicalOp::AND || op == LogicalOp::OR) {
       BOTH_OPRANDS_BOOL()
     }
@@ -392,7 +333,7 @@ public:
     return nebula::execution::eval::constant<T>(value_);
   }
 
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+  virtual nebula::type::TreeNode type(const nebula::meta::Table&) override {
     // duduce from T to nebula::type::Type
     auto node = nebula::type::TypeDetect<T>::type(alias_);
     kind_ = nebula::type::TypeBase::k(node);
@@ -403,52 +344,23 @@ private:
   T value_;
 };
 
-template <nebula::type::Kind KIND>
-class UDFExpression : public Expression {
-public:
-  UDFExpression(std::shared_ptr<nebula::execution::eval::UDF<KIND>> udf) : udf_{ udf } {}
-  virtual ~UDFExpression() = default;
-
-public:
-  ALIAS()
-
-  IS_AGG(false)
-
-  // convert to value eval
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    // TODO(cao): NEED to consolidate with UDAF
-    return nullptr;
-  }
-
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
-    kind_ = KIND;
-    return nebula::type::Type<KIND>::createTree(alias_);
-  }
-
-  virtual std::vector<std::string> columnRefs() const override {
-    return udf_->columns();
-  }
-
-protected:
-  std::shared_ptr<nebula::execution::eval::UDF<KIND>> udf_;
-};
-
 // An UDAF expression - some UDAF knows its type regardless inner type
 // such as percentile (P50, P90), the majority UDAF infers type from its inner expression.
 // So here - we will implement this first. When necessary, we may want to introduce different expresssion type.
 // TODO(cao) - need rework this since we need to come up with a framework
 // to allow customized UDAFs to be plugged in
-class UDAFExpression : public Expression {
+template <nebula::execution::eval::UDFType UT>
+class UDFExpression : public Expression {
 public:
-  UDAFExpression(nebula::execution::eval::UDAF_REG udaf, std::shared_ptr<Expression> inner)
-    : udaf_{ udaf }, inner_{ inner } {
+  UDFExpression(std::shared_ptr<Expression> inner)
+    : inner_{ inner } {
   }
-  virtual ~UDAFExpression() = default;
+  virtual ~UDFExpression() = default;
 
 public:
   ALIAS()
 
-  IS_AGG(true)
+  IS_AGG(execution::eval::UdfTraits<UT>::UDAF)
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
     auto innerType = inner_->type(table);
@@ -462,11 +374,30 @@ public:
     return inner_->columnRefs();
   }
 
-  // convert to value eval
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override;
+#define CASE_KIND_UDF(KIND)                                                               \
+  case nebula::type::Kind::KIND: {                                                        \
+    return nebula::api::udf::UDFFactory::createUDF<UT, nebula::type::Kind::KIND>(inner_); \
+  }
+
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+    // based on type, create different UDAF object and pass it to UDF function wrapper
+    switch (kind_) {
+      CASE_KIND_UDF(BOOLEAN)
+      CASE_KIND_UDF(TINYINT)
+      CASE_KIND_UDF(SMALLINT)
+      CASE_KIND_UDF(INTEGER)
+      CASE_KIND_UDF(BIGINT)
+      CASE_KIND_UDF(REAL)
+      CASE_KIND_UDF(DOUBLE)
+      CASE_KIND_UDF(VARCHAR)
+    default:
+      throw NException("kind not found.");
+    }
+  }
+
+#undef CASE_KIND_UDF
 
 private:
-  nebula::execution::eval::UDAF_REG udaf_;
   std::shared_ptr<Expression> inner_;
 };
 

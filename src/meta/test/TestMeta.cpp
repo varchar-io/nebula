@@ -16,7 +16,7 @@
 
 #include "gtest/gtest.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 #include "meta/Table.h"
 #include "meta/TestTable.h"
 

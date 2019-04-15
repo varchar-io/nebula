@@ -15,6 +15,7 @@
  */
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
 #include <sys/mman.h>
 #include "MockTable.h"
 #include "api/dsl/Dsl.h"
@@ -27,7 +28,6 @@
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "meta/NBlock.h"
 #include "meta/Table.h"
@@ -90,7 +90,7 @@ TEST(ApiTest, TestQueryStructure) {
   tick = nebula::common::Evidence::ticks();
 
   // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor("localhost:9190").execute(*plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -156,22 +156,27 @@ TEST(ApiTest, TestExprValueEval) {
 
   // test UDAF expression
   {
+    LOG(INFO) << "test max UDAF";
     auto modexp = col("id") % 100;
     auto udaf = max(modexp);
     udaf.type(*tbl);
     EXPECT_EQ(udaf.kind(), nebula::type::Kind::INTEGER);
-    auto v4 = udaf.asEval();
+    auto v4up = udaf.asEval();
+    auto v4 = static_cast<nebula::execution::eval::UDAF<nebula::type::Kind::INTEGER>*>(v4up.get());
     auto udaf_colrefs = udaf.columnRefs();
     EXPECT_EQ(udaf_colrefs.size(), 1);
     EXPECT_EQ(udaf_colrefs[0], "id");
 
     // call evaluate multiple times and see max value out of
-    auto r1 = v4->eval<int>(rowData);
-    auto r2 = v4->eval<int>(rowData);
+    auto r1 = v4->eval(rowData);
+    auto r2 = v4->eval(rowData);
+    r2 = v4->agg(r1, r2);
     EXPECT_GE(r2, r1);
-    auto r3 = v4->eval<int>(rowData);
+    auto r3 = v4->eval(rowData);
+    r3 = v4->agg(r2, r3);
     EXPECT_GE(r3, r2);
-    auto r4 = v4->eval<int>(rowData);
+    auto r4 = v4->eval(rowData);
+    r4 = v4->agg(r3, r4);
     EXPECT_GE(r4, r3);
     LOG(INFO) << " 4 values: " << r1 << ", " << r2 << ", " << r3 << ", " << r4;
   }

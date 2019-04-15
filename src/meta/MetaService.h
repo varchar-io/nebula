@@ -16,9 +16,9 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "NNode.h"
 #include "Table.h"
-#include "glog/logging.h"
 
 /**
  * Define nebula table and system metadata 
@@ -32,11 +32,13 @@ namespace nebula {
 namespace meta {
 class MetaService {
 public:
+  virtual ~MetaService() = default;
+
   virtual std::shared_ptr<Table> query(const std::string& name) {
     return std::make_shared<Table>(name);
   }
 
-  virtual std::vector<NNode> queryNodes(const std::shared_ptr<Table> table, std::function<bool(const NNode&)> predicate) {
+  virtual std::vector<NNode> queryNodes(const std::shared_ptr<Table>, std::function<bool(const NNode&)>) {
     return {};
   }
 };

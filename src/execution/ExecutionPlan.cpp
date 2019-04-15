@@ -15,9 +15,9 @@
  */
 
 #include "ExecutionPlan.h"
+#include <fmt/format.h>
 #include "common/Likely.h"
 #include "core/ServerExecutor.h"
-#include "fmt/format.h"
 #include "type/Serde.h"
 
 /**

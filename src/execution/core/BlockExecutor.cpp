@@ -17,7 +17,6 @@
 #include "BlockExecutor.h"
 #include <unordered_set>
 #include "execution/eval/UDF.h"
-#include "folly/container/F14Map.h"
 #include "memory/keyed/HashFlat.h"
 
 /**
@@ -93,12 +92,12 @@ const RowData& BlockExecutor::next() {
   return result_->row(index_++);
 }
 
-bool ComputedRow::isNull(const std::string& field) const {
+bool ComputedRow::isNull(const std::string&) const {
   // TODO(cao): how to determine nullbility of output field?
   return false;
 }
 
-bool ComputedRow::isNull(IndexType index) const {
+bool ComputedRow::isNull(IndexType) const {
   // TODO(cao): how to determine nullbility of output field?
   return false;
 }

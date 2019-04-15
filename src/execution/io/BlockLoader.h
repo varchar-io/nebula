@@ -17,7 +17,7 @@
 #pragma once
 
 #include "execution/ExecutionPlan.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 #include "memory/Batch.h"
 #include "meta/NBlock.h"
 #include "meta/TestTable.h"

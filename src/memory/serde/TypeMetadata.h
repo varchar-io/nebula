@@ -35,8 +35,7 @@ class TypeMetadata {
 
 public:
   TypeMetadata(nebula::type::Kind kind)
-    : rawSize_{ 0 },
-      offsetSize_{ nebula::type::TypeBase::isScalar(kind) ?
+    : offsetSize_{ nebula::type::TypeBase::isScalar(kind) ?
                      nullptr :
                      std::make_unique<CompoundItems>() } {
     if (offsetSize_ != nullptr) {
@@ -78,9 +77,6 @@ public:
   }
 
 private:
-  // raw size of this node
-  size_t rawSize_;
-
   // store all null positions
   // call runOptimize() to compress the bitmap when finalizing.
   Roaring nulls_;

@@ -22,7 +22,7 @@ namespace keyed {
 
 bool HashFlat::update(nebula::surface::RowData& row, const UpdateCallback& callback) {
   // add it as a new row first
-  size_t rowOffset = this->add(row);
+  this->add(row);
 
   auto newRow = getRows() - 1;
   auto hValue = hash(newRow, keys_);

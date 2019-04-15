@@ -17,7 +17,6 @@
 #pragma once
 
 #include "common/Errors.h"
-#include "glog/logging.h"
 #include "type/Type.h"
 
 /**

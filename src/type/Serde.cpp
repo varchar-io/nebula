@@ -15,6 +15,7 @@
  */
 
 #include "Serde.h"
+#include <glog/logging.h>
 #include <stack>
 #include "common/Errors.h"
 
@@ -229,7 +230,7 @@ std::shared_ptr<RowType> TypeSerializer::from(const std::string& text) {
 
   // walk this node tree before transforming it to a RowType
   auto typeTree = root->treeWalk<TreeNode, Node>(
-    [](const auto& node) {},
+    [](const auto&) {},
     [](const auto& node, std::vector<TreeNode>& children) {
       switch (node.token.type) {
         SCALAR_TYPE_CREATE(TBOOLEAN, BoolType)
@@ -280,7 +281,7 @@ static auto convert(const Type<K>& t) -> typename std::enable_if<TypeTraits<K>::
 std::string TypeSerializer::to(const std::shared_ptr<RowType> row) {
   // walk this tree and print all its name
   return row->treeWalk<std::string>(
-    [](const auto& v) {},
+    [](const auto&) {},
     [](const auto& v, std::vector<std::string>& children) {
       auto id = v.getId();
       auto kind = static_cast<Kind>(id);

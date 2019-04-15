@@ -19,7 +19,6 @@
 #include <chrono>
 #include <random>
 #include <thread>
-#include "glog/logging.h"
 
 /**
  * Evidence is library to provide evidences like time and random sequence generators.

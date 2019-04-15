@@ -19,7 +19,7 @@
 #include "common/Errors.h"
 #include "common/Memory.h"
 #include "encode/Encoder.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 #include "serde/TypeData.h"
 #include "serde/TypeDataFactory.h"
 #include "serde/TypeMetadata.h"
@@ -47,22 +47,22 @@ public:
 
 public:
   DataNode(const nebula::type::TypeBase& type)
-    : type_{ type },
+    : nebula::type::Tree<PDataNode>(this),
+      type_{ type },
       meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k()) },
       data_{ nebula::memory::serde::TypeDataFactory::createData(type.k()) },
       count_{ 0 },
-      rawSize_{ 0 },
-      nebula::type::Tree<PDataNode>(this) {
+      rawSize_{ 0 } {
     LOG(INFO) << fmt::format("Create data node w/o children [{0}].", type.name());
   }
 
   DataNode(const nebula::type::TypeBase& type, const std::vector<nebula::type::TreeNode>& children)
-    : type_{ type },
+    : nebula::type::Tree<DataNode*>(this, children),
+      type_{ type },
       meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k()) },
       data_{ nebula::memory::serde::TypeDataFactory::createData(type.k()) },
       count_{ 0 },
-      rawSize_{ 0 },
-      nebula::type::Tree<DataNode*>(this, children) {}
+      rawSize_{ 0 } {}
 
   virtual ~DataNode() = default;
 

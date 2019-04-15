@@ -15,10 +15,10 @@
  */
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
 #include <valarray>
 #include "common/Evidence.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
 #include "surface/DataSurface.h"
 
 namespace nebula {
@@ -31,8 +31,6 @@ TEST(SurfaceTest, TestDataSurface) {
   // these are all dumb right, they are just show case the interfaces usage
   // bool, int, string, list<float>
   nebula::surface::MockRowData mockRow;
-
-  N_ENSURE(!(mockRow.isNull("x")), "no nulls in mock data");
 
   auto list = mockRow.readList("list");
   N_ENSURE_EQ(list->getItems(), 4, "mock 4 items");

@@ -19,9 +19,9 @@
 #include "Count.h"
 #include "Max.h"
 #include "Min.h"
-#include "api/dsl/Expressions.h"
+#include "MyUdf.h"
+#include "api/dsl/Base.h"
 #include "execution/eval/UDF.h"
-#include "execution/eval/ValueEval.h"
 #include "type/Type.h"
 
 /**
@@ -31,26 +31,33 @@ namespace nebula {
 namespace api {
 namespace udf {
 
+using UDFKind = nebula::execution::eval::UDFType;
+using TypeKind = nebula::type::Kind;
+
 class UDFFactory {
 public:
-  template <nebula::type::Kind KIND>
+  template <UDFKind UKIND, TypeKind KIND>
   static typename std::unique_ptr<nebula::execution::eval::UDF<KIND>>
-    createUDAF(nebula::execution::eval::UDAF_REG reg, std::shared_ptr<nebula::api::dsl::Expression> expr) {
-    switch (reg) {
-    case nebula::execution::eval::UDAF_REG::MAX: {
-      return std::unique_ptr<nebula::execution::eval::UDF<KIND>>(new Max<KIND>(expr));
+    createUDF(std::shared_ptr<nebula::api::dsl::Expression> expr) {
+    if constexpr (UKIND == UDFKind::MAX) {
+      return std::make_unique<Max<KIND>>(expr);
     }
-    case nebula::execution::eval::UDAF_REG::MIN: {
-      return std::unique_ptr<nebula::execution::eval::UDF<KIND>>(new Min<KIND>(expr));
+
+    if constexpr (UKIND == UDFKind::MIN) {
+      return std::make_unique<Min<KIND>>(expr);
     }
-    case nebula::execution::eval::UDAF_REG::COUNT: {
-      return std::unique_ptr<nebula::execution::eval::UDF<KIND>>(new Count<KIND>(expr));
+
+    if constexpr (UKIND == UDFKind::COUNT) {
+      return std::make_unique<Count<KIND>>(expr);
     }
-    default:
-      throw NException("UDAF is not registered");
-    }
+
+    throw NException("Unimplemented UDF");
   }
 };
+
+template <>
+typename std::unique_ptr<nebula::execution::eval::UDF<TypeKind::BOOLEAN>>
+  UDFFactory::createUDF<UDFKind::NOT, TypeKind::BOOLEAN>(std::shared_ptr<nebula::api::dsl::Expression>);
 
 } // namespace udf
 } // namespace api

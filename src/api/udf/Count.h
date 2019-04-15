@@ -33,7 +33,7 @@ class Count : public CommonUDAF<KIND> {
 public:
   Count(std::shared_ptr<nebula::api::dsl::Expression> expr)
     : CommonUDAF<KIND>(expr,
-                       [](NativeType ov, NativeType nv) {
+                       [](NativeType ov, NativeType) {
                          return ov + 1;
                        }) {}
   virtual ~Count() = default;

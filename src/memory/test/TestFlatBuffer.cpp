@@ -15,10 +15,10 @@
  */
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
 #include <valarray>
 #include "common/Memory.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
 #include "memory/keyed/FlatBuffer.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"

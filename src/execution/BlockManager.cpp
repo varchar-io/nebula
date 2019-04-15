@@ -63,7 +63,7 @@ bool BlockManager::add(const NBlock& block) {
   return true;
 }
 
-bool BlockManager::remove(const nebula::meta::NBlock& block) {
+bool BlockManager::remove(const nebula::meta::NBlock&) {
   throw NException("Not implemeneted yet");
 }
 

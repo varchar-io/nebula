@@ -16,10 +16,9 @@
 
 #pragma once
 
+#include <folly/FBString.h>
 #include "common/Cursor.h"
 #include "eval/ValueEval.h"
-#include "folly/FBString.h"
-#include "glog/logging.h"
 #include "meta/NNode.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"

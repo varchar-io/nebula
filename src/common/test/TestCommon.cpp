@@ -15,13 +15,13 @@
  */
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
 #include <valarray>
 #include "common/Errors.h"
 #include "common/Evidence.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
 
 namespace nebula {
 namespace common {
@@ -86,24 +86,27 @@ TEST(VectorComputing, TestValArray) {
   }
 }
 
-class TestPadding {
+struct TestPadding {
   bool is_cached_{};
   double rank_{};
   int id_{};
 };
-class TestVirualPadding {
+
+struct TestVirualPadding {
   bool is_cached_{};
   char padding_bool_[7];
   double rank_{};
   int id_{};
   char padding_int_[4];
 };
-class OptPadding {
+
+struct OptPadding {
   bool is_cached_{};
   int id_{};
   double rank_{};
 };
-class OptPadding2 {
+
+struct OptPadding2 {
   double rank_{};
   int id_{};
   bool is_cached_{};

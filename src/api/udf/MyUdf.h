@@ -18,10 +18,10 @@
 
 #include <algorithm>
 #include <array>
-#include "api/dsl/Expressions.h"
+#include <glog/logging.h>
+#include "api/dsl/Base.h"
 #include "common/Errors.h"
 #include "execution/eval/UDF.h"
-#include "glog/logging.h"
 #include "meta/Table.h"
 #include "type/Tree.h"
 
@@ -36,7 +36,7 @@ class Not : public nebula::execution::eval::UDF<nebula::type::Kind::BOOLEAN> {
 public:
   using NativeType = nebula::type::TypeTraits<nebula::type::Kind::BOOLEAN>::CppType;
   Not(std::shared_ptr<nebula::api::dsl::Expression> expr)
-    : expr_{ expr->asEval() }, colrefs_{ std::move(expr->columnRefs()) } {
+    : expr_{ expr->asEval() }, colrefs_{ expr->columnRefs() } {
   }
   virtual ~Not() = default;
 

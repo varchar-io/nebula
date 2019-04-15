@@ -131,7 +131,7 @@ public:
   }
 
   // virtual method to get kind of real type
-  virtual const Kind k() const = 0;
+  virtual Kind k() const = 0;
 
 public:
 #define KIND_NAME_DISPATCH(K) KIND_DISPATCH(K, name)
@@ -170,6 +170,8 @@ public:
 protected:
   TypeBase(const std::string& name) : name_{ name } {}
   virtual ~TypeBase() = default;
+
+private:
   std::string name_;
 };
 
@@ -299,7 +301,7 @@ public:
     return static_cast<size_t>(kind);
   }
 
-  inline const Kind k() const {
+  inline Kind k() const {
     return kind;
   }
 

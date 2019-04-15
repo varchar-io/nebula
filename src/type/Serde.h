@@ -71,8 +71,9 @@ struct Token {
   static TokenType lookup(const std::string&);
   explicit Token(const std::string& t) : token{ t }, type{ lookup(t) } {}
 
-  TokenType type;
   std::string token;
+  TokenType type;
+
   bool isType() const {
     return type > TokenType::TINVALID && type < TokenType::END;
   }
@@ -88,7 +89,8 @@ struct Token {
 
 // define any node data
 struct Node : public Tree<Node*> {
-  explicit Node(const Token& t, const std::string& i) : token{ t }, identifier{ i }, Tree<Node*>(this) {}
+  explicit Node(const Token& t, const std::string& i) : Tree<Node*>(this), token{ t }, identifier{ i } {}
+
   // recognized token type
   Token token;
   std::string identifier;

@@ -15,13 +15,11 @@
  */
 
 #include "Expressions.h"
-#include "api/udf/UDFFactory.h"
 
 namespace nebula {
 namespace api {
 namespace dsl {
 
-using nebula::api::udf::UDFFactory;
 using nebula::execution::eval::column;
 using nebula::execution::eval::ValueEval;
 using nebula::meta::Table;
@@ -91,30 +89,6 @@ std::unique_ptr<ValueEval> ColumnExpression::asEval() const {
 }
 
 #undef KIND_CASE_VE
-
-//////////////////////////////////////// UDAF Expression Impl /////////////////////////////////////
-#define CASE_KIND_UDAF(KIND)                                  \
-  case Kind::KIND: {                                          \
-    return UDFFactory::createUDAF<Kind::KIND>(udaf_, inner_); \
-  }
-
-std::unique_ptr<ValueEval> UDAFExpression::asEval() const {
-  // based on type, create different UDAF object and pass it to UDF function wrapper
-  switch (kind_) {
-    CASE_KIND_UDAF(BOOLEAN)
-    CASE_KIND_UDAF(TINYINT)
-    CASE_KIND_UDAF(SMALLINT)
-    CASE_KIND_UDAF(INTEGER)
-    CASE_KIND_UDAF(BIGINT)
-    CASE_KIND_UDAF(REAL)
-    CASE_KIND_UDAF(DOUBLE)
-    CASE_KIND_UDAF(VARCHAR)
-  default:
-    throw NException("kind not found.");
-  }
-}
-
-#undef CASE_KIND_UDAF
 
 } // namespace dsl
 } // namespace api

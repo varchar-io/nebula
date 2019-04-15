@@ -64,9 +64,9 @@ public:
   virtual ~ComputedRow() = default;
 
 public:
-#define NOT_IMPL_FUNC(TYPE, FUNC)                      \
-  TYPE FUNC(const std::string& field) const override { \
-    throw NException(#FUNC " is not implemented");     \
+#define NOT_IMPL_FUNC(TYPE, FUNC)                  \
+  TYPE FUNC(const std::string&) const override {   \
+    throw NException(#FUNC " is not implemented"); \
   }
 
   NOT_IMPL_FUNC(bool, readBool)

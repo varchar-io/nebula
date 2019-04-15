@@ -17,6 +17,7 @@
 #include "gtest/gtest.h"
 #include <any>
 #include <cstddef>
+#include <glog/logging.h>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -24,7 +25,6 @@
 #include <vector>
 #include "common/Errors.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
 #include "type/Serde.h"
 #include "type/Tree.h"
 #include "type/Type.h"
@@ -150,21 +150,21 @@ TEST(TypeTest, Traits) {
                                 std::make_shared<BoolType>(BoolType::create("f4")));
 
     EXPECT_EQ(type.size(), 4);
-    auto f1 = type.childAt<LongType::PType>(0).value();
+    auto f1 = type.childType(0);
     EXPECT_EQ(f1->name(), "f1");
-    EXPECT_EQ(f1->type, "BIGINT");
+    EXPECT_EQ(static_cast<LongType&>(*f1).type, "BIGINT");
 
-    auto f2 = type.childAt<StringType::PType>(1).value();
+    auto f2 = type.childType(1);
     EXPECT_EQ(f2->name(), "f2");
-    EXPECT_EQ(f2->type, "VARCHAR");
+    EXPECT_EQ(static_cast<StringType&>(*f1).type, "VARCHAR");
 
-    auto f3 = type.childAt<ShortType::PType>(2).value();
+    auto f3 = type.childType(2);
     EXPECT_EQ(f3->name(), "f3");
-    EXPECT_EQ(f3->type, "SMALLINT");
+    EXPECT_EQ(static_cast<ShortType&>(*f1).type, "SMALLINT");
 
-    auto f4 = type.childAt<BoolType::PType>(3).value();
+    auto f4 = type.childType(3);
     EXPECT_EQ(f4->name(), "f4");
-    EXPECT_EQ(f4->type, "BOOLEAN");
+    EXPECT_EQ(static_cast<BoolType&>(*f1).type, "BOOLEAN");
   }
 }
 

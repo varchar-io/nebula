@@ -18,10 +18,10 @@
 
 #include <algorithm>
 #include <array>
+#include <glog/logging.h>
 #include <unordered_map>
 #include "common/Errors.h"
 #include "execution/eval/UDF.h"
-#include "glog/logging.h"
 #include "meta/Table.h"
 #include "type/Tree.h"
 
@@ -60,6 +60,66 @@ enum class LogicalOp {
 #define IS_T_LITERAL(T) std::is_same<char*, std::decay_t<T>>::value
 #endif
 
+// NOTE:
+// TODO(cao) - we put all these operator definitions in each concrete types
+// IS only because the THIS_TYPE resolusion
+// Right now, std::remove_reference<decltype(*this)>::type doesn't resolve runtime type but the current type
+// where the method is called - if somehow we can figure out THIS_TYPE for runtime, we can save lots of duplicate code
+// meaning we only need these operator defined in base expression.
+class Expression {
+public:
+  Expression() : alias_{}, kind_{ nebula::type::Kind::INVALID } {}
+  virtual ~Expression() = default;
+
+public:
+  // TODO(cao): need to rework to introduce context and visitor pattern
+  // to deduce the type of this expression
+  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) = 0;
+  virtual bool isAgg() const = 0;
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const = 0;
+  virtual std::vector<std::string> columnRefs() const {
+    return {};
+  };
+
+public:
+  std::string alias() const {
+    return alias_;
+  }
+
+  nebula::type::Kind kind() const {
+    return kind_;
+  }
+
+protected:
+  static nebula::type::TreeNode typeCreate(nebula::type::Kind kind, std::string& alias) {
+#define TYPE_CREATE_NODE(KIND, TYPE)              \
+  case nebula::type::KIND: {                      \
+    return nebula::type::TYPE::createTree(alias); \
+  }
+
+    // no result should have the final type KIND
+    switch (kind) {
+      TYPE_CREATE_NODE(BOOLEAN, BoolType)
+      TYPE_CREATE_NODE(TINYINT, ByteType)
+      TYPE_CREATE_NODE(SMALLINT, ShortType)
+      TYPE_CREATE_NODE(INTEGER, IntType)
+      TYPE_CREATE_NODE(BIGINT, LongType)
+      TYPE_CREATE_NODE(REAL, FloatType)
+      TYPE_CREATE_NODE(DOUBLE, DoubleType)
+    default:
+      throw NException(fmt::format("not supported type {0} in arthmetic operations",
+                                   nebula::type::TypeBase::kname(kind)));
+    }
+#undef TYPE_CREATE_NODE
+  }
+
+  // only one alias can be updated if client calls "as" multiple times
+  std::string alias_;
+
+  // set by type() method
+  nebula::type::Kind kind_;
+};
+
 class ArthmeticCombination {
 private:
   static constexpr std::array<nebula::type::Kind, 6> numbers{
@@ -80,9 +140,8 @@ private:
   static constexpr std::array<nebula::type::Kind, 36> map = []() {
     constexpr size_t size = numbers.size();
     std::array<nebula::type::Kind, size * size> m{};
-    int index = 0;
-    for (auto i = 0; i < size; ++i) {
-      for (auto j = 0; j < size; ++j) {
+    for (size_t i = 0; i < size; ++i) {
+      for (size_t j = 0; j < size; ++j) {
         m[i * size + j] = std::max(numbers[i], numbers[j]);
       }
     }

@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "Table.h"
-#include "glog/logging.h"
 
 /**
  * Define nebula cell - a data block or segment metadaeta that loaded in memory.
@@ -27,7 +27,7 @@ namespace meta {
 
 class NBlock {
 public:
-  NBlock(const Table& tbl, size_t blockId) : table_{ tbl }, id_{ blockId } {
+  NBlock(const Table& tbl, size_t blockId) : id_{ blockId }, table_{ tbl } {
     auto h = hash();
     sign_ = fmt::format("{0}_{1}_{2}", table_.name(), id_, h);
   }

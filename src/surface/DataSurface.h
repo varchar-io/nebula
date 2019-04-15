@@ -69,7 +69,7 @@ public:
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 #define NOT_IMPL_FUNC(TYPE, FUNC)                                 \
-  virtual TYPE FUNC(IndexType index) const {                      \
+  virtual TYPE FUNC(IndexType) const {                            \
     throw NException(#FUNC " (IndexType index) not implemented"); \
   }
 
@@ -142,7 +142,7 @@ protected:
 // Supported compound types
 class MockRowData : public RowData, protected MockData {
 public:
-  MockRowData(size_t seed = 0) : seed_{ seed }, MockData(seed) {}
+  MockRowData(size_t seed = 0) : MockData(seed), seed_{ seed } {}
 
 public:
   bool isNull(const std::string& field) const override;

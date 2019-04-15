@@ -61,7 +61,7 @@ std::string Batch::state() const {
   // SizeMeta: size, allocation
   using SizeMeta = std::tuple<size_t, size_t>;
   auto s = data_->treeWalk<SizeMeta, DataNode>(
-    [](const DataNode& v) {},
+    [](const DataNode&) {},
     [](const DataNode& v, std::vector<SizeMeta>& children) {
       size_t allocation = v.storageAllocation();
       size_t size = v.storageSize();

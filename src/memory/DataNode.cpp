@@ -39,7 +39,7 @@ static constexpr size_t NULL_SIZE = 1;
 DataTree DataNode::buildDataTree(const Schema& schema) {
   // traverse the whole schema tree to generate a data tree
   auto dataTree = schema->treeWalk<TreeNode>(
-    [](const auto& v) {},
+    [](const auto&) {},
     [](const auto& v, std::vector<TreeNode>& children) {
       const auto& t = dynamic_cast<const TypeBase&>(v);
       return TreeNode(new DataNode(t, children));
@@ -53,9 +53,9 @@ DataTree DataNode::buildDataTree(const Schema& schema) {
   return size;
 
 size_t DataNode::appendNull() {
-  constexpr static auto NULL_TUPLE = std::make_tuple(0, NULL_SIZE);
-
+  // constexpr static auto NULL_TUPLE = std::make_tuple(0, NULL_SIZE);
   // meta_->set(cursorAndAdvance(), NULL_TUPLE);
+
   constexpr size_t size = NULL_SIZE;
   auto index = cursorAndAdvance();
   meta_->setNull(index);
@@ -203,8 +203,6 @@ size_t DataNode::append(const nebula::surface::MapData& map) {
   const auto& value = this->childAt<PDataNode>(1).value();
 
   const auto entries = map.getItems();
-  const auto keyKind = key->type_.k();
-  const auto valueKind = value->type_.k();
   uint32_t size = 0;
 
   auto keys = map.readKeys();

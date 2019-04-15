@@ -182,7 +182,7 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
 
   std::vector<bool> nulls;
   nulls.reserve(numColumns);
-  for (auto i = 0; i < numColumns; ++i) {
+  for (size_t i = 0; i < numColumns; ++i) {
     auto type = schema_->childType(i);
     const Kind kind = type->k();
     nulls.push_back(appendNull(row.isNull(i), kind, main_));
@@ -195,7 +195,7 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
   }
 
   // handle every column
-  for (auto i = 0; i < numColumns; ++i) {
+  for (size_t i = 0; i < numColumns; ++i) {
 
     // if it is null, do nothing
     if (nulls[i]) {
@@ -247,11 +247,11 @@ const RowData& FlatBuffer::row(size_t rowId) {
   auto rowOffset = std::get<0>(rowProp);
   // calculate each column: null or not, offset,
 
-  current_ = std::make_unique<RowAccessor>(*this, rowOffset, std::move(columnProps(rowId, rowOffset)));
+  current_ = std::make_unique<RowAccessor>(*this, rowOffset, columnProps(rowOffset));
   return *current_;
 }
 
-FlatColumnProps FlatBuffer::columnProps(size_t row, size_t offset) const {
+FlatColumnProps FlatBuffer::columnProps(size_t offset) const {
   auto numCols = schema_->size();
   FlatColumnProps colProps;
   colProps.reserve(numCols);
@@ -268,14 +268,14 @@ FlatColumnProps FlatBuffer::columnProps(size_t row, size_t offset) const {
     }
   }
 
-  return std::move(colProps);
+  return colProps;
 }
 
 // compute hash value of given row and column list
 // The function has very similar logic as row accessor, we inline it for perf
 size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
   auto rowOffset = std::get<0>(rows_[rowId]);
-  FlatColumnProps colProps = columnProps(rowId, std::get<0>(rows_[rowId]));
+  FlatColumnProps colProps = columnProps(std::get<0>(rows_[rowId]));
   static constexpr size_t flip = 0x3600ABC35871E005UL;
   static constexpr size_t start = 0xC6A4A7935BD1E995UL;
   size_t hvalue = start;
@@ -336,8 +336,8 @@ size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
 bool FlatBuffer::equal(size_t row1, size_t row2, const std::vector<size_t>& cols) const {
   auto row1Offset = std::get<0>(rows_[row1]);
   auto row2Offset = std::get<0>(rows_[row2]);
-  FlatColumnProps colProps1 = columnProps(row1, row1Offset);
-  FlatColumnProps colProps2 = columnProps(row2, row2Offset);
+  FlatColumnProps colProps1 = columnProps(row1Offset);
+  FlatColumnProps colProps2 = columnProps(row2Offset);
 
 #define TYPE_COMPARE(KIND, TYPE)                                                                              \
   case Kind::KIND: {                                                                                          \
@@ -365,7 +365,6 @@ bool FlatBuffer::equal(size_t row1, size_t row2, const std::vector<size_t>& cols
     size_t colOffset2 = std::get<1>(item2);
     Kind k = std::get<2>(item1);
     // we only support primitive types for keys
-    size_t n8bytes = 0;
     switch (k) {
       TYPE_COMPARE(BOOLEAN, bool)
       TYPE_COMPARE(TINYINT, int8_t)
@@ -407,8 +406,8 @@ bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, 
   // LOG(INFO) << "copy row " << row1 << " into " << row2;
   auto row1Offset = std::get<0>(rows_[row1]);
   auto row2Offset = std::get<0>(rows_[row2]);
-  FlatColumnProps colProps1 = columnProps(row1, row1Offset);
-  FlatColumnProps colProps2 = columnProps(row2, row2Offset);
+  FlatColumnProps colProps1 = columnProps(row1Offset);
+  FlatColumnProps colProps2 = columnProps(row2Offset);
 
 #define UPDATE_COLUMN(COLUMN, KIND, TYPE)                       \
   case Kind::KIND: {                                            \
@@ -515,12 +514,12 @@ std::unique_ptr<nebula::surface::ListData> RowAccessor::readList(const std::stri
   return std::make_unique<ListAccessor>(items, offset, fb_.list_, fb_.data_, fb_.widthInMain(listType->childType(0)->k()));
 }
 
-std::unique_ptr<nebula::surface::MapData> RowAccessor::readMap(const std::string& field) const {
+std::unique_ptr<nebula::surface::MapData> RowAccessor::readMap(const std::string&) const {
   throw NException("Map is not supported yet");
 }
 
 bool ListAccessor::isNull(IndexType index) const {
-  return isOffsetNull(itemOffsets_[index] + 1);
+  return isOffsetNull(itemOffsets_[index]);
 }
 
 #define READ_FIELD(TYPE, FUNC)                                          \

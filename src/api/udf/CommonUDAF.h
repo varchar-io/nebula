@@ -18,11 +18,11 @@
 
 #include <algorithm>
 #include <array>
-#include "api/dsl/Expressions.h"
+#include <glog/logging.h>
+#include "api/dsl/Base.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
 #include "execution/eval/UDF.h"
-#include "glog/logging.h"
 #include "meta/Table.h"
 #include "type/Tree.h"
 
@@ -41,9 +41,9 @@ class CommonUDAF : public nebula::execution::eval::UDAF<KIND> {
 
 public:
   CommonUDAF(std::shared_ptr<nebula::api::dsl::Expression> expr, AggFunc&& aggFunc)
-    : expr_{ expr->asEval() },
-      colrefs_{ std::move(expr->columnRefs()) },
-      nebula::execution::eval::UDAF<KIND>(std::move(aggFunc)) {}
+    : nebula::execution::eval::UDAF<KIND>(std::move(aggFunc)),
+      expr_{ expr->asEval() },
+      colrefs_{ expr->columnRefs() } {}
   virtual ~CommonUDAF() = default;
 
 public:

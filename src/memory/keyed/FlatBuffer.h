@@ -105,7 +105,7 @@ private:
   size_t appendList(nebula::type::Kind, std::unique_ptr<nebula::surface::ListData>);
 
   // get column properties of given row
-  FlatColumnProps columnProps(size_t, size_t) const;
+  FlatColumnProps columnProps(size_t) const;
 
   static size_t widthInMain(nebula::type::Kind);
 
@@ -169,7 +169,7 @@ public:
     // move current index to index and adjust current offset
     itemOffsets_.reserve(items);
     size_t itemOffset = 0;
-    for (auto i = 0; i < items; ++i) {
+    for (IndexType i = 0; i < items; ++i) {
       itemOffsets_.push_back(itemOffset);
       // check if its null
       if (!isOffsetNull(itemOffset)) {

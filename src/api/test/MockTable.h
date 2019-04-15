@@ -17,11 +17,11 @@
 #pragma once
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
 #include "common/Errors.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "meta/MetaService.h"
 #include "meta/NNode.h"
@@ -50,9 +50,9 @@ public:
   }
 
   virtual std::vector<nebula::meta::NNode> queryNodes(
-    const std::shared_ptr<nebula::meta::Table> table,
-    std::function<bool(const nebula::meta::NNode&)> predicate) override {
-    return { nebula::meta::local() };
+    const std::shared_ptr<nebula::meta::Table>,
+    std::function<bool(const nebula::meta::NNode&)>) override {
+    return { nebula::meta::NNode::local() };
   }
 };
 } // namespace test

@@ -31,7 +31,6 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 # include folders from types
 # target_include_directories(${NEBULA_TYPE} INTERFACE src/type)
 add_library(${NEBULA_TYPE} STATIC 
-    ${NEBULA_SRC}/type/Type.cpp 
     ${NEBULA_SRC}/type/Serde.cpp)
 target_link_libraries(${NEBULA_TYPE}
     PRIVATE ${NEBULA_COMMON})

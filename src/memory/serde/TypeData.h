@@ -18,7 +18,7 @@
 
 #include "common/Likely.h"
 #include "common/Memory.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 #include "type/Type.h"
 
 namespace nebula {

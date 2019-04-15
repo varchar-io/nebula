@@ -16,11 +16,11 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "Expressions.h"
 #include "api/udf/MyUdf.h"
 #include "common/Cursor.h"
 #include "execution/ExecutionPlan.h"
-#include "glog/logging.h"
 #include "meta/MetaService.h"
 #include "meta/Table.h"
 #include "surface/DataSurface.h"
@@ -124,7 +124,8 @@ private:
 // table to fetch a table - a unique identifier of a data set/category in nebula system
 // the largest data unit to be ingested and computed.
 // Nebula will enforce every single table to have time-stamp column, explicitly (user-defined) or implicitly (nebula-defined)
-static Query table(const std::string& name, const std::shared_ptr<nebula::meta::MetaService> metaservice = nullptr) {
+__attribute__((unused)) static Query table(const std::string& name, const std::shared_ptr<nebula::meta::MetaService> metaservice = nullptr) {
+
   auto ms = metaservice;
   if (ms == nullptr) {
     // default one
@@ -138,7 +139,7 @@ static Query table(const std::string& name, const std::shared_ptr<nebula::meta::
 }
 
 // build an column expression to represnt a column
-static ColumnExpression col(const std::string& column) {
+__attribute__((unused)) static ColumnExpression col(const std::string& column) {
   return ColumnExpression(column);
 }
 
@@ -146,30 +147,28 @@ static ColumnExpression col(const std::string& column) {
 // a UDF/UDAF return type can be runtime determined
 // by default, max works for int type
 template <typename T>
-static UDAFExpression max(const T& expr) {
+static UDFExpression<nebula::execution::eval::UDFType::MAX> max(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return UDAFExpression(nebula::execution::eval::UDAF_REG::MAX, std::shared_ptr<Expression>(new T(expr)));
+  return UDFExpression<nebula::execution::eval::UDFType::MAX>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>
-static UDAFExpression min(const T& expr) {
+static UDFExpression<nebula::execution::eval::UDFType::MIN> min(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return UDAFExpression(nebula::execution::eval::UDAF_REG::MIN, std::shared_ptr<Expression>(new T(expr)));
+  return UDFExpression<nebula::execution::eval::UDFType::MIN>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>
-static UDAFExpression count(const T& expr) {
+static UDFExpression<nebula::execution::eval::UDFType::COUNT> count(const T& expr) {
   // TODO(cao) - we may support column expression as well for count
-  return UDAFExpression(nebula::execution::eval::UDAF_REG::COUNT,
-                        std::make_shared<ConstExpression<T>>(expr));
+  return UDFExpression<nebula::execution::eval::UDFType::COUNT>(std::make_shared<ConstExpression<T>>(expr));
 }
 
 // TODO(cao) - we should move UDF creation out of DSL as it's logical concept
 // follow example of UDAF to be consistent
 template <typename T>
-static UDFExpression<nebula::type::Kind::BOOLEAN> reverse(const T& expr) {
-  return UDFExpression<nebula::type::Kind::BOOLEAN>(
-    std::make_shared<nebula::api::udf::Not>(std::shared_ptr<Expression>(new T(expr))));
+static UDFExpression<nebula::execution::eval::UDFType::NOT> reverse(const T& expr) {
+  return UDFExpression<nebula::execution::eval::UDFType::NOT>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>
@@ -177,7 +176,7 @@ static ConstExpression<T> v(const T& value) {
   return ConstExpression<T>(value);
 }
 
-static ConstExpression<std::string> v(const std::string& value) {
+__attribute__((unused)) static ConstExpression<std::string> v(const std::string& value) {
   return ConstExpression<std::string>(value);
 }
 

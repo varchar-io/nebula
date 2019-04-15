@@ -25,9 +25,9 @@
  */
 namespace nebula {
 namespace surface {
-#define NOT_IMPL_FUNC(TYPE, NAME)             \
-  TYPE NAME(IndexType index) const override { \
-    throw NException("x");                    \
+#define NOT_IMPL_FUNC(TYPE, NAME)       \
+  TYPE NAME(IndexType) const override { \
+    throw NException("x");              \
   }
 
 class StaticList : public ListData {
@@ -35,7 +35,7 @@ public:
   StaticList(std::vector<std::string> data) : ListData(data.size()), data_{ std::move(data) } {
   }
 
-  bool isNull(IndexType index) const override {
+  bool isNull(IndexType) const override {
     return false;
   }
 
@@ -57,9 +57,9 @@ private:
 
 #undef NOT_IMPL_FUNC
 
-#define NOT_IMPL_FUNC(TYPE, NAME)                      \
-  TYPE NAME(const std::string& field) const override { \
-    throw NException("x");                             \
+#define NOT_IMPL_FUNC(TYPE, NAME)                \
+  TYPE NAME(const std::string&) const override { \
+    throw NException("x");                       \
   }
 
 class StaticRow : public RowData {
@@ -68,7 +68,7 @@ public:
     : id_{ i }, event_{ std::move(s) }, flag_{ f } {
     if (list != nullptr) {
       items_.reserve(list->getItems());
-      for (auto k = 0; k < items_.capacity(); ++k) {
+      for (size_t k = 0; k < items_.capacity(); ++k) {
         items_.push_back(list->readString(k));
       }
     }
@@ -83,35 +83,35 @@ public:
     return index == 2 && items_.size() == 0;
   }
 
-  bool readBool(const std::string& field) const override {
+  bool readBool(const std::string&) const override {
     return flag_;
   }
 
-  bool readBool(IndexType index) const override {
+  bool readBool(IndexType) const override {
     return flag_;
   }
 
-  int32_t readInt(const std::string& field) const override {
+  int32_t readInt(const std::string&) const override {
     return id_;
   }
 
-  int32_t readInt(IndexType index) const override {
+  int32_t readInt(IndexType) const override {
     return id_;
   }
 
-  std::string readString(const std::string& field) const override {
+  std::string readString(const std::string&) const override {
     return event_;
   }
 
-  std::string readString(IndexType index) const override {
+  std::string readString(IndexType) const override {
     return event_;
   }
 
-  std::unique_ptr<ListData> readList(const std::string& field) const override {
+  std::unique_ptr<ListData> readList(const std::string&) const override {
     return items_.size() == 0 ? nullptr : std::make_unique<StaticList>(items_);
   }
 
-  std::unique_ptr<ListData> readList(IndexType index) const override {
+  std::unique_ptr<ListData> readList(IndexType) const override {
     return items_.size() == 0 ? nullptr : std::make_unique<StaticList>(items_);
   }
 

@@ -18,7 +18,7 @@
 #include <valarray>
 #include "common/Memory.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 #include "memory/Batch.h"
 #include "memory/DataNode.h"
 #include "memory/FlatRow.h"

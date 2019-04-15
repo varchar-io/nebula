@@ -15,6 +15,7 @@
  */
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
 #include "MockTable.h"
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
@@ -24,7 +25,6 @@
 #include "common/Memory.h"
 #include "execution/ExecutionPlan.h"
 #include "fmt/format.h"
-#include "glog/logging.h"
 #include "gmock/gmock.h"
 #include "meta/Table.h"
 #include "surface/DataSurface.h"
@@ -49,7 +49,7 @@ struct X {
   int id_;
 
   template <typename T>
-  bool operator==(T v) const {
+  bool operator==(T) const {
     LOG(INFO) << "compared with == to an int";
     return true;
   }

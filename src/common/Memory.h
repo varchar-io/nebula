@@ -19,7 +19,7 @@
 #include <iostream>
 #include "Errors.h"
 #include "Likely.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 
 // TODO(cao): import jemalloc for global new/delete allocation
 // void* operator new(size_t size) {
@@ -104,7 +104,7 @@ protected:
  */
 class PagedSlice : public Slice {
 public:
-  PagedSlice(size_t page) : slices_{ 1 }, Slice(page) {}
+  PagedSlice(size_t page) : Slice(page), slices_{ 1 } {}
   ~PagedSlice() = default;
 
   // append a bytes array of length bytes to position

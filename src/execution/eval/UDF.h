@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "ValueEval.h"
-#include "glog/logging.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
 
@@ -35,7 +35,7 @@ template <nebula::type::Kind KIND>
 class UDF : public TYPE_VALUE_EVAL_KIND {
 public:
   UDF() : TYPE_VALUE_EVAL_KIND(
-            [this](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>& children) -> decltype(auto) {
+            [this](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&) -> decltype(auto) {
               // call the UDF to evalue the result
               return this->run(row);
             },
@@ -73,12 +73,31 @@ private:
 
 #undef TYPE_VALUE_EVAL_KIND
 
-enum class UDAF_REG {
+enum class UDFType {
+  NOT,
   MAX,
   MIN,
   AVG,
   COUNT
 };
+
+template <UDFType UDFKind>
+struct UdfTraits {};
+
+#define DEFINE_UDF_TRAITS(NAME, IsUdaf)  \
+  template <>                            \
+  struct UdfTraits<UDFType::NAME> {      \
+    static constexpr bool UDAF = IsUdaf; \
+  };
+
+// define each UDAF type taits
+DEFINE_UDF_TRAITS(NOT, false)
+DEFINE_UDF_TRAITS(MAX, true)
+DEFINE_UDF_TRAITS(MIN, true)
+DEFINE_UDF_TRAITS(AVG, true)
+DEFINE_UDF_TRAITS(COUNT, true)
+
+#undef DEFINE_UDF_TRAITS
 
 } // namespace eval
 } // namespace execution

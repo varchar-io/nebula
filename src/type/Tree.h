@@ -19,7 +19,6 @@
 #include <any>
 #include <vector>
 #include "common/Errors.h"
-#include "glog/logging.h"
 
 namespace nebula {
 namespace type {
@@ -116,7 +115,7 @@ public:
     size_t node = start;
     auto last = treeWalk<size_t>(
       [&node](const auto& v) { const_cast<TreeBase&>(v).node_ = node++; },
-      [&node](const auto& v, std::vector<size_t>& children) { return node; });
+      [&node](const auto&, std::vector<size_t>&) { return node; });
 
     N_ENSURE_EQ(node, last, "last node should match");
     return last;

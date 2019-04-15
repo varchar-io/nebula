@@ -54,7 +54,7 @@ TYPE_DATA_CONSTR(EmptyData, FLAGS_EMPTY_PAGE_SIZE)
 
 #define TYPE_ADD_VOID(TYPE, value)       \
   template <>                            \
-  void TYPE::addVoid(IndexType index) {  \
+  void TYPE::addVoid(IndexType) {        \
     size_ += slice_.write(size_, value); \
   }
 
@@ -68,7 +68,7 @@ TYPE_ADD_VOID(DoubleData, (double)0);
 
 // string void data
 template <>
-void StringData::addVoid(IndexType index) {
+void StringData::addVoid(IndexType) {
   size_ += slice_.write(size_, "", 0);
 }
 
@@ -78,50 +78,50 @@ void StringData::addVoid(IndexType index) {
 
 template <>
 template <>
-void BoolData::add(IndexType index, bool value) {
+void BoolData::add(IndexType, bool value) {
   // TODO(cao): raw data, need to plug in encoder
   size_ += slice_.write(size_, value);
 }
 
 template <>
 template <>
-void ByteData::add(IndexType index, int8_t value) {
+void ByteData::add(IndexType, int8_t value) {
   size_ += slice_.write(size_, value);
 }
 
 template <>
 template <>
-void ShortData::add(IndexType index, int16_t value) {
+void ShortData::add(IndexType, int16_t value) {
   size_ += slice_.write(size_, value);
 }
 
 template <>
 template <>
-void IntData::add(IndexType index, int32_t value) {
+void IntData::add(IndexType, int32_t value) {
   size_ += slice_.write(size_, value);
 }
 
 template <>
 template <>
-void LongData::add(IndexType index, int64_t value) {
+void LongData::add(IndexType, int64_t value) {
   size_ += slice_.write(size_, value);
 }
 
 template <>
 template <>
-void FloatData::add(IndexType index, float value) {
+void FloatData::add(IndexType, float value) {
   size_ += slice_.write(size_, value);
 }
 
 template <>
 template <>
-void DoubleData::add(IndexType index, double value) {
+void DoubleData::add(IndexType, double value) {
   size_ += slice_.write(size_, value);
 }
 
 template <>
 template <>
-void StringData::add(IndexType index, const std::string& value) {
+void StringData::add(IndexType, const std::string& value) {
   size_ += slice_.write(size_, value.data(), value.size());
 }
 

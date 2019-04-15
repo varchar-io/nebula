@@ -17,7 +17,6 @@
 #pragma once
 
 #include "common/Cursor.h"
-#include "glog/logging.h"
 #include "meta/NNode.h"
 #include "surface/DataSurface.h"
 
@@ -29,7 +28,7 @@ namespace execution {
 namespace eval {
 
 template <typename T>
-class TypeValueEval;
+struct TypeValueEval;
 
 // this is a tree, with each node to be either macro/value or operator
 // this is translated from expression.
@@ -73,7 +72,7 @@ template <typename T>
 static std::unique_ptr<ValueEval> constant(T v) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
-      [v](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>& children) -> T {
+      [v](const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&) -> T {
         return v;
       },
       {}));
@@ -83,7 +82,7 @@ template <typename T>
 static std::unique_ptr<ValueEval> column(const std::string& name) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
-      [name](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>& children) -> T {
+      [name](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&) -> T {
         // compile time branching based on template type T
         // I think it's better than using template specialization for this case
         if constexpr (std::is_same<T, bool>::value) {

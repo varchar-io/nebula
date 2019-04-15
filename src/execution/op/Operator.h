@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "glog/logging.h"
+#include <glog/logging.h>
 
 /**
  * Define nebula table and system metadata 

@@ -16,12 +16,12 @@
 
 #pragma once
 
+#include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/futures/Future.h>
+#include <glog/logging.h>
 #include <sys/mman.h>
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
-#include "folly/executors/CPUThreadPoolExecutor.h"
-#include "folly/futures/Future.h"
-#include "glog/logging.h"
 #include "memory/Batch.h"
 
 /**

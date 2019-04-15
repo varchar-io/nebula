@@ -15,7 +15,7 @@
  */
 
 #include "gtest/gtest.h"
-#include "glog/logging.h"
+#include <glog/logging.h>
 
 namespace nebula {
 namespace type {
@@ -26,8 +26,7 @@ TEST(MiscTest, StringUtf8) {
 
   std::string str2 = "星云";
   EXPECT_EQ(str2.size(), 6);
-  auto bytes = str2.data();
-  for (auto i = 0; i < str2.size(); ++i) {
+  for (size_t i = 0; i < str2.size(); ++i) {
     LOG(INFO) << "CHAR: " << ((int)str2.at(i));
   }
 }

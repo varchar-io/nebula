@@ -40,7 +40,6 @@ using nebula::surface::RowData;
  * So the interfaces will be changed as async interfaces using future and promise.
  */
 RowCursor NodeExecutor::execute(const ExecutionPlan& plan) {
-  const NodePhase& nodePhase = plan.fetch<PhaseType::PARTIAL>();
   const BlockPhase& blockPhase = plan.fetch<PhaseType::COMPUTE>();
   // query total number of blocks to  executor on and
   // launch block executor on each in parallel

@@ -15,8 +15,8 @@
  */
 
 #include "ServerExecutor.h"
-#include "folly/executors/ThreadedExecutor.h"
-#include "folly/futures/Future.h"
+#include <folly/executors/ThreadedExecutor.h>
+#include <folly/futures/Future.h>
 
 // TODO(cao) - COMMENT OUT, lib link issue
 // DEFINE_uint32(NODE_TIMEOUT, 2000, "miliseconds");
@@ -40,12 +40,12 @@ RowCursor ServerExecutor::execute(ExecutionPlan& plan) {
   std::vector<folly::Future<RowCursor>> results;
   for (const NNode& node : plan.getNodes()) {
     auto c = connect(node);
-    auto f = c.execute(plan);
-    //  // set time out handling
-    //  .onTimeout(RPC_TIMEOUT, [&] { return RowCursor; })
-
-    //  // set error handling
-    //  .onError([&](const std::exception& e) { return RowCursor(); });
+    auto f = c.execute(plan)
+               // set time out handling
+               // TODO(cao) - add error handling too via thenError
+               .onTimeout(RPC_TIMEOUT, [&] { 
+                 LOG(WARNING) << "Timeout: " << RPC_TIMEOUT.count();
+                 return RowCursor(); });
 
     results.push_back(std::move(f));
   }
