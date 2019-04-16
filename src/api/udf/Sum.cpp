@@ -14,25 +14,22 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <string>
+#include "Sum.h"
 
 /**
- * Nebula test table used for integration test.
- * Used to turn on/off test hooks.
+ * Define expressions used in the nebula DSL.
  */
 namespace nebula {
-namespace meta {
+namespace api {
+namespace udf {
 
-class TestTable {
-public:
-  static const std::string& name();
-  static const std::string& schema();
+template <>
+Sum<nebula::type::Kind::VARCHAR>::Sum(std::shared_ptr<nebula::api::dsl::Expression> expr)
+  : CommonUDAF<nebula::type::Kind::VARCHAR>(expr,
+                                            [](char*, char*) -> char* {
+                                              throw NException("sum string is not supported currently");
+                                            }) {}
 
-  static const std::string& trendsTableName();
-  static const std::string& trendsTableSchema();
-};
-
-} // namespace meta
+} // namespace udf
+} // namespace api
 } // namespace nebula

@@ -38,7 +38,13 @@ using nebula::type::TypeSerializer;
 class MockTable : public nebula::meta::Table {
 public:
   MockTable(const std::string& name) : Table(name) {
-    schema_ = TypeSerializer::from(nebula::meta::TestTable::schema());
+    if (name == nebula::meta::TestTable::name()) {
+      schema_ = TypeSerializer::from(nebula::meta::TestTable::schema());
+    }
+
+    if (name == nebula::meta::TestTable::trendsTableName()) {
+      schema_ = TypeSerializer::from(nebula::meta::TestTable::trendsTableSchema());
+    }
   }
   virtual ~MockTable() = default;
 };

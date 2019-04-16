@@ -164,6 +164,12 @@ static UDFExpression<nebula::execution::eval::UDFType::COUNT> count(const T& exp
   return UDFExpression<nebula::execution::eval::UDFType::COUNT>(std::make_shared<ConstExpression<T>>(expr));
 }
 
+template <typename T>
+static UDFExpression<nebula::execution::eval::UDFType::SUM> sum(const T& expr) {
+  // TODO(cao) - model UDAF/UDF with existing expression
+  return UDFExpression<nebula::execution::eval::UDFType::SUM>(std::shared_ptr<Expression>(new T(expr)));
+}
+
 // TODO(cao) - we should move UDF creation out of DSL as it's logical concept
 // follow example of UDAF to be consistent
 template <typename T>

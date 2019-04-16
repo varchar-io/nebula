@@ -20,6 +20,7 @@
 #include "Max.h"
 #include "Min.h"
 #include "MyUdf.h"
+#include "Sum.h"
 #include "api/dsl/Base.h"
 #include "execution/eval/UDF.h"
 #include "type/Type.h"
@@ -49,6 +50,10 @@ public:
 
     if constexpr (UKIND == UDFKind::COUNT) {
       return std::make_unique<Count<KIND>>(expr);
+    }
+
+    if constexpr (UKIND == UDFKind::SUM) {
+      return std::make_unique<Sum<KIND>>(expr);
     }
 
     throw NException("Unimplemented UDF");

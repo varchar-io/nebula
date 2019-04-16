@@ -15,6 +15,7 @@
  */
 
 #include "BlockLoader.h"
+#include "storage/CsvReader.h"
 #include "type/Serde.h"
 
 /**
@@ -26,11 +27,16 @@ namespace io {
 
 using nebula::memory::Batch;
 using nebula::meta::TestTable;
+using nebula::storage::CsvReader;
 using nebula::type::TypeSerializer;
 
 std::unique_ptr<nebula::memory::Batch> BlockLoader::load(const nebula::meta::NBlock& block) {
   if (block.getTable().name() == TestTable::name()) {
     return loadTestBlock();
+  }
+
+  if (block.getTable().name() == "trends.draft") {
+    return loadTrendsBlock();
   }
 
   throw NException("Not implemented yet");
@@ -52,6 +58,26 @@ std::unique_ptr<nebula::memory::Batch> BlockLoader::loadTestBlock() {
   }
   // print out the block state
   LOG(INFO) << "Loaded test block: " << block->state();
+
+  return block;
+}
+
+std::unique_ptr<nebula::memory::Batch> BlockLoader::loadTrendsBlock() {
+  auto schema = TypeSerializer::from(TestTable::trendsTableSchema());
+  auto block = std::make_unique<Batch>(schema);
+
+  // PURE TEST CODE: load data from a file path
+  auto file = "/Users/shawncao/trends.draft.csv";
+  CsvReader reader(file);
+  while (reader.hasNext()) {
+    auto& row = reader.next();
+    // add all entries belonging to test_data_limit_100000 into the block
+    if (row.readString("methodology") == "test_data_limit_100000") {
+      block->add(row);
+    }
+  }
+
+  LOG(INFO) << "Loaded from " << file << ": " << block->state();
 
   return block;
 }

@@ -16,23 +16,18 @@
 
 #pragma once
 
-#include <string>
+#include "common/Errors.h"
 
 /**
- * Nebula test table used for integration test.
- * Used to turn on/off test hooks.
+ * A wrapper for interacting with AWS / S3
  */
 namespace nebula {
-namespace meta {
-
-class TestTable {
+namespace storage {
+namespace aws {
+class S3 {
 public:
-  static const std::string& name();
-  static const std::string& schema();
-
-  static const std::string& trendsTableName();
-  static const std::string& trendsTableSchema();
+  void read();
 };
-
-} // namespace meta
+} // namespace aws
+} // namespace storage
 } // namespace nebula

@@ -66,6 +66,9 @@ include_directories(include ${GMOCK_INCLUDE_DIRS})
 # include pre-installed folly
 include(ext/Folly_Ext.cmake)
 
+#include AWS external project
+include(ext/Aws_Ext.cmake)
+
 # "brew install conan" first - it's great after migrating to conan
 # at least for folly - thanks conan, how to solve conflicts with existing lib like gflags?.
 # use conan to install the dependency
@@ -82,6 +85,9 @@ include(ext/Folly_Ext.cmake)
 
 # build common library
 include(src/common/Common.cmake)
+
+# build data storage - clound providers
+include(src/storage/Storage.cmake)
 
 # build data surface - interfaces
 include(src/surface/Surface.cmake)

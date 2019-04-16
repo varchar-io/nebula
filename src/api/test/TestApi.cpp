@@ -108,6 +108,48 @@ TEST(ApiTest, TestQueryStructure) {
   }
 }
 
+TEST(ApiTest, TestDataFromCsv) {
+  auto tbl = "trends.draft";
+  auto ms = std::make_shared<MockMs>();
+  // load test data to run this query
+  auto bm = BlockManager::init();
+  auto ptable = ms->query(tbl);
+
+  // ensure block 0 of the test table (load from storage if not in memory)
+  NBlock block(*ptable, 0);
+  bm->add(block);
+
+  // query this table
+  const auto query = table(tbl, ms)
+                       .where(col("dt") == "03/02/2018")
+                       .select(
+                         col("dt"),
+                         sum(col("count")).as("total"))
+                       .groupby({ 1 });
+
+  // compile the query into an execution plan
+  auto plan = query.compile();
+
+  // print out the plan through logging
+  plan->display();
+
+  auto tick = nebula::common::Evidence::ticks();
+  // pass the query plan to a server to execute - usually it is itself
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << duration << " ms";
+  LOG(INFO) << fmt::format("col: {0:12} | {1:12}", "QUERY", "Total");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << fmt::format("row: {0:50} | {1:12}",
+                             row.readString("dt"),
+                             row.readInt("total"));
+  }
+}
+
 TEST(ApiTest, TestExprValueEval) {
   const auto seed = common::Evidence::ticks();
   // set up table for testing

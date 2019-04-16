@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "execution/ExecutionPlan.h"
 #include <glog/logging.h>
+#include "execution/ExecutionPlan.h"
 #include "memory/Batch.h"
 #include "meta/NBlock.h"
 #include "meta/TestTable.h"
@@ -35,7 +35,10 @@ public:
   std::unique_ptr<nebula::memory::Batch> load(const nebula::meta::NBlock&);
 
 private:
+  // Test Hook
   std::unique_ptr<nebula::memory::Batch> loadTestBlock();
+  // Trends Data Hook
+  std::unique_ptr<nebula::memory::Batch> loadTrendsBlock();
 };
 
 } // namespace io

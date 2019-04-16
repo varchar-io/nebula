@@ -16,23 +16,32 @@
 
 #pragma once
 
-#include <string>
+#include "CommonUDAF.h"
 
 /**
- * Nebula test table used for integration test.
- * Used to turn on/off test hooks.
+ * Define expressions used in the nebula DSL.
  */
 namespace nebula {
-namespace meta {
+namespace api {
+namespace udf {
 
-class TestTable {
+// UDAF - max
+template <nebula::type::Kind KIND>
+class Sum : public CommonUDAF<KIND> {
+  using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
+
 public:
-  static const std::string& name();
-  static const std::string& schema();
-
-  static const std::string& trendsTableName();
-  static const std::string& trendsTableSchema();
+  Sum(std::shared_ptr<nebula::api::dsl::Expression> expr)
+    : CommonUDAF<KIND>(expr,
+                       [](NativeType ov, NativeType nv) {
+                         return ov + nv;
+                       }) {}
+  virtual ~Sum() = default;
 };
 
-} // namespace meta
+template <>
+Sum<nebula::type::Kind::VARCHAR>::Sum(std::shared_ptr<nebula::api::dsl::Expression> expr);
+
+} // namespace udf
+} // namespace api
 } // namespace nebula

@@ -18,7 +18,8 @@ target_link_libraries(${NEBULA_EXEC}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_META}
     PRIVATE ${NEBULA_MEMORY}
-    PRIVATE ${NEBULA_SURFACE})
+    PRIVATE ${NEBULA_SURFACE}
+    PRIVATE ${NEBULA_STORAGE})
 
 # include its own root directory for searching headers
 # set(NEXEC_INCLUDE_DIRS ${NEBULA_SRC}/execution)

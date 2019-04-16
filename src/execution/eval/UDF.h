@@ -78,7 +78,8 @@ enum class UDFType {
   MAX,
   MIN,
   AVG,
-  COUNT
+  COUNT,
+  SUM
 };
 
 template <UDFType UDFKind>
@@ -96,6 +97,7 @@ DEFINE_UDF_TRAITS(MAX, true)
 DEFINE_UDF_TRAITS(MIN, true)
 DEFINE_UDF_TRAITS(AVG, true)
 DEFINE_UDF_TRAITS(COUNT, true)
+DEFINE_UDF_TRAITS(SUM, true)
 
 #undef DEFINE_UDF_TRAITS
 

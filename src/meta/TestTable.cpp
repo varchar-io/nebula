@@ -33,5 +33,15 @@ const std::string& TestTable::schema() {
   return SCHEMA;
 }
 
+const std::string& TestTable::trendsTableName() {
+  static const std::string NAME = "trends.draft";
+  return NAME;
+}
+
+const std::string& TestTable::trendsTableSchema() {
+  static const std::string SCHEMA = "ROW<query:string, dt:string, count:int>";
+  return SCHEMA;
+}
+
 } // namespace meta
 } // namespace nebula
