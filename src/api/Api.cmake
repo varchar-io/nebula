@@ -6,6 +6,7 @@ add_library(${NEBULA_API} STATIC
     ${NEBULA_SRC}/api/dsl/Base.cpp
     ${NEBULA_SRC}/api/dsl/Dsl.cpp
     ${NEBULA_SRC}/api/dsl/Expressions.cpp
+    ${NEBULA_SRC}/api/udf/Count.cpp
     ${NEBULA_SRC}/api/udf/Sum.cpp
     ${NEBULA_SRC}/api/udf/UDFFactory.cpp)
 target_link_libraries(${NEBULA_API}

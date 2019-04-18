@@ -44,6 +44,7 @@ enum class ArthmeticOp {
 // supported logical operations
 enum class LogicalOp {
   EQ,
+  NEQ,
   GT,
   GE,
   LT,

@@ -109,6 +109,9 @@ class LogicalExpression;
   LOGICAL_OP_CONST(==, EQ)    \
   LOGICAL_OP_STRING(==, EQ)   \
   LOGICAL_OP_GENERIC(==, EQ)  \
+  LOGICAL_OP_CONST(!=, NEQ)   \
+  LOGICAL_OP_STRING(!=, NEQ)  \
+  LOGICAL_OP_GENERIC(!=, NEQ) \
   LOGICAL_OP_CONST(>, GT)     \
   LOGICAL_OP_STRING(>, GT)    \
   LOGICAL_OP_GENERIC(>, GT)   \

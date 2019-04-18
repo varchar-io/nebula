@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "common/Cursor.h"
 #include "meta/NNode.h"
 #include "surface/DataSurface.h"
@@ -37,12 +38,21 @@ struct ValueEval {
   virtual ~ValueEval() = default;
 
   template <typename T>
-  T eval(const nebula::surface::RowData& row) {
-    return static_cast<TypeValueEval<T>*>(this)->eval(row);
+  T eval(const nebula::surface::RowData& row) const {
+    // TODO(cao) - there is a problem wasted me a WHOLE day to figure out the root cause.
+    // So docuemnt here for further robust engineering work, the case is like this:
+    // When it create ValueEval, it uses template to generate TypeValueEval<std::string> for VARCHAR type
+    // However, there is some mismatch to cause this function call to be eval<char*>(row)
+    // obviously, below static_cast will give us a corrupted object since the concrete types mismatch.
+    // This is a hard problem if we don't pay attention and waste lots of time to debug it, so how can we prevent similar problem
+    // 1. we should do stronger type check to ensure the type used is consistent everywhere.
+    // 2. we can enforce std::enable_if more on the template type to ensure the function is called in the expected "type"
+    return static_cast<const TypeValueEval<T>*>(this)->eval(row);
   }
 };
 
 // two utilities
+#define OptType = T(*f)(const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&);
 #define OPT std::function<T(const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&)>
 #define OPT_LAMBDA(X)                                                                                 \
   ([](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>& children) { \
@@ -58,7 +68,7 @@ struct TypeValueEval : public ValueEval {
 
   virtual ~TypeValueEval() = default;
 
-  inline T eval(const nebula::surface::RowData& row) {
+  inline T eval(const nebula::surface::RowData& row) const {
     return op_(row, this->children_);
   }
 
@@ -168,6 +178,7 @@ ARTHMETIC_VE(mod, %)
 COMPARE_VE(gt, >)
 COMPARE_VE(ge, >=)
 COMPARE_VE(eq, ==)
+COMPARE_VE(neq, !=)
 COMPARE_VE(lt, <)
 COMPARE_VE(le, <=)
 

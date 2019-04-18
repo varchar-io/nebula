@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/FBString.h>
 #include "common/Cursor.h"
 #include "eval/ValueEval.h"
 #include "meta/NNode.h"
@@ -76,7 +75,7 @@ public:
     return nodes_;
   }
 
-  const folly::fbstring& id() const {
+  const std::string& id() const {
     return uuid_;
   }
 
@@ -84,7 +83,7 @@ private:
   const ExecutionPhase& fetch(PhaseType type) const;
 
 private:
-  const folly::fbstring uuid_;
+  const std::string uuid_;
   std::unique_ptr<ExecutionPhase> plan_;
   std::vector<nebula::meta::NNode> nodes_;
 };
@@ -172,6 +171,10 @@ public:
 
   inline const std::vector<std::unique_ptr<eval::ValueEval>>& fields() const {
     return fields_;
+  }
+
+  inline const eval::ValueEval& filter() const {
+    return *filter_;
   }
 
 private:

@@ -108,7 +108,7 @@ DEFINE_TYPE_TRAITS(INTEGER, true, 4, int32_t)
 DEFINE_TYPE_TRAITS(BIGINT, true, 8, int64_t)
 DEFINE_TYPE_TRAITS(REAL, true, 4, float)
 DEFINE_TYPE_TRAITS(DOUBLE, true, 8, double)
-DEFINE_TYPE_TRAITS(VARCHAR, true, 0, char*)
+DEFINE_TYPE_TRAITS(VARCHAR, true, 0, std::string)
 DEFINE_TYPE_TRAITS(ARRAY, false, 0, void)
 DEFINE_TYPE_TRAITS(MAP, false, 0, void)
 DEFINE_TYPE_TRAITS(STRUCT, false, 0, void)
@@ -314,12 +314,12 @@ public:
 template <typename T>
 struct TypeDetect {};
 
-#define DEFINE_TYPE_DETECT(KIND, NAME, TYPE)                                               \
-  template <>                                                                              \
-  struct TypeDetect<KIND> {                                                                \
-    static constexpr Kind kind = Kind::NAME;                                               \
-    static constexpr auto name = #NAME;                                                    \
-    static constexpr auto type = [](const std::string& n) { return TYPE::createTree(n); }; \
+#define DEFINE_TYPE_DETECT(NT, NAME, KT)                                                 \
+  template <>                                                                            \
+  struct TypeDetect<NT> {                                                                \
+    static constexpr Kind kind = Kind::NAME;                                             \
+    static constexpr auto name = #NAME;                                                  \
+    static constexpr auto type = [](const std::string& n) { return KT::createTree(n); }; \
   };
 
 // TODO(cao) - guidelines for nebula API usage

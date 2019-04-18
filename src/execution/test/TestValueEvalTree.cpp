@@ -15,10 +15,10 @@
  */
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
 #include "common/Evidence.h"
 #include "execution/eval/ValueEval.h"
 #include "fmt/format.h"
-#include <glog/logging.h>
 #include "surface/DataSurface.h"
 
 namespace nebula {
@@ -124,6 +124,10 @@ TEST(ValueEvalTest, TestValueEvalLogical) {
     auto b7 = nebula::execution::eval::bor<bool, bool>(std::move(b5), std::move(b6));
     auto b8 = nebula::execution::eval::constant(true);
     auto b9 = nebula::execution::eval::eq<bool, bool>(std::move(b7), std::move(b8));
+    EXPECT_EQ(b9->eval<bool>(row), true);
+
+    auto b10 = nebula::execution::eval::column<std::string>("s");
+    LOG(INFO) << "b10=" << b10->eval<std::string>(row);
   }
 }
 

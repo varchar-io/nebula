@@ -140,6 +140,30 @@ TEST(ExpressionsTest, TestExpressionType) {
   LOG(INFO) << "PASS: constant string with alias";
 }
 
+TEST(ExpressionsTest, TestExpressionEval) {
+  MockMs ms;
+  auto tbl = ms.query("nebula.test");
+  {
+    auto idvalue = (nebula::api::dsl::col("id") * 0) != 0;
+    idvalue.type(*tbl);
+
+    auto eval = idvalue.asEval();
+    nebula::surface::MockRowData mr;
+    bool res = eval->eval<bool>(mr);
+    EXPECT_EQ(res, false);
+  }
+
+  {
+    auto eventValue = nebula::api::dsl::col("event") == "abc";
+    eventValue.type(*tbl);
+
+    auto eval = eventValue.asEval();
+    nebula::surface::MockRowData mr;
+    bool res = eval->eval<bool>(mr);
+    EXPECT_EQ(res, false);
+  }
+}
+
 #define VERIFY_ITEM_I(I)                                                                               \
   {                                                                                                    \
     constexpr auto item = std::get<I>(expectations);                                                   \

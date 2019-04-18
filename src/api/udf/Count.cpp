@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "Sum.h"
+#include "Count.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -22,10 +22,12 @@
 namespace nebula {
 namespace api {
 namespace udf {
+
 using nebula::type::Kind;
 using VarcharNative = nebula::type::TypeTraits<Kind::VARCHAR>::CppType;
+
 template <>
-Sum<Kind::VARCHAR>::Sum(std::shared_ptr<nebula::api::dsl::Expression> expr)
+Count<Kind::VARCHAR>::Count(std::shared_ptr<nebula::api::dsl::Expression> expr)
   : CommonUDAF<Kind::VARCHAR>(expr,
                               [](VarcharNative, VarcharNative) -> VarcharNative {
                                 throw NException("sum string is not supported currently");

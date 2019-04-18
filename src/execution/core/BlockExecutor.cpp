@@ -49,6 +49,7 @@ void BlockExecutor::compute() {
   result_ = std::make_unique<HashFlat>(plan_.outputSchema(), zeroBased);
   auto accessor = data_.makeAccessor();
   const auto& fields = plan_.fields();
+  const auto& filter = plan_.filter();
 
 #define AGG_FIELD_UPDATE(KIND, TYPE)                                                                                                    \
   case Kind::KIND: {                                                                                                                    \
@@ -58,6 +59,12 @@ void BlockExecutor::compute() {
 
   for (size_t i = 0, size = data_.getRows(); i < size; ++i) {
     const RowData& row = accessor->seek(i);
+
+    // if not fullfil the condition
+    if (!filter.eval<bool>(row)) {
+      continue;
+    }
+
     // flat compute every new value of each field and set to corresponding column in flat
     auto cr = ComputedRow(row, fields);
     result_->update(cr, [&fields, &keys](size_t column, Kind kind, void* ov, void* nv, void* value) {

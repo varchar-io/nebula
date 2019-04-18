@@ -39,6 +39,9 @@ public:
   virtual ~Count() = default;
 };
 
+template <>
+Count<nebula::type::Kind::VARCHAR>::Count(std::shared_ptr<nebula::api::dsl::Expression> expr);
+
 } // namespace udf
 } // namespace api
 } // namespace nebula
