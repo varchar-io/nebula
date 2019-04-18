@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "CommonUDF.h"
 
 /**
@@ -24,17 +25,22 @@
 namespace nebula {
 namespace api {
 namespace udf {
-// Used for demo purpose - revert the bool value
-using UdfNotBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::BOOLEAN>;
-class Not : public UdfNotBase {
+
+// This UDF is doing the pattern match
+// Not sure if this is standard SQL like spec
+// It only accepts % as pattern matcher
+// when pattern see %, treat it as macro, no escape support here.
+bool match(const char* sp, const size_t ss, size_t si,
+           const char* pp, const size_t ps, size_t pi);
+
+using UdfLikeBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR>;
+class Like : public UdfLikeBase {
 public:
-  using NativeType = nebula::type::TypeTraits<nebula::type::Kind::BOOLEAN>::CppType;
-  Not(std::shared_ptr<nebula::api::dsl::Expression> expr)
-    : UdfNotBase(expr, [](const NativeType& origin) {
-        LOG(INFO) << "origin=" << origin << ", reverse=" << !origin;
-        return !origin;
+  Like(std::shared_ptr<nebula::api::dsl::Expression> expr, const std::string& pattern)
+    : UdfLikeBase(expr, [pattern](const ExprType& source) -> ReturnType {
+        return match(source.data(), source.size(), 0, pattern.data(), pattern.size(), 0);
       }) {}
-  virtual ~Not() = default;
+  virtual ~Like() = default;
 };
 
 } // namespace udf

@@ -17,6 +17,7 @@
 #pragma once
 
 #include "Count.h"
+#include "Like.h"
 #include "Max.h"
 #include "Min.h"
 #include "MyUdf.h"
@@ -37,9 +38,9 @@ using TypeKind = nebula::type::Kind;
 
 class UDFFactory {
 public:
-  template <UDFKind UKIND, TypeKind KIND>
+  template <UDFKind UKIND, TypeKind KIND, typename... Args>
   static typename std::unique_ptr<nebula::execution::eval::UDF<KIND>>
-    createUDF(std::shared_ptr<nebula::api::dsl::Expression> expr) {
+    createUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Args&&... args) {
     if constexpr (UKIND == UDFKind::MAX) {
       return std::make_unique<Max<KIND>>(expr);
     }
@@ -54,6 +55,10 @@ public:
 
     if constexpr (UKIND == UDFKind::SUM) {
       return std::make_unique<Sum<KIND>>(expr);
+    }
+
+    if constexpr (UKIND == UDFKind::LIKE) {
+      return std::make_unique<Like>(expr, std::forward<Args>(args)...);
     }
 
     throw NException("Unimplemented UDF");

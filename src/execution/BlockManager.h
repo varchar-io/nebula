@@ -34,6 +34,18 @@ namespace execution {
 //   return 0;
 // };
 
+struct Hash {
+  inline size_t operator()(const nebula::meta::NBlock& b) const _NOEXCEPT {
+    return b.hash();
+  }
+};
+
+struct Equal {
+  inline bool operator()(const nebula::meta::NBlock& b1, const nebula::meta::NBlock& b2) const _NOEXCEPT {
+    return b1 == b2;
+  }
+};
+
 class BlockManager {
 public:
   BlockManager(BlockManager&) = delete;
@@ -49,7 +61,7 @@ public:
   bool remove(const nebula::meta::NBlock&);
 
 private:
-  std::unordered_map<std::string, std::unique_ptr<nebula::memory::Batch>> blocks_;
+  std::unordered_map<nebula::meta::NBlock, std::unique_ptr<nebula::memory::Batch>, Hash, Equal> blocks_;
 
 private:
   static std::mutex smux;

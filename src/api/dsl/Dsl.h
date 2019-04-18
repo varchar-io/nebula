@@ -170,6 +170,12 @@ static UDFExpression<nebula::execution::eval::UDFType::SUM> sum(const T& expr) {
   return UDFExpression<nebula::execution::eval::UDFType::SUM>(std::shared_ptr<Expression>(new T(expr)));
 }
 
+template <typename T>
+static LikeExpression like(const T& expr, const std::string& pattern) {
+  // TODO(cao) - model UDAF/UDF with existing expression
+  return LikeExpression(std::shared_ptr<Expression>(new T(expr)), pattern);
+}
+
 // TODO(cao) - we should move UDF creation out of DSL as it's logical concept
 // follow example of UDAF to be consistent
 template <typename T>

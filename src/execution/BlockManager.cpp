@@ -15,6 +15,7 @@
  */
 
 #include "BlockManager.h"
+#include <folly/String.h>
 
 /**
  * Nebula execution in block managment.
@@ -44,7 +45,14 @@ const std::vector<Batch*> BlockManager::query(const Table& table) {
   // 2. determine how many blocks are not in memory yet, if they are not, load them in
   // 3. fan out the query plan to execute on each block in parallel (not this function but the caller)
   LOG(INFO) << "Fetch all blcoks for table: " << table.name();
-  return { blocks_.begin()->second.get() };
+  std::vector<Batch*> tableBlocks;
+  for (auto& b : blocks_) {
+    if (b.first.getTable() == table) {
+      tableBlocks.push_back(b.second.get());
+    }
+  }
+
+  return tableBlocks;
 }
 
 bool BlockManager::add(const NBlock& block) {
@@ -56,7 +64,7 @@ bool BlockManager::add(const NBlock& block) {
   N_ENSURE_NOT_NULL(batch);
 
   // add it to the manage list
-  blocks_[block.signature()] = std::move(batch);
+  blocks_[block] = std::move(batch);
 
   // TODO(cao) - current is simple solution
   // we need comprehensive fault torellance and hanlding

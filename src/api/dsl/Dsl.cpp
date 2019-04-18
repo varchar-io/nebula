@@ -117,7 +117,7 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   LOG(INFO) << "found nodes to execute the query: " << nodeList.size();
 
   // make an execution plan from a few phases
-  return std::make_unique<ExecutionPlan>(std::move(controller), std::move(nodeList));
+  return std::make_unique<ExecutionPlan>(std::move(controller), std::move(nodeList), output);
 }
 
 } // namespace dsl

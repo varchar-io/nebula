@@ -29,15 +29,17 @@ namespace execution {
 using nebula::common::Cursor;
 using nebula::meta::NNode;
 using nebula::surface::RowData;
+using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
 ExecutionPlan::ExecutionPlan(
   std::unique_ptr<ExecutionPhase> plan,
-  std::vector<NNode> nodes)
+  std::vector<NNode> nodes,
+  Schema output)
   : uuid_{ "<uuid>" },
     plan_{ std::move(plan) },
-    nodes_{ std::move(nodes) } {
-}
+    nodes_{ std::move(nodes) },
+    output_{ output } {}
 
 void ExecutionPlan::display() const {
   LOG(INFO) << "Query will be executed in nodes: " << nodes_.size();

@@ -27,18 +27,19 @@ namespace nebula {
 namespace api {
 namespace udf {
 
-// UDAF - a common pattern
-template <nebula::type::Kind KIND>
-class CommonUDAF : public nebula::execution::eval::UDAF<KIND> {
-  using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
-  using AggFunc = std::function<NativeType(NativeType, NativeType)>;
-
+// UDAF - a common pattern RK=return kind, EK = expression kind
+template <nebula::type::Kind RK, nebula::type::Kind EK>
+class CommonUDF : public nebula::execution::eval::UDF<RK> {
 public:
-  CommonUDAF(std::shared_ptr<nebula::api::dsl::Expression> expr, AggFunc&& aggFunc)
-    : nebula::execution::eval::UDAF<KIND>(std::move(aggFunc)),
-      expr_{ expr->asEval() },
-      colrefs_{ expr->columnRefs() } {}
-  virtual ~CommonUDAF() = default;
+  using ReturnType = typename nebula::type::TypeTraits<RK>::CppType;
+  using ExprType = typename nebula::type::TypeTraits<EK>::CppType;
+  using Logic = std::function<ReturnType(const ExprType&)>;
+
+  explicit CommonUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Logic&& logic)
+    : expr_{ expr->asEval() },
+      colrefs_{ expr->columnRefs() },
+      logic_{ std::move(logic) } {}
+  virtual ~CommonUDF() = default;
 
 public:
   // columns referenced
@@ -47,23 +48,14 @@ public:
   }
 
   // apply a row data to get result
-  virtual NativeType run(const nebula::surface::RowData& row) const override {
-    return expr_->eval<NativeType>(row);
-  }
-
-  // partial aggregate
-  virtual void partial(const nebula::surface::RowData&) override {
-    throw NException("partial agg exception");
-  }
-
-  // global aggregate
-  virtual void global(const nebula::surface::RowData&) override {
-    throw NException("global agg exception");
+  virtual inline ReturnType run(const nebula::surface::RowData& row) const override {
+    return logic_(expr_->eval<ExprType>(row));
   }
 
 private:
   std::unique_ptr<nebula::execution::eval::ValueEval> expr_;
   std::vector<std::string> colrefs_;
+  Logic logic_;
 };
 
 } // namespace udf

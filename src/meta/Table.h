@@ -40,6 +40,10 @@ public:
   }
   virtual ~Table() = default;
 
+  friend bool operator==(const Table& t1, const Table& t2) noexcept {
+    return t1.name_ == t2.name_;
+  }
+
 public:
   virtual Schema getSchema() const {
     N_ENSURE_NOT_NULL(schema_, fmt::format("invalid table not found = {0}", name_));

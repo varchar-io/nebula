@@ -404,6 +404,38 @@ private:
   std::shared_ptr<Expression> inner_;
 };
 
+class LikeExpression : public Expression {
+public:
+  LikeExpression(std::shared_ptr<Expression> left, const std::string& pattern)
+    : left_{ left }, pattern_{ pattern } {}
+  virtual ~LikeExpression() = default;
+
+public:
+  ALIAS()
+
+  IS_AGG(execution::eval::UdfTraits<nebula::execution::eval::UDFType::LIKE>::UDAF)
+
+  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+    auto innerType = left_->type(table);
+
+    // inner type is
+    kind_ = nebula::type::Kind::BOOLEAN;
+    return typeCreate(kind_, alias_);
+  }
+
+  inline virtual std::vector<std::string> columnRefs() const override {
+    return left_->columnRefs();
+  }
+
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+    return nebula::api::udf::UDFFactory::createUDF<nebula::execution::eval::UDFType::LIKE, nebula::type::Kind::BOOLEAN>(left_, pattern_);
+  }
+
+private:
+  std::shared_ptr<Expression> left_;
+  std::string pattern_;
+};
+
 #undef ARTHMETIC_OP_CONST
 #undef ARTHMETIC_OP_GENERIC
 #undef LOGICAL_OP_CONST

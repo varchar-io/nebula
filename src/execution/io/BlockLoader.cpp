@@ -36,7 +36,7 @@ std::unique_ptr<nebula::memory::Batch> BlockLoader::load(const nebula::meta::NBl
   }
 
   if (block.getTable().name() == "trends.draft") {
-    return loadTrendsBlock();
+    return loadTrendsBlock(block);
   }
 
   throw NException("Not implemented yet");
@@ -62,18 +62,28 @@ std::unique_ptr<nebula::memory::Batch> BlockLoader::loadTestBlock() {
   return block;
 }
 
-std::unique_ptr<nebula::memory::Batch> BlockLoader::loadTrendsBlock() {
+std::unique_ptr<nebula::memory::Batch> BlockLoader::loadTrendsBlock(const nebula::meta::NBlock& nb) {
   auto schema = TypeSerializer::from(TestTable::trendsTableSchema());
   auto block = std::make_unique<Batch>(schema);
 
   // PURE TEST CODE: load data from a file path
   auto file = "/Users/shawncao/trends.draft.csv";
+
+  // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
   CsvReader reader(file);
+  const auto bRows = 50000;
+  size_t i = 0;
+  auto start = nb.getId() * bRows;
   while (reader.hasNext()) {
     auto& row = reader.next();
     // add all entries belonging to test_data_limit_100000 into the block
     if (row.readString("methodology") == "test_data_limit_100000") {
-      block->add(row);
+      if (i++ >= start) {
+        block->add(row);
+        if (block->getRows() >= bRows) {
+          break;
+        }
+      }
     }
   }
 

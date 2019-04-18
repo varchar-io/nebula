@@ -62,7 +62,9 @@ class Phase {};
 // protobuf?
 class ExecutionPlan {
 public:
-  ExecutionPlan(std::unique_ptr<ExecutionPhase> plan, std::vector<nebula::meta::NNode> nodes);
+  ExecutionPlan(std::unique_ptr<ExecutionPhase> plan,
+                std::vector<nebula::meta::NNode> nodes,
+                nebula::type::Schema output);
   virtual ~ExecutionPlan() = default;
 
 public:
@@ -79,6 +81,10 @@ public:
     return uuid_;
   }
 
+  nebula::type::Schema getOutputSchema() const {
+    return output_;
+  }
+
 private:
   const ExecutionPhase& fetch(PhaseType type) const;
 
@@ -86,6 +92,7 @@ private:
   const std::string uuid_;
   std::unique_ptr<ExecutionPhase> plan_;
   std::vector<nebula::meta::NNode> nodes_;
+  nebula::type::Schema output_;
 };
 
 // base execution phase definition - templated lambda - looking for C++ 20?

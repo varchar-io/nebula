@@ -75,6 +75,7 @@ private:
 
 enum class UDFType {
   NOT,
+  LIKE,
   MAX,
   MIN,
   AVG,
@@ -93,6 +94,7 @@ struct UdfTraits {};
 
 // define each UDAF type taits
 DEFINE_UDF_TRAITS(NOT, false)
+DEFINE_UDF_TRAITS(LIKE, false)
 DEFINE_UDF_TRAITS(MAX, true)
 DEFINE_UDF_TRAITS(MIN, true)
 DEFINE_UDF_TRAITS(AVG, true)

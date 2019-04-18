@@ -7,6 +7,7 @@ add_library(${NEBULA_API} STATIC
     ${NEBULA_SRC}/api/dsl/Dsl.cpp
     ${NEBULA_SRC}/api/dsl/Expressions.cpp
     ${NEBULA_SRC}/api/udf/Count.cpp
+    ${NEBULA_SRC}/api/udf/Like.cpp
     ${NEBULA_SRC}/api/udf/Sum.cpp
     ${NEBULA_SRC}/api/udf/UDFFactory.cpp)
 target_link_libraries(${NEBULA_API}
@@ -43,7 +44,9 @@ include_directories(include ${GMOCK_INCLUDE_DIRS})
 # build test binary
 add_executable(ApiTests 
     ${NEBULA_SRC}/api/test/TestApi.cpp
-    ${NEBULA_SRC}/api/test/TestExpressions.cpp)
+    ${NEBULA_SRC}/api/test/TestExpressions.cpp
+    ${NEBULA_SRC}/api/test/TestQuery.cpp
+    ${NEBULA_SRC}/api/test/TestUdf.cpp)
 
 target_link_libraries(ApiTests 
     PRIVATE ${GTEST_LIBRARY} 

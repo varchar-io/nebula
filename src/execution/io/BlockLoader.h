@@ -38,7 +38,7 @@ private:
   // Test Hook
   std::unique_ptr<nebula::memory::Batch> loadTestBlock();
   // Trends Data Hook
-  std::unique_ptr<nebula::memory::Batch> loadTrendsBlock();
+  std::unique_ptr<nebula::memory::Batch> loadTrendsBlock(const nebula::meta::NBlock&);
 };
 
 } // namespace io
