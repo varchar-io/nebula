@@ -1,5 +1,5 @@
 # tool version minimum requirement
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.14)
 
 # define project meta
 project(nebula)
@@ -29,7 +29,10 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # by default using clang, turn this line on to use gcc
-# set(CMAKE_CXX_COMPILER /usr/bin/g++)
+set(CMAKE_CXX_COMPILER /usr/bin/g++)
+
+# we use static link always
+set(BUILD_SHARED_LIBS OFF)
 
 # TODO(cao) - move to jemalloc
 # ref https://www.facebook.com/notes/facebook-engineering/scalable-memory-allocation-using-jemalloc/480222803919/
@@ -66,8 +69,11 @@ include_directories(include ${GMOCK_INCLUDE_DIRS})
 # include pre-installed folly
 include(ext/Folly_Ext.cmake)
 
-#include AWS external project
+# include AWS external project
 include(ext/Aws_Ext.cmake)
+
+# include GRPC external project
+include(ext/Grpc_Ext.cmake)
 
 # "brew install conan" first - it's great after migrating to conan
 # at least for folly - thanks conan, how to solve conflicts with existing lib like gflags?.
@@ -106,6 +112,9 @@ include(src/execution/Execution.cmake)
 
 # build api library
 include(src/api/Api.cmake)
+
+# build services
+include(src/service/Service.cmake)
 
 # Main Test entry point
 add_executable(MainTest src/Main.cpp)

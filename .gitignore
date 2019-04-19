@@ -39,3 +39,9 @@ bin/*
 
 # build staging folder
 build/*
+
+# any generated folders do not check in
+src/service/gen/*
+
+# all exclude all node_modules
+node_modules
