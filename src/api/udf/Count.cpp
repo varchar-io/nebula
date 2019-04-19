@@ -31,7 +31,8 @@ Count<Kind::VARCHAR>::Count(std::shared_ptr<nebula::api::dsl::Expression> expr)
   : CommonUDAF<Kind::VARCHAR>(expr,
                               [](VarcharNative, VarcharNative) -> VarcharNative {
                                 throw NException("sum string is not supported currently");
-                              }) {}
+                              },
+                              {}) {}
 
 } // namespace udf
 } // namespace api

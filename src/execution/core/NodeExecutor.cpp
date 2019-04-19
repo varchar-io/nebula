@@ -16,6 +16,8 @@
 
 #include "NodeExecutor.h"
 #include "BlockExecutor.h"
+#include "execution/eval/UDF.h"
+#include "memory/keyed/FlatRowCursor.h"
 #include "meta/MetaService.h"
 
 /**
@@ -27,11 +29,16 @@ namespace core {
 
 using nebula::common::CompositeCursor;
 using nebula::common::Cursor;
+using nebula::execution::eval::UDAF;
 using nebula::memory::Batch;
+using nebula::memory::keyed::FlatRowCursor;
+using nebula::memory::keyed::HashFlat;
 using nebula::meta::MetaService;
 using nebula::surface::MockRowCursor;
 using nebula::surface::RowCursor;
 using nebula::surface::RowData;
+using nebula::type::Kind;
+
 /**
  * Execute a plan on a node level.
  * 
@@ -57,6 +64,57 @@ RowCursor NodeExecutor::execute(const ExecutionPlan& plan) {
 
   // compile the results into a single row cursor
   auto x = folly::collectAll(results).get();
+
+  // single response optimization
+  if (x.size() == 1) {
+    return x.at(0).value();
+  }
+
+  // depends on the query plan, if there is no aggregation
+  // the results set from different block exeuction can be simply composite together
+  // but the query needs to aggregate on keys, then we have to merge the results based on partial aggregatin plan
+  const NodePhase& nodePhase = plan.fetch<PhaseType::PARTIAL>();
+
+  if (nodePhase.hasAgg()) {
+    LOG(INFO) << " execute partial aggregation";
+#define P_FIELD_UPDATE(KIND, TYPE)                                                                                                          \
+  case Kind::KIND: {                                                                                                                        \
+    *static_cast<TYPE*>(value) = static_cast<UDAF<Kind::KIND>&>(*fields[column]).partial(*static_cast<TYPE*>(ov), *static_cast<TYPE*>(nv)); \
+    return true;                                                                                                                            \
+  }
+    // build the runtime data set
+    auto hf = std::make_unique<HashFlat>(nodePhase.outputSchema(), nodePhase.keys());
+    const auto& fields = nodePhase.fields();
+
+    for (auto it = x.begin(); it < x.end(); ++it) {
+      auto blockResult = it->value();
+
+      // iterate the block result and partial aggregate it in hash flat
+      while (blockResult->hasNext()) {
+        const auto& row = blockResult->next();
+        hf->update(row, [&fields](size_t column, Kind kind, void* ov, void* nv, void* value) {
+          // others are aggregation fields - aka, they are UDAF
+          switch (kind) {
+            P_FIELD_UPDATE(BOOLEAN, bool)
+            P_FIELD_UPDATE(TINYINT, int8_t)
+            P_FIELD_UPDATE(SMALLINT, int16_t)
+            P_FIELD_UPDATE(INTEGER, int32_t)
+            P_FIELD_UPDATE(REAL, float)
+            P_FIELD_UPDATE(BIGINT, int64_t)
+            P_FIELD_UPDATE(DOUBLE, double)
+          default:
+            throw NException("Aggregation not supporting non-primitive types");
+          }
+        });
+      }
+    }
+
+    // wrap the hash flat into a row cursor
+    return std::make_shared<FlatRowCursor>(std::move(hf));
+#undef P_FIELD_UPDATE
+  }
+
+  // for query that doesn't need agg - just composite it and return
   auto c = std::make_shared<CompositeCursor<RowData>>();
   for (auto it = x.begin(); it < x.end(); ++it) {
     c->combine(it->value());

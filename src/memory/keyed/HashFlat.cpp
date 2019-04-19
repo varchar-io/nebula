@@ -20,7 +20,7 @@ namespace nebula {
 namespace memory {
 namespace keyed {
 
-bool HashFlat::update(nebula::surface::RowData& row, const UpdateCallback& callback) {
+bool HashFlat::update(const nebula::surface::RowData& row, const UpdateCallback& callback) {
   // add it as a new row first
   this->add(row);
 

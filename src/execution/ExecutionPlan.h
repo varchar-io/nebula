@@ -58,6 +58,10 @@ class ExecutionPhase;
 template <PhaseType PT>
 class Phase {};
 
+using BlockPhase = Phase<PhaseType::COMPUTE>;
+using NodePhase = Phase<PhaseType::PARTIAL>;
+using FinalPhase = Phase<PhaseType::GLOBAL>;
+
 // An execution plan that can be serialized and passed around
 // protobuf?
 class ExecutionPlan {
@@ -152,7 +156,7 @@ public:
     return *this;
   }
 
-  Phase& keys(std::vector<size_t> keys) {
+  Phase& keys(const std::vector<size_t>& keys) {
     keys_ = keys;
     return *this;
   }
@@ -196,12 +200,20 @@ template <>
 class Phase<PhaseType::PARTIAL> : public ExecutionPhase {
 public:
   Phase(std::unique_ptr<ExecutionPhase> upstream)
-    : ExecutionPhase(upstream->outputSchema(), std::move(upstream)) {}
+    : ExecutionPhase(upstream->outputSchema(), std::move(upstream)),
+      numAgg_{ 0 },
+      fields_{ static_cast<const BlockPhase&>(*upstream_).fields() } {}
 
   virtual ~Phase() = default;
 
 public:
-  Phase& agg() {
+  Phase& agg(size_t numAggColumns, const std::vector<bool>& aggColumns) {
+    // processing the partial plan based on block plan
+    const auto& bp = static_cast<const BlockPhase&>(*upstream_);
+    numAgg_ = numAggColumns;
+    aggCols_ = aggColumns;
+    keys_ = bp.keys();
+    // cross check if the keys is expected based on aggCols - changed plan?
     return *this;
   }
 
@@ -209,6 +221,35 @@ public:
   inline virtual PhaseType type() const override {
     return PhaseType::PARTIAL;
   }
+
+  inline bool hasAgg() const {
+    return numAgg_ > 0;
+  }
+
+  inline bool hasKeys() const {
+    // select count(1) from t will not have key
+    return numAgg_ < aggCols_.size();
+  }
+
+  inline bool isAggCol(size_t index) const {
+    return aggCols_.at(index);
+  }
+
+  inline const std::vector<size_t>& keys() const {
+    return keys_;
+  }
+
+  inline const std::vector<std::unique_ptr<eval::ValueEval>>& fields() const {
+    return fields_;
+  }
+
+private:
+  size_t numAgg_;
+  std::vector<bool> aggCols_;
+  std::vector<size_t> keys_;
+
+  // reference the same fields from block phase
+  const std::vector<std::unique_ptr<eval::ValueEval>>& fields_;
 };
 
 template <>
@@ -244,10 +285,6 @@ private:
   std::vector<size_t> sorts_;
   size_t limit_;
 };
-
-using BlockPhase = Phase<PhaseType::COMPUTE>;
-using NodePhase = Phase<PhaseType::PARTIAL>;
-using FinalPhase = Phase<PhaseType::GLOBAL>;
 
 template <>
 struct PhaseTraits<PhaseType::GLOBAL> {

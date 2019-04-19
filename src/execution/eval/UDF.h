@@ -54,11 +54,15 @@ class UDAF : public UDF<KIND> {
 public:
   using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
   using AggFunction = std::function<NativeType(NativeType, NativeType)>;
-  UDAF(AggFunction&& agg) : agg_{ std::move(agg) } {}
+  UDAF(AggFunction&& agg, AggFunction&& partial)
+    : agg_{ std::move(agg) },
+      partial_{ std::move(partial) } {}
   virtual ~UDAF() = default;
 
   // partial aggregate
-  virtual void partial(const nebula::surface::RowData&) = 0;
+  inline NativeType partial(NativeType ov, NativeType nv) {
+    return partial_(ov, nv);
+  }
 
   // global aggregate
   virtual void global(const nebula::surface::RowData&) = 0;
@@ -69,6 +73,7 @@ public:
 
 private:
   AggFunction agg_;
+  AggFunction partial_;
 };
 
 #undef TYPE_VALUE_EVAL_KIND

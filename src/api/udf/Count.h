@@ -33,8 +33,13 @@ class Count : public CommonUDAF<KIND> {
 public:
   Count(std::shared_ptr<nebula::api::dsl::Expression> expr)
     : CommonUDAF<KIND>(expr,
+                       // block aggregate - count each item
                        [](NativeType ov, NativeType) {
                          return ov + 1;
+                       },
+                       // partial aggregate - sum each count results
+                       [](NativeType ov, NativeType nv) {
+                         return ov + nv;
                        }) {}
   virtual ~Count() = default;
 };

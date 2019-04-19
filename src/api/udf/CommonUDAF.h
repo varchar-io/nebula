@@ -34,8 +34,8 @@ class CommonUDAF : public nebula::execution::eval::UDAF<KIND> {
   using AggFunc = std::function<NativeType(NativeType, NativeType)>;
 
 public:
-  CommonUDAF(std::shared_ptr<nebula::api::dsl::Expression> expr, AggFunc&& aggFunc)
-    : nebula::execution::eval::UDAF<KIND>(std::move(aggFunc)),
+  CommonUDAF(std::shared_ptr<nebula::api::dsl::Expression> expr, AggFunc&& aggFunc, AggFunc&& partialFunc)
+    : nebula::execution::eval::UDAF<KIND>(std::move(aggFunc), std::move(partialFunc)),
       expr_{ expr->asEval() },
       colrefs_{ expr->columnRefs() } {}
   virtual ~CommonUDAF() = default;
@@ -49,11 +49,6 @@ public:
   // apply a row data to get result
   virtual NativeType run(const nebula::surface::RowData& row) const override {
     return expr_->eval<NativeType>(row);
-  }
-
-  // partial aggregate
-  virtual void partial(const nebula::surface::RowData&) override {
-    throw NException("partial agg exception");
   }
 
   // global aggregate

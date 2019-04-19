@@ -35,6 +35,9 @@ public:
     : CommonUDAF<KIND>(expr,
                        [](NativeType ov, NativeType nv) {
                          return std::max<NativeType>(ov, nv);
+                       },
+                       [](NativeType ov, NativeType nv) {
+                         return std::max<NativeType>(ov, nv);
                        }) {}
   virtual ~Max() = default;
 };

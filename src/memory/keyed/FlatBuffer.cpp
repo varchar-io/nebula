@@ -464,16 +464,13 @@ bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, 
 RowAccessor::RowAccessor(FlatBuffer& fb, size_t offset, FlatColumnProps colProps)
   : fb_{ fb }, offset_{ offset }, colProps_{ std::move(colProps) } {}
 
-bool RowAccessor::isNull(const std::string& field) const {
-  auto index = fb_.fields_.at(field);
-
+bool RowAccessor::isNull(IndexType index) const {
   // null position for given field
   return std::get<0>(colProps_[index]);
 }
 
 #define READ_FIELD(TYPE, FUNC)                              \
-  TYPE RowAccessor::FUNC(const std::string& field) const {  \
-    auto index = fb_.fields_.at(field);                     \
+  TYPE RowAccessor::FUNC(IndexType index) const {           \
     auto colOffset = std::get<1>(colProps_[index]);         \
     return fb_.main_.slice.read<TYPE>(offset_ + colOffset); \
   }
@@ -488,8 +485,7 @@ READ_FIELD(double, readDouble)
 
 #undef READ_FIELD
 
-std::string RowAccessor::readString(const std::string& field) const {
-  auto index = fb_.fields_.at(field);
+std::string RowAccessor::readString(IndexType index) const {
   auto colOffset = std::get<1>(colProps_[index]);
   // read 4 bytes offset and 4 bytes length
   auto offset = fb_.main_.slice.read<int32_t>(offset_ + colOffset);
@@ -500,8 +496,7 @@ std::string RowAccessor::readString(const std::string& field) const {
 }
 
 // compound types
-std::unique_ptr<nebula::surface::ListData> RowAccessor::readList(const std::string& field) const {
-  auto index = fb_.fields_.at(field);
+std::unique_ptr<nebula::surface::ListData> RowAccessor::readList(IndexType index) const {
   auto colOffset = std::get<1>(colProps_[index]);
   // read 4 bytes offset and 4 bytes length
   auto items = fb_.main_.slice.read<int32_t>(offset_ + colOffset);
@@ -514,9 +509,30 @@ std::unique_ptr<nebula::surface::ListData> RowAccessor::readList(const std::stri
   return std::make_unique<ListAccessor>(items, offset, fb_.list_, fb_.data_, fb_.widthInMain(listType->childType(0)->k()));
 }
 
+std::unique_ptr<nebula::surface::MapData> RowAccessor::readMap(IndexType) const {
+  throw NException("Map is not supported yet");
+}
 std::unique_ptr<nebula::surface::MapData> RowAccessor::readMap(const std::string&) const {
   throw NException("Map is not supported yet");
 }
+
+#define FORWARD_NAME_2_INDEX(TYPE, FUNC)                   \
+  TYPE RowAccessor::FUNC(const std::string& field) const { \
+    return FUNC(fb_.fields_.at(field));                    \
+  }
+
+FORWARD_NAME_2_INDEX(bool, isNull)
+FORWARD_NAME_2_INDEX(bool, readBool)
+FORWARD_NAME_2_INDEX(int8_t, readByte)
+FORWARD_NAME_2_INDEX(int16_t, readShort)
+FORWARD_NAME_2_INDEX(int32_t, readInt)
+FORWARD_NAME_2_INDEX(int64_t, readLong)
+FORWARD_NAME_2_INDEX(float, readFloat)
+FORWARD_NAME_2_INDEX(double, readDouble)
+FORWARD_NAME_2_INDEX(std::string, readString)
+FORWARD_NAME_2_INDEX(std::unique_ptr<nebula::surface::ListData>, readList)
+
+#undef FORWARD_NAME_2_INDEX
 
 bool ListAccessor::isNull(IndexType index) const {
   return isOffsetNull(itemOffsets_[index]);

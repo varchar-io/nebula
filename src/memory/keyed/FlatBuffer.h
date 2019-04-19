@@ -45,6 +45,8 @@ namespace nebula {
 namespace memory {
 namespace keyed {
 
+using nebula::surface::IndexType;
+
 static constexpr int8_t HIGH6_1 = 1 << 6;
 
 class RowAccessor;
@@ -147,6 +149,20 @@ public:
   // compound types
   std::unique_ptr<nebula::surface::ListData> readList(const std::string& field) const override;
   std::unique_ptr<nebula::surface::MapData> readMap(const std::string& field) const override;
+
+  bool isNull(IndexType) const override;
+  bool readBool(IndexType) const override;
+  int8_t readByte(IndexType) const override;
+  int16_t readShort(IndexType) const override;
+  int32_t readInt(IndexType) const override;
+  int64_t readLong(IndexType) const override;
+  float readFloat(IndexType) const override;
+  double readDouble(IndexType) const override;
+  std::string readString(IndexType) const override;
+
+  // compound types
+  std::unique_ptr<nebula::surface::ListData> readList(IndexType) const override;
+  std::unique_ptr<nebula::surface::MapData> readMap(IndexType) const override;
 
 private:
   FlatBuffer& fb_;

@@ -79,16 +79,23 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // group by count has to be the same as non-agg column count
   N_ENSURE_EQ(groups_.size(), numOutputFields - numAggColumns);
 
-  // check the index are correct values
-  for (auto& index : groups_) {
-    // group/sort by index are all 1-based index
-    N_ENSURE(!aggColumns[(index - 1)], "group by column should not be aggregate column");
-  }
+  // check the index are correct values and convert 1-based group by keys into 0-based keys for internal usage
+  std::vector<size_t> zbKeys;
+  zbKeys.reserve(groups_.size());
+  std::transform(groups_.begin(), groups_.end(), std::back_inserter(zbKeys), [&aggColumns](size_t index) {
+    auto zbIndex = index - 1;
+    N_ENSURE(!aggColumns[zbIndex], "group by column should not be aggregate column");
+    return zbIndex;
+  });
 
-  // sort columns can be any of the final column
-  for (auto& index : sorts_) {
+  // check the index are correct values and convert 1-based sort keys into 0-based keys for internal usage
+  std::vector<size_t> zbSorts;
+  zbSorts.reserve(sorts_.size());
+  std::transform(sorts_.begin(), sorts_.end(), std::back_inserter(zbSorts), [&numOutputFields](size_t index) {
+    auto zbIndex = index - 1;
     N_ENSURE(index > 0 && index <= numOutputFields, "sort by column is out of range");
-  }
+    return zbIndex;
+  });
 
   // build block level compute phase
   // TODO(cao) - for some query or aggregate type such as AVG
@@ -100,15 +107,15 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
                  [](std::shared_ptr<Expression> expr) -> std::unique_ptr<ValueEval> { return expr->asEval(); });
   auto block = std::make_unique<BlockPhase>(schema, output);
   filter_->type(*table_);
-  (*block).scan(table_->name()).filter(filter_->asEval()).keys(groups_).compute(std::move(fields));
+  (*block).scan(table_->name()).filter(filter_->asEval()).keys(zbKeys).compute(std::move(fields));
 
   // partial aggrgation, keys and agg methods
   auto node = std::make_unique<NodePhase>(std::move(block));
-  (*node).agg();
+  (*node).agg(numAggColumns, aggColumns);
 
   // global aggregation, keys and agg methods
   auto controller = std::make_unique<FinalPhase>(std::move(node));
-  (*controller).agg().sort(sorts_).limit(limit_);
+  (*controller).agg().sort(zbSorts).limit(limit_);
 
   //1. get total nodes that we will run the query, filter_ will help prune results
   auto nodeList = ms_->queryNodes(table_, [](const NNode&) { return true; });

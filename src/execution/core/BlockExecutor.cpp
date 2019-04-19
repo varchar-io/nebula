@@ -34,19 +34,12 @@ using nebula::type::Kind;
 
 void BlockExecutor::compute() {
   // process every single row and put result in HashFlat
-  const auto& oneBased = plan_.keys();
-  std::vector<size_t> zeroBased;
-  zeroBased.reserve(oneBased.size());
-  std::unordered_set<size_t> keys;
-  std::transform(oneBased.begin(), oneBased.end(), std::back_inserter(zeroBased), [&keys](size_t index) {
-    auto zeroAdjusted = index - 1;
-    keys.insert(zeroAdjusted);
-    return zeroAdjusted;
-  });
+  const auto& k = plan_.keys();
+  std::unordered_set<size_t> keys(k.begin(), k.end());
 
   //plan_.fields()
   // build the runtime data set
-  result_ = std::make_unique<HashFlat>(plan_.outputSchema(), zeroBased);
+  result_ = std::make_unique<HashFlat>(plan_.outputSchema(), k);
   auto accessor = data_.makeAccessor();
   const auto& fields = plan_.fields();
   const auto& filter = plan_.filter();

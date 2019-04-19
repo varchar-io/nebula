@@ -39,7 +39,7 @@ public:
 
   // update a row in hash flat, if same key existings, update the row and return true
   // otherwise we get a new row, return false
-  bool update(nebula::surface::RowData&, const UpdateCallback&);
+  bool update(const nebula::surface::RowData&, const UpdateCallback&);
 
   struct Hash {
     size_t operator()(const Key& row) const {

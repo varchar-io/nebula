@@ -14,24 +14,34 @@
  * limitations under the License.
  */
 
-#include "Sum.h"
+#pragma once
 
-/**
- * Define expressions used in the nebula DSL.
- */
+#include "HashFlat.h"
+#include "common/Cursor.h"
+#include "surface/DataSurface.h"
+
 namespace nebula {
-namespace api {
-namespace udf {
-using nebula::type::Kind;
-using VarcharNative = nebula::type::TypeTraits<Kind::VARCHAR>::CppType;
-template <>
-Sum<Kind::VARCHAR>::Sum(std::shared_ptr<nebula::api::dsl::Expression> expr)
-  : CommonUDAF<Kind::VARCHAR>(expr,
-                              [](VarcharNative, VarcharNative) -> VarcharNative {
-                                throw NException("sum string is not supported currently");
-                              },
-                              {}) {}
+namespace memory {
+namespace keyed {
 
-} // namespace udf
-} // namespace api
+class FlatRowCursor : public nebula::common::Cursor<nebula::surface::RowData> {
+  using T = nebula::surface::RowData;
+
+public:
+  explicit FlatRowCursor(std::unique_ptr<HashFlat> flat)
+    : nebula::common::Cursor<T>(flat->getRows()),
+      flat_{ std::move(flat) } {}
+
+  virtual ~FlatRowCursor() = default;
+
+  virtual const T& next() override {
+    return flat_->row(index_++);
+  }
+
+private:
+  std::unique_ptr<HashFlat> flat_;
+};
+
+} // namespace keyed
+} // namespace memory
 } // namespace nebula

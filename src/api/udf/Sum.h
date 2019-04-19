@@ -35,6 +35,9 @@ public:
     : CommonUDAF<KIND>(expr,
                        [](NativeType ov, NativeType nv) {
                          return ov + nv;
+                       },
+                       [](NativeType ov, NativeType nv) {
+                         return ov + nv;
                        }) {}
   virtual ~Sum() = default;
 };
