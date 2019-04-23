@@ -1,5 +1,8 @@
 find_package(Threads REQUIRED)
 
+# this project may require Curl, install curl library using this command works
+# "sudo apt-get install libcurl4-openssl-dev"
+
 # AWS SDK build options 
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html
 SET(AWS_CMAKE_BUILD_OPTIONS

@@ -13,13 +13,14 @@ add_library(${NEBULA_EXEC} STATIC
     ${NEBULA_SRC}/execution/ExecutionPlan.cpp)
 
 target_link_libraries(${NEBULA_EXEC}
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_META}
     PRIVATE ${NEBULA_MEMORY}
     PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${NEBULA_STORAGE})
+    PRIVATE ${NEBULA_STORAGE}
+    PRIVATE ${FOLLY_LIBRARY}
+    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${GFLAGS_LIBRARY})
 
 # include its own root directory for searching headers
 # set(NEXEC_INCLUDE_DIRS ${NEBULA_SRC}/execution)
@@ -46,18 +47,10 @@ add_executable(ExecTests
     ${NEBULA_SRC}/execution/test/TestValueEvalTree.cpp)
 
 target_link_libraries(ExecTests 
-    PRIVATE ${GTEST_LIBRARY} 
-    PRIVATE ${GTEST_MAIN_LIBRARY} 
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${ROARING_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${NEBULA_COMMON}
-    PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${NEBULA_META}
-    PRIVATE ${NEBULA_MEMORY}
-    PRIVATE ${NEBULA_EXEC})
+    PRIVATE ${NEBULA_EXEC}
+    PRIVATE ${GTEST_LIBRARY}
+    PRIVATE ${GTEST_MAIN_LIBRARY}
+    PRIVATE ${GLOG_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

@@ -18,6 +18,7 @@
 
 #include <any>
 #include <vector>
+#include <functional>
 #include "common/Errors.h"
 
 namespace nebula {

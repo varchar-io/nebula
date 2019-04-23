@@ -6,10 +6,10 @@ add_library(${NEBULA_META} STATIC
     ${NEBULA_SRC}/meta/Table.cpp
     ${NEBULA_SRC}/meta/TestTable.cpp)
 target_link_libraries(${NEBULA_META}
-    PRIVATE ${FMT_LIBRARY}
     PRIVATE ${NEBULA_TYPE}
     PRIVATE ${NEBULA_COMMON}
-    PRIVATE ${NEBULA_SURFACE})
+    PRIVATE ${NEBULA_SURFACE}
+    PRIVATE ${FMT_LIBRARY})
 
 # include its own root directory for searching headers
 # set(NMETA_INCLUDE_DIRS ${NEBULA_SRC}/meta)

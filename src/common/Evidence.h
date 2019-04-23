@@ -19,6 +19,7 @@
 #include <chrono>
 #include <random>
 #include <thread>
+#include <functional>
 
 /**
  * Evidence is library to provide evidences like time and random sequence generators.

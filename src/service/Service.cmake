@@ -49,9 +49,13 @@ foreach(_target
   add_executable(${_target} "${HW_DIR}/${_target}.cpp"
     ${hw_proto_srcs}
     ${hw_grpc_srcs})
+  
+  # NOTE that - on linux, GCC behaves wired, the order of the dependencies matter
+  # which means, libgrpc++ depends on libgrpc, and likewise, libgrpc depends on libgpr and address_sorting
+  # if we messed up the order, the link will report huge amount of errors like undefined referneces.
   target_link_libraries(${_target}
-    PRIVATE libgrpc
     PRIVATE libgrpc++
+    PRIVATE libgrpc
     PRIVATE libgpr
     PRIVATE libaddress_sorting
     PRIVATE ${GFLAGS_LIBRARY}

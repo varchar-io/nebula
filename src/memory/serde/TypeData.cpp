@@ -15,6 +15,7 @@
  */
 
 #include "TypeData.h"
+#include <gflags/gflags.h>
 
 // initialize data page for each type with heuristic assumptions.
 // this can be optimized in the future when the system can learn different category's data statistics.

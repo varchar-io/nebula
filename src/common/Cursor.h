@@ -17,6 +17,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 /**
  * A cursor template that help iterating a container.

@@ -77,9 +77,11 @@ struct TypeValueEval : public ValueEval {
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
+// NOTE - in GCC 7, even it is template, we can't define a static method in header
+// otherwise the GCC linker will treat it as deleted function during link time
+// And we will see lots of issues like "xxx defined in discarded section"
 template <typename T>
-static std::unique_ptr<ValueEval> constant(T v) {
+std::unique_ptr<ValueEval> constant(T v) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
       [v](const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&) -> T {
@@ -89,7 +91,7 @@ static std::unique_ptr<ValueEval> constant(T v) {
 }
 
 template <typename T>
-static std::unique_ptr<ValueEval> column(const std::string& name) {
+std::unique_ptr<ValueEval> column(const std::string& name) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
       [name](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&) -> T {
@@ -136,7 +138,7 @@ static std::unique_ptr<ValueEval> column(const std::string& name) {
 // TODO(cao): optimization - fold constant nodes, we don't need keep a constant node
 #define ARTHMETIC_VE(NAME, SIGN)                                                                         \
   template <typename T, typename T1, typename T2>                                                        \
-  static std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
+  std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
     std::vector<std::unique_ptr<ValueEval>> branch;                                                      \
     branch.reserve(2);                                                                                   \
     branch.push_back(std::move(v1));                                                                     \
@@ -163,7 +165,7 @@ ARTHMETIC_VE(mod, %)
 // TODO(cao) - merge with ARTHMETIC_VE since they are pretty much the same
 #define COMPARE_VE(NAME, SIGN)                                                                           \
   template <typename T1, typename T2>                                                                    \
-  static std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
+  std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
     std::vector<std::unique_ptr<ValueEval>> branch;                                                      \
     branch.reserve(2);                                                                                   \
     branch.push_back(std::move(v1));                                                                     \

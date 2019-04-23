@@ -11,13 +11,15 @@ add_library(${NEBULA_API} STATIC
     ${NEBULA_SRC}/api/udf/Sum.cpp
     ${NEBULA_SRC}/api/udf/UDFFactory.cpp)
 target_link_libraries(${NEBULA_API}
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${NEBULA_TYPE}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_SURFACE}
     PRIVATE ${NEBULA_META}
-    PRIVATE ${NEBULA_EXEC})
+    PRIVATE ${NEBULA_EXEC}
+    PRIVATE ${FOLLY_LIBRARY}
+    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${ROARING_LIBRARY})
 
 # include its own root directory for searching headers
 # set(NAPI_INCLUDE_DIRS ${NEBULA_SRC}/api)
@@ -49,21 +51,11 @@ add_executable(ApiTests
     ${NEBULA_SRC}/api/test/TestUdf.cpp)
 
 target_link_libraries(ApiTests 
-    PRIVATE ${GTEST_LIBRARY} 
-    PRIVATE ${GMOCK_LIBRARY} 
-    PRIVATE ${GTEST_MAIN_LIBRARY} 
-    PRIVATE ${GMOCK_MAIN_LIBRARY} 
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${ROARING_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${NEBULA_TYPE}
-    PRIVATE ${NEBULA_COMMON}
-    PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${NEBULA_META}
-    PRIVATE ${NEBULA_EXEC}
-    PRIVATE ${NEBULA_API})
+    PRIVATE ${NEBULA_API}
+    PRIVATE ${GTEST_LIBRARY} 
+    PRIVATE ${GTEST_MAIN_LIBRARY} 
+    PRIVATE ${GMOCK_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

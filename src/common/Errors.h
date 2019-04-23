@@ -39,7 +39,7 @@ private:
 };
 
 // fetch file name only
-using cstr = const char* const;
+using cstr = const char*;
 static constexpr size_t length(cstr str) {
   return *str ? 1 + length(str + 1) : 0;
 }

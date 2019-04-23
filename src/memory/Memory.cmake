@@ -12,12 +12,12 @@ add_library(${NEBULA_MEMORY} STATIC
     ${NEBULA_SRC}/memory/serde/TypeData.cpp
     ${NEBULA_SRC}/memory/serde/TypeDataFactory.cpp)
 target_link_libraries(${NEBULA_MEMORY}
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_TYPE}
     PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${NEBULA_META})
+    PRIVATE ${NEBULA_META}
+    PRIVATE ${FOLLY_LIBRARY}
+    PRIVATE ${FMT_LIBRARY})
 
 # include itself for headers in different folders
 # set(NMEMORY_INCLUDE_DIRS ${NEBULA_SRC}/memory)
@@ -41,19 +41,13 @@ add_executable(MemoryTests
     ${NEBULA_SRC}/memory/test/TestEncoder.cpp
     ${NEBULA_SRC}/memory/test/TestFlatBuffer.cpp)
 
-target_link_libraries(MemoryTests 
+target_link_libraries(MemoryTests
+    PRIVATE ${NEBULA_MEMORY}
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${ROARING_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${NEBULA_COMMON}
-    PRIVATE ${NEBULA_TYPE}
-    PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${NEBULA_META}
-    PRIVATE ${NEBULA_MEMORY})
+    PRIVATE ${ROARING_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

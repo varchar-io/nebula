@@ -35,13 +35,13 @@ namespace execution {
 // };
 
 struct Hash {
-  inline size_t operator()(const nebula::meta::NBlock& b) const _NOEXCEPT {
+  inline size_t operator()(const nebula::meta::NBlock& b) const noexcept {
     return b.hash();
   }
 };
 
 struct Equal {
-  inline bool operator()(const nebula::meta::NBlock& b1, const nebula::meta::NBlock& b2) const _NOEXCEPT {
+  inline bool operator()(const nebula::meta::NBlock& b1, const nebula::meta::NBlock& b2) const noexcept {
     return b1 == b2;
   }
 };

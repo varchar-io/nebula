@@ -24,15 +24,29 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
 endif()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror")
+if(APPLE)
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror")
+else()
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -I/usr/local/include -L/usr/local/lib")
+endif()
+
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-# by default using clang, turn this line on to use gcc
-set(CMAKE_CXX_COMPILER /usr/bin/g++)
-
 # we use static link always
 set(BUILD_SHARED_LIBS OFF)
+
+# by default using clang, turn this line on to use gcc
+# on linux use g++-7
+if(APPLE)
+  set(CMAKE_CXX_COMPILER /usr/bin/g++)
+  set(CMAKE_CC_COMPILER /usr/bin/g++)
+  set(CMAKE_C_COMPILER /usr/bin/gcc)
+else()
+  set(CMAKE_CXX_COMPILER /usr/bin/g++-7)
+  set(CMAKE_CC_COMPILER /usr/bin/g++-7)
+  set(CMAKE_C_COMPILER /usr/bin/gcc-7)
+endif()
 
 # TODO(cao) - move to jemalloc
 # ref https://www.facebook.com/notes/facebook-engineering/scalable-memory-allocation-using-jemalloc/480222803919/
@@ -117,14 +131,14 @@ include(src/api/Api.cmake)
 include(src/service/Service.cmake)
 
 # Main Test entry point
-add_executable(MainTest src/Main.cpp)
+add_executable(MainTest src/main.cpp)
 
 # install it into local bin folder
 install(TARGETS MainTest DESTINATION bin)
 
 # include google test module and build tests executable
 enable_testing()
-add_executable(tests test/UseGtest.cpp)
+add_executable(tests test/usegtest.cpp)
 target_link_libraries(tests 
     ${FOLLY_LIBRARY}
     ${GTEST_LIBRARY} 

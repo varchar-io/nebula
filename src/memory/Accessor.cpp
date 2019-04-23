@@ -28,7 +28,7 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
   // seek to row ID and return myself
   // TODO(cao) - a runtime ephemeral/transient state like this is bad for parallelism
   // we'd better to move it to API itself though it looks a bit more complex.
-  N_ENSURE(rowId >= 0 && rowId < batch_.rows_, "row id out of bound");
+  N_ENSURE(rowId < batch_.rows_, "row id out of bound");
   current_ = rowId;
   return *this;
 }

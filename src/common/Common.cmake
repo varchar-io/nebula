@@ -33,13 +33,12 @@ add_executable(CommonTests
     ${NEBULA_SRC}/common/test/TestExts.cpp)
 
 target_link_libraries(CommonTests 
+    PRIVATE ${NEBULA_COMMON}    
     PRIVATE ${GTEST_LIBRARY} 
-    PRIVATE ${GTEST_MAIN_LIBRARY} 
-    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${ROARING_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${NEBULA_COMMON})
+    PRIVATE ${GLOG_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

@@ -64,6 +64,14 @@ set_target_properties(${PROTOBUF_LIBRARY} PROPERTIES
     "INTERFACE_INCLUDE_DIRECTORIES" "${PROTOBUF_INCLUDE_DIRS}")
 add_dependencies(${PROTOBUF_LIBRARY} protobuf)
 
+# instlal protobuf, please go to the protobuf build folder
+# and manually run the install there with sudo. 
+# since it requires access, let's not turn it on in build script
+# add_custom_target(install_protobuf
+#       ALL COMMAND make install
+#       WORKING_DIRECTORY ${BINARY_DIR}
+#       DEPENDS ${PROTOBUF_LIBRARY})
+
 # set PROTO compiler
 SET(PROTO_COMPILER ${BINARY_DIR}/protoc)
 
@@ -191,6 +199,7 @@ ExternalProject_Get_Property(grpcweb BINARY_DIR)
 # build the proc-gen-grpc-web plugin so that we can use it to gen stubs later
 SET(GRPC_WEB_PLUGIN "${SOURCE_DIR}/javascript/net/grpc/web/protoc-gen-grpc-web")
 add_custom_target(build_grpcweb_plugin
-      ALL COMMAND make plugin
+      ALL COMMAND make plugin -I${PROTOBUF_INCLUDE_DIRS}
       WORKING_DIRECTORY ${SOURCE_DIR}
-      DEPENDS grpcweb)
+      DEPENDS ${PROTOBUF_LIBRARY} libgrpc grpcweb)
+# target_compile_options(build_grpcweb_plugin PRIVATE -I${PROTOBUF_INCLUDE_DIRS})
