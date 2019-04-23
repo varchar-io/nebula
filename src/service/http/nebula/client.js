@@ -1,14 +1,14 @@
 const {
-    HelloRequest,
-    RepeatHelloRequest,
-    HelloReply
-} = require('../../gen/helloworld/helloworld_pb.js');
+    EchoRequest,
+    RepeatEchoRequest,
+    EchoResponse
+} = require('../../gen/nebula/nebula_pb.js');
 
 const {
     GreeterClient
 } = require('../../gen/helloworld/helloworld_grpc_web_pb.js');
 
-var client = new GreeterClient("http://localhost:8080");
+var client = new GreeterClient("http://" + window.location.hostname + ":8080");
 
 // simple unary call
 var request = new HelloRequest();

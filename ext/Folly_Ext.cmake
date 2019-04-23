@@ -53,7 +53,7 @@
 
 if(APPLE)
     # define boost
-    set(boostDir /usr/local/Cellar/boost/1.69.0)
+    set(boostDir /usr/local/Cellar/boost/1.69.0_2)
     set(BOOST_INCLUDE_DIRS ${boostDir}/include)
     # boost_system
     set(BOOST_SYSTEM_PATH ${boostDir}/lib/libboost_system.a)

@@ -1,0 +1,19 @@
+
+version: '3'
+services:
+  server:
+    build:
+      context: ./
+      dockerfile: ./nebula/NebulaServer.Dockerfile
+    image: nebula/server
+    ports:
+      - "9090:9090"
+  envoy:
+    build:
+      context: ./
+      dockerfile: ./http/envoy.Dockerfile
+    image: nebula/envoy
+    ports:
+      - "8080:8080"
+    links:
+      - server

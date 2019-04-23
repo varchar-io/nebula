@@ -20,7 +20,7 @@
 #include <string>
 
 #include <grpcpp/grpcpp.h>
-#include "helloworld.grpc.pb.h"
+#include "nebula.grpc.pb.h"
 
 /**
  * A cursor template that help iterating a container.
@@ -28,25 +28,22 @@
  */
 namespace nebula {
 namespace service {
-namespace helloworld {
 
 using grpc::ServerContext;
 using grpc::Status;
-using helloworld::Greeter;
-using helloworld::HelloReply;
-using helloworld::HelloRequest;
+using nebula::service::Echo;
+using nebula::service::EchoRequest;
+using nebula::service::EchoResponse;
 
 // Logic and data behind the server's behavior.
-class GreeterServiceImpl final : public Greeter::Service {
-  Status SayHello(ServerContext* context, const HelloRequest* request,
-                  HelloReply* reply) override {
-    std::string prefix("Hello ");
+class EchoServiceImpl final : public Echo::Service {
+  Status EchoBack(ServerContext* context, const EchoRequest* request, EchoResponse* reply) override {
+    std::string prefix("This is from nebula: ");
     reply->set_message(prefix + request->name());
     return Status::OK;
   }
 };
 
-} // namespace helloworld
 } // namespace service
 } // namespace nebula
 
@@ -54,7 +51,7 @@ class GreeterServiceImpl final : public Greeter::Service {
 // Otherwise you may get undefined symbol "_main" error in link
 void RunServer() {
   std::string server_address("0.0.0.0:9090");
-  nebula::service::helloworld::GreeterServiceImpl service;
+  nebula::service::EchoServiceImpl service;
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

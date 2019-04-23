@@ -16,20 +16,20 @@
 
 syntax = "proto3";
 
-package nebula.service.helloworld;
+package nebula.service;
 
 // The greeting service definition.
-service Greeter {
+service Echo {
   // Sends a greeting
-  rpc SayHello (HelloRequest) returns (HelloReply) {}
+  rpc EchoBack (EchoRequest) returns (EchoResponse) {}
 }
 
 // The request message containing the user's name.
-message HelloRequest {
+message EchoRequest {
   string name = 1;
 }
 
 // The response message containing the greetings
-message HelloReply {
+message EchoResponse {
   string message = 1;
 }

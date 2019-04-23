@@ -20,7 +20,7 @@
 #include <string>
 
 #include <grpcpp/grpcpp.h>
-#include "helloworld.grpc.pb.h"
+#include "nebula.grpc.pb.h"
 
 /**
  * A cursor template that help iterating a container.
@@ -28,36 +28,35 @@
  */
 namespace nebula {
 namespace service {
-namespace helloworld {
 
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
-using helloworld::Greeter;
-using helloworld::HelloReply;
-using helloworld::HelloRequest;
+using nebula::service::Echo;
+using nebula::service::EchoRequest;
+using nebula::service::EchoResponse;
 
-class GreeterClient {
+class EchoClient {
 public:
-  GreeterClient(std::shared_ptr<Channel> channel)
-    : stub_(Greeter::NewStub(channel)) {}
+  EchoClient(std::shared_ptr<Channel> channel)
+    : stub_(Echo::NewStub(channel)) {}
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.
-  std::string SayHello(const std::string& user) {
+  std::string echo(const std::string& user) {
     // Data we are sending to the server.
-    HelloRequest request;
+    EchoRequest request;
     request.set_name(user);
 
     // Container for the data we expect from the server.
-    HelloReply reply;
+    EchoResponse reply;
 
     // Context for the client. It could be used to convey extra information to
     // the server and/or tweak certain RPC behaviors.
     ClientContext context;
 
     // The actual RPC.
-    Status status = stub_->SayHello(&context, request, &reply);
+    Status status = stub_->EchoBack(&context, request, &reply);
 
     // Act upon its status.
     if (status.ok()) {
@@ -70,23 +69,15 @@ public:
   }
 
 private:
-  std::unique_ptr<Greeter::Stub> stub_;
+  std::unique_ptr<Echo::Stub> stub_;
 };
 
-} // namespace helloworld
 } // namespace service
 } // namespace nebula
 
 int main(int argc, char** argv) {
-  // Instantiate the client. It requires a channel, out of which the actual RPCs
-  // are created. This channel models a connection to an endpoint (in this case,
-  // localhost at port 9090). We indicate that the channel isn't authenticated
-  // (use of InsecureChannelCredentials()).
-  nebula::service::helloworld::GreeterClient greeter(grpc::CreateChannel(
+  nebula::service::EchoClient greeter(grpc::CreateChannel(
     "localhost:9090", grpc::InsecureChannelCredentials()));
-  std::string user("world");
-  std::string reply = greeter.SayHello(user);
-  LOG(INFO) << "Greeter received: " << reply;
-
+  LOG(INFO) << "Greeter received: " << greeter.echo("nebula");
   return 0;
 }

@@ -18,37 +18,37 @@ SET(SERVICE_DIR "${NEBULA_SRC}/service")
 
 # A folder holding temporary generated files during build
 # add this entry to .gitignore in root to exclude these files to be commited and checked in
-SET(GEN_DIR "${SERVICE_DIR}/gen/helloworld")
+SET(GEN_DIR "${SERVICE_DIR}/gen/nebula")
 file(MAKE_DIRECTORY ${GEN_DIR})
 
-get_filename_component(hw_proto "${SERVICE_DIR}/protos/helloworld.proto" ABSOLUTE)
-get_filename_component(hw_proto_path "${hw_proto}" PATH)
+get_filename_component(nproto "${SERVICE_DIR}/protos/nebula.proto" ABSOLUTE)
+get_filename_component(nproto_path "${nproto}" PATH)
 
 # Generated sources from proto file
-SET(HW_DIR "${SERVICE_DIR}/helloworld")
-set(hw_proto_srcs "${GEN_DIR}/helloworld.pb.cc")
-set(hw_proto_hdrs "${GEN_DIR}/helloworld.pb.h")
-set(hw_grpc_srcs "${GEN_DIR}/helloworld.grpc.pb.cc")
-set(hw_grpc_hdrs "${GEN_DIR}/helloworld.grpc.pb.h")
+SET(NebulaService_DIR "${SERVICE_DIR}/nebula")
+set(nproto_srcs "${GEN_DIR}/nebula.pb.cc")
+set(nproto_hdrs "${GEN_DIR}/nebula.pb.h")
+set(ngrpc_srcs "${GEN_DIR}/nebula.grpc.pb.cc")
+set(ngrpc_hdrs "${GEN_DIR}/neubla.grpc.pb.h")
 add_custom_command(
-      OUTPUT "${hw_proto_srcs}" "${hw_proto_hdrs}" "${hw_grpc_srcs}" "${hw_grpc_hdrs}"
+      OUTPUT "${nproto_srcs}" "${nproto_hdrs}" "${ngrpc_srcs}" "${ngrpc_hdrs}"
       COMMAND ${PROTO_COMPILER}
       ARGS --grpc_out "${GEN_DIR}"
         --cpp_out "${GEN_DIR}"
-        -I "${hw_proto_path}"
+        -I "${nproto_path}"
         --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}"
-        "${hw_proto}"
-      DEPENDS ${hw_proto})
+        "${nproto}"
+      DEPENDS ${nproto})
 
 # Include generated *.pb.h files
 include_directories("${GEN_DIR}")
 
 # Targets greeter_[async_](client|server)
 foreach(_target
-  greeter_client greeter_server)
-  add_executable(${_target} "${HW_DIR}/${_target}.cpp"
-    ${hw_proto_srcs}
-    ${hw_grpc_srcs})
+  NebulaClient NebulaServer)
+  add_executable(${_target} "${NebulaService_DIR}/${_target}.cpp"
+    ${nproto_srcs}
+    ${ngrpc_srcs})
   
   # NOTE that - on linux, GCC behaves wired, the order of the dependencies matter
   # which means, libgrpc++ depends on libgrpc, and likewise, libgrpc depends on libgpr and address_sorting
@@ -68,22 +68,26 @@ foreach(_target
 endforeach()
 
 # build a docker target for greeter server
-get_filename_component(docker_gs "${SERVICE_DIR}/helloworld/greeter_server.Dockerfile" ABSOLUTE)
-add_custom_target(gsdocker
-      ALL COMMAND docker build -t nebula/greeter_server -f ${docker_gs} .
-      WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-      DEPENDS greeter_server)
+# get_filename_component(docker_gs "${SERVICE_DIR}/helloworld/greeter_server.Dockerfile" ABSOLUTE)
+# add_custom_target(gsdocker
+#       ALL COMMAND docker build -t nebula/greeter_server -f ${docker_gs} .
+#       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+#       DEPENDS greeter_server)
+
+# copy one server into service/gen folder for docker packing
+# configure_file is good as it is senstive on the input, when input changes, output will be updated
+configure_file(./build/NebulaServer ${GEN_DIR}/NebulaServer COPYONLY)
 
 # build client library for helloworld
-add_custom_target(hw_web_client
+add_custom_target(nebula_web_client
       ALL COMMAND ${PROTO_COMPILER} 
         --js_out=import_style=commonjs:"${GEN_DIR}"
-        -I "${hw_proto_path}"
+        -I "${nproto_path}"
         --grpc-web_out=import_style=commonjs,mode=grpcwebtext:"${GEN_DIR}"
         --plugin=protoc-gen-grpc-web=${GRPC_WEB_PLUGIN}
-        "${hw_proto}"
+        "${nproto}"
       WORKING_DIRECTORY ${SERVICE_DIR}
-      DEPENDS ${hw_proto})
+      DEPENDS ${nproto})
 
 # To run the service together with a http proxy to serve web requests
 # we use grpc-web implementations and follow their instructions to set this up
@@ -95,12 +99,17 @@ add_custom_target(hw_web_client
 # run the proxy in this way
 # $ docker build -t nebula/envoy -f http/envoy.Dockerfile .
 # $ docker run -d -p 8080:8080 nebula/envoy
-get_filename_component(docker_envoy "${SERVICE_DIR}/http/envoy.Dockerfile" ABSOLUTE)
-add_custom_target(envoydocker
-      ALL COMMAND docker build -t nebula/envoy -f ${docker_envoy} .
-      WORKING_DIRECTORY ${SERVICE_DIR}/http
-      DEPENDS ${docker_envoy})
+# get_filename_component(docker_envoy "${SERVICE_DIR}/http/envoy.Dockerfile" ABSOLUTE)
+# add_custom_target(envoydocker
+#       ALL COMMAND docker build -t nebula/envoy -f ${docker_envoy} .
+#       WORKING_DIRECTORY ${SERVICE_DIR}/http
+#       DEPENDS ${docker_envoy})
 
+# use docker-compose to build up the service and run them together
+# add_custom_target(docker-compose
+#       ALL COMMAND docker-compose build -t nebula/envoy -f ${docker_envoy} .
+#       WORKING_DIRECTORY ${SERVICE_DIR}
+#       DEPENDS ${docker_envoy})
 
 # we will also run a simple web server to serve the page which hosts our client.js logic
 # inside the client.js logic, it will call into 8080 port for data request through envoy proxy
@@ -109,4 +118,3 @@ add_custom_target(envoydocker
 # here we are using webpack:
 # $ npm install (based on package.json - can be reused for all service)
 # $ npx webpack client.js
-
