@@ -27,7 +27,7 @@ endif()
 if(APPLE)
   set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror")
 else()
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -I/usr/local/include -L/usr/local/lib")
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -ldl -I/usr/local/include -L/usr/local/lib")
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
