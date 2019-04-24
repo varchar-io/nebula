@@ -10,7 +10,7 @@ const {
     V1Client
 } = require('../../gen/nebula/nebula_grpc_web_pb.js');
 
-var serviceAddr = "http://" + window.location.hostname + ":8080";
+var serviceAddr = "http://dev-shawncao:8080";
 var client = new EchoClient(serviceAddr);
 
 // simple unary call
@@ -26,24 +26,21 @@ client.echoBack(request, {}, (err, response) => {
     }
 });
 
-function queryTable() {
-    var tableName = document.getElementById("tableName").value;
-    var v1Client = new V1Client(serviceAddr);
-    var req = new TableStateRequest();
-    req.setTable(tableName);
+var v1Client = new V1Client(serviceAddr);
+var req = new TableStateRequest();
+req.setTable("pin.trends");
 
-    // call the service
-    v1Client.State(req, {}, (err, reply) => {
-        var result = document.getElementById("result");
-        if (err !== null) {
-            result.innerText = "Error code: " + err;
-        } else if (reply == null) {
-            result.innerText = "Failed to get reply";
-        } else {
-            result.innerText = "Blocks: " + reply.getBlockCount() + ", Rows: " + reply.getRowCount() + ", Size: " + reply.getMemSize() + " bytes";
-        }
-    });
-}
+// call the service
+v1Client.state(req, {}, (err, reply) => {
+    var result = document.getElementById("result");
+    if (err !== null) {
+        result.innerText = "Error code: " + err;
+    } else if (reply == null) {
+        result.innerText = "Failed to get reply";
+    } else {
+        result.innerText = "Blocks: " + reply.getBlockcount() + ", Rows: " + reply.getRowcount() + ", Size: " + reply.getMemsize() + " bytes";
+    }
+});
 
 
 // server streaming call

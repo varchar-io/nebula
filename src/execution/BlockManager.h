@@ -78,7 +78,7 @@ private:
     }
 
     auto& tuple = tableStates_.at(table);
-    std::get<1>(tuple) += 1;
+    std::get<0>(tuple) += 1;
     std::get<1>(tuple) += block.getRows();
     std::get<2>(tuple) += block.getRawSize();
   }
