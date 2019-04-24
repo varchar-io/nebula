@@ -33,3 +33,17 @@ message EchoRequest {
 message EchoResponse {
   string message = 1;
 }
+
+service V1 {
+  rpc State(TableStateRequest) returns (TableStateResponse) {}
+}
+
+message TableStateRequest{
+  string table = 1;
+}
+
+message TableStateResponse{
+  int32 blockCount = 1;
+  int64 rowCount = 2;
+  int64 memSize = 3;
+}

@@ -1,23 +1,49 @@
 const {
     EchoRequest,
-    RepeatEchoRequest,
-    EchoResponse
+    EchoResponse,
+    TableStateRequest,
+    TableStateResponse
 } = require('../../gen/nebula/nebula_pb.js');
 
 const {
-    GreeterClient
-} = require('../../gen/helloworld/helloworld_grpc_web_pb.js');
+    EchoClient,
+    V1Client
+} = require('../../gen/nebula/nebula_grpc_web_pb.js');
 
-var client = new GreeterClient("http://" + window.location.hostname + ":8080");
+var serviceAddr = "http://" + window.location.hostname + ":8080";
+var client = new EchoClient(serviceAddr);
 
 // simple unary call
-var request = new HelloRequest();
-request.setName('World');
-console.log("the name set above:" + request.getName());
+var request = new EchoRequest();
+request.setName('Trends On Nebula');
 
-client.sayHello(request, {}, (err, response) => {
-    console.log(response.getMessage());
+client.echoBack(request, {}, (err, response) => {
+    var display = document.getElementById("output");
+    if (err !== null) {
+        display.innerText = "Error code: " + err;
+    } else {
+        display.innerText = (response == null) ? "Failed to get reply" : response.getMessage();
+    }
 });
+
+function queryTable() {
+    var tableName = document.getElementById("tableName").value;
+    var v1Client = new V1Client(serviceAddr);
+    var req = new TableStateRequest();
+    req.setTable(tableName);
+
+    // call the service
+    v1Client.State(req, {}, (err, reply) => {
+        var result = document.getElementById("result");
+        if (err !== null) {
+            result.innerText = "Error code: " + err;
+        } else if (reply == null) {
+            result.innerText = "Failed to get reply";
+        } else {
+            result.innerText = "Blocks: " + reply.getBlockCount() + ", Rows: " + reply.getRowCount() + ", Size: " + reply.getMemSize() + " bytes";
+        }
+    });
+}
 
 
 // server streaming call

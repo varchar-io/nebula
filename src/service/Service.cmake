@@ -21,6 +21,11 @@ SET(SERVICE_DIR "${NEBULA_SRC}/service")
 SET(GEN_DIR "${SERVICE_DIR}/gen/nebula")
 file(MAKE_DIRECTORY ${GEN_DIR})
 
+# make a placeholder file to be built
+SET(NSERVER "${CMAKE_CURRENT_BINARY_DIR}/NebulaServer")
+message("Nebula Server: ${NSERVER}")
+file(TOUCH ${NSERVER})
+
 get_filename_component(nproto "${SERVICE_DIR}/protos/nebula.proto" ABSOLUTE)
 get_filename_component(nproto_path "${nproto}" PATH)
 
@@ -54,6 +59,8 @@ foreach(_target
   # which means, libgrpc++ depends on libgrpc, and likewise, libgrpc depends on libgpr and address_sorting
   # if we messed up the order, the link will report huge amount of errors like undefined referneces.
   target_link_libraries(${_target}
+    PRIVATE ${NEBULA_API}
+    PRIVATE ${NEBULA_MEMORY}
     PRIVATE libgrpc++
     PRIVATE libgrpc
     PRIVATE libgpr
@@ -76,7 +83,7 @@ endforeach()
 
 # copy one server into service/gen folder for docker packing
 # configure_file is good as it is senstive on the input, when input changes, output will be updated
-configure_file(./build/NebulaServer ${GEN_DIR}/NebulaServer COPYONLY)
+configure_file(${NSERVER} ${GEN_DIR}/NebulaServer COPYONLY)
 
 # build client library for helloworld
 add_custom_target(nebula_web_client

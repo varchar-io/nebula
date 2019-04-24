@@ -57,6 +57,10 @@ public: // basic metrics / meta of the batch
     return rows_;
   }
 
+  inline size_t getRawSize() const {
+    return data_->rawSize();
+  }
+
   // basic metrics in JSON
   std::string state() const;
 

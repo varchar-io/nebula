@@ -46,7 +46,11 @@ public:
 #define CONV_TYPE_INDEX(TYPE, FUNC)                    \
   TYPE FUNC(const std::string& field) const override { \
     auto index = columnLookup_(field);                 \
-    return folly::to<TYPE>(data_.at(index));           \
+    try {                                              \
+      return folly::to<TYPE>(data_.at(index));         \
+    } catch (std::exception & ex) {                    \
+      return TYPE();                                   \
+    }                                                  \
   }
 
   CONV_TYPE_INDEX(bool, readBool)
@@ -56,7 +60,11 @@ public:
   CONV_TYPE_INDEX(int64_t, readLong)
   CONV_TYPE_INDEX(float, readFloat)
   CONV_TYPE_INDEX(double, readDouble)
-  CONV_TYPE_INDEX(std::string, readString)
+
+  std::string readString(const std::string& field) const override {
+    auto index = columnLookup_(field);
+    return data_.at(index);
+  }
 
 #undef CONV_TYPE_INDEX
 
@@ -70,25 +78,7 @@ public:
   }
 
 public:
-  void readNext(std::istream& str) {
-    std::string line;
-    std::getline(str, line);
-
-    std::stringstream lineStream(line);
-    std::string cell;
-
-    data_.clear();
-    while (std::getline(lineStream, cell, ',')) {
-      data_.push_back(folly::trimWhitespace(cell).toString());
-    }
-
-    // This checks for a trailing comma with no data after it.
-    if (!lineStream && cell.empty()) {
-      // If there was a trailing comma then add an empty element.
-      data_.push_back("");
-    }
-  }
-
+  void readNext(std::istream&);
   inline const std::vector<std::string>& rawData() const {
     return data_;
   }
@@ -99,10 +89,8 @@ private:
   std::function<size_t(std::string)> columnLookup_;
 };
 
-std::istream& operator>>(std::istream& str, CsvRow& data) {
-  data.readNext(str);
-  return str;
-}
+// declare a operator to feed in stream to a csv row
+std::istream& operator>>(std::istream&, CsvRow&);
 
 class CsvReader : public nebula::common::Cursor<nebula::surface::RowData> {
   using Base = nebula::common::Cursor<nebula::surface::RowData>;

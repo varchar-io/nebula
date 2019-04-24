@@ -60,11 +60,18 @@ bool BlockManager::add(const NBlock& block) {
   nebula::execution::io::BlockLoader loader;
   auto batch = loader.load(block);
 
+  return this->add(block, std::move(batch));
+}
+
+bool BlockManager::add(const nebula::meta::NBlock& block, std::unique_ptr<nebula::memory::Batch> data) {
   // batch is in memory now
-  N_ENSURE_NOT_NULL(batch);
+  N_ENSURE_NOT_NULL(data);
+
+  // collect this block metrics
+  collectBlockMetrics(block.getTable().name(), *data);
 
   // add it to the manage list
-  blocks_[block] = std::move(batch);
+  blocks_[block] = std::move(data);
 
   // TODO(cao) - current is simple solution
   // we need comprehensive fault torellance and hanlding

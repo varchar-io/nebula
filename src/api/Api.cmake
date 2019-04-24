@@ -57,7 +57,9 @@ target_link_libraries(ApiTests
     PRIVATE ${GTEST_MAIN_LIBRARY} 
     PRIVATE ${GMOCK_LIBRARY})
 
-target_compile_options(ApiTests PRIVATE -Wno-error=unknown-warning-option)
+if(APPLE)
+    target_compile_options(ApiTests PRIVATE -Wno-error=unknown-warning-option)
+endif()
 
 # discover all gtests in this module
 include(GoogleTest)

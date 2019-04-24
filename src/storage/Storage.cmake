@@ -3,6 +3,7 @@ set(NEBULA_STORAGE NStorage)
 # build nebula.api library
 # target_include_directories(${NEBULA_META} INTERFACE src/meta)
 add_library(${NEBULA_STORAGE} STATIC 
+    ${NEBULA_SRC}/storage/CsvReader.cpp
     ${NEBULA_SRC}/storage/aws/S3.cpp)
 target_link_libraries(${NEBULA_STORAGE}
     PRIVATE ${NEBULA_COMMON}

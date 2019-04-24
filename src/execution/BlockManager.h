@@ -58,9 +58,33 @@ public:
   // TODO(cao) - this interface needs predicate push down to filter out blocks
   const std::vector<nebula::memory::Batch*> query(const nebula::meta::Table&);
   bool add(const nebula::meta::NBlock&);
+
+  // TODO(cao) - for short-term hack, will be removed
+  bool add(const nebula::meta::NBlock&, std::unique_ptr<nebula::memory::Batch>);
   bool remove(const nebula::meta::NBlock&);
 
+  std::tuple<size_t, size_t, size_t> getTableMetrics(const std::string table) const {
+    if (tableStates_.find(table) == tableStates_.end()) {
+      return { 0, 0, 0 };
+    }
+
+    return tableStates_.at(table);
+  }
+
 private:
+  void collectBlockMetrics(const std::string& table, const nebula::memory::Batch& block) {
+    if (tableStates_.find(table) == tableStates_.end()) {
+      tableStates_[table] = { 0, 0, 0 };
+    }
+
+    auto& tuple = tableStates_.at(table);
+    std::get<1>(tuple) += 1;
+    std::get<1>(tuple) += block.getRows();
+    std::get<2>(tuple) += block.getRawSize();
+  }
+
+  // table: <block count, row count, raw size>
+  std::unordered_map<std::string, std::tuple<size_t, size_t, size_t>> tableStates_;
   std::unordered_map<nebula::meta::NBlock, std::unique_ptr<nebula::memory::Batch>, Hash, Equal> blocks_;
 
 private:

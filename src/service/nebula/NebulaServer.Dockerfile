@@ -10,5 +10,6 @@ RUN apt-get upgrade -y
 RUN apt-get dist-upgrade
 
 EXPOSE 9090
-COPY ./gen/greeter_server /etc/nebula/greeter_server
-CMD ["/etc/nebula/greeter_server"]
+COPY ./gen/nebula/NebulaServer /etc/nebula/NebulaServer
+COPY ./gen/nebula/pin.trends.csv /tmp/pin.trends.csv
+CMD ["/etc/nebula/NebulaServer"]
