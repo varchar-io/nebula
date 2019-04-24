@@ -5,6 +5,40 @@
     <meta charset="UTF-8">
     <title>Nebula Test Page</title>
     <script src="./dist/main.js"></script>
+    <script lang="javascript">
+        var serviceAddr = "http://dev-shawncao:8080";
+        var client = new NebulaClient.EchoClient(serviceAddr);
+
+        // simple unary call
+        var request = new NebulaClient.EchoRequest();
+        request.setName('Trends On Nebula');
+
+        client.echoBack(request, {}, (err, response) => {
+            var display = document.getElementById("output");
+            if (err !== null) {
+                display.innerText = "Error code: " + err;
+            } else {
+                display.innerText = (response == null) ? "Failed to get reply" : response.getMessage();
+            }
+        });
+
+        var v1Client = new NebulaClient.V1Client(serviceAddr);
+        var req = new NebulaClient.TableStateRequest();
+        req.setTable("pin.trends");
+
+        // call the service
+        v1Client.state(req, {}, (err, reply) => {
+            var result = document.getElementById("result");
+            if (err !== null) {
+                result.innerText = "Error code: " + err;
+            } else if (reply == null) {
+                result.innerText = "Failed to get reply";
+            } else {
+                result.innerText = "Blocks: " + reply.getBlockcount() + ", Rows: " + reply.getRowcount() +
+                    ", Size: " + reply.getMemsize() + " bytes";
+            }
+        });
+    </script>
 </head>
 
 <body>
