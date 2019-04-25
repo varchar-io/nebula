@@ -213,7 +213,7 @@ std::shared_ptr<Node> Parser::parse() {
 
   // tokens should be all processed
   N_ENSURE(tokens.empty(), "tokens left - check your schema");
-  N_ENSURE_EQ(nodes.size(), 1);
+  N_ENSURE_EQ(nodes.size(), 1, "nodes number should be one");
   return nodes.top();
 }
 

@@ -16,37 +16,14 @@
 
 #pragma once
 
-#include <string>
-#include "MetaService.h"
-#include "Table.h"
-
 /**
- * Nebula test table used for integration test.
- * Used to turn on/off test hooks.
+ * This utility defines time function to providing source of value 
+ * for _time_ column which is required for any nebula table data source
+ * Some table has its own time column that we need to convert it into a consistent one
+ * Or some table doesn't provide time column at all, we will fill current (ingest time) for this column
  */
 namespace nebula {
 namespace meta {
-
-class TestTable {
-public:
-  static const std::string& name();
-  static const std::string& schema();
-};
-
-class MockTable : public Table {
-public:
-  MockTable(const std::string&);
-  virtual ~MockTable() = default;
-};
-
-class MockMs : public MetaService {
-public:
-  virtual std::shared_ptr<nebula::meta::Table> query(const std::string& name) override;
-
-  virtual std::vector<nebula::meta::NNode> queryNodes(
-    const std::shared_ptr<nebula::meta::Table>,
-    std::function<bool(const nebula::meta::NNode&)>) override;
-};
-
+class NTime {};
 } // namespace meta
 } // namespace nebula

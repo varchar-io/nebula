@@ -231,7 +231,7 @@ public:
     type.addChild(std::static_pointer_cast<Tree<Type<V>*>>(value));
 
     // compare the address of these two object
-    N_ENSURE_EQ(type.size(), 2, "only 2 children allowed")
+    N_ENSURE_EQ(type.size(), 2, "only 2 children allowed");
 
     // copy elision
     return type;

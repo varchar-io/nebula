@@ -16,43 +16,43 @@
 
 #pragma once
 
-#include "gtest/gtest.h"
-#include <glog/logging.h>
-#include "common/Errors.h"
-#include "common/Likely.h"
-#include "common/Memory.h"
-#include "fmt/format.h"
-#include "gmock/gmock.h"
 #include "meta/MetaService.h"
 #include "meta/NNode.h"
 #include "meta/Table.h"
-#include "meta/TestTable.h"
 #include "type/Serde.h"
 
+/**
+ * This module is to build special case for trends which has some hard coded data.
+ * Will be deleted after it's done with pilot run.
+ */
 namespace nebula {
-namespace api {
-namespace test {
+namespace execution {
+namespace io {
+namespace trends {
 
-using nebula::type::TypeSerializer;
+class TrendsMetaService;
 
-class MockTable : public nebula::meta::Table {
+class TrendsTable : public nebula::meta::Table {
+  static constexpr auto NAME = "pin.trends";
+
 public:
-  MockTable(const std::string& name) : Table(name) {
-    if (name == nebula::meta::TestTable::name()) {
-      schema_ = TypeSerializer::from(nebula::meta::TestTable::schema());
-    }
-
-    if (name == nebula::meta::TestTable::trendsTableName()) {
-      schema_ = TypeSerializer::from(nebula::meta::TestTable::trendsTableSchema());
-    }
+  TrendsTable() : Table(NAME) {
+    // TODO(cao) - let's make date as a number
+    schema_ = nebula::type::TypeSerializer::from("ROW<query:string, _time_:long, count:long>");
   }
-  virtual ~MockTable() = default;
+
+  virtual ~TrendsTable() = default;
+
+  // load trends data in current process
+  void loadTrends(size_t max = 0);
+
+  std::shared_ptr<nebula::meta::MetaService> getMs() const;
 };
 
-class MockMs : public nebula::meta::MetaService {
+class TrendsMetaService : public nebula::meta::MetaService {
 public:
-  virtual std::shared_ptr<nebula::meta::Table> query(const std::string& name) override {
-    return std::make_shared<MockTable>(name);
+  virtual std::shared_ptr<nebula::meta::Table> query(const std::string&) override {
+    return std::make_shared<TrendsTable>();
   }
 
   virtual std::vector<nebula::meta::NNode> queryNodes(
@@ -61,6 +61,8 @@ public:
     return { nebula::meta::NNode::local() };
   }
 };
-} // namespace test
-} // namespace api
+
+} // namespace trends
+} // namespace io
+} // namespace execution
 } // namespace nebula

@@ -13,20 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include <glog/logging.h>
-#include <iostream>
-#include <memory>
-#include <string>
+#pragma once
 
 #include <grpcpp/grpcpp.h>
-#include <unordered_map>
-#include "execution/BlockManager.h"
-#include "memory/Batch.h"
-#include "meta/NBlock.h"
+#include "QueryHandler.h"
+#include "execution/io/trends/Trends.h"
 #include "meta/Table.h"
+#include "meta/TestTable.h"
 #include "nebula.grpc.pb.h"
-#include "storage/CsvReader.h"
 #include "type/Serde.h"
 
 /**
@@ -35,22 +29,25 @@
  */
 namespace nebula {
 namespace service {
-class TrendsTable : public nebula::meta::Table {
-public:
-  TrendsTable() : Table("pin.trends") {
-    // TODO(cao) - let's make date as a number
-    schema_ = nebula::type::TypeSerializer::from("ROW<query:string, date:string, count:long>");
-  }
-  virtual ~TrendsTable() = default;
-};
 
 // build for specific product such as trends
 class V1ServiceImpl final : public V1::Service {
   grpc::Status State(grpc::ServerContext*, const TableStateRequest*, TableStateResponse*);
-  TrendsTable table_;
+  grpc::Status Query(grpc::ServerContext*, const QueryRequest*, QueryResponse*);
+
+  // TODO(cao) - designed to serve trends table specifically, remove after having real meta service.
+  nebula::execution::io::trends::TrendsTable table_;
+
+  // query handler to handle all the queries
+  QueryHandler handler_;
+
+private:
+  grpc::Status replyError(ErrorCode, QueryResponse*, size_t) const;
 
 public:
-  void loadTrends();
+  void loadTrends() {
+    table_.loadTrends();
+  }
 };
 
 } // namespace service

@@ -15,7 +15,7 @@ var services = grpc.loadPackageDefinition(packageDefinition);
 
 function main() {
     console.log();
-    var client = new services.nebula.service.Echo('dev-shawncao:9090',
+    var client = new services.nebula.service.Echo('dev-shawncao:9190',
         grpc.credentials.createInsecure());
     client.echoBack({name: "Trends On Nebula"}, function (err, response) {
         if (err !== null) {

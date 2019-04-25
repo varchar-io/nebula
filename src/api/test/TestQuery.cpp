@@ -17,7 +17,6 @@
 #include "gtest/gtest.h"
 #include <glog/logging.h>
 #include <sys/mman.h>
-#include "MockTable.h"
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "common/Cursor.h"
@@ -27,10 +26,11 @@
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
+#include "execution/io/trends/Trends.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "meta/NBlock.h"
-#include "meta/Table.h"
+#include "meta/TestTable.h"
 #include "surface/DataSurface.h"
 #include "type/Serde.h"
 
@@ -42,20 +42,20 @@ using namespace nebula::api::dsl;
 using nebula::common::Cursor;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
+using nebula::execution::io::trends::TrendsTable;
+using nebula::meta::MockMs;
 using nebula::meta::NBlock;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
 TEST(ApiTest, TestDataFromCsv) {
-  auto tbl = "trends.draft";
-  auto ms = std::make_shared<MockMs>();
-
+  TrendsTable trends;
   // query this table
-  const auto query = table(tbl, ms)
+  const auto query = table(trends.name(), trends.getMs())
                        .where(col("query") == "yoga")
                        .select(
-                         col("dt"),
+                         col("_time_").as("date"),
                          sum(col("count")).as("total"))
                        .groupby({ 1 });
 
@@ -66,12 +66,7 @@ TEST(ApiTest, TestDataFromCsv) {
   plan->display();
 
   // load test data to run this query
-  auto bm = BlockManager::init();
-  auto ptable = ms->query(tbl);
-
-  // ensure block 0 of the test table (load from storage if not in memory)
-  NBlock block(*ptable, 0);
-  bm->add(block);
+  trends.loadTrends(1);
 
   auto tick = nebula::common::Evidence::ticks();
   // pass the query plan to a server to execute - usually it is itself
@@ -86,21 +81,19 @@ TEST(ApiTest, TestDataFromCsv) {
   while (result->hasNext()) {
     const auto& row = result->next();
     LOG(INFO) << fmt::format("row: {0:50} | {1:12}",
-                             row.readString("dt"),
+                             row.readLong("date"),
                              row.readInt("total"));
   }
 }
 
 TEST(ApiTest, TestMatchedKeys) {
-  auto tbl = "trends.draft";
-  auto ms = std::make_shared<MockMs>();
-
+  TrendsTable trends;
   // query this table
-  const auto query = table(tbl, ms)
+  const auto query = table(trends.name(), trends.getMs())
                        .where(like(col("query"), "leg work%"))
                        .select(
                          col("query"),
-                         col("dt"),
+                         col("_time_"),
                          sum(col("count")).as("total"))
                        .groupby({ 1, 2 });
 
@@ -111,12 +104,7 @@ TEST(ApiTest, TestMatchedKeys) {
   plan->display();
 
   // load test data to run this query
-  auto bm = BlockManager::init();
-  auto ptable = ms->query(tbl);
-
-  // ensure block 0 of the test table (load from storage if not in memory)
-  NBlock block(*ptable, 0);
-  bm->add(block);
+  trends.loadTrends(1);
 
   auto tick = nebula::common::Evidence::ticks();
   // pass the query plan to a server to execute - usually it is itself
@@ -132,17 +120,15 @@ TEST(ApiTest, TestMatchedKeys) {
     const auto& row = result->next();
     LOG(INFO) << fmt::format("row: {0:20} | {1:12} | {2:12}",
                              row.readString("query"),
-                             row.readString("dt"),
+                             row.readLong("_time_"),
                              row.readInt("total"));
   }
 }
 
 TEST(ApiTest, TestMultipleBlocks) {
-  auto tbl = "trends.draft";
-  auto ms = std::make_shared<MockMs>();
-
+  TrendsTable trends;
   // query this table
-  const auto query = table(tbl, ms)
+  const auto query = table(trends.name(), trends.getMs())
                        .where(like(col("query"), "leg work%"))
                        .select(
                          col("query"),
@@ -156,14 +142,7 @@ TEST(ApiTest, TestMultipleBlocks) {
   plan->display();
 
   // load test data to run this query
-  auto bm = BlockManager::init();
-  auto ptable = ms->query(tbl);
-
-  // add 5 blocks numbered from 0 to 4 inclusively
-  for (auto i = 0; i < 5; ++i) {
-    NBlock block(*ptable, i);
-    bm->add(block);
-  }
+  trends.loadTrends(10);
 
   auto tick = nebula::common::Evidence::ticks();
   // pass the query plan to a server to execute - usually it is itself

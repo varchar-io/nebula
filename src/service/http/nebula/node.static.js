@@ -8,7 +8,7 @@ var grpc = require('grpc');
 
 function main() {
     console.log();
-    var client = new services.EchoClient('dev-shawncao:9090',
+    var client = new services.EchoClient('dev-shawncao:9190',
         grpc.credentials.createInsecure());
     var req = new messages.EchoRequest();
     req.setName("Static Trends");

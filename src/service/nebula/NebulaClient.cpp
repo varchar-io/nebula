@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <glog/logging.h>
-#include <iostream>
 #include <memory>
 #include <string>
 
 #include <grpcpp/grpcpp.h>
+#include "NebulaService.h"
 #include "nebula.grpc.pb.h"
 
 /**
@@ -32,9 +33,6 @@ namespace service {
 using grpc::Channel;
 using grpc::ClientContext;
 using grpc::Status;
-using nebula::service::Echo;
-using nebula::service::EchoRequest;
-using nebula::service::EchoResponse;
 
 class EchoClient {
 public:
@@ -62,8 +60,7 @@ public:
     if (status.ok()) {
       return reply.message();
     } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
+      LOG(INFO) << status.error_code() << ": " << status.error_message();
       return "RPC failed";
     }
   }
@@ -76,8 +73,8 @@ private:
 } // namespace nebula
 
 int main(int argc, char** argv) {
-  nebula::service::EchoClient greeter(grpc::CreateChannel(
-    "localhost:9090", grpc::InsecureChannelCredentials()));
+  auto serviceAddr = fmt::format("{0}:{1}", "localhost", nebula::service::ServiceProperties::PORT);
+  nebula::service::EchoClient greeter(grpc::CreateChannel(serviceAddr, grpc::InsecureChannelCredentials()));
   LOG(INFO) << "Greeter received: " << greeter.echo("nebula");
   return 0;
 }

@@ -77,7 +77,7 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // validations
   // 1. group by index has to be all those columns that are not aggregate columns
   // group by count has to be the same as non-agg column count
-  N_ENSURE_EQ(groups_.size(), numOutputFields - numAggColumns);
+  N_ENSURE_EQ(groups_.size(), numOutputFields - numAggColumns, "query key count");
 
   // check the index are correct values and convert 1-based group by keys into 0-based keys for internal usage
   std::vector<size_t> zbKeys;

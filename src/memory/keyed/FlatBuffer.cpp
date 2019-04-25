@@ -76,10 +76,10 @@ size_t FlatBuffer::widthInMain(Kind kind) {
 
 bool FlatBuffer::appendNull(bool isNull, nebula::type::Kind kind, Buffer& dest) {
   int8_t byte = (isNull ? HIGH6_1 : 0) | kind;
-  N_ENSURE_EQ(((byte & HIGH6_1) != 0), isNull);
+  N_ENSURE_EQ(((byte & HIGH6_1) != 0), isNull, "HIGH6 byte stores null");
 
   size_t len = dest.slice.write<int8_t>(dest.offset, byte);
-  N_ENSURE_EQ(len, 1);
+  N_ENSURE_EQ(len, 1, "length to be one");
 
   dest.offset += 1;
   return isNull;

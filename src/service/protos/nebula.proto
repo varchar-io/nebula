@@ -21,7 +21,7 @@ package nebula.service;
 // The greeting service definition.
 service Echo {
   // Sends a greeting
-  rpc EchoBack (EchoRequest) returns (EchoResponse) {}
+  rpc EchoBack(EchoRequest) returns(EchoResponse) {}
 }
 
 // The request message containing the user's name.
@@ -34,16 +34,129 @@ message EchoResponse {
   string message = 1;
 }
 
+// all service methods are captilized compared to other regular methods
 service V1 {
-  rpc State(TableStateRequest) returns (TableStateResponse) {}
+  rpc State(TableStateRequest) returns(TableStateResponse) {}
+  rpc Query(QueryRequest) returns(QueryResponse) {}
 }
 
-message TableStateRequest{
+message TableStateRequest {
   string table = 1;
 }
 
-message TableStateResponse{
+message TableStateResponse {
   int32 blockCount = 1;
   int64 rowCount = 2;
   int64 memSize = 3;
+}
+
+// define query request and response
+
+// single predicate which is column op [list of values]
+// Operation defines comparions op to form a predicate: =, !=, >, <
+enum Operation {
+  EQ = 0;
+  NEQ = 1;
+  MORE = 2;
+  LESS = 3;
+  LIKE = 4;
+}
+
+// NOTE - based on the code generation rule, we don't put plural term for repeated field
+// so the method will like add_value rather than add_values
+// Based on column type - the value will be converted from string always
+message Predicate {
+  string column = 1;
+  Operation op = 2;
+  repeated string value = 3;
+}
+
+// define filter - a filter is formed by a list of predicates combined by AND or OR
+message PredicateAnd {
+  repeated Predicate expression = 1;
+}
+
+message PredicateOr {
+  repeated Predicate expression = 1;
+}
+
+
+// This defines all the aggregate metric methods suppored in nebula
+enum Rollup {
+  SUM = 0;
+  COUNT = 1;
+  MAX = 2;
+  MIN = 3;
+  AVG = 4;
+  P99 = 5;
+}
+
+// A metric is defined by rollup method on a column
+message Metric {
+  string column = 1;
+  Rollup method = 2;
+}
+
+// define ordering spec - limiting to order by single column in returning result
+message Order {
+  string column = 1;
+  bool desc = 2;
+}
+
+// define query request 
+message QueryRequest {
+  string table = 1;
+
+  // at the top tree as filter - it can be only one, either AND or OR
+  oneof filter {
+    PredicateAnd filterA = 2;
+    PredicateOr filterO = 3;
+  }
+
+  // every query will specify time range for the data to query - this is enforced
+  // start time and end time are unix timestamp with GMT timezone - no delta
+  // time range filter will be inclusive on both ends as [start, end]
+  uint64 start = 4;
+  uint64 end = 5;
+
+  // window size is used in time serials query that aggregate timestamp into a window as bucket
+  // this is in seconds (if the value is 60 -> one minute)
+  uint32 window = 6;
+
+  // dimensions (key columns / group by columns) to pull metrics for
+  repeated string dimension = 7;
+  // metric list, such as sum(col_a), count(col_b)
+  repeated Metric metric = 8;
+
+  // usually query only takes top X results based on order spec
+  uint32 top = 9;
+
+  // define order spec
+  Order order = 10;
+}
+
+// define query processing metrics
+message Statistics {
+  // total rows scanned for the query
+  uint64 rowsScanned = 1;
+  // end to end query time in milliseconds
+  uint32 queryTimeMs = 2;
+  // query result - 0=success, other error code to look up
+  uint32 error = 3;
+  // may place error message here if failed
+  string message = 4;
+}
+
+enum DataType {
+  // use native flat buffer format 
+  // it has its own serialziation and deserialization logic
+  NATIVE = 0;
+  // JSON string sending in bytes buffer
+  JSON = 1;
+}
+// define query response from server
+message QueryResponse {
+  Statistics stats = 1;
+  DataType type = 2;
+  bytes data = 3;
 }

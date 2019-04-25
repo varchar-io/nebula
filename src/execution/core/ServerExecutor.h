@@ -40,7 +40,7 @@ public:
 
   NodeClient connect(const nebula::meta::NNode& node);
 
-  nebula::surface::RowCursor execute(ExecutionPlan& plan);
+  nebula::surface::RowCursor execute(const ExecutionPlan& plan);
 
 private:
   const std::string server_;

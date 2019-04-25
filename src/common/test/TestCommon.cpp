@@ -193,6 +193,10 @@ TEST(SliceTest, TestSliceWrite) {
   EXPECT_EQ(slice.read<int>(0), value);
 }
 
+TEST(EvidenceTest, TestTimeParsing) {
+  LOG(INFO) << "2019-04-01 = " << Evidence::time("2019-04-01", "%Y-%m-%d");
+}
+
 TEST(EvidenceTest, TestRand) {
   LOG(INFO) << "unix time now: " << Evidence::unix_timestamp();
 

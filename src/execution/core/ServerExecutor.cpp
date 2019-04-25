@@ -36,7 +36,7 @@ using nebula::surface::RowData;
 
 static std::chrono::milliseconds RPC_TIMEOUT = std::chrono::milliseconds(2000);
 
-RowCursor ServerExecutor::execute(ExecutionPlan& plan) {
+RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
   std::vector<folly::Future<RowCursor>> results;
   for (const NNode& node : plan.getNodes()) {
     auto c = connect(node);

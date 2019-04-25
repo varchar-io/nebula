@@ -16,7 +16,6 @@
 
 #include "gtest/gtest.h"
 #include <glog/logging.h>
-#include "MockTable.h"
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "common/Cursor.h"
@@ -26,7 +25,7 @@
 #include "execution/ExecutionPlan.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
-#include "meta/Table.h"
+#include "meta/TestTable.h"
 #include "surface/DataSurface.h"
 #include "type/Serde.h"
 
@@ -91,7 +90,7 @@ TEST(ExpressionsTest, TypeDetection) {
 TEST(ExpressionsTest, TestExpressionType) {
   // all the expressions are working as non-const and non-reference
   // to favor the expresssion chain
-  MockMs ms;
+  nebula::meta::MockMs ms;
   auto tbl = ms.query("nebula.test");
 
   // constant type
@@ -141,7 +140,7 @@ TEST(ExpressionsTest, TestExpressionType) {
 }
 
 TEST(ExpressionsTest, TestExpressionEval) {
-  MockMs ms;
+  nebula::meta::MockMs ms;
   auto tbl = ms.query("nebula.test");
   {
     auto idvalue = (nebula::api::dsl::col("id") * 0) != 0;

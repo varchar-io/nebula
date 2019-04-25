@@ -15,13 +15,17 @@
  */
 
 #include "TestTable.h"
+#include "type/Serde.h"
 
 /**
  * Nebula test table used for integration test.
  * Used to turn on/off test hooks.
+ * This will be removed after we implemented the meta service
  */
 namespace nebula {
 namespace meta {
+
+using nebula::type::TypeSerializer;
 
 const std::string& TestTable::name() {
   static const std::string NAME = "nebula.test";
@@ -33,14 +37,20 @@ const std::string& TestTable::schema() {
   return SCHEMA;
 }
 
-const std::string& TestTable::trendsTableName() {
-  static const std::string NAME = "trends.draft";
-  return NAME;
+MockTable::MockTable(const std::string& name) : Table(name) {
+  if (name == nebula::meta::TestTable::name()) {
+    schema_ = TypeSerializer::from(nebula::meta::TestTable::schema());
+  }
 }
 
-const std::string& TestTable::trendsTableSchema() {
-  static const std::string SCHEMA = "ROW<query:string, dt:string, count:int>";
-  return SCHEMA;
+std::shared_ptr<nebula::meta::Table> MockMs::query(const std::string& name) {
+  return std::make_shared<MockTable>(name);
+}
+
+std::vector<nebula::meta::NNode> MockMs::queryNodes(
+  const std::shared_ptr<nebula::meta::Table>,
+  std::function<bool(const nebula::meta::NNode&)>) {
+  return { nebula::meta::NNode::local() };
 }
 
 } // namespace meta

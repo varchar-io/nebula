@@ -60,20 +60,36 @@ add_custom_target(nebula_node_client
       "${nproto}"
 DEPENDS ${nproto})
 
+
+# build everything else as library except executable of NebulaServer and NebulaClient
+add_library(${NEBULA_SERVICE} STATIC 
+    ${NEBULA_SRC}/service/nebula/QueryHandler.cpp
+    ${NEBULA_SRC}/service/nebula/NebulaService.cpp
+    ${nproto_srcs}
+    ${ngrpc_srcs})
+target_link_libraries(${NEBULA_SERVICE}
+    PRIVATE ${NEBULA_API}
+    PRIVATE ${PROTOBUF_LIBRARY}
+    PRIVATE libgrpc++
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${JSON_LIBRARY})
+target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unused-parameter)
+if(APPLE)
+    target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unknown-warning-option)
+endif()
+
 # Targets greeter_[async_](client|server)
 foreach(_target
   NebulaClient NebulaServer)
-  add_executable(${_target} "${NebulaService_DIR}/${_target}.cpp"
-    ${nproto_srcs}
-    ${ngrpc_srcs})
+  add_executable(${_target} 
+    "${NebulaService_DIR}/${_target}.cpp")
   
   # NOTE that - on linux, GCC behaves wired, the order of the dependencies matter
   # which means, libgrpc++ depends on libgrpc, and likewise, libgrpc depends on libgpr and address_sorting
   # if we messed up the order, the link will report huge amount of errors like undefined referneces.
   target_link_libraries(${_target}
-    PRIVATE ${NEBULA_API}
-    PRIVATE ${NEBULA_MEMORY}
-    PRIVATE libgrpc++
+    PRIVATE ${NEBULA_SERVICE}
     PRIVATE libgrpc
     PRIVATE libgpr
     PRIVATE libaddress_sorting
@@ -81,7 +97,8 @@ foreach(_target
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${CARES_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
-    PRIVATE ${PROTOBUF_LIBRARY})
+    PRIVATE ${PROTOBUF_LIBRARY}
+    PRIVATE ${JSON_LIBRARY})
     # disalbe warning into errors for due to these generated files
     target_compile_options(${_target} PRIVATE -Wno-error=unused-parameter)
 endforeach()
@@ -132,8 +149,29 @@ add_custom_target(nebula_web_client
 
 # we will also run a simple web server to serve the page which hosts our client.js logic
 # inside the client.js logic, it will call into 8080 port for data request through envoy proxy
-# envoy proxy will contact 9090 port where is the real server for response.
+# envoy proxy will contact 9190 port where is the real server for response.
 # to run the web server, first we pack all js file into a single one
 # here we are using webpack:
 # $ npm install (based on package.json - can be reused for all service)
 # $ npx webpack client.js
+
+# build test binary
+add_executable(ServiceTests ${NEBULA_SRC}/service/test/TestQueryHandler.cpp)
+target_link_libraries(ServiceTests 
+    PRIVATE ${NEBULA_SERVICE}    
+    PRIVATE ${GTEST_LIBRARY} 
+    PRIVATE ${GTEST_MAIN_LIBRARY} 
+    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${GLOG_LIBRARY}
+    PRIVATE libgrpc++
+    PRIVATE ${PROTOBUF_LIBRARY}
+    PRIVATE ${JSON_LIBRARY})
+target_compile_options(ServiceTests PRIVATE -Wno-error=unused-parameter)
+if(APPLE)
+    target_compile_options(ServiceTests PRIVATE -Wno-error=unknown-warning-option)
+endif()
+
+# discover all gtests in this module
+include(GoogleTest)
+gtest_discover_tests(ServiceTests TEST_LIST ALL)

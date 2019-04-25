@@ -123,8 +123,13 @@ public:
     });
 
     // read next row
-    if (fstream_ >> row_ && row_.rawData().size() >= columns_.size()) {
-      size_ += 1;
+    // TODO(cao) - current CSV reading implementation ignores escape special chars case
+    // we should handle those to skip less rows
+    while (fstream_ >> row_) {
+      if (row_.rawData().size() == columns_.size()) {
+        size_ += 1;
+        break;
+      }
     }
 
     index_++;

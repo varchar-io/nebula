@@ -45,7 +45,7 @@ bool HashFlat::update(const nebula::surface::RowData& row, const UpdateCallback&
   // we got a new unique row
   // ensure every row is recorded
   keyedRows_[key] = newRow;
-  N_ENSURE_EQ(newRow, rowHash_.size());
+  N_ENSURE_EQ(newRow, rowHash_.size(), "row number match");
   rowHash_.push_back(hValue);
 
   return false;

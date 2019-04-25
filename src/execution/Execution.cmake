@@ -8,6 +8,7 @@ add_library(${NEBULA_EXEC} STATIC
     ${NEBULA_SRC}/execution/core/NodeExecutor.cpp    
     ${NEBULA_SRC}/execution/core/ServerExecutor.cpp    
     ${NEBULA_SRC}/execution/io/BlockLoader.cpp
+    ${NEBULA_SRC}/execution/io/trends/Trends.cpp
     ${NEBULA_SRC}/execution/op/Operator.cpp
     ${NEBULA_SRC}/execution/BlockManager.cpp
     ${NEBULA_SRC}/execution/ExecutionPlan.cpp)

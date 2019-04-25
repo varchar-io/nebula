@@ -69,74 +69,49 @@ static constexpr cstr lslash(cstr str) {
     throw nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, "RuntimeError", MSG); \
   })
 
-#define N_ENSURE(e, ...)                                                                             \
+#define N_ENSURE(e, msg)                                                                             \
   ({                                                                                                 \
     auto const& _tmp = (e);                                                                          \
-    auto msg = fmt::format(__VA_ARGS__);                                                             \
     _tmp ? _tmp : throw nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, #e, msg); \
   })
 
-#define N_ENSURE_NOT_NULL(p, ...) \
-  N_ENSURE(p != nullptr, "[Null pointer] : ", ##__VA_ARGS__);
+#define N_ENSURE_NOT_NULL(p, m) \
+  N_ENSURE(p != nullptr, fmt::format("[NULL-{0}]: {1}", #p, m));
 
-#define N_ENSURE_NE(l, r, ...)        \
-  N_ENSURE(                           \
-    l != r,                           \
-    "[Range Constraint Violation : ", \
-    l,                                \
-    "/",                              \
-    r,                                \
-    "] : ",                           \
-    ##__VA_ARGS__);
+#define N_ENSURE_NE(l, r, m)                                               \
+  ({                                                                       \
+    auto msg = fmt::format("[Range Violation: {0} != {1}]: {2}", l, r, m); \
+    N_ENSURE(l != r, msg);                                                 \
+  })
 
-#define N_ENSURE_EQ(l, r, ...)        \
-  N_ENSURE(                           \
-    l == r,                           \
-    "[Range Constraint Violation : ", \
-    l,                                \
-    "/",                              \
-    r,                                \
-    "] : ",                           \
-    ##__VA_ARGS__);
+#define N_ENSURE_EQ(l, r, m)                                               \
+  ({                                                                       \
+    auto msg = fmt::format("[Range Violation: {0} == {1}]: {2}", l, r, m); \
+    N_ENSURE(l == r, msg);                                                 \
+  })
 
-#define N_ENSURE_LT(l, r, ...)        \
-  N_ENSURE(                           \
-    l < r,                            \
-    "[Range Constraint Violation : ", \
-    l,                                \
-    "/",                              \
-    r,                                \
-    "] : ",                           \
-    ##__VA_ARGS__);
+#define N_ENSURE_LT(l, r, m)                                              \
+  ({                                                                      \
+    auto msg = fmt::format("[Range Violation: {0} < {1}]: {2}", l, r, m); \
+    N_ENSURE(l < r, msg);                                                 \
+  })
 
-#define N_ENSURE_LE(l, r, ...)        \
-  N_ENSURE(                           \
-    l <= r,                           \
-    "[Range Constraint Violation : ", \
-    l,                                \
-    "/",                              \
-    r,                                \
-    "] : ",                           \
-    ##__VA_ARGS__);
+#define N_ENSURE_LE(l, r, m)                                               \
+  ({                                                                       \
+    auto msg = fmt::format("[Range Violation: {0} <= {1}]: {2}", l, r, m); \
+    N_ENSURE(l <= r, msg);                                                 \
+  })
 
-#define N_ENSURE_GT(l, r, ...)        \
-  N_ENSURE(                           \
-    l > r,                            \
-    "[Range Constraint Violation : ", \
-    l,                                \
-    "/",                              \
-    r,                                \
-    "] : ",                           \
-    ##__VA_ARGS__);
+#define N_ENSURE_GT(l, r, m)                                              \
+  ({                                                                      \
+    auto msg = fmt::format("[Range Violation: {0} > {1}]: {2}", l, r, m); \
+    N_ENSURE(l > r, msg);                                                 \
+  })
 
-#define N_ENSURE_GE(l, r, ...)        \
-  N_ENSURE(                           \
-    l >= r,                           \
-    "[Range Constraint Violation : ", \
-    l,                                \
-    "/",                              \
-    r,                                \
-    "] : ",                           \
-    ##__VA_ARGS__);
+#define N_ENSURE_GE(l, r, m)                                               \
+  ({                                                                       \
+    auto msg = fmt::format("[Range Violation: {0} >= {1}]: {2}", l, r, m); \
+    N_ENSURE(l >= r, msg);                                                 \
+  })
 } // namespace common
 } // namespace nebula

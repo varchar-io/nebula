@@ -9,7 +9,7 @@ RUN apt-get install -y curl build-essential supervisor wget libstdc++6
 RUN apt-get upgrade -y
 RUN apt-get dist-upgrade
 
-EXPOSE 9090
+EXPOSE 9190
 COPY ./gen/nebula/NebulaServer /etc/nebula/NebulaServer
 COPY ./gen/nebula/pin.trends.csv /tmp/pin.trends.csv
 CMD ["/etc/nebula/NebulaServer"]

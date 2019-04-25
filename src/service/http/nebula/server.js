@@ -76,7 +76,7 @@ function getServer() {
 
 if (require.main === module) {
   var server = getServer();
-  server.bind('0.0.0.0:9090', grpc.ServerCredentials.createInsecure());
+  server.bind('0.0.0.0:9190', grpc.ServerCredentials.createInsecure());
   server.start();
 }
 

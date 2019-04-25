@@ -17,9 +17,12 @@
 #pragma once
 
 #include <chrono>
-#include <random>
-#include <thread>
 #include <functional>
+#include <glog/logging.h>
+#include <iomanip>
+#include <random>
+#include <sstream>
+#include <thread>
 
 /**
  * Evidence is library to provide evidences like time and random sequence generators.
@@ -40,6 +43,20 @@ public: /** only static methods */
     static constexpr std::chrono::time_point<std::chrono::system_clock> epoch;
     static constexpr auto x = epoch.time_since_epoch().count();
     return (ticks() - x) / 1000000;
+  }
+
+  // given date time string and parsing pattern, return GMT unix time stamp
+  static std::time_t time(const std::string& datetime, const std::string& pattern) {
+    std::tm t = {};
+    std::istringstream value(datetime);
+    value >> std::get_time(&t, pattern.c_str());
+    if (value.fail()) {
+      LOG(ERROR) << "Failed to parse time: " << datetime;
+      return 0;
+    }
+
+    // convert this time into GMT based unixtime stamp
+    return timegm(&t);
   }
 
   // rand in a range

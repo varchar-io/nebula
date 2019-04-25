@@ -78,21 +78,27 @@ class LogicalExpression;
   template <typename R, IS_EXPRESSION(R)>                                                  \
   auto operator OP(const R& right)->ArthmeticExpression<ArthmeticOp::TYPE, THIS_TYPE, R> { \
     return ArthmeticExpression<ArthmeticOp::TYPE, THIS_TYPE, R>(                           \
-      std::make_shared<THIS_TYPE>(*this), std::make_shared<R>(right));                       \
+      std::make_shared<THIS_TYPE>(*this), std::make_shared<R>(right));                     \
   }
 
 #define LOGICAL_OP_CONST(OP, TYPE)                                                                                        \
   template <typename M, bool OK = std::is_arithmetic<M>::value && !(std::is_same<char*, std::decay_t<M>>::value)>         \
   auto operator OP(const M& m)->std::enable_if_t<OK, LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<M>>> { \
     return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<M>>(                                             \
-      std::make_shared<THIS_TYPE>(*this), std::make_shared<ConstExpression<M>>(m));                                         \
+      std::make_shared<THIS_TYPE>(*this), std::make_shared<ConstExpression<M>>(m));                                       \
   }
 
 #define LOGICAL_OP_GENERIC(OP, TYPE)                                                   \
   template <typename R, IS_EXPRESSION(R)>                                              \
   auto operator OP(const R& right)->LogicalExpression<LogicalOp::TYPE, THIS_TYPE, R> { \
     return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, R>(                           \
-      std::make_shared<THIS_TYPE>(*this), std::make_shared<R>(right));                   \
+      std::make_shared<THIS_TYPE>(*this), std::make_shared<R>(right));                 \
+  }
+
+#define LOGICAL_OP_EXPR(OP, TYPE)                                                                                        \
+  auto operator OP(const std::shared_ptr<Expression> right)->LogicalExpression<LogicalOp::TYPE, THIS_TYPE, Expression> { \
+    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, Expression>(                                                    \
+      std::make_shared<THIS_TYPE>(*this), right);                                                                        \
   }
 
 #define LOGICAL_OP_STRING(OP, TYPE) \
@@ -114,24 +120,32 @@ class LogicalExpression;
   LOGICAL_OP_CONST(==, EQ)    \
   LOGICAL_OP_STRING(==, EQ)   \
   LOGICAL_OP_GENERIC(==, EQ)  \
+  LOGICAL_OP_EXPR(==, EQ)     \
   LOGICAL_OP_CONST(!=, NEQ)   \
   LOGICAL_OP_STRING(!=, NEQ)  \
   LOGICAL_OP_GENERIC(!=, NEQ) \
+  LOGICAL_OP_EXPR(!=, NEQ)    \
   LOGICAL_OP_CONST(>, GT)     \
   LOGICAL_OP_STRING(>, GT)    \
   LOGICAL_OP_GENERIC(>, GT)   \
+  LOGICAL_OP_EXPR(>, GT)      \
   LOGICAL_OP_CONST(>=, GE)    \
   LOGICAL_OP_STRING(>=, GE)   \
   LOGICAL_OP_GENERIC(>=, GE)  \
+  LOGICAL_OP_EXPR(>=, GE)     \
   LOGICAL_OP_CONST(<, LT)     \
   LOGICAL_OP_STRING(<, LT)    \
   LOGICAL_OP_GENERIC(<, LT)   \
+  LOGICAL_OP_EXPR(<, LT)      \
   LOGICAL_OP_CONST(<=, LE)    \
   LOGICAL_OP_STRING(<=, LE)   \
   LOGICAL_OP_GENERIC(<=, LE)  \
+  LOGICAL_OP_EXPR(<=, LE)     \
                               \
   LOGICAL_OP_GENERIC(&&, AND) \
-  LOGICAL_OP_GENERIC(||, OR)
+  LOGICAL_OP_EXPR(&&, AND)    \
+  LOGICAL_OP_GENERIC(||, OR)  \
+  LOGICAL_OP_EXPR(||, OR)
 
 #define ALL_ARTHMETIC_LOGICAL_OPS() \
   ALL_ARTHMETIC_OPS()               \
@@ -164,8 +178,21 @@ public:
     }
 
     // get alias from the first valid op
-    alias_ = op1_->alias().size() > 0 ? op1_->alias() : op2_->alias();
+    extractAlias(op1_->alias(), op2_->alias());
   }
+
+  ArthmeticExpression(const ArthmeticExpression& other)
+    : op1_{ other.op1_ }, op2_{ other.op2_ } {
+    extractAlias(op1_->alias(), op2_->alias());
+  }
+
+  ArthmeticExpression& operator=(const ArthmeticExpression& other) {
+    op1_ = other.op1_;
+    op2_ = other.op2_;
+    extractAlias(op1_->alias(), op2_->alias());
+    return *this;
+  }
+
   virtual ~ArthmeticExpression() = default;
 
 public: // all operations
@@ -228,7 +255,18 @@ public:
     }
 
     // get alias from the first valid op
-    alias_ = op1_->alias().size() > 0 ? op1_->alias() : op2_->alias();
+    extractAlias(op1_->alias(), op2_->alias());
+  }
+  LogicalExpression(const LogicalExpression& other)
+    : op1_{ other.op1_ }, op2_{ other.op2_ } {
+    extractAlias(op1_->alias(), op2_->alias());
+  }
+
+  LogicalExpression& operator=(const LogicalExpression& other) {
+    op1_ = other.op1_;
+    op2_ = other.op2_;
+    extractAlias(op1_->alias(), op2_->alias());
+    return *this;
   }
   virtual ~LogicalExpression() = default;
 
@@ -307,6 +345,18 @@ public:
     : column_{ column } {
     alias_ = column_;
   }
+
+  ColumnExpression(const ColumnExpression& other) {
+    column_ = other.column_;
+    alias_ = other.alias_;
+  }
+
+  ColumnExpression& operator=(const ColumnExpression& other) {
+    column_ = other.column_;
+    alias_ = other.alias_;
+    return *this;
+  }
+
   virtual ~ColumnExpression() = default;
 
 public: // all logical operations
@@ -331,6 +381,8 @@ template <typename T>
 class ConstExpression : public Expression {
 public:
   ConstExpression(const T& value) : value_{ value } {}
+  ConstExpression(const ConstExpression&) = default;
+  ConstExpression& operator=(const ConstExpression&) = default;
   virtual ~ConstExpression() = default;
 
 public:
@@ -363,8 +415,9 @@ template <nebula::execution::eval::UDFType UT>
 class UDFExpression : public Expression {
 public:
   UDFExpression(std::shared_ptr<Expression> inner)
-    : inner_{ inner } {
-  }
+    : inner_{ inner } {}
+  UDFExpression(const UDFExpression&) = default;
+  UDFExpression& operator=(const UDFExpression&) = default;
   virtual ~UDFExpression() = default;
 
 public:
@@ -415,9 +468,13 @@ class LikeExpression : public Expression {
 public:
   LikeExpression(std::shared_ptr<Expression> left, const std::string& pattern)
     : left_{ left }, pattern_{ pattern } {}
+  LikeExpression(const LikeExpression&) = default;
+  LikeExpression& operator=(const LikeExpression&) = default;
   virtual ~LikeExpression() = default;
 
 public:
+  ALL_LOGICAL_OPS()
+
   ALIAS()
 
   IS_AGG(execution::eval::UdfTraits<nebula::execution::eval::UDFType::LIKE>::UDAF)

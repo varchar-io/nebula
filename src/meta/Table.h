@@ -44,6 +44,10 @@ public:
     return t1.name_ == t2.name_;
   }
 
+  // default reserved [time] field in nebula, every table has this field enforced.
+  // move this to core/meta to be shared everywhere
+  static constexpr auto TIME_COLUMN = "_time_";
+
 public:
   virtual Schema getSchema() const {
     N_ENSURE_NOT_NULL(schema_, fmt::format("invalid table not found = {0}", name_));

@@ -65,7 +65,7 @@ bool BlockManager::add(const NBlock& block) {
 
 bool BlockManager::add(const nebula::meta::NBlock& block, std::unique_ptr<nebula::memory::Batch> data) {
   // batch is in memory now
-  N_ENSURE_NOT_NULL(data);
+  N_ENSURE_NOT_NULL(data, "block data can't be null");
 
   // collect this block metrics
   collectBlockMetrics(block.getTable().name(), *data);

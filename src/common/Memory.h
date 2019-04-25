@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <iostream>
 #include "Errors.h"
 #include "Likely.h"
-#include <glog/logging.h>
 
 // TODO(cao): import jemalloc for global new/delete allocation
 // void* operator new(size_t size) {
@@ -137,7 +137,8 @@ public:
   }
 
   std::string read(size_t position, size_t length) const {
-    N_ENSURE(position + length <= capacity(), "invalid position ({0}, {1}) to read data", position, length);
+    N_ENSURE(position + length <= capacity(),
+             fmt::format("invalid position ({0}, {1}) to read data", position, length));
 
     // build data using copy elision
     return std::string(this->ptr_ + position, length);

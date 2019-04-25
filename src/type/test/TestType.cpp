@@ -37,7 +37,7 @@ using namespace nebula::common;
 TEST(TypeTest, Dummy) {
   EXPECT_EQ(4, 2 + 2);
   EXPECT_EQ(fmt::format("a{}", 1), "a1");
-  N_ENSURE_EQ(4, 2 + 2);
+  N_ENSURE_EQ(4, 2 + 2, "match plus");
 
   LOG(INFO) << fmt::format("The date is {}", 9);
 

@@ -18,17 +18,19 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include "common/Evidence.h"
 
 #include <grpcpp/grpcpp.h>
 #include <unordered_map>
 #include "NebulaServer.h"
+#include "NebulaService.h"
 #include "execution/BlockManager.h"
+#include "fmt/format.h"
 #include "memory/Batch.h"
 #include "meta/NBlock.h"
 #include "meta/Table.h"
 #include "nebula.grpc.pb.h"
 #include "storage/CsvReader.h"
-#include "type/Serde.h"
 
 /**
  * A cursor template that help iterating a container.
@@ -39,17 +41,17 @@ namespace service {
 
 using grpc::ServerContext;
 using grpc::Status;
+using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::memory::Batch;
 using nebula::meta::NBlock;
 using nebula::meta::Table;
-using nebula::service::Echo;
-using nebula::service::EchoRequest;
-using nebula::service::EchoResponse;
-using nebula::service::TableStateRequest;
-using nebula::service::TableStateResponse;
-using nebula::service::V1;
 using nebula::storage::CsvReader;
+using nebula::surface::RowCursor;
+using nebula::surface::RowData;
+using nebula::type::Kind;
+using nebula::type::Schema;
+using nebula::type::TypeNode;
 using nebula::type::TypeSerializer;
 
 grpc::Status V1ServiceImpl::State(grpc::ServerContext* context, const TableStateRequest* request, TableStateResponse* reply) {
@@ -63,46 +65,45 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext* context, const TableState
   return Status::OK;
 }
 
-void V1ServiceImpl::loadTrends() {
-  // load test data to run this query
-  auto bm = BlockManager::init();
-
-  // PURE TEST CODE: load data from a file path
-  auto file = "/tmp/pin.trends.csv";
-
-  // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
-  CsvReader reader(file);
-  // every 100K rows, we split it into a block
-  const auto bRows = 100000;
-  std::unique_ptr<Batch> block = nullptr;
-  size_t cursor = 0;
-  size_t blockId = 0;
-  while (reader.hasNext()) {
-    // create a new block
-    if (cursor % bRows == 0) {
-      // add current block if it's the first time init
-      if (cursor > 0) {
-        N_ENSURE(block != nullptr, "block should be valid");
-        NBlock b(table_, blockId);
-        LOG(INFO) << " adding one block: " << (block != nullptr) << ", rows=" << cursor;
-        bm->add(b, std::move(block));
-      }
-
-      // create new block data
-      blockId += 1;
-      block = std::make_unique<Batch>(table_.getSchema());
-    }
-
-    cursor++;
-    auto& row = reader.next();
-    // add all entries belonging to test_data_limit_100000 into the block
-    block->add(row);
+grpc::Status V1ServiceImpl::Query(grpc::ServerContext* context, const QueryRequest* request, QueryResponse* reply) {
+  // validate the query request and build the call
+  auto tick = Evidence::ticks();
+  ErrorCode error = ErrorCode::NONE;
+  // compile the query into a plan
+  auto plan = handler_.compile(*request, error);
+  if (error != ErrorCode::NONE) {
+    return replyError(error, reply, 0);
   }
 
-  // add last block
-  NBlock b(table_, blockId);
-  LOG(INFO) << " adding last block: " << (block != nullptr) << ", rows=" << cursor;
-  bm->add(b, std::move(block));
+  RowCursor result = handler_.query(*plan, error);
+  auto durationMs = (Evidence::ticks() - tick) / 1000;
+  if (error != ErrorCode::NONE) {
+    return replyError(error, reply, durationMs);
+  }
+
+  // return normal serialized data
+  auto stats = reply->mutable_stats();
+  stats->set_querytimems(durationMs);
+  // TODO(cao) - read it from underlying execution
+  stats->set_rowsscanned(0);
+
+  // TODO(cao) - use JSON for now, this should come from message request
+  // User/client can specify what kind of format of result it expects
+  reply->set_type(DataType::JSON);
+  reply->set_data(ServiceProperties::jsonify(result, plan->getOutputSchema()));
+
+  return Status::OK;
+}
+
+grpc::Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, size_t durationMs) const {
+  N_ENSURE_NE(code, ErrorCode::NONE, "Error Reply Code Not 0");
+
+  auto stats = reply->mutable_stats();
+  stats->set_error(code);
+  stats->set_message(ServiceProperties::errorMessage(code));
+  stats->set_querytimems(durationMs);
+
+  return grpc::Status(grpc::StatusCode::INTERNAL, "error: check stats");
 }
 
 // Logic and data behind the server's behavior.
@@ -120,7 +121,7 @@ class EchoServiceImpl final : public Echo::Service {
 // NOTE: main function can't be placed inside a namespace
 // Otherwise you may get undefined symbol "_main" error in link
 void RunServer() {
-  std::string server_address("0.0.0.0:9090");
+  std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::ServiceProperties::PORT));
   nebula::service::EchoServiceImpl echoService;
   nebula::service::V1ServiceImpl v1Service;
 

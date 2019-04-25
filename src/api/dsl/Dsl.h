@@ -79,6 +79,12 @@ public:
     return *this;
   }
 
+  Query& select(const std::vector<std::shared_ptr<Expression>>& selects) {
+    // make a copy in a shared pointer and save it.
+    selects_ = selects;
+    return *this;
+  }
+
   // group by a list of columns
   Query& groupby(const std::vector<size_t>& groups) {
     groups_ = groups;

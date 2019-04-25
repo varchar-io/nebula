@@ -70,6 +70,8 @@ enum class LogicalOp {
 class Expression {
 public:
   Expression() : alias_{}, kind_{ nebula::type::Kind::INVALID } {}
+  Expression(const Expression&) = default;
+  Expression& operator=(const Expression&) = default;
   virtual ~Expression() = default;
 
 public:
@@ -92,6 +94,9 @@ public:
   }
 
 protected:
+  inline void extractAlias(const std::string& a1, const std::string& a2) {
+    alias_ = a1.size() > 0 ? a1 : a2;
+  }
   static nebula::type::TreeNode typeCreate(nebula::type::Kind kind, std::string& alias) {
 #define TYPE_CREATE_NODE(KIND, TYPE)              \
   case nebula::type::KIND: {                      \
