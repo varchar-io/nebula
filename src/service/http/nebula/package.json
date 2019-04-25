@@ -1,15 +1,17 @@
 {
-  "name": "hello-world",
+  "name": "nebula-service",
   "version": "0.1.0",
-  "description": "Hello world service",
-  "devDependencies": {
+  "dependencies": {
     "@grpc/proto-loader": "^0.3.0",
     "async": "^1.5.2",
     "google-protobuf": "^3.7.1",
-    "grpc": "^1.15.0",
+    "grpc": "^1.20.0",
     "grpc-web": "^1.0.0",
     "lodash": "^4.6.1",
-    "webpack": "^4.16.5",
-    "webpack-cli": "^3.3.1"
+    "minimist": "^1.2.0",
+    "node-protobuf": "^1.4.3",
+    "webpack": "^4.30.0",
+    "webpack-cli": "^3.3.1",
+    "webpack-node-externals": "^1.7.2"
   }
 }

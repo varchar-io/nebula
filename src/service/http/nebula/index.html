@@ -4,8 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <title>Nebula Test Page</title>
-    <script src="./dist/main.js"></script>
-    <script lang="javascript">
+    <script type="module">
+        // This is n
+        import {NebulaClient} from "./dist/web/main.js";
         var serviceAddr = "http://dev-shawncao:8080";
         var client = new NebulaClient.EchoClient(serviceAddr);
 

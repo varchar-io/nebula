@@ -8,11 +8,14 @@ const {
 const {
     EchoClient,
     V1Client
-} = require('nebula-web-rpc');
+} = require('nebula-node-rpc');
 
 export default {
     EchoClient,
     V1Client,
     EchoRequest,
-    TableStateRequest
+    TableStateRequest,
+    test: function () {
+        console.log('test');
+    }
 };

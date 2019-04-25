@@ -48,6 +48,18 @@ add_custom_command(
 # Include generated *.pb.h files
 include_directories("${GEN_DIR}")
 
+# generate a node client for this service
+SET(NODE_GEN "${GEN_DIR}/node")
+file(MAKE_DIRECTORY ${NODE_GEN})
+add_custom_target(nebula_node_client
+      ALL COMMAND ${PROTO_COMPILER}
+      --grpc_out="${NODE_GEN}"
+      --js_out=import_style=commonjs,binary:${NODE_GEN}
+      -I "${nproto_path}"
+      --plugin=protoc-gen-grpc="${GRPC_NODE_PLUGIN}"
+      "${nproto}"
+DEPENDS ${nproto})
+
 # Targets greeter_[async_](client|server)
 foreach(_target
   NebulaClient NebulaServer)
@@ -85,7 +97,7 @@ endforeach()
 # configure_file is good as it is senstive on the input, when input changes, output will be updated
 configure_file(${NSERVER} ${GEN_DIR}/NebulaServer COPYONLY)
 
-# build client library for helloworld
+# build web client library for nebula
 add_custom_target(nebula_web_client
       ALL COMMAND ${PROTO_COMPILER} 
         --js_out=import_style=commonjs:"${GEN_DIR}"

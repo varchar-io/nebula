@@ -165,6 +165,7 @@ endforeach()
 # also add all useful executable out of the build
 # used in protobuf build
 SET(GRPC_CPP_PLUGIN ${BINARY_DIR}/grpc_cpp_plugin)
+SET(GRPC_NODE_PLUGIN ${BINARY_DIR}/grpc_node_plugin)
 
 
 # a few more installation steps to ensure tools works before try out examples
