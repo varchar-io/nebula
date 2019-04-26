@@ -65,29 +65,34 @@ class ArthmeticExpression;
 template <LogicalOp op, typename T1, typename T2>
 class LogicalExpression;
 
-// base expression
+// TODO(cao) - we rely on a copy of current (*this) expression using implicit copy constructor
+// We should consider https://en.cppreference.com/w/cpp/memory/enable_shared_from_this
 #define ARTHMETIC_OP_CONST(OP, TYPE)                                                                                          \
   template <typename M, bool OK = std::is_arithmetic<M>::value>                                                               \
   auto operator OP(const M& m)->std::enable_if_t<OK, ArthmeticExpression<ArthmeticOp::TYPE, THIS_TYPE, ConstExpression<M>>> { \
-    return ArthmeticExpression<ArthmeticOp::TYPE, THIS_TYPE, ConstExpression<M>>(*this, ConstExpression<M>(m));               \
+    return ArthmeticExpression<ArthmeticOp::TYPE, THIS_TYPE, ConstExpression<M>>(                                             \
+      std::make_shared<THIS_TYPE>(*this), std::make_shared<ConstExpression<M>>(m));                                           \
   }
 
 #define ARTHMETIC_OP_GENERIC(OP, TYPE)                                                     \
   template <typename R, IS_EXPRESSION(R)>                                                  \
   auto operator OP(const R& right)->ArthmeticExpression<ArthmeticOp::TYPE, THIS_TYPE, R> { \
-    return ArthmeticExpression<ArthmeticOp::TYPE, THIS_TYPE, R>(*this, right);             \
+    return ArthmeticExpression<ArthmeticOp::TYPE, THIS_TYPE, R>(                           \
+      std::make_shared<THIS_TYPE>(*this), std::make_shared<R>(right));                       \
   }
 
 #define LOGICAL_OP_CONST(OP, TYPE)                                                                                        \
   template <typename M, bool OK = std::is_arithmetic<M>::value && !(std::is_same<char*, std::decay_t<M>>::value)>         \
   auto operator OP(const M& m)->std::enable_if_t<OK, LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<M>>> { \
-    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<M>>(*this, ConstExpression<M>(m));               \
+    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<M>>(                                             \
+      std::make_shared<THIS_TYPE>(*this), std::make_shared<ConstExpression<M>>(m));                                         \
   }
 
 #define LOGICAL_OP_GENERIC(OP, TYPE)                                                   \
   template <typename R, IS_EXPRESSION(R)>                                              \
   auto operator OP(const R& right)->LogicalExpression<LogicalOp::TYPE, THIS_TYPE, R> { \
-    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, R>(*this, right);             \
+    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, R>(                           \
+      std::make_shared<THIS_TYPE>(*this), std::make_shared<R>(right));                   \
   }
 
 #define LOGICAL_OP_STRING(OP, TYPE) \
@@ -151,14 +156,15 @@ struct ArthmeticOpTraits {};
 template <ArthmeticOp op, typename T1, typename T2>
 class ArthmeticExpression : public Expression {
 public:
-  ArthmeticExpression(const T1& op1, const T2& op2) : op1_{ op1 }, op2_{ op2 } {
+  ArthmeticExpression(const std::shared_ptr<T1> op1, const std::shared_ptr<T2>& op2)
+    : op1_{ op1 }, op2_{ op2 } {
     // failed type check
     if constexpr (!std::is_base_of_v<Expression, T1> || !std::is_base_of_v<Expression, T2>) {
       throw NException("All arthmetic oprands need to be expression");
     }
 
     // get alias from the first valid op
-    alias_ = op1_.alias().size() > 0 ? op1_.alias() : op2_.alias();
+    alias_ = op1_->alias().size() > 0 ? op1_->alias() : op2_->alias();
   }
   virtual ~ArthmeticExpression() = default;
 
@@ -171,18 +177,18 @@ public: // all operations
   IS_AGG(false)
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    auto v1 = op1_.asEval();
-    auto v2 = op2_.asEval();
+    auto v1 = op1_->asEval();
+    auto v2 = op2_->asEval();
     N_ENSURE(v1 != nullptr, "op1 value eval is null");
     N_ENSURE(v2 != nullptr, "op2 value eval is null");
 
     // forward to the correct version of value eval creation
-    return arthmetic_forward()(op, op1_.kind(), op2_.kind(), std::move(v1), std::move(v2));
+    return arthmetic_forward()(op, op1_->kind(), op2_->kind(), std::move(v1), std::move(v2));
   }
 
   virtual std::vector<std::string> columnRefs() const override {
-    auto v1 = op1_.columnRefs();
-    auto v2 = op2_.columnRefs();
+    auto v1 = op1_->columnRefs();
+    auto v2 = op2_->columnRefs();
     std::vector<std::string> merge;
     merge.reserve(v1.size() + v2.size());
 
@@ -198,30 +204,31 @@ public: // all operations
   }
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
-    op1_.type(table);
-    op2_.type(table);
+    op1_->type(table);
+    op2_->type(table);
 
-    kind_ = nebula::api::dsl::ArthmeticCombination::result(op1_.kind(), op2_.kind());
+    kind_ = nebula::api::dsl::ArthmeticCombination::result(op1_->kind(), op2_->kind());
     return typeCreate(kind_, alias_);
   }
 
 private:
-  T1 op1_;
-  T2 op2_;
+  std::shared_ptr<T1> op1_;
+  std::shared_ptr<T2> op2_;
 };
 
 // logical expression definition
 template <LogicalOp op, typename T1, typename T2>
 class LogicalExpression : public Expression {
 public:
-  LogicalExpression(const T1& op1, const T2& op2) : op1_{ op1 }, op2_{ op2 } {
+  LogicalExpression(const std::shared_ptr<T1> op1, const std::shared_ptr<T2> op2)
+    : op1_{ op1 }, op2_{ op2 } {
     // failed type check
     if constexpr (!std::is_base_of_v<Expression, T1> || !std::is_base_of_v<Expression, T2>) {
       throw NException("All logical oprands need to be expression");
     }
 
     // get alias from the first valid op
-    alias_ = op1_.alias().size() > 0 ? op1_.alias() : op2_.alias();
+    alias_ = op1_->alias().size() > 0 ? op1_->alias() : op2_->alias();
   }
   virtual ~LogicalExpression() = default;
 
@@ -234,18 +241,18 @@ public: // all logical operations
 
   // convert to value eval
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    auto v1 = op1_.asEval();
-    auto v2 = op2_.asEval();
+    auto v1 = op1_->asEval();
+    auto v2 = op2_->asEval();
     N_ENSURE(v1 != nullptr, "op1 value eval is null");
     N_ENSURE(v2 != nullptr, "op2 value eval is null");
 
     // forward to the correct version of value eval creation
-    return logical_forward()(op, op1_.kind(), op2_.kind(), std::move(v1), std::move(v2));
+    return logical_forward()(op, op1_->kind(), op2_->kind(), std::move(v1), std::move(v2));
   }
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
-    op1_.type(table);
-    op2_.type(table);
+    op1_->type(table);
+    op2_->type(table);
 
     // validate non-comparison case.
     // unlike programming language, we don't allow implicity type conversion
@@ -258,9 +265,9 @@ public: // all logical operations
   }
 
 #define BOTH_OPRANDS_BOOL()                                                    \
-  N_ENSURE_EQ(op1_.kind(), nebula::type::Kind::BOOLEAN,                        \
+  N_ENSURE_EQ(op1_->kind(), nebula::type::Kind::BOOLEAN,                       \
               "AND/OR operations requires bool typed left and right oprands"); \
-  N_ENSURE_EQ(op2_.kind(), nebula::type::Kind::BOOLEAN,                        \
+  N_ENSURE_EQ(op2_->kind(), nebula::type::Kind::BOOLEAN,                       \
               "AND/OR operations requires bool typed left and right oprands");
 
   void validate(const nebula::meta::Table&) {
@@ -272,8 +279,8 @@ public: // all logical operations
 #undef BOTH_OPRANDS_BOOL
 
   virtual std::vector<std::string> columnRefs() const override {
-    auto v1 = op1_.columnRefs();
-    auto v2 = op2_.columnRefs();
+    auto v1 = op1_->columnRefs();
+    auto v2 = op2_->columnRefs();
     std::vector<std::string> merge;
     merge.reserve(v1.size() + v2.size());
 
@@ -289,8 +296,8 @@ public: // all logical operations
   }
 
 private:
-  T1 op1_;
-  T2 op2_;
+  std::shared_ptr<T1> op1_;
+  std::shared_ptr<T2> op2_;
 };
 
 // represent a column - type is runtime resolved

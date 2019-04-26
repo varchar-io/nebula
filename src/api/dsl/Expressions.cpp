@@ -33,7 +33,8 @@ using nebula::type::TypeNode;
 // for column expression
 #define LOGICAL_OP_STRING(OP, TYPE)                                                                                                           \
   auto ColumnExpression::operator OP(const std::string& value)->LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string>> { \
-    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string>>(*this, ConstExpression<std::string>(value));           \
+    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string>>(                                                       \
+      std::make_shared<THIS_TYPE>(*this), std::make_shared<ConstExpression<std::string>>(value));                                             \
   }
 
 LOGICAL_OP_STRING(==, EQ)
