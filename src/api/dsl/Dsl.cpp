@@ -121,7 +121,7 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   auto nodeList = ms_->queryNodes(table_, [](const NNode&) { return true; });
 
   // 2. gen phase 3 (bottom up) work needs to be done in controller
-  LOG(INFO) << "found nodes to execute the query: " << nodeList.size();
+  LOG(INFO) << "Nodes to execute the query: " << nodeList.size();
 
   // make an execution plan from a few phases
   return std::make_unique<ExecutionPlan>(std::move(controller), std::move(nodeList), output);

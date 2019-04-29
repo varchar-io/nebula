@@ -39,6 +39,52 @@
                     ", Size: " + reply.getMemsize() + " bytes";
             }
         });
+
+        // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019]
+        var q = new NebulaClient.QueryRequest();
+        q.setTable("pin.trends");
+        q.setStart(1548979200);
+        q.setEnd(1556668800);
+
+        // set constraints
+        var p1 = new NebulaClient.Predicate();
+        p1.setColumn("count");
+        p1.setOp(NebulaClient.Operation.MORE);
+        p1.setValueList(["2"]);
+
+        var p2 = new NebulaClient.Predicate();
+        p2.setColumn("query");
+        p2.setOp(NebulaClient.Operation.LIKE);
+        p2.setValueList(["lego %"]);
+        var filter = new NebulaClient.PredicateAnd();
+        filter.setExpressionList([p1, p2]);
+        q.setFiltera(filter);
+
+        // set dimensions
+        q.setDimensionList(["query", "_time_"]);
+        q.setOrder
+
+        // set metric
+        var m = new NebulaClient.Metric();
+        m.setColumn("count");
+        m.setMethod(NebulaClient.Rollup.SUM);
+        q.setMetricList([m]);
+
+        // do the query
+        v1Client.query(q, {}, (err, reply) =>{
+            var result = document.getElementById("result");
+            var json = document.getElementById("json");
+            if (err !== null) {
+                result.innerText += "Error code: " + err;
+            } else if (reply == null) {
+                result.innerText += "Failed to get reply";
+            } else {
+                var stats = reply.getStats();
+                result.innerText += "error:" + stats.getError() + ", latency: "+stats.getQuerytimems() + " ms";
+                json.innerHTML = NebulaClient.bytes2utf8(reply.getData());
+            }
+        });
+  
     </script>
 </head>
 
@@ -48,6 +94,8 @@
 
     <input id="tableName" type="text"><input type="button" value="Query" id="btn">
     <div id="result"></div>
+    <p>JSON</p>>
+    <div id="json"></div>
 </body>
 
 </html>

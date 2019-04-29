@@ -6,8 +6,8 @@ add_library(${NEBULA_META} STATIC
     ${NEBULA_SRC}/meta/Table.cpp
     ${NEBULA_SRC}/meta/TestTable.cpp)
 target_link_libraries(${NEBULA_META}
-    PRIVATE ${NEBULA_TYPE}
     PRIVATE ${NEBULA_COMMON}
+    PRIVATE ${NEBULA_TYPE}
     PRIVATE ${NEBULA_SURFACE}
     PRIVATE ${FMT_LIBRARY})
 
@@ -35,16 +35,11 @@ add_executable(MetaTests
     ${NEBULA_SRC}/meta/test/TestMeta.cpp)
 
 target_link_libraries(MetaTests 
+    PRIVATE ${NEBULA_META}
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${ROARING_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${NEBULA_TYPE}
-    PRIVATE ${NEBULA_COMMON}
-    PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${NEBULA_META})
+    PRIVATE ${GLOG_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

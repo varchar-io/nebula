@@ -68,12 +68,11 @@ add_library(${NEBULA_SERVICE} STATIC
     ${nproto_srcs}
     ${ngrpc_srcs})
 target_link_libraries(${NEBULA_SERVICE}
-    PRIVATE ${NEBULA_API}
-    PRIVATE ${PROTOBUF_LIBRARY}
-    PRIVATE libgrpc++
-    PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${JSON_LIBRARY})
+    PRIVATE ${NEBULA_API}
+    PRIVATE libgrpc++
+    PRIVATE ${JSON_LIBRARY}
+    PRIVATE ${PROTOBUF_LIBRARY})
 target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unused-parameter)
 if(APPLE)
     target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unknown-warning-option)
@@ -90,15 +89,14 @@ foreach(_target
   # if we messed up the order, the link will report huge amount of errors like undefined referneces.
   target_link_libraries(${_target}
     PRIVATE ${NEBULA_SERVICE}
+    PRIVATE libgrpc++
     PRIVATE libgrpc
     PRIVATE libgpr
     PRIVATE libaddress_sorting
-    PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${CARES_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
-    PRIVATE ${PROTOBUF_LIBRARY}
-    PRIVATE ${JSON_LIBRARY})
+    PRIVATE ${JSON_LIBRARY}
+    PRIVATE ${PROTOBUF_LIBRARY})
     # disalbe warning into errors for due to these generated files
     target_compile_options(${_target} PRIVATE -Wno-error=unused-parameter)
 endforeach()
@@ -158,15 +156,13 @@ add_custom_target(nebula_web_client
 # build test binary
 add_executable(ServiceTests ${NEBULA_SRC}/service/test/TestQueryHandler.cpp)
 target_link_libraries(ServiceTests 
-    PRIVATE ${NEBULA_SERVICE}    
-    PRIVATE ${GTEST_LIBRARY} 
-    PRIVATE ${GTEST_MAIN_LIBRARY} 
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY}
-    PRIVATE libgrpc++
-    PRIVATE ${PROTOBUF_LIBRARY}
-    PRIVATE ${JSON_LIBRARY})
+  PRIVATE ${GLOG_LIBRARY}
+  PRIVATE ${NEBULA_SERVICE}
+  PRIVATE ${GTEST_LIBRARY}
+  PRIVATE ${GTEST_MAIN_LIBRARY}
+  PRIVATE ${JSON_LIBRARY}
+  PRIVATE ${PROTOBUF_LIBRARY}
+  PRIVATE libgrpc++)
 target_compile_options(ServiceTests PRIVATE -Wno-error=unused-parameter)
 if(APPLE)
     target_compile_options(ServiceTests PRIVATE -Wno-error=unknown-warning-option)

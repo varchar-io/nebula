@@ -110,9 +110,10 @@ static constexpr auto join = [](const std::vector<size_t>& vector) {
 
 class ExecutionPhase {
 public:
-  ExecutionPhase(nebula::type::Schema input, std::unique_ptr<ExecutionPhase> upstream)
-    : input_{ input }, upstream_{ std::move(upstream) } {
-    N_ENSURE_NOT_NULL(input_, "input schema can't be null");
+  ExecutionPhase(nebula::type::Schema input) : input_{ input }, upstream_{ nullptr } {}
+  ExecutionPhase(std::unique_ptr<ExecutionPhase> upstream)
+    : upstream_{ std::move(upstream) } {
+    input_ = upstream_->outputSchema();
   }
   virtual ~ExecutionPhase() = default;
 
@@ -137,7 +138,7 @@ template <>
 class Phase<PhaseType::COMPUTE> : public ExecutionPhase {
 public:
   Phase(const nebula::type::Schema input, const nebula::type::Schema output)
-    : ExecutionPhase(input, nullptr), output_{ output } {}
+    : ExecutionPhase(input), output_{ output } {}
   virtual ~Phase() = default;
 
 public:
@@ -200,9 +201,7 @@ template <>
 class Phase<PhaseType::PARTIAL> : public ExecutionPhase {
 public:
   Phase(std::unique_ptr<ExecutionPhase> upstream)
-    : ExecutionPhase(upstream->outputSchema(), std::move(upstream)),
-      numAgg_{ 0 },
-      fields_{ static_cast<const BlockPhase&>(*upstream_).fields() } {}
+    : ExecutionPhase(std::move(upstream)), numAgg_{ 0 } {}
 
   virtual ~Phase() = default;
 
@@ -240,24 +239,19 @@ public:
   }
 
   inline const std::vector<std::unique_ptr<eval::ValueEval>>& fields() const {
-    return fields_;
+    return static_cast<const BlockPhase&>(*upstream_).fields();
   }
 
 private:
   size_t numAgg_;
   std::vector<bool> aggCols_;
   std::vector<size_t> keys_;
-
-  // reference the same fields from block phase
-  const std::vector<std::unique_ptr<eval::ValueEval>>& fields_;
 };
 
 template <>
 class Phase<PhaseType::GLOBAL> : public ExecutionPhase {
 public:
-  Phase(std::unique_ptr<ExecutionPhase> upstream)
-    : ExecutionPhase(upstream->outputSchema(), std::move(upstream)) {}
-
+  Phase(std::unique_ptr<ExecutionPhase> upstream) : ExecutionPhase(std::move(upstream)) {}
   virtual ~Phase() = default;
 
 public:

@@ -182,7 +182,7 @@ public:
   }
 
   ArthmeticExpression(const ArthmeticExpression& other)
-    : op1_{ other.op1_ }, op2_{ other.op2_ } {
+    : Expression(other), op1_{ other.op1_ }, op2_{ other.op2_ } {
     extractAlias(op1_->alias(), op2_->alias());
   }
 
@@ -258,7 +258,7 @@ public:
     extractAlias(op1_->alias(), op2_->alias());
   }
   LogicalExpression(const LogicalExpression& other)
-    : op1_{ other.op1_ }, op2_{ other.op2_ } {
+    : Expression(other), op1_{ other.op1_ }, op2_{ other.op2_ } {
     extractAlias(op1_->alias(), op2_->alias());
   }
 
@@ -346,17 +346,8 @@ public:
     alias_ = column_;
   }
 
-  ColumnExpression(const ColumnExpression& other) {
-    column_ = other.column_;
-    alias_ = other.alias_;
-  }
-
-  ColumnExpression& operator=(const ColumnExpression& other) {
-    column_ = other.column_;
-    alias_ = other.alias_;
-    return *this;
-  }
-
+  ColumnExpression(const ColumnExpression& other) = default;
+  ColumnExpression& operator=(const ColumnExpression& other) = default;
   virtual ~ColumnExpression() = default;
 
 public: // all logical operations

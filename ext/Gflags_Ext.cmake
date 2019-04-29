@@ -20,7 +20,7 @@ if(APPLE)
 
 else()
   set(GFLAGS_INCLUDE_DIRS /usr/local/include)
-  set(GFLAGS_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/libgflags.a)
+  set(GFLAGS_LIBRARY_PATH /usr/local/lib/libgflags.a)
 endif()
 
 set(GFLAGS_LIBRARY gflags)

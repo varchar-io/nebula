@@ -20,6 +20,7 @@
 #include <string>
 #include "common/Evidence.h"
 
+#include <folly/init/Init.h>
 #include <grpcpp/grpcpp.h>
 #include <unordered_map>
 #include "NebulaServer.h"
@@ -80,6 +81,8 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext* context, const QueryReque
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, durationMs);
   }
+
+  LOG(INFO) << "Finished a query in " << durationMs;
 
   // return normal serialized data
   auto stats = reply->mutable_stats();
@@ -145,6 +148,9 @@ void RunServer() {
 }
 
 int main(int argc, char** argv) {
+  folly::init(&argc, &argv);
+  FLAGS_logtostderr = 1;
+
   RunServer();
 
   return 0;

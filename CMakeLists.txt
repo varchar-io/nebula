@@ -25,7 +25,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(APPLE)
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror")
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wno-error=nullability-completeness")
 else()
   set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -ldl -I/usr/local/include -L/usr/local/lib")
 endif()

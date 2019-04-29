@@ -15,6 +15,7 @@
  */
 
 #include "gtest/gtest.h"
+#include <folly/init/Init.h>
 #include <glog/logging.h>
 #include <sys/mman.h>
 #include "api/dsl/Dsl.h"

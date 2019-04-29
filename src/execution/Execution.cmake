@@ -20,8 +20,7 @@ target_link_libraries(${NEBULA_EXEC}
     PRIVATE ${NEBULA_SURFACE}
     PRIVATE ${NEBULA_STORAGE}
     PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY})
+    PRIVATE ${FMT_LIBRARY})
 
 # include its own root directory for searching headers
 # set(NEXEC_INCLUDE_DIRS ${NEBULA_SRC}/execution)

@@ -15,6 +15,7 @@
  */
 
 #include "gtest/gtest.h"
+#include <folly/init/Init.h>
 #include <glog/logging.h>
 #include <sys/mman.h>
 #include "api/dsl/Dsl.h"
@@ -185,3 +186,16 @@ TEST(ApiTest, TestExprValueEval) {
 } // namespace test
 } // namespace api
 } // namespace nebula
+
+/*
+ * This is the recommended main function for all tests.
+ * The Makefile links it into all of the test programs so that tests do not need
+ * to - and indeed should typically not - define their own main() functions
+ */
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  folly::init(&argc, &argv);
+  FLAGS_logtostderr = 1;
+
+  return RUN_ALL_TESTS();
+}

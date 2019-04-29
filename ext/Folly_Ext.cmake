@@ -44,6 +44,9 @@
 # 4. finally call cmake and make in build folder (this CMAKE build type is critical to make it work)
 # folly/build> "cmake .. -DCMAKE_CXX_COMPILER=/usr/bin/g++-7 -DCMAKE_CC_COMPILER=/usr/bin/gcc-7 -DCMAKE_BUILD_TYPE=Release"
 # folly/build> make && sudo make install
+# To ensure linker will use the same version for all dependecies, please do the same command to install these before install folly
+# * GFLAGS
+# * GLOG
 # 5. We need to install open SSL to pass the build https://github.com/openssl/openssl.git
 # $ ./config
 # $ make
