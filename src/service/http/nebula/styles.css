@@ -1,0 +1,35 @@
+div {
+    background: lightgray;
+    font-size: 1.2em;
+}
+
+table {
+    width: 100%;
+    margin: auto;
+
+    tr {
+        width: 100%;
+    }
+
+    th,
+    td {
+        box-sizing: border-box;
+        padding: 15px;
+    }
+
+    thead {
+        th {
+            background: #000;
+            color: #fff;
+            text-align: left;
+        }
+    }
+
+    tbody {
+        text-align: left;
+
+        th {
+            background: #eee;
+        }
+    }
+}
