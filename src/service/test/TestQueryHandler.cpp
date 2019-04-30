@@ -15,6 +15,7 @@
  */
 
 #include "gtest/gtest.h"
+#include <folly/init/Init.h>
 #include <glog/logging.h>
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Trends.h"
@@ -144,3 +145,16 @@ TEST(ServiceTest, TestJsonifyResults) {
 } // namespace test
 } // namespace service
 } // namespace nebula
+
+/*
+ * This is the recommended main function for all tests.
+ * The Makefile links it into all of the test programs so that tests do not need
+ * to - and indeed should typically not - define their own main() functions
+ */
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  folly::init(&argc, &argv);
+  FLAGS_logtostderr = 1;
+
+  return RUN_ALL_TESTS();
+}

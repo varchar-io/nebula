@@ -11,5 +11,6 @@ RUN apt-get dist-upgrade
 
 EXPOSE 9190
 COPY ./gen/nebula/NebulaServer /etc/nebula/NebulaServer
+RUN chmod +x /etc/nebula/NebulaServer
 COPY ./gen/nebula/pin.trends.csv /tmp/pin.trends.csv
 CMD ["/etc/nebula/NebulaServer"]
