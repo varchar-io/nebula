@@ -79,6 +79,22 @@ public: /** only static methods */
   inline static void sleep(size_t millis) {
     std::this_thread::sleep_for(std::chrono::milliseconds(millis));
   }
+
+  class Duration final {
+  public:
+    Duration() : tick_{ std::chrono::high_resolution_clock::now() } {}
+
+    void reset() noexcept {
+      tick_ = std::chrono::high_resolution_clock::now();
+    }
+
+    auto elapsedMs() const noexcept {
+      return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - tick_).count();
+    }
+
+  private:
+    std::chrono::time_point<std::chrono::high_resolution_clock> tick_;
+  };
 };
 } // namespace common
 } // namespace nebula

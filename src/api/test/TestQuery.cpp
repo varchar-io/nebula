@@ -69,15 +69,14 @@ TEST(ApiTest, TestDataFromCsv) {
   // load test data to run this query
   trends.loadTrends(1);
 
-  auto tick = nebula::common::Evidence::ticks();
+  nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
   LOG(INFO) << "Query: select dt, sum(count) as total from trends.draft where query='yoga' group by 1;";
-  auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
-  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << duration << " ms";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
   LOG(INFO) << fmt::format("col: {0:12} | {1:12}", "Date", "Total");
   while (result->hasNext()) {
     const auto& row = result->next();
@@ -107,15 +106,14 @@ TEST(ApiTest, TestMatchedKeys) {
   // load test data to run this query
   trends.loadTrends(1);
 
-  auto tick = nebula::common::Evidence::ticks();
+  nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
   LOG(INFO) << "Query: select query, count(1) as total from trends.draft where query like '%work%' group by 1;";
-  auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
-  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << duration << " ms";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
   LOG(INFO) << fmt::format("col: {0:20} | {1:12} | {2:12}", "Query", "Date", "Total");
   while (result->hasNext()) {
     const auto& row = result->next();
@@ -145,15 +143,14 @@ TEST(ApiTest, TestMultipleBlocks) {
   // load test data to run this query
   trends.loadTrends(10);
 
-  auto tick = nebula::common::Evidence::ticks();
+  nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
   LOG(INFO) << "Query: select query, count(1) as total from trends.draft where query like '%leg work%' group by 1;";
-  auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
-  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << duration << " ms";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
   LOG(INFO) << fmt::format("col: {0:20} | {1:12}", "Query", "Total");
   while (result->hasNext()) {
     const auto& row = result->next();

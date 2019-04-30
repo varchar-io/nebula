@@ -48,7 +48,7 @@ TEST(ServiceTest, TestQueryHandler) {
   // load test data to run this query
   trends.loadTrends(10);
 
-  auto tick = Evidence::ticks();
+  nebula::common::Evidence::Duration tick;
   QueryHandler handler;
   QueryRequest request;
   request.set_table(trends.name());
@@ -81,8 +81,7 @@ TEST(ServiceTest, TestQueryHandler) {
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
   LOG(INFO) << "Query: select query, count(1) as total from trends.draft where query like '%work%' group by 1;";
-  auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
-  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << duration << " ms";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
   LOG(INFO) << fmt::format("col: {0:40} | {1:12} | {2:12}", "Query", "Date", "Total");
   while (result->hasNext()) {
     const auto& row = result->next();
@@ -99,7 +98,7 @@ TEST(ServiceTest, TestJsonifyResults) {
   // load test data to run this query
   trends.loadTrends(4);
 
-  auto tick = Evidence::ticks();
+  nebula::common::Evidence::Duration tick;
   QueryHandler handler;
   QueryRequest request;
   request.set_table(trends.name());
@@ -137,8 +136,7 @@ TEST(ServiceTest, TestJsonifyResults) {
   auto result = handler.query(*plan, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
-  auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
-  LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << duration << " ms";
+  LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
   LOG(INFO) << ServiceProperties::jsonify(result, plan->getOutputSchema());
 }
 

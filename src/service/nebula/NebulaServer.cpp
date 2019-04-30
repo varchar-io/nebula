@@ -68,7 +68,7 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext* context, const TableState
 
 grpc::Status V1ServiceImpl::Query(grpc::ServerContext* context, const QueryRequest* request, QueryResponse* reply) {
   // validate the query request and build the call
-  auto tick = Evidence::ticks();
+  nebula::common::Evidence::Duration tick;
   ErrorCode error = ErrorCode::NONE;
   // compile the query into a plan
   auto plan = handler_.compile(*request, error);
@@ -77,7 +77,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext* context, const QueryReque
   }
 
   RowCursor result = handler_.query(*plan, error);
-  auto durationMs = (Evidence::ticks() - tick) / 1000;
+  auto durationMs = tick.elapsedMs();
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, durationMs);
   }

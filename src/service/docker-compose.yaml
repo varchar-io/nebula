@@ -16,3 +16,12 @@ services:
       - "8080:8080"
     links:
       - server
+  web:
+    build:
+      context: ./
+      dockerfile: ./http/web.Dockerfile
+    image: nebula/web
+    ports:
+      - "8088:8088"
+    links:
+      - envoy

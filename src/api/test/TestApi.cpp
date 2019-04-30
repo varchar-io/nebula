@@ -76,7 +76,7 @@ TEST(ApiTest, TestQueryStructure) {
   // print out the plan through logging
   plan->display();
 
-  auto tick = nebula::common::Evidence::ticks();
+  nebula::common::Evidence::Duration tick;
   // load test data to run this query
   auto bm = BlockManager::init();
   auto ptable = ms->query(tbl);
@@ -86,17 +86,15 @@ TEST(ApiTest, TestQueryStructure) {
   bm->add(block);
 
   // execute a plan on a server: for demo, we run the server on localhost:9190
-  auto duration1 = (nebula::common::Evidence::ticks() - tick) / 1000;
-  LOG(INFO) << "Loaded 100K rows data using " << duration1 << " ms";
-  tick = nebula::common::Evidence::ticks();
+  LOG(INFO) << "Loaded 100K rows data using " << tick.elapsedMs() << " ms";
+  tick.reset();
 
   // pass the query plan to a server to execute - usually it is itself
   auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
-  auto duration = (nebula::common::Evidence::ticks() - tick) / 1000;
-  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << duration << " ms";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
   LOG(INFO) << fmt::format("col: {0:12} | {1:12} | {2:12} | {3:12} | {4:12}", "EVENT", "FLAG", "MAX_ID", "MIN_ID", "COUNT");
   while (result->hasNext()) {
     const auto& row = result->next();
