@@ -28,7 +28,6 @@
 #include "execution/BlockManager.h"
 #include "fmt/format.h"
 #include "memory/Batch.h"
-#include "meta/NBlock.h"
 #include "meta/Table.h"
 #include "nebula.grpc.pb.h"
 #include "storage/CsvReader.h"
@@ -45,7 +44,6 @@ using grpc::Status;
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::memory::Batch;
-using nebula::meta::NBlock;
 using nebula::meta::Table;
 using nebula::storage::CsvReader;
 using nebula::surface::RowCursor;
@@ -72,6 +70,9 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext* context, const QueryReque
   ErrorCode error = ErrorCode::NONE;
   // compile the query into a plan
   auto plan = handler_.compile(*request, error);
+
+  // set time range constraints in execution plan directly since it should always present
+  plan->setWindow(std::make_pair(request->start(), request->end()));
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }

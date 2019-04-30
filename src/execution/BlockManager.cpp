@@ -40,18 +40,25 @@ std::shared_ptr<BlockManager> BlockManager::init() {
   return inst;
 }
 
-const std::vector<Batch*> BlockManager::query(const Table& table) {
+const std::vector<Batch*> BlockManager::query(const Table& table, const std::pair<size_t, size_t>& window) {
   // 1. a table and a predicate should determined by meta service how many blocks we should query
   // 2. determine how many blocks are not in memory yet, if they are not, load them in
   // 3. fan out the query plan to execute on each block in parallel (not this function but the caller)
-  LOG(INFO) << "Fetch all blcoks for table: " << table.name();
   std::vector<Batch*> tableBlocks;
+  auto total = 0;
   for (auto& b : blocks_) {
-    if (b.first.getTable() == table) {
-      tableBlocks.push_back(b.second.get());
+    const auto& block = b.first;
+    if (block.getTable() == table) {
+      ++total;
+
+      if (block.overlap(window)) {
+        tableBlocks.push_back(b.second.get());
+      }
     }
   }
 
+  LOG(INFO) << fmt::format("Fetch blcoks {0} / {1} for table {2} in window [{3}, {4}]. ",
+                           tableBlocks.size(), total, table.name(), window.first, window.second);
   return tableBlocks;
 }
 

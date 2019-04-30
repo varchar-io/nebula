@@ -89,6 +89,15 @@ public:
     return output_;
   }
 
+  // set time range as [start, end] alias window
+  inline void setWindow(const std::pair<size_t, size_t>& window) noexcept {
+    window_ = window;
+  }
+
+  inline const std::pair<size_t, size_t>& getWindow() const noexcept {
+    return window_;
+  }
+
 private:
   const ExecutionPhase& fetch(PhaseType type) const;
 
@@ -97,6 +106,7 @@ private:
   std::unique_ptr<ExecutionPhase> plan_;
   std::vector<nebula::meta::NNode> nodes_;
   nebula::type::Schema output_;
+  std::pair<size_t, size_t> window_;
 };
 
 // base execution phase definition - templated lambda - looking for C++ 20?

@@ -36,7 +36,6 @@ using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::TrendsTable;
-using nebula::meta::NBlock;
 using nebula::service::ErrorCode;
 using nebula::surface::RowData;
 using nebula::type::Schema;

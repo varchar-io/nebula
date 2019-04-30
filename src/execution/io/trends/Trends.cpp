@@ -15,6 +15,7 @@
  */
 
 #include "Trends.h"
+#include <unordered_map>
 #include "common/Evidence.h"
 #include "execution/BlockManager.h"
 #include "memory/Batch.h"
@@ -91,43 +92,47 @@ void TrendsTable::loadTrends(size_t max) {
   CsvReader reader(file);
   // every 100K rows, we split it into a block
   const auto bRows = 100000;
-  std::unique_ptr<Batch> block = nullptr;
-  size_t cursor = 0;
+  std::unordered_map<size_t, std::unique_ptr<Batch>> blocksByTime;
   size_t blockId = 0;
   TrendsRawRow trendsRow;
   while (reader.hasNext()) {
-    // create a new block
-    if (cursor % bRows == 0) {
-      // add current block if it's the first time init
-      if (cursor > 0) {
-        N_ENSURE(block != nullptr, "block should be valid");
-        NBlock b(*this, blockId);
-        LOG(INFO) << " adding one block: " << (block != nullptr) << ", rows=" << cursor;
-        bm->add(b, std::move(block));
-      }
+    auto& row = reader.next();
+    trendsRow.set(&row);
 
-      // create new block data
-      blockId += 1;
-      block = std::make_unique<Batch>(this->getSchema());
-
-      // do not load more than max blocks max==0: load all
-      if (max > 0 && blockId > max) {
-        break;
+    // get time column value
+    auto time = trendsRow.readLong(Table::TIME_COLUMN);
+    const auto itr = blocksByTime.find(time);
+    auto empty = true;
+    if (itr != blocksByTime.end()) {
+      empty = false;
+      // if this is already full
+      if (itr->second->getRows() >= bRows) {
+        // move it to the manager and erase it from the map
+        bm->add(NBlock(*this, blockId++, time, time), std::move(itr->second));
+        empty = true;
       }
     }
 
-    cursor++;
-    auto& row = reader.next();
-    // add all entries belonging to test_data_limit_100000 into the block
-    trendsRow.set(&row);
+    // add a new entry
+    if (empty) {
+      // emplace basically means
+      blocksByTime[time] = std::make_unique<Batch>(this->getSchema());
+    }
+
+    // for sure, we have it now
+    auto& block = blocksByTime.at(time);
+    N_ENSURE(block != nullptr, "block has to be valid.");
     block->add(trendsRow);
+
+    // do not load more than max blocks max==0: load all
+    if (max > 0 && blockId >= max) {
+      return;
+    }
   }
 
-  // add last block if it has rows
-  if (block->getRows() > 0) {
-    NBlock b(*this, blockId);
-    LOG(INFO) << " adding last block: " << (block != nullptr) << ", rows=" << cursor;
-    bm->add(b, std::move(block));
+  // move all blocks in map into block manager
+  for (auto itr = blocksByTime.begin(); itr != blocksByTime.end(); ++itr) {
+    bm->add(NBlock(*this, blockId, itr->first, itr->first), std::move(itr->second));
   }
 }
 

@@ -50,9 +50,8 @@ RowCursor NodeExecutor::execute(const ExecutionPlan& plan) {
   const BlockPhase& blockPhase = plan.fetch<PhaseType::COMPUTE>();
   // query total number of blocks to  executor on and
   // launch block executor on each in parallel
-  LOG(INFO) << "start processing...";
   MetaService ms;
-  const std::vector<Batch*> blocks = blockManager_->query(*ms.query(blockPhase.table()));
+  const std::vector<Batch*> blocks = blockManager_->query(*ms.query(blockPhase.table()), plan.getWindow());
 
   LOG(INFO) << "Processing total blocks: " << blocks.size();
   std::vector<folly::Future<RowCursor>> results;

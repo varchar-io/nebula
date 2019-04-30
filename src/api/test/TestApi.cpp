@@ -82,7 +82,7 @@ TEST(ApiTest, TestQueryStructure) {
   auto ptable = ms->query(tbl);
 
   // ensure block 0 of the test table (load from storage if not in memory)
-  NBlock block(*ptable, 0);
+  NBlock block(*ptable, 0, 0, 0);
   bm->add(block);
 
   // execute a plan on a server: for demo, we run the server on localhost:9190

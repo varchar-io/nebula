@@ -27,9 +27,11 @@ namespace meta {
 
 class NBlock {
 public:
-  NBlock(const Table& tbl, size_t blockId) : id_{ blockId }, table_{ tbl } {
-    auto h = hash();
-    sign_ = fmt::format("{0}_{1}_{2}", table_.name(), id_, h);
+  // define a nblock that has a unique ID and start and end time stamp
+  NBlock(const Table& tbl, size_t blockId, size_t start, size_t end)
+    : table_{ tbl }, id_{ blockId }, start_{ start }, end_{ end } {
+    hash_ = hash(*this);
+    sign_ = fmt::format("{0}_{1}_{2}_{3}", table_.name(), id_, start_, end_);
   }
 
   virtual ~NBlock() = default;
@@ -50,22 +52,46 @@ public:
     return sign_;
   }
 
+  inline bool inRange(size_t time) const {
+    return time >= start_ && time <= end_;
+  }
+
+  inline bool overlap(const std::pair<size_t, size_t>& window) const noexcept {
+    if ((window.second < start_) || (end_ < window.first)) {
+      return false;
+    }
+
+    return true;
+  }
+
   size_t hash() const {
+    return hash_;
+  }
+
+  static size_t hash(const NBlock& b) {
     LOG(INFO) << "compute hash of nblock...";
-    auto h1 = std::hash<std::string>()(table_.name());
-    auto h2 = id_;
+    auto h1 = std::hash<std::string>()(b.table_.name());
+    auto h2 = b.id_;
     size_t k = 0xC6A4A7935BD1E995UL;
     h2 = ((h2 * k) >> 47) * k;
     return (h1 ^ h2) * k;
   }
 
 private:
-  // guid?
+  Table table_;
+  // sequence ID
   size_t id_;
+
+  // this should be time_t, it defines time range of data for this block
+  size_t start_;
+  size_t end_;
+
+  // a signature of current block - use 64bit GUID?
+  size_t hash_;
+  std::string sign_;
+
   // a uniuqe identifier to find this block data in storage.
   std::string storage_;
-  Table table_;
-  std::string sign_;
 };
 
 } // namespace meta

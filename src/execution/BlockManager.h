@@ -30,10 +30,6 @@
 namespace nebula {
 namespace execution {
 
-// static const std::function<size_t(const nebula::meta::NBlock&)> hash_nblock = [](const nebula::meta::NBlock& v) -> size_t {
-//   return 0;
-// };
-
 struct Hash {
   inline size_t operator()(const nebula::meta::NBlock& b) const noexcept {
     return b.hash();
@@ -56,7 +52,7 @@ public:
 
 public:
   // TODO(cao) - this interface needs predicate push down to filter out blocks
-  const std::vector<nebula::memory::Batch*> query(const nebula::meta::Table&);
+  const std::vector<nebula::memory::Batch*> query(const nebula::meta::Table&, const std::pair<size_t, size_t>&);
   bool add(const nebula::meta::NBlock&);
 
   // TODO(cao) - for short-term hack, will be removed

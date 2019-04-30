@@ -30,7 +30,6 @@
 #include "execution/io/trends/Trends.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
-#include "meta/NBlock.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"
 #include "type/Serde.h"
@@ -45,7 +44,6 @@ using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::TrendsTable;
 using nebula::meta::MockMs;
-using nebula::meta::NBlock;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
