@@ -77,7 +77,7 @@
             q.setFiltera(filter);
 
             // set dimensions 
-            q.setDimensionList(["query", "_time_"]);
+            q.setDimensionList(["query"]);
             // set metric 
             var m = new NebulaClient.Metric();
             m.setColumn("count");

@@ -43,9 +43,9 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
     auto f = c.execute(plan)
                // set time out handling
                // TODO(cao) - add error handling too via thenError
-               .onTimeout(RPC_TIMEOUT, [&] { 
+               .onTimeout(RPC_TIMEOUT, [&]() -> RowCursor { 
                  LOG(WARNING) << "Timeout: " << RPC_TIMEOUT.count();
-                 return RowCursor(); });
+                 return {}; });
 
     results.push_back(std::move(f));
   }
@@ -54,7 +54,15 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
   auto x = folly::collectAll(results).get();
   auto c = std::make_shared<CompositeCursor<RowData>>();
   for (auto it = x.begin(); it < x.end(); ++it) {
-    c->combine(it->value());
+    if (it->hasValue()) {
+      auto cursor = it->value();
+      if (cursor) {
+        c->combine(cursor);
+        continue;
+      }
+    }
+
+    LOG(INFO) << "A node doesn't return value: error or timeout";
   }
 
   // do the aggregation from all different nodes

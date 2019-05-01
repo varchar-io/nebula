@@ -42,7 +42,6 @@ folly::Future<RowCursor> NodeClient::execute(const ExecutionPlan& plan) {
   // TODO(cao) - I don't know yet why using [&] capture for p here doesn't work.
   // life time issue? changing it to a class member doesn't help.
   pool_.add([&plan, p]() {
-    // folly::futures::sleep(std::chrono::milliseconds(2000)).get();
     p->setValue(invokeNode(plan));
   });
 

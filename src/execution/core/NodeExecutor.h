@@ -20,6 +20,7 @@
 #include <folly/futures/Future.h>
 #include <glog/logging.h>
 #include <sys/mman.h>
+#include <thread>
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 #include "memory/Batch.h"
@@ -35,7 +36,7 @@ namespace core {
 class NodeExecutor {
 public:
   NodeExecutor(const std::shared_ptr<BlockManager> blockManager)
-    : blockManager_{ blockManager }, threadPool_{ 32 } {}
+    : blockManager_{ blockManager }, threadPool_{ std::thread::hardware_concurrency() } {}
 
 public:
   nebula::surface::RowCursor execute(const ExecutionPlan& plan);
