@@ -12,7 +12,7 @@
         var client = new NebulaClient.EchoClient(serviceAddr);
         // simple unary call 
         var request = new NebulaClient.EchoRequest();
-        request.setName('TrendsOn Nebula');
+        request.setName('Trends On Nebula');
         client.echoBack(request, {}, (err, response) => {
             var display = document.getElementById("output");
             if (err !== null) {
@@ -33,7 +33,12 @@
             } else if (reply == null) {
                 result.innerText = "Failed to get reply";
             } else {
-                result.innerText = "Blocks: " + reply.getBlockcount() + ", Rows: " + reply.getRowcount() + ", Size: " + reply.getMemsize() + " bytes";
+                let bc= reply.getBlockcount(); 
+                let rc = reply.getRowcount();
+                let ms = reply.getMemsize();
+                let mit = reply.getMintime();
+                let mat = reply.getMaxtime();
+                result.innerText = `[Blocks: ${bc}, Rows: ${rc}, Mem: ${ms}, Min T: ${mit}, Max T: ${mat}`;
             }
         });
 
@@ -43,8 +48,21 @@
             console.log("start query...: " + term);
             var q = new NebulaClient.QueryRequest();
             q.setTable("pin.trends");
-            q.setStart(1548979200);
-            q.setEnd(1556668800);
+
+            // new Date('2012.08.10').getTime() / 1000
+            var start = document.getElementById('start').value;
+            console.log("start box: "+start);
+            var end = document.getElementById('end').value;
+            if(!start){
+                alert('please enter start and end time');
+                return;
+            }
+
+            var utStart = new Date(start).getTime() / 1000;
+            var utEnd = new Date(end).getTime() / 1000;;
+            console.log("start: "+ utStart + ", end: "+utEnd);
+            q.setStart(utStart);
+            q.setEnd(utEnd);
             // set constraints 
             var p1 = new NebulaClient.Predicate();
             p1.setColumn("count");
@@ -119,8 +137,11 @@
 
     <p>Table Statistics</p>
     <div id="result"></div>
-    <p></p>>
-    <input id="term" type="text"><input type="button" value="Query" id="btn">
+    <p>Query Trends Table</p>
+    <div>Time Start: <input type="text" id="start" placeholder="2019-01-01"></div>
+    <div>Time End: <input type="text" id="end" placeholder="2019-01-01"></div>
+    <div> Term: <input id="term" type="text"></div>
+    <input type="button" value="Query" id="btn">
     <p>Query Result</p>>
     <div id="qr"></div>
     <table>

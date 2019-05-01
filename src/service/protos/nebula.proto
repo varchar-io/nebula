@@ -48,6 +48,8 @@ message TableStateResponse {
   int32 blockCount = 1;
   int64 rowCount = 2;
   int64 memSize = 3;
+  uint64 minTime = 4;
+  uint64 maxTime = 5;
 }
 
 // define query request and response

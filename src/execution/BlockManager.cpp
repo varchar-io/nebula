@@ -48,7 +48,7 @@ const std::vector<Batch*> BlockManager::query(const Table& table, const std::pai
   auto total = 0;
   for (auto& b : blocks_) {
     const auto& block = b.first;
-    if (block.getTable() == table) {
+    if (block.getTable() == table.name()) {
       ++total;
 
       if (block.overlap(window)) {
@@ -75,7 +75,7 @@ bool BlockManager::add(const nebula::meta::NBlock& block, std::unique_ptr<nebula
   N_ENSURE_NOT_NULL(data, "block data can't be null");
 
   // collect this block metrics
-  collectBlockMetrics(block.getTable().name(), *data);
+  collectBlockMetrics(block, *data);
 
   // add it to the manage list
   blocks_[block] = std::move(data);

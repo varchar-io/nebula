@@ -60,6 +60,8 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext* context, const TableState
   reply->set_blockcount(std::get<0>(metrics));
   reply->set_rowcount(std::get<1>(metrics));
   reply->set_memsize(std::get<2>(metrics));
+  reply->set_mintime(std::get<3>(metrics));
+  reply->set_maxtime(std::get<4>(metrics));
 
   return Status::OK;
 }

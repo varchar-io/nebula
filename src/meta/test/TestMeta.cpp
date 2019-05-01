@@ -32,8 +32,7 @@ TEST(MetaTest, TestTestTable) {
 }
 
 TEST(MetaTest, TestNBlock) {
-  MockTable table("mock");
-  NBlock b1(table, 0, 5, 10);
+  NBlock b1("mock", 0, 5, 10);
 
   // check in range
   ASSERT_TRUE(b1.inRange(5));

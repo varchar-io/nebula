@@ -59,28 +59,31 @@ public:
   bool add(const nebula::meta::NBlock&, std::unique_ptr<nebula::memory::Batch>);
   bool remove(const nebula::meta::NBlock&);
 
-  std::tuple<size_t, size_t, size_t> getTableMetrics(const std::string table) const {
+  std::tuple<size_t, size_t, size_t, size_t, size_t> getTableMetrics(const std::string table) const {
     if (tableStates_.find(table) == tableStates_.end()) {
-      return { 0, 0, 0 };
+      return { 0, 0, 0, 0, 0 };
     }
 
     return tableStates_.at(table);
   }
 
 private:
-  void collectBlockMetrics(const std::string& table, const nebula::memory::Batch& block) {
+  void collectBlockMetrics(const nebula::meta::NBlock& meta, const nebula::memory::Batch& block) {
+    const auto& table = meta.getTable();
     if (tableStates_.find(table) == tableStates_.end()) {
-      tableStates_[table] = { 0, 0, 0 };
+      tableStates_[table] = { 0, 0, 0, 0, 0 };
     }
 
     auto& tuple = tableStates_.at(table);
     std::get<0>(tuple) += 1;
     std::get<1>(tuple) += block.getRows();
     std::get<2>(tuple) += block.getRawSize();
+    std::get<3>(tuple) = std::min(std::get<3>(tuple), meta.start());
+    std::get<4>(tuple) = std::max(std::get<4>(tuple), meta.end());
   }
 
-  // table: <block count, row count, raw size>
-  std::unordered_map<std::string, std::tuple<size_t, size_t, size_t>> tableStates_;
+  // table: <block count, row count, raw size, min time, max time>
+  std::unordered_map<std::string, std::tuple<size_t, size_t, size_t, size_t, size_t>> tableStates_;
   std::unordered_map<nebula::meta::NBlock, std::unique_ptr<nebula::memory::Batch>, Hash, Equal> blocks_;
 
 private:

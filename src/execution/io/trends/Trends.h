@@ -38,7 +38,7 @@ class TrendsTable : public nebula::meta::Table {
 public:
   TrendsTable() : Table(NAME) {
     // TODO(cao) - let's make date as a number
-    schema_ = nebula::type::TypeSerializer::from("ROW<query:string, _time_:long, count:long>");
+    schema_ = nebula::type::TypeSerializer::from("ROW<_time_:long, query:string, count:long>");
   }
 
   virtual ~TrendsTable() = default;

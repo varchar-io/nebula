@@ -28,19 +28,19 @@ namespace meta {
 class NBlock {
 public:
   // define a nblock that has a unique ID and start and end time stamp
-  NBlock(const Table& tbl, size_t blockId, size_t start, size_t end)
+  NBlock(const std::string& tbl, size_t blockId, size_t start, size_t end)
     : table_{ tbl }, id_{ blockId }, start_{ start }, end_{ end } {
     hash_ = hash(*this);
-    sign_ = fmt::format("{0}_{1}_{2}_{3}", table_.name(), id_, start_, end_);
+    sign_ = fmt::format("{0}_{1}_{2}_{3}", table_, id_, start_, end_);
   }
 
   virtual ~NBlock() = default;
 
   friend bool operator==(const NBlock& x, const NBlock& y) {
-    return x.table_.name() == y.table_.name() && x.id_ == y.id_;
+    return x.table_ == y.table_ && x.id_ == y.id_;
   }
 
-  inline const Table& getTable() const {
+  inline const std::string& getTable() const {
     return table_;
   }
 
@@ -64,13 +64,21 @@ public:
     return true;
   }
 
+  inline size_t start() const {
+    return start_;
+  }
+
+  inline size_t end() const {
+    return end_;
+  }
+
   size_t hash() const {
     return hash_;
   }
 
   static size_t hash(const NBlock& b) {
-    LOG(INFO) << "compute hash of nblock...";
-    auto h1 = std::hash<std::string>()(b.table_.name());
+    LOG(INFO) << "compute hash of nblock: " << b.signature();
+    auto h1 = std::hash<std::string>()(b.table_);
     auto h2 = b.id_;
     size_t k = 0xC6A4A7935BD1E995UL;
     h2 = ((h2 * k) >> 47) * k;
@@ -78,7 +86,7 @@ public:
   }
 
 private:
-  Table table_;
+  std::string table_;
   // sequence ID
   size_t id_;
 

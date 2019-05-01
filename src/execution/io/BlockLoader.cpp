@@ -33,7 +33,7 @@ using nebula::storage::CsvReader;
 using nebula::type::TypeSerializer;
 
 std::unique_ptr<nebula::memory::Batch> BlockLoader::load(const nebula::meta::NBlock& block) {
-  if (block.getTable().name() == TestTable::name()) {
+  if (block.getTable() == TestTable::name()) {
     return loadTestBlock();
   }
 

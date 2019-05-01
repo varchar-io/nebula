@@ -108,7 +108,7 @@ void TrendsTable::loadTrends(size_t max) {
       // if this is already full
       if (itr->second->getRows() >= bRows) {
         // move it to the manager and erase it from the map
-        bm->add(NBlock(*this, blockId++, time, time), std::move(itr->second));
+        bm->add(NBlock(name_, blockId++, time, time), std::move(itr->second));
         empty = true;
       }
     }
@@ -132,7 +132,7 @@ void TrendsTable::loadTrends(size_t max) {
 
   // move all blocks in map into block manager
   for (auto itr = blocksByTime.begin(); itr != blocksByTime.end(); ++itr) {
-    bm->add(NBlock(*this, blockId, itr->first, itr->first), std::move(itr->second));
+    bm->add(NBlock(name_, blockId, itr->first, itr->first), std::move(itr->second));
   }
 }
 
