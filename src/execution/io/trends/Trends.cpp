@@ -91,7 +91,7 @@ void TrendsTable::loadTrends(size_t max) {
   // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
   CsvReader reader(file);
   // every 100K rows, we split it into a block
-  const auto bRows = 100000;
+  const auto bRows = 10000;
   std::unordered_map<size_t, std::unique_ptr<Batch>> blocksByTime;
   size_t blockId = 0;
   TrendsRawRow trendsRow;
@@ -132,7 +132,7 @@ void TrendsTable::loadTrends(size_t max) {
 
   // move all blocks in map into block manager
   for (auto itr = blocksByTime.begin(); itr != blocksByTime.end(); ++itr) {
-    bm->add(NBlock(name_, blockId, itr->first, itr->first), std::move(itr->second));
+    bm->add(NBlock(name_, blockId++, itr->first, itr->first), std::move(itr->second));
   }
 }
 

@@ -71,7 +71,7 @@ private:
   void collectBlockMetrics(const nebula::meta::NBlock& meta, const nebula::memory::Batch& block) {
     const auto& table = meta.getTable();
     if (tableStates_.find(table) == tableStates_.end()) {
-      tableStates_[table] = { 0, 0, 0, 0, 0 };
+      tableStates_[table] = { 0, 0, 0, std::numeric_limits<size_t>::max(), 0 };
     }
 
     auto& tuple = tableStates_.at(table);

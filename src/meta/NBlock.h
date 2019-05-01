@@ -30,8 +30,8 @@ public:
   // define a nblock that has a unique ID and start and end time stamp
   NBlock(const std::string& tbl, size_t blockId, size_t start, size_t end)
     : table_{ tbl }, id_{ blockId }, start_{ start }, end_{ end } {
-    hash_ = hash(*this);
     sign_ = fmt::format("{0}_{1}_{2}_{3}", table_, id_, start_, end_);
+    hash_ = hash(*this);
   }
 
   virtual ~NBlock() = default;
@@ -76,13 +76,14 @@ public:
     return hash_;
   }
 
+  // An hash algo example
+  // auto h2 = b.id_;
+  // size_t k = 0xC6A4A7935BD1E995UL;
+  // h2 = ((h2 * k) >> 47) * k;
+  // return (h1 ^ h2) * k;
   static size_t hash(const NBlock& b) {
-    LOG(INFO) << "compute hash of nblock: " << b.signature();
-    auto h1 = std::hash<std::string>()(b.table_);
-    auto h2 = b.id_;
-    size_t k = 0xC6A4A7935BD1E995UL;
-    h2 = ((h2 * k) >> 47) * k;
-    return (h1 ^ h2) * k;
+    LOG(INFO) << "compute hash of nblock: " << b.sign_;
+    return std::hash<std::string>()(b.sign_);
   }
 
 private:

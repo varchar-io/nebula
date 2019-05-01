@@ -65,7 +65,7 @@ TEST(ApiTest, TestDataFromCsv) {
   plan->display();
 
   // load test data to run this query
-  trends.loadTrends(1);
+  trends.loadTrends(2);
 
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
