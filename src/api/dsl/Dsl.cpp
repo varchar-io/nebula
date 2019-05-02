@@ -115,7 +115,7 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
 
   // global aggregation, keys and agg methods
   auto controller = std::make_unique<FinalPhase>(std::move(node));
-  (*controller).agg().sort(zbSorts).limit(limit_);
+  (*controller).agg().sort(zbSorts, sortType_ == SortType::DESC).limit(limit_);
 
   //1. get total nodes that we will run the query, filter_ will help prune results
   auto nodeList = ms_->queryNodes(table_, [](const NNode&) { return true; });

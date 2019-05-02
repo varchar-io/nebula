@@ -136,6 +136,10 @@ public:
     return cacheRow_;
   }
 
+  virtual const nebula::surface::RowData& item(size_t) const override {
+    throw NException("CSV Reader does not support random access by row number");
+  }
+
 private:
   std::ifstream fstream_;
   CsvRow row_;

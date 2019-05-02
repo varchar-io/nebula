@@ -53,7 +53,7 @@ TEST(ApiTest, TestQueryStructure) {
   // set up table for testing
   auto ms = std::make_shared<MockMs>();
   const auto query = table(tbl, ms)
-                       .where(col("event") == "NN")
+                       .where(like(col("event"), "NN%"))
                        .select(
                          col("event"),
                          col("flag"),
@@ -61,8 +61,8 @@ TEST(ApiTest, TestQueryStructure) {
                          min(col("id") + 1).as("min_id"),
                          count(1).as("count"))
                        .groupby({ 1, 2 })
-                       .sortby({ 5 })
-                       .limit(100);
+                       .sortby({ 5 }, SortType::DESC)
+                       .limit(10);
 
   LOG(INFO) << "Compiling query: ";
   LOG(INFO) << "                  select event, flag, max(id*2) as max_id, min(id+1) as min_id, count(1) as count";

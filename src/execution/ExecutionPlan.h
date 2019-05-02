@@ -269,8 +269,9 @@ public:
     return *this;
   }
 
-  Phase& sort(std::vector<size_t> sorts) {
+  Phase& sort(const std::vector<size_t>& sorts, bool desc) {
     sorts_ = sorts;
+    desc_ = desc;
     return *this;
   }
 
@@ -285,8 +286,22 @@ public:
     return PhaseType::GLOBAL;
   }
 
+  inline const std::vector<size_t>& sorts() const {
+    return sorts_;
+  }
+
+  inline bool isDesc() const {
+    return desc_;
+  }
+
+  inline size_t top() const {
+    return limit_;
+  }
+
 private:
   std::vector<size_t> sorts_;
+  // TODO(cao) - every sort column may have different order, single direction now
+  bool desc_;
   size_t limit_;
 };
 

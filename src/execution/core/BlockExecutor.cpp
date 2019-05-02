@@ -92,6 +92,10 @@ const RowData& BlockExecutor::next() {
   return result_->row(index_++);
 }
 
+const RowData& BlockExecutor::item(size_t index) const {
+  return result_->row(index);
+}
+
 bool ComputedRow::isNull(const std::string&) const {
   // TODO(cao): how to determine nullbility of output field?
   return false;

@@ -182,7 +182,11 @@ public:
   MockRowCursor() : Cursor<RowData>(8) {
   }
 
-  virtual const RowData& next() {
+  virtual const RowData& next() override {
+    return rowData_;
+  }
+
+  virtual const RowData& item(size_t) const override {
     return rowData_;
   }
 

@@ -17,6 +17,7 @@
 #include "ServerExecutor.h"
 #include <folly/executors/ThreadedExecutor.h>
 #include <folly/futures/Future.h>
+#include "surface/TopRows.h"
 
 // TODO(cao) - COMMENT OUT, lib link issue
 // DEFINE_uint32(NODE_TIMEOUT, 2000, "miliseconds");
@@ -33,6 +34,8 @@ using nebula::common::Cursor;
 using nebula::meta::NNode;
 using nebula::surface::RowCursor;
 using nebula::surface::RowData;
+using nebula::surface::TopRows;
+using nebula::type::Kind;
 
 static std::chrono::milliseconds RPC_TIMEOUT = std::chrono::milliseconds(2000);
 
@@ -66,7 +69,52 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
   }
 
   // do the aggregation from all different nodes
-  return c;
+  // sort and top of results
+  auto schema = plan.getOutputSchema();
+  const auto& phase = plan.fetch<PhaseType::GLOBAL>();
+  std::function<bool(const RowData& left, const RowData& right)> less = nullptr;
+  const auto& sorts = phase.sorts();
+  if (sorts.size() > 0) {
+    N_ENSURE(sorts.size() == 1, "support single sorting column for now");
+    const auto& col = schema->childType(sorts[0]);
+    const auto kind = col->k();
+    const auto& name = col->name();
+    LOG(INFO) << " sort col: " << name;
+
+// instead of assert, we torelate column not found for sorting
+#define LESS_KIND_CASE(K, F, OP)                                \
+  case Kind::K: {                                               \
+    less = [&name](const RowData& left, const RowData& right) { \
+      return left.F(name) OP right.F(name);                     \
+    };                                                          \
+    break;                                                      \
+  }
+#define LESS_SWITCH_DESC(OP)                \
+  switch (kind) {                           \
+    LESS_KIND_CASE(BOOLEAN, readBool, OP)   \
+    LESS_KIND_CASE(TINYINT, readByte, OP)   \
+    LESS_KIND_CASE(SMALLINT, readShort, OP) \
+    LESS_KIND_CASE(INTEGER, readInt, OP)    \
+    LESS_KIND_CASE(BIGINT, readLong, OP)    \
+    LESS_KIND_CASE(REAL, readFloat, OP)     \
+    LESS_KIND_CASE(DOUBLE, readDouble, OP)  \
+    LESS_KIND_CASE(VARCHAR, readString, OP) \
+  default:                                  \
+    less = nullptr;                         \
+  }
+
+    if (phase.isDesc()) {
+      LESS_SWITCH_DESC(<)
+    } else {
+      LESS_SWITCH_DESC(>)
+    }
+
+#undef LESS_SWITCH_DESC
+#undef LESS_KIND_CASE
+  }
+
+  LOG(INFO) << " top: " << phase.top() << " sort col: ";
+  return std::make_shared<TopRows>(c, phase.top(), less);
 }
 
 NodeClient ServerExecutor::connect(const nebula::meta::NNode& node) {

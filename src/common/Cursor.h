@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <memory>
 #include <vector>
 
@@ -41,6 +42,8 @@ public:
   // TODO(cao) - might be too expensive if there are many items/rows to iterate on
   virtual const T& next() = 0;
 
+  virtual const T& item(size_t) const = 0;
+
   inline size_t size() const {
     return size_;
   }
@@ -60,6 +63,8 @@ public:
 
   void combine(CursorPtr another) {
     this->size_ += another->size();
+
+    sizes_.push_back(this->size_);
     lists_.push_back(another);
   }
 
@@ -80,9 +85,24 @@ public:
     return lists_[cursor_]->next();
   }
 
+  virtual const T& item(size_t index) const override {
+    // TODO(cao) - need optimize this for loop out by pre-computing the index and inside offset
+    size_t i = 0;
+    for (size_t size = sizes_.size(); i < size; ++i) {
+      if (index < sizes_.at(i)) {
+        break;
+      }
+    }
+
+    // "i" is the cursor we're going to get data from
+    auto offset = i == 0 ? 0 : sizes_.at(i - 1);
+    return lists_.at(i)->item(index - offset);
+  }
+
 private:
   size_t cursor_;
   size_t innerIndex_;
+  std::vector<size_t> sizes_;
   std::vector<CursorPtr> lists_;
 };
 

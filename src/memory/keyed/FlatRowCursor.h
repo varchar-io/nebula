@@ -38,6 +38,10 @@ public:
     return flat_->row(index_++);
   }
 
+  virtual const T& item(size_t index) const override {
+    return flat_->row(index);
+  }
+
 private:
   std::unique_ptr<HashFlat> flat_;
 };
