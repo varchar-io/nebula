@@ -80,6 +80,10 @@ RowCursor QueryHandler::query(const ExecutionPlan& plan, ErrorCode& err) const n
   }
 }
 
+inline SortType orderTypeConvert(OrderType type) {
+  return type == OrderType::DESC ? SortType::DESC : SortType::ASC;
+}
+
 // build the query object to execute
 Query QueryHandler::build(const QueryRequest& req) const {
   // build filter
@@ -147,7 +151,7 @@ Query QueryHandler::build(const QueryRequest& req) const {
     // search column index
     for (size_t i = 0, size = columns.size(); i < size; ++i) {
       if (columns.at(i) == order.column()) {
-        q.sortby({ i + 1 }, order.desc() ? SortType::DESC : SortType::ASC);
+        q.sortby({ i + 1 }, orderTypeConvert(order.type()));
         break;
       }
     }

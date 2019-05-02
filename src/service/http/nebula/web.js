@@ -81,7 +81,8 @@ var execute = () => {
     // set order and limit
     var o = new NebulaClient.Order();
     o.setColumn("count.sum");
-    o.setDesc(document.getElementById('ob').value);
+    var orderType = document.getElementById('ob').value;
+    o.setDesc(orderType === "1" ? NebulaClient.OrderType.DESC : NebulaClient.OrderType.ASC);
     q.setOrder(o);
     q.setTop(document.getElementById('limit').value);
 

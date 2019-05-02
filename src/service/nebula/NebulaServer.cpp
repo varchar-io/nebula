@@ -53,7 +53,7 @@ using nebula::type::Schema;
 using nebula::type::TypeNode;
 using nebula::type::TypeSerializer;
 
-grpc::Status V1ServiceImpl::State(grpc::ServerContext* context, const TableStateRequest* request, TableStateResponse* reply) {
+grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest* request, TableStateResponse* reply) {
   auto bm = BlockManager::init();
   // query the table's state
   auto metrics = bm->getTableMetrics(request->table());
@@ -66,7 +66,7 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext* context, const TableState
   return Status::OK;
 }
 
-grpc::Status V1ServiceImpl::Query(grpc::ServerContext* context, const QueryRequest* request, QueryResponse* reply) {
+grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* request, QueryResponse* reply) {
   // validate the query request and build the call
   nebula::common::Evidence::Duration tick;
   ErrorCode error = ErrorCode::NONE;
@@ -114,7 +114,7 @@ grpc::Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, siz
 
 // Logic and data behind the server's behavior.
 class EchoServiceImpl final : public Echo::Service {
-  Status EchoBack(ServerContext* context, const EchoRequest* request, EchoResponse* reply) override {
+  Status EchoBack(ServerContext*, const EchoRequest* request, EchoResponse* reply) override {
     std::string prefix("This is from nebula: ");
     reply->set_message(prefix + request->name());
     return Status::OK;

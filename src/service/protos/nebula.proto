@@ -100,9 +100,15 @@ message Metric {
 }
 
 // define ordering spec - limiting to order by single column in returning result
+// NOTE: grpc-web plugin has some issue to generate missing function for bool type
+enum OrderType {
+  ASC = 0;
+  DESC = 1;
+}
+
 message Order {
   string column = 1;
-  bool desc = 2;
+  OrderType type = 2;
 }
 
 // define query request 
