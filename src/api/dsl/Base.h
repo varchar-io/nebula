@@ -126,6 +126,18 @@ protected:
   nebula::type::Kind kind_;
 };
 
+// a constant expression has its result type defined as T
+template <typename T>
+class ConstExpression;
+
+// arthmetic expression
+template <ArthmeticOp op, typename T1, typename T2>
+class ArthmeticExpression;
+
+// logical expression
+template <LogicalOp op, typename T1, typename T2>
+class LogicalExpression;
+
 class ArthmeticCombination {
 private:
   static constexpr std::array<nebula::type::Kind, 6> numbers{

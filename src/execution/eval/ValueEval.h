@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 #include "common/Cursor.h"
+#include "common/Likely.h"
 #include "meta/NNode.h"
 #include "surface/DataSurface.h"
 
@@ -37,8 +38,16 @@ struct ValueEval {
   ValueEval() = default;
   virtual ~ValueEval() = default;
 
+  // TODO(cao) - we definitely need to revisit and reevaluate if we should use std::optional<T> here
+  // which shall simplify the interface a bit.
+  // Current decision is to put a bool reference to indicate if the eval should be "NULL" value
+  // passed value has to be true (default) - only set to false internally if the value is evaluated as NULL/empty
+  // other alternative approaches:
+  // 1. std::unique_ptr<T> to return nullptr or value pointer.
+  // 2. std::optinal<T> to return optional value.
+  // 3. a flag to indicate the return value should not be used
   template <typename T>
-  T eval(const nebula::surface::RowData& row) const {
+  T eval(const nebula::surface::RowData& row, bool& valid) const {
     // TODO(cao) - there is a problem wasted me a WHOLE day to figure out the root cause.
     // So docuemnt here for further robust engineering work, the case is like this:
     // When it create ValueEval, it uses template to generate TypeValueEval<std::string> for VARCHAR type
@@ -47,16 +56,15 @@ struct ValueEval {
     // This is a hard problem if we don't pay attention and waste lots of time to debug it, so how can we prevent similar problem
     // 1. we should do stronger type check to ensure the type used is consistent everywhere.
     // 2. we can enforce std::enable_if more on the template type to ensure the function is called in the expected "type"
-    return static_cast<const TypeValueEval<T>*>(this)->eval(row);
+    return static_cast<const TypeValueEval<T>*>(this)->eval(row, valid);
   }
 };
 
 // two utilities
-#define OptType = T(*f)(const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&);
-#define OPT std::function<T(const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&)>
-#define OPT_LAMBDA(X)                                                                                 \
-  ([](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>& children) { \
-    X                                                                                                 \
+#define OPT std::function<T(const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&, bool&)>
+#define OPT_LAMBDA(X)                                                                                              \
+  ([](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>& children, bool& valid) { \
+    X                                                                                                              \
   })
 
 template <typename T>
@@ -68,8 +76,8 @@ struct TypeValueEval : public ValueEval {
 
   virtual ~TypeValueEval() = default;
 
-  inline T eval(const nebula::surface::RowData& row) const {
-    return op_(row, this->children_);
+  inline T eval(const nebula::surface::RowData& row, bool& valid) const {
+    return op_(row, this->children_, valid);
   }
 
   OPT op_;
@@ -84,48 +92,62 @@ template <typename T>
 std::unique_ptr<ValueEval> constant(T v) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
-      [v](const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&) -> T {
+      [v](const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> T {
         return v;
       },
       {}));
 }
 
+#define NULL_CHECK(R)               \
+  if (UNLIKELY(row.isNull(name))) { \
+    valid = false;                  \
+    return R;                       \
+  }
+
 template <typename T>
 std::unique_ptr<ValueEval> column(const std::string& name) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
-      [name](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&) -> T {
+      [name](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> T {
         // compile time branching based on template type T
         // I think it's better than using template specialization for this case
         if constexpr (std::is_same<T, bool>::value) {
+          NULL_CHECK(false)
           return row.readBool(name);
         }
 
         if constexpr (std::is_same<T, int8_t>::value) {
+          NULL_CHECK(0)
           return row.readByte(name);
         }
 
         if constexpr (std::is_same<T, int16_t>::value) {
+          NULL_CHECK(0)
           return row.readShort(name);
         }
 
         if constexpr (std::is_same<T, int32_t>::value) {
+          NULL_CHECK(0)
           return row.readInt(name);
         }
 
         if constexpr (std::is_same<T, int64_t>::value) {
+          NULL_CHECK(0)
           return row.readLong(name);
         }
 
         if constexpr (std::is_same<T, float>::value) {
+          NULL_CHECK(0)
           return row.readFloat(name);
         }
 
         if constexpr (std::is_same<T, double>::value) {
+          NULL_CHECK(0)
           return row.readDouble(name);
         }
 
         if constexpr (std::is_same<T, std::string>::value) {
+          NULL_CHECK("")
           return row.readString(name);
         }
 
@@ -135,23 +157,32 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
       {}));
 }
 
+#undef NULL_CHECK
+
 // TODO(cao): optimization - fold constant nodes, we don't need keep a constant node
-#define ARTHMETIC_VE(NAME, SIGN)                                                                         \
-  template <typename T, typename T1, typename T2>                                                        \
+// WHEN arthmetic operation meets NULL (valid==false), return 0 and indicate valid as false
+#define ARTHMETIC_VE(NAME, SIGN)                                                                  \
+  template <typename T, typename T1, typename T2>                                                 \
   std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
-    std::vector<std::unique_ptr<ValueEval>> branch;                                                      \
-    branch.reserve(2);                                                                                   \
-    branch.push_back(std::move(v1));                                                                     \
-    branch.push_back(std::move(v2));                                                                     \
-                                                                                                         \
-    return std::unique_ptr<ValueEval>(                                                                   \
-      new TypeValueEval<T>(OPT_LAMBDA({                                                                  \
-                             auto v1 = children[0]->eval<T1>(row);                                       \
-                             auto v2 = children[1]->eval<T2>(row);                                       \
-                             auto v3 = v1 SIGN v2;                                                       \
-                             return v3;                                                                  \
-                           }),                                                                           \
-                           std::move(branch)));                                                          \
+    static constexpr T INVALID = 0;                                                               \
+    std::vector<std::unique_ptr<ValueEval>> branch;                                               \
+    branch.reserve(2);                                                                            \
+    branch.push_back(std::move(v1));                                                              \
+    branch.push_back(std::move(v2));                                                              \
+                                                                                                  \
+    return std::unique_ptr<ValueEval>(                                                            \
+      new TypeValueEval<T>(OPT_LAMBDA({                                                           \
+                             auto v1 = children[0]->eval<T1>(row, valid);                         \
+                             if (UNLIKELY(!valid)) {                                              \
+                               return INVALID;                                                    \
+                             }                                                                    \
+                             auto v2 = children[1]->eval<T2>(row, valid);                         \
+                             if (UNLIKELY(!valid)) {                                              \
+                               return INVALID;                                                    \
+                             }                                                                    \
+                             return T(v1 SIGN v2);                                                \
+                           }),                                                                    \
+                           std::move(branch)));                                                   \
   }
 
 ARTHMETIC_VE(add, +)
@@ -163,18 +194,28 @@ ARTHMETIC_VE(mod, %)
 #undef ARTHMETIC_VE
 
 // TODO(cao) - merge with ARTHMETIC_VE since they are pretty much the same
-#define COMPARE_VE(NAME, SIGN)                                                                           \
-  template <typename T1, typename T2>                                                                    \
+// WHEN logical operation meets NULL (valid==false), return false and indicate valid as false
+#define COMPARE_VE(NAME, SIGN)                                                                    \
+  template <typename T1, typename T2>                                                             \
   std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
-    std::vector<std::unique_ptr<ValueEval>> branch;                                                      \
-    branch.reserve(2);                                                                                   \
-    branch.push_back(std::move(v1));                                                                     \
-    branch.push_back(std::move(v2));                                                                     \
-    return std::unique_ptr<ValueEval>(                                                                   \
-      new TypeValueEval<bool>(OPT_LAMBDA({                                                               \
-                                return children[0]->eval<T1>(row) SIGN children[1]->eval<T2>(row);       \
-                              }),                                                                        \
-                              std::move(branch)));                                                       \
+    std::vector<std::unique_ptr<ValueEval>> branch;                                               \
+    branch.reserve(2);                                                                            \
+    branch.push_back(std::move(v1));                                                              \
+    branch.push_back(std::move(v2));                                                              \
+    return std::unique_ptr<ValueEval>(                                                            \
+      new TypeValueEval<bool>(                                                                    \
+        OPT_LAMBDA({                                                                              \
+          auto v1 = children[0]->eval<T1>(row, valid);                                            \
+          if (UNLIKELY(!valid)) {                                                                 \
+            return false;                                                                         \
+          }                                                                                       \
+          auto v2 = children[1]->eval<T2>(row, valid);                                            \
+          if (UNLIKELY(!valid)) {                                                                 \
+            return false;                                                                         \
+          }                                                                                       \
+          return v1 SIGN v2;                                                                      \
+        }),                                                                                       \
+        std::move(branch)));                                                                      \
   }
 
 COMPARE_VE(gt, >)

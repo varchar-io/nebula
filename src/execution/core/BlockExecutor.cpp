@@ -54,7 +54,10 @@ void BlockExecutor::compute() {
     const RowData& row = accessor->seek(i);
 
     // if not fullfil the condition
-    if (!filter.eval<bool>(row)) {
+    // ignore valid here - if system can't determine how to act on NULL value
+    // we don't know how to make decision here too
+    bool valid;
+    if (!filter.eval<bool>(row, valid)) {
       continue;
     }
 
@@ -106,9 +109,12 @@ bool ComputedRow::isNull(IndexType) const {
   return false;
 }
 
-#define FORWARD_EVAL_FIELD(TYPE, NAME)            \
-  TYPE ComputedRow::NAME(IndexType index) const { \
-    return fields_[index]->eval<TYPE>(input_);    \
+// TODO(cao) - need to implement isNull (maybe cache to ensure evaluate once)
+// otherwise - this may return invalid values
+#define FORWARD_EVAL_FIELD(TYPE, NAME)                \
+  TYPE ComputedRow::NAME(IndexType index) const {     \
+    bool valid = true;                                \
+    return fields_[index]->eval<TYPE>(input_, valid); \
   }
 
 FORWARD_EVAL_FIELD(bool, readBool)

@@ -33,7 +33,7 @@ const std::string& TestTable::name() {
 }
 
 const std::string& TestTable::schema() {
-  static const std::string SCHEMA = "ROW<id:int, event:string, items:list<string>, flag:bool>";
+  static const std::string SCHEMA = "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>";
   return SCHEMA;
 }
 

@@ -29,11 +29,13 @@ TEST(UDFTest, TestNot) {
   nebula::surface::MockRowData row;
   auto f = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(false);
   nebula::api::udf::Not n(f);
-  EXPECT_EQ(n.eval(row), true);
+  bool valid = true;
+  EXPECT_EQ(n.eval(row, valid), true);
 
   auto t = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(true);
   nebula::api::udf::Not y(t);
-  EXPECT_EQ(y.eval(row), false);
+  valid = true;
+  EXPECT_EQ(y.eval(row, valid), false);
 }
 
 TEST(UDFTest, TestLike) {
@@ -56,7 +58,8 @@ TEST(UDFTest, TestLike) {
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string>>(s);
     nebula::api::udf::Like l(c, p);
-    EXPECT_EQ(l.eval(row), r);
+    bool valid = true;
+    EXPECT_EQ(l.eval(row, valid), r);
   }
 }
 

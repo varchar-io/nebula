@@ -38,26 +38,30 @@ TEST(ValueEvalTest, TestValueEval) {
 
   // int = 3 + col('a')
   auto b1 = nebula::execution::eval::constant(3);
-  auto v1 = b1->eval<int>(row);
-  LOG(INFO) << "b1 eval: " << v1;
+  bool valid = true;
+  auto v1 = b1->eval<int>(row, valid);
+  LOG(INFO) << "b1 eval: " << v1 << ", valid:" << valid;
   EXPECT_EQ(v1, 3);
 
   auto b2 = nebula::execution::eval::column<int>("a");
 
   MockRowData mirror(1);
-  auto v2 = b2->eval<int>(row);
+  valid = true;
+  auto v2 = b2->eval<int>(row, valid);
   LOG(INFO) << "b2 eval: " << v2;
   EXPECT_EQ(v2, mirror.readInt("a"));
 
   auto b3 = nebula::execution::eval::add<int, int, int>(std::move(b1), std::move(b2));
-  auto sum = b3->eval<int>(row);
+  valid = true;
+  auto sum = b3->eval<int>(row, valid);
   auto expected_sum = v1 + mirror.readInt("a");
   LOG(INFO) << "b3 eval: " << sum;
   EXPECT_EQ(sum, expected_sum);
 
   auto b4 = nebula::execution::eval::constant(10);
   auto b5 = nebula::execution::eval::lt<int, int>(std::move(b3), std::move(b4));
-  EXPECT_FALSE(b5->eval<bool>(row));
+  valid = true;
+  EXPECT_FALSE(b5->eval<bool>(row, valid));
 }
 
 TEST(ValueEvalTest, TestValueEvalArthmetic) {
@@ -72,7 +76,8 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
     auto b1 = nebula::execution::eval::constant(cvalue);
     auto b2 = nebula::execution::eval::column<float>("x");
     auto b3 = nebula::execution::eval::add<float, int, float>(std::move(b1), std::move(b2));
-    float add = b3->eval<float>(row);
+    bool valid = true;
+    float add = b3->eval<float>(row, valid);
     EXPECT_EQ(add, mirror.readFloat("x") + cvalue);
   }
 
@@ -81,7 +86,8 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
     auto b1 = nebula::execution::eval::constant(cvalue);
     auto b2 = nebula::execution::eval::column<float>("y");
     auto b3 = nebula::execution::eval::mul<float, int, float>(std::move(b1), std::move(b2));
-    float mul = b3->eval<float>(row);
+    bool valid = true;
+    float mul = b3->eval<float>(row, valid);
     EXPECT_EQ(mul, mirror.readFloat("y") * cvalue);
   }
 
@@ -90,7 +96,8 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
     auto b1 = nebula::execution::eval::constant(cvalue);
     auto b2 = nebula::execution::eval::column<float>("z");
     auto b3 = nebula::execution::eval::sub<float, int, float>(std::move(b1), std::move(b2));
-    float sub = b3->eval<float>(row);
+    bool valid = true;
+    float sub = b3->eval<float>(row, valid);
     EXPECT_EQ(sub, cvalue - mirror.readFloat("z"));
   }
 
@@ -99,7 +106,8 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
     auto b1 = nebula::execution::eval::constant(cvalue);
     auto b2 = nebula::execution::eval::column<float>("d");
     auto b3 = nebula::execution::eval::div<float, float, int>(std::move(b2), std::move(b1));
-    float div = b3->eval<float>(row);
+    bool valid = true;
+    float div = b3->eval<float>(row, valid);
     EXPECT_EQ(div, mirror.readFloat("d") / cvalue);
   }
 }
@@ -118,16 +126,19 @@ TEST(ValueEvalTest, TestValueEvalLogical) {
     auto b3 = nebula::execution::eval::mul<float, int, float>(std::move(b1), std::move(b2));
     auto b4 = nebula::execution::eval::constant(64);
     auto b5 = nebula::execution::eval::gt<float, int>(std::move(b3), std::move(b4));
-    EXPECT_EQ(b5->eval<bool>(row), false);
+    bool valid = true;
+    EXPECT_EQ(b5->eval<bool>(row, valid), false);
 
     auto b6 = nebula::execution::eval::constant(true);
     auto b7 = nebula::execution::eval::bor<bool, bool>(std::move(b5), std::move(b6));
     auto b8 = nebula::execution::eval::constant(true);
     auto b9 = nebula::execution::eval::eq<bool, bool>(std::move(b7), std::move(b8));
-    EXPECT_EQ(b9->eval<bool>(row), true);
+    valid = true;
+    EXPECT_EQ(b9->eval<bool>(row, valid), true);
 
     auto b10 = nebula::execution::eval::column<std::string>("s");
-    LOG(INFO) << "b10=" << b10->eval<std::string>(row);
+    valid = true;
+    LOG(INFO) << "b10=" << b10->eval<std::string>(row, valid);
   }
 }
 

@@ -107,11 +107,69 @@ TEST(ApiTest, TestQueryStructure) {
   }
 }
 
-TEST(ApiTest, TestExprValueEval) {
-  const auto seed = common::Evidence::ticks();
+TEST(ApiTest, TestSortingAndTop) {
+  auto tbl = "nebula.test";
   // set up table for testing
-  nebula::surface::MockRowData rowData(seed);
-  nebula::surface::MockRowData mirror(seed);
+  auto ms = std::make_shared<MockMs>();
+  const auto query = table(tbl, ms)
+                       .where(like(col("event"), "N%"))
+                       .select(
+                         col("event"),
+                         col("flag"),
+                         max(col("id") * 2).as("max_id"),
+                         min(col("id") + 1).as("min_id"),
+                         count(col("id")).as("count"),
+                         sum(col("value")).as("sum"))
+                       .groupby({ 1, 2 })
+                       .sortby({ 5 }, SortType::DESC)
+                       .limit(5);
+  // compile the query into an execution plan
+  auto plan = query.compile();
+  // load test data to run this query
+  auto bm = BlockManager::init();
+  auto ptable = ms->query(tbl);
+  NBlock block(ptable->name(), 0, 0, 0);
+  bm->add(block);
+  nebula::common::Evidence::Duration tick;
+
+  // pass the query plan to a server to execute - usually it is itself
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << fmt::format("col: {0:12} | {1:12} | {2:12} | {3:12} | {4:12} | {5:12}", "EVENT", "FLAG", "MAX_ID", "MIN_ID", "COUNT", "SUM");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << fmt::format("row: {0:12} | {1:12} | {2:12} | {3:12} | {4:12} | {5:12}",
+                             row.isNull("event") ? "<NULL>" : row.readString("event"),
+                             row.readBool("flag"),
+                             row.readInt("max_id"),
+                             row.readInt("min_id"),
+                             row.readInt("count"),
+                             row.readInt("sum"));
+  }
+}
+
+class MockRow : public nebula::surface::MockRowData {
+public:
+  MockRow() = default;
+  MOCK_CONST_METHOD1(readBool, bool(const std::string&));
+  MOCK_CONST_METHOD1(readInt, int32_t(const std::string&));
+  MOCK_CONST_METHOD1(isNull, bool(const std::string&));
+};
+
+TEST(ApiTest, TestExprValueEval) {
+  // set up table for testing
+  MockRow rowData;
+  MockRow mirror;
+
+  EXPECT_CALL(rowData, readBool("flag")).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(rowData, readInt("id")).WillRepeatedly(testing::Return(320));
+  EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(mirror, readBool("flag")).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(mirror, readInt("id")).WillRepeatedly(testing::Return(320));
+
   auto expr = col("flag") == true;
   bool expected1 = mirror.readBool("flag") == true;
   auto expr2 = col("id") * 2 + 10 - (col("id") / 4);
@@ -121,19 +179,15 @@ TEST(ApiTest, TestExprValueEval) {
 
   auto ms = std::make_shared<MockMs>();
   auto tbl = ms->query("nebula.test");
-  LOG(INFO) << "call types";
   expr.type(*tbl);
   expr2.type(*tbl);
-  LOG(INFO) << "convert to value evals";
   auto v1 = expr.asEval();
   auto v2 = expr2.asEval();
 
-  LOG(INFO) << "evalulate v1 expression with mock row";
-  auto x = v1->eval<bool>(rowData);
-  LOG(INFO) << "evalulate v2 expression with mock row";
-  auto y = v2->eval<int>(rowData);
-  LOG(INFO) << "x=" << x << ", y=" << y;
-
+  bool valid = true;
+  auto x = v1->eval<bool>(rowData, valid);
+  valid = true;
+  auto y = v2->eval<int>(rowData, valid);
   EXPECT_EQ(x, expected1);
   EXPECT_EQ(y, expected2);
 
@@ -147,8 +201,9 @@ TEST(ApiTest, TestExprValueEval) {
     EXPECT_EQ(colrefs.size(), 1);
     EXPECT_EQ(colrefs[0], "flag");
 
-    auto r = v3->eval<bool>(rowData);
-    LOG(INFO) << " UDF eval result: " << r;
+    bool valid = true;
+    auto r = v3->eval<bool>(rowData, valid);
+    LOG(INFO) << " UDF eval result: " << r << " valid=" << valid;
     bool exp3 = !(mirror.readBool("flag") == true);
     EXPECT_EQ(r, exp3);
   }
@@ -167,14 +222,15 @@ TEST(ApiTest, TestExprValueEval) {
     EXPECT_EQ(udaf_colrefs[0], "id");
 
     // call evaluate multiple times and see max value out of
-    auto r1 = v4->eval(rowData);
-    auto r2 = v4->eval(rowData);
+    bool valid = true;
+    auto r1 = v4->eval(rowData, valid);
+    auto r2 = v4->eval(rowData, valid);
     r2 = v4->agg(r1, r2);
     EXPECT_GE(r2, r1);
-    auto r3 = v4->eval(rowData);
+    auto r3 = v4->eval(rowData, valid);
     r3 = v4->agg(r2, r3);
     EXPECT_GE(r3, r2);
-    auto r4 = v4->eval(rowData);
+    auto r4 = v4->eval(rowData, valid);
     r4 = v4->agg(r3, r4);
     EXPECT_GE(r4, r3);
     LOG(INFO) << " 4 values: " << r1 << ", " << r2 << ", " << r3 << ", " << r4;

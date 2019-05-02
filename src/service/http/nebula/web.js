@@ -75,14 +75,31 @@ var execute = () => {
     // set metric 
     var m = new NebulaClient.Metric();
     m.setColumn("count");
-    m.setMethod(NebulaClient.Rollup.SUM);
+    var rollupType = document.getElementById('ru').value;
+    switch (rollupType) {
+        case "0":
+            m.setMethod(NebulaClient.Rollup.COUNT);
+            break;
+        case "1":
+            m.setMethod(NebulaClient.Rollup.SUM);
+            break;
+        case "2":
+            m.setMethod(NebulaClient.Rollup.MIN);
+            break;
+        case "3":
+            m.setMethod(NebulaClient.Rollup.MAX);
+            break;
+        default:
+            m.setMethod(NebulaClient.Rollup.SUM);
+            break;
+    }
     q.setMetricList([m]);
 
     // set order and limit
     var o = new NebulaClient.Order();
-    o.setColumn("count.sum");
+    o.setColumn("count");
     var orderType = document.getElementById('ob').value;
-    o.setDesc(orderType === "1" ? NebulaClient.OrderType.DESC : NebulaClient.OrderType.ASC);
+    o.setType(orderType === "1" ? NebulaClient.OrderType.DESC : NebulaClient.OrderType.ASC);
     q.setOrder(o);
     q.setTop(document.getElementById('limit').value);
 

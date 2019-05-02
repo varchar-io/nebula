@@ -139,6 +139,7 @@ Query QueryHandler::build(const QueryRequest& req) const {
   }
   for (auto i = 0, size = req.metric_size(); i < size; ++i) {
     const auto& m = req.metric(i);
+    // build metric may change column name, using its alais
     columns.push_back(m.column());
     fields.push_back(buildMetric(m));
   }
@@ -169,10 +170,10 @@ Query QueryHandler::build(const QueryRequest& req) const {
 
 std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) const {
   const auto& colName = metric.column();
-#define BUILD_METRIC_CASE(TYPE, NAME)                                        \
-  case Rollup::TYPE: {                                                       \
-    auto exp = max(col(colName)).as(fmt::format("{0}.{1}", colName, #NAME)); \
-    return std::make_shared<decltype(exp)>(exp);                             \
+#define BUILD_METRIC_CASE(TYPE, NAME)                                         \
+  case Rollup::TYPE: {                                                        \
+    auto exp = NAME(col(colName)).as(fmt::format("{0}.{1}", colName, #NAME)); \
+    return std::make_shared<decltype(exp)>(exp);                              \
   }
 
   switch (metric.method()) {

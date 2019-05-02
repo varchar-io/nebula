@@ -79,7 +79,6 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
     const auto& col = schema->childType(sorts[0]);
     const auto kind = col->k();
     const auto& name = col->name();
-    LOG(INFO) << " sort col: " << name;
 
 // instead of assert, we torelate column not found for sorting
 #define LESS_KIND_CASE(K, F, OP)                                \
@@ -113,7 +112,6 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
 #undef LESS_KIND_CASE
   }
 
-  LOG(INFO) << " top: " << phase.top() << " sort col: ";
   return std::make_shared<TopRows>(c, phase.top(), less);
 }
 

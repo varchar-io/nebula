@@ -167,7 +167,15 @@ static UDFExpression<nebula::execution::eval::UDFType::MIN> min(const T& expr) {
 template <typename T>
 static UDFExpression<nebula::execution::eval::UDFType::COUNT> count(const T& expr) {
   // TODO(cao) - we may support column expression as well for count
-  return UDFExpression<nebula::execution::eval::UDFType::COUNT>(std::make_shared<ConstExpression<T>>(expr));
+  return UDFExpression<nebula::execution::eval::UDFType::COUNT>(std::shared_ptr<Expression>(new T(expr)));
+}
+
+template <>
+__attribute__((unused)) UDFExpression<nebula::execution::eval::UDFType::COUNT> count<int>(const int& expr) {
+  // TODO(cao) - we may support column expression as well for count
+  auto c = std::make_shared<ConstExpression<int>>(expr);
+  c->as("count");
+  return UDFExpression<nebula::execution::eval::UDFType::COUNT>(c);
 }
 
 template <typename T>

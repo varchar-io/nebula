@@ -53,18 +53,6 @@ namespace dsl {
 // used in definition signature to match the declaration without default value
 #define IS_EXPRESSION_D(T) typename std::enable_if_t<std::is_base_of_v<Expression, T>, bool>
 
-// a constant expression has its result type defined as T
-template <typename T>
-class ConstExpression;
-
-// arthmetic expression
-template <ArthmeticOp op, typename T1, typename T2>
-class ArthmeticExpression;
-
-// logical expression
-template <LogicalOp op, typename T1, typename T2>
-class LogicalExpression;
-
 // TODO(cao) - we rely on a copy of current (*this) expression using implicit copy constructor
 // We should consider https://en.cppreference.com/w/cpp/memory/enable_shared_from_this
 #define ARTHMETIC_OP_CONST(OP, TYPE)                                                                                          \

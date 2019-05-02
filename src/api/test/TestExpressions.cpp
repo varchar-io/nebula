@@ -148,7 +148,8 @@ TEST(ExpressionsTest, TestExpressionEval) {
 
     auto eval = idvalue.asEval();
     nebula::surface::MockRowData mr;
-    bool res = eval->eval<bool>(mr);
+    bool valid = true;
+    bool res = eval->eval<bool>(mr, valid);
     EXPECT_EQ(res, false);
   }
 
@@ -158,7 +159,8 @@ TEST(ExpressionsTest, TestExpressionEval) {
 
     auto eval = eventValue.asEval();
     nebula::surface::MockRowData mr;
-    bool res = eval->eval<bool>(mr);
+    bool valid = true;
+    bool res = eval->eval<bool>(mr, valid);
     EXPECT_EQ(res, false);
   }
 }

@@ -31,7 +31,6 @@ public:
   using NativeType = nebula::type::TypeTraits<nebula::type::Kind::BOOLEAN>::CppType;
   Not(std::shared_ptr<nebula::api::dsl::Expression> expr)
     : UdfNotBase(expr, [](const NativeType& origin) {
-        LOG(INFO) << "origin=" << origin << ", reverse=" << !origin;
         return !origin;
       }) {}
   virtual ~Not() = default;

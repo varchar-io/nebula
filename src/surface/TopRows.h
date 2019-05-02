@@ -47,13 +47,13 @@ public:
 
   // TODO(cao) - might be too expensive if there are many items/rows to iterate on
   virtual const RowData& next() override {
+    // stop condition
+    index_++;
+
     // no need heap
     if (less_ == nullptr) {
       return rows_->next();
     }
-
-    // stop condition
-    index_++;
 
     // fetch the top one and return its value
     std::pop_heap(heap_.begin(), heap_.end(), [this](size_t left, size_t right) -> bool {

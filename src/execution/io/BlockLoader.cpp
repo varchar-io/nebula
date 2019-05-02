@@ -50,12 +50,15 @@ std::unique_ptr<nebula::memory::Batch> BlockLoader::loadTestBlock() {
   // use the specified seed so taht the data can repeat
   auto seed = nebula::common::Evidence::unix_timestamp();
 
+  // a seed that triggers a bug
+  // seed = 1556824936;
+
   nebula::surface::MockRowData row(seed);
   for (auto i = 0; i < rows; ++i) {
     block->add(row);
   }
   // print out the block state
-  LOG(INFO) << "Loaded test block: " << block->state();
+  LOG(INFO) << "Loaded test block: seed=" << seed << ", state=" << block->state();
 
   return block;
 }

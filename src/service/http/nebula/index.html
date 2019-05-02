@@ -19,13 +19,21 @@
     <div>Time Start: <input type="text" id="start" placeholder="2019-01-01"></div>
     <div>Time End: <input type="text" id="end" placeholder="2019-01-01"></div>
     <div> Term: <input id="term" type="text"></div>
-    <div> Order: 
+    <div> Rollup:
+        <select id="ru">
+            <option value="0">COUNT</option>
+            <option value="1">SUM</option>
+            <option value="2">MIN</option>
+            <option value="3">MAX</option>
+        </select>
+    </div>
+    <div> Order:
         <select id="ob">
             <option value="0">ASC</option>
             <option value="1">DESC</option>
         </select>
     </div>
-    <div> Limit: 
+    <div> Limit:
         <select id="limit">
             <option value="100">100</option>
             <option value="200">200</option>

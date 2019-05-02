@@ -34,9 +34,11 @@ public:
   Max(std::shared_ptr<nebula::api::dsl::Expression> expr)
     : CommonUDAF<KIND>(expr,
                        [](NativeType ov, NativeType nv) {
+                         // LOG(INFO) << "b max o=" << ov << ", n=" << nv;
                          return std::max<NativeType>(ov, nv);
                        },
                        [](NativeType ov, NativeType nv) {
+                         // LOG(INFO) << "p max o=" << ov << ", n=" << nv;
                          return std::max<NativeType>(ov, nv);
                        }) {}
   virtual ~Max() = default;
