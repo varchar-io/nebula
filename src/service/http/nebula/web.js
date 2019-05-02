@@ -83,7 +83,7 @@ var execute = () => {
     o.setColumn("count.sum");
     o.setDesc(document.getElementById('ob').value);
     q.setOrder(o);
-    q.setLimit(document.getElementById('limit').value);
+    q.setTop(document.getElementById('limit').value);
 
     // do the query 
     v1Client.query(q, {}, (err, reply) => {
