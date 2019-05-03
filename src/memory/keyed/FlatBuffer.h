@@ -81,6 +81,9 @@ public:
   // random access to a row - may require internal seek
   const nebula::surface::RowData& row(size_t);
 
+  // const version without internal cache
+  const std::unique_ptr<nebula::surface::RowData> crow(size_t) const;
+
   // compute hash value of given row and column list
   size_t hash(size_t rowId, const std::vector<size_t>& cols) const;
 
@@ -132,7 +135,7 @@ private:
 
 class RowAccessor : public nebula::surface::RowData {
 public:
-  RowAccessor(FlatBuffer&, size_t, FlatColumnProps);
+  RowAccessor(const FlatBuffer&, size_t, FlatColumnProps);
   virtual ~RowAccessor() = default;
 
 public:
@@ -165,7 +168,7 @@ public:
   std::unique_ptr<nebula::surface::MapData> readMap(IndexType) const override;
 
 private:
-  FlatBuffer& fb_;
+  const FlatBuffer& fb_;
 
   // current row offset and all column properties
   size_t offset_;
@@ -175,7 +178,7 @@ private:
 using nebula::surface::IndexType;
 class ListAccessor : public nebula::surface::ListData {
 public:
-  ListAccessor(IndexType items, IndexType offset, Buffer& buffer, Buffer& strings, size_t itemWidth)
+  ListAccessor(IndexType items, IndexType offset, const Buffer& buffer, const Buffer& strings, size_t itemWidth)
     : ListData(items),
       offset_{ offset },
       buffer_{ buffer },
@@ -214,8 +217,8 @@ private:
 
 private:
   IndexType offset_;
-  Buffer& buffer_;
-  Buffer& strings_;
+  const Buffer& buffer_;
+  const Buffer& strings_;
   size_t itemWidth_;
 
   std::vector<size_t> itemOffsets_;

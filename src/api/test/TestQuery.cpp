@@ -126,14 +126,17 @@ TEST(ApiTest, TestMultipleBlocks) {
   TrendsTable trends;
   // query this table
   const auto query = table(trends.name(), trends.getMs())
-                       .where(like(col("query"), "leg work%"))
+                       .where(col("_time_") > 1554076800 && col("_time_") < 1556582400 && like(col("query"), "apple%"))
                        .select(
                          col("query"),
-                         sum(col("count")).as("total"))
-                       .groupby({ 1 });
+                         count(col("count")).as("total"))
+                       .groupby({ 1 })
+                       .sortby({ 2 }, SortType::DESC)
+                       .limit(10);
 
   // compile the query into an execution plan
   auto plan = query.compile();
+  plan->setWindow({ 1554076800, 1556582400 });
 
   // print out the plan through logging
   plan->display();
@@ -145,9 +148,11 @@ TEST(ApiTest, TestMultipleBlocks) {
   // pass the query plan to a server to execute - usually it is itself
   auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
 
+  // query should have results
+  EXPECT_GT(result->size(), 0);
+
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
-  LOG(INFO) << "Query: select query, count(1) as total from trends.draft where query like '%leg work%' group by 1;";
   LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
   LOG(INFO) << fmt::format("col: {0:20} | {1:12}", "Query", "Total");
   while (result->hasNext()) {

@@ -52,7 +52,8 @@ target_link_libraries(ExecTests
     PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY})
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${GMOCK_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

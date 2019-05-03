@@ -1,6 +1,9 @@
+import './jquery.min.js'
+
 const {
     EchoRequest,
     TableStateRequest,
+    ListTables,
     // define query request and response
     Operation,
     Predicate,
@@ -54,6 +57,7 @@ export default {
     V1Client,
     EchoRequest,
     TableStateRequest,
+    ListTables,
     Operation,
     Predicate,
     PredicateAnd,
@@ -66,5 +70,6 @@ export default {
     Statistics,
     DataType,
     QueryResponse,
-    bytes2utf8
+    bytes2utf8,
+    jQuery
 };

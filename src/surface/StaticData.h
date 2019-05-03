@@ -64,8 +64,8 @@ private:
 
 class StaticRow : public RowData {
 public:
-  StaticRow(int i, std::string s, std::unique_ptr<ListData> list, bool f)
-    : id_{ i }, event_{ std::move(s) }, flag_{ f } {
+  StaticRow(int i, std::string s, std::unique_ptr<ListData> list, bool f, char b)
+    : id_{ i }, event_{ std::move(s) }, flag_{ f }, byte_{ b } {
     if (list != nullptr) {
       items_.reserve(list->getItems());
       for (size_t k = 0; k < items_.capacity(); ++k) {
@@ -89,6 +89,14 @@ public:
 
   bool readBool(IndexType) const override {
     return flag_;
+  }
+
+  int8_t readByte(const std::string&) const override {
+    return byte_;
+  }
+
+  int8_t readByte(IndexType) const override {
+    return byte_;
   }
 
   int32_t readInt(const std::string&) const override {
@@ -115,7 +123,6 @@ public:
     return items_.size() == 0 ? nullptr : std::make_unique<StaticList>(items_);
   }
 
-  NOT_IMPL_FUNC(int8_t, readByte)
   NOT_IMPL_FUNC(int16_t, readShort)
   NOT_IMPL_FUNC(int64_t, readLong)
   NOT_IMPL_FUNC(float, readFloat)
@@ -129,6 +136,7 @@ private:
   std::string event_;
   std::vector<std::string> items_;
   bool flag_;
+  char byte_;
 };
 
 } // namespace surface

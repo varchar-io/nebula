@@ -154,7 +154,9 @@ add_custom_target(nebula_web_client
 # $ npx webpack client.js
 
 # build test binary
-add_executable(ServiceTests ${NEBULA_SRC}/service/test/TestQueryHandler.cpp)
+add_executable(ServiceTests 
+  ${NEBULA_SRC}/service/test/TestQueryHandler.cpp
+  ${NEBULA_SRC}/service/test/TestQueryService.cpp)
 target_link_libraries(ServiceTests 
   PRIVATE ${GLOG_LIBRARY}
   PRIVATE ${NEBULA_SERVICE}

@@ -76,10 +76,11 @@ RowCursor NodeExecutor::execute(const ExecutionPlan& plan) {
 
   if (nodePhase.hasAgg()) {
     LOG(INFO) << " execute partial aggregation";
-#define P_FIELD_UPDATE(KIND, TYPE)                                                                                                          \
-  case Kind::KIND: {                                                                                                                        \
-    *static_cast<TYPE*>(value) = static_cast<UDAF<Kind::KIND>&>(*fields[column]).partial(*static_cast<TYPE*>(ov), *static_cast<TYPE*>(nv)); \
-    return true;                                                                                                                            \
+#define P_FIELD_UPDATE(KIND, TYPE)                                                                                  \
+  case Kind::KIND: {                                                                                                \
+    auto p = static_cast<TYPE*>(value);                                                                             \
+    *p = static_cast<UDAF<Kind::KIND>&>(*fields[column]).partial(*static_cast<TYPE*>(ov), *static_cast<TYPE*>(nv)); \
+    return true;                                                                                                    \
   }
     // build the runtime data set
     auto hf = std::make_unique<HashFlat>(nodePhase.outputSchema(), nodePhase.keys());
@@ -113,6 +114,7 @@ RowCursor NodeExecutor::execute(const ExecutionPlan& plan) {
 #undef P_FIELD_UPDATE
   }
 
+  LOG(INFO) << "Node executor collect results after aggregation";
   // for query that doesn't need agg - just composite it and return
   auto c = std::make_shared<CompositeCursor<RowData>>();
   for (auto it = x.begin(); it < x.end(); ++it) {

@@ -38,8 +38,8 @@ public:
     return flat_->row(index_++);
   }
 
-  virtual const T& item(size_t index) const override {
-    return flat_->row(index);
+  virtual std::unique_ptr<T> item(size_t index) const override {
+    return flat_->crow(index);
   }
 
 private:

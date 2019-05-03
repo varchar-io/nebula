@@ -33,7 +33,7 @@ class CommonUDF : public nebula::execution::eval::UDF<RK> {
 public:
   using ReturnType = typename nebula::type::TypeTraits<RK>::CppType;
   using ExprType = typename nebula::type::TypeTraits<EK>::CppType;
-  using Logic = std::function<ReturnType(const ExprType&)>;
+  using Logic = std::function<ReturnType(const ExprType&, bool& valid)>;
 
   explicit CommonUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Logic&& logic)
     : expr_{ expr->asEval() },
@@ -49,7 +49,7 @@ public:
 
   // apply a row data to get result
   virtual inline ReturnType run(const nebula::surface::RowData& row, bool& valid) const override {
-    return logic_(expr_->eval<ExprType>(row, valid));
+    return logic_(expr_->eval<ExprType>(row, valid), valid);
   }
 
 private:

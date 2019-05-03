@@ -43,7 +43,7 @@ public:
   virtual ~BlockExecutor() = default;
 
   virtual const nebula::surface::RowData& next() override;
-  virtual const nebula::surface::RowData& item(size_t) const override;
+  virtual std::unique_ptr<nebula::surface::RowData> item(size_t) const override;
 
 private:
   void compute();

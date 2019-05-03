@@ -186,8 +186,8 @@ public:
     return rowData_;
   }
 
-  virtual const RowData& item(size_t) const override {
-    return rowData_;
+  virtual std::unique_ptr<nebula::surface::RowData> item(size_t) const override {
+    throw NException("not support item");
   }
 
 private:

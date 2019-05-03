@@ -72,7 +72,7 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
   // sort and top of results
   auto schema = plan.getOutputSchema();
   const auto& phase = plan.fetch<PhaseType::GLOBAL>();
-  std::function<bool(const RowData& left, const RowData& right)> less = nullptr;
+  std::function<bool(const std::unique_ptr<RowData>& left, const std::unique_ptr<RowData>& right)> less = nullptr;
   const auto& sorts = phase.sorts();
   if (sorts.size() > 0) {
     N_ENSURE(sorts.size() == 1, "support single sorting column for now");
@@ -81,12 +81,12 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
     const auto& name = col->name();
 
 // instead of assert, we torelate column not found for sorting
-#define LESS_KIND_CASE(K, F, OP)                                \
-  case Kind::K: {                                               \
-    less = [&name](const RowData& left, const RowData& right) { \
-      return left.F(name) OP right.F(name);                     \
-    };                                                          \
-    break;                                                      \
+#define LESS_KIND_CASE(K, F, OP)                                                                  \
+  case Kind::K: {                                                                                 \
+    less = [&name](const std::unique_ptr<RowData>& left, const std::unique_ptr<RowData>& right) { \
+      return left->F(name) OP right->F(name);                                                     \
+    };                                                                                            \
+    break;                                                                                        \
   }
 #define LESS_SWITCH_DESC(OP)                \
   switch (kind) {                           \

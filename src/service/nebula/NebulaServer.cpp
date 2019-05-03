@@ -53,6 +53,20 @@ using nebula::type::Schema;
 using nebula::type::TypeNode;
 using nebula::type::TypeSerializer;
 
+grpc::Status V1ServiceImpl::Tables(grpc::ServerContext*, const ListTables* request, TableList* reply) {
+  auto bm = BlockManager::init();
+  auto limit = request->limit();
+  if (limit < 1) {
+    limit = 10;
+  }
+
+  for (const auto& table : bm->getTables(limit)) {
+    reply->add_table(table);
+  }
+
+  return Status::OK;
+}
+
 grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest* request, TableStateResponse* reply) {
   auto bm = BlockManager::init();
   // query the table's state
@@ -62,6 +76,17 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest*
   reply->set_memsize(std::get<2>(metrics));
   reply->set_mintime(std::get<3>(metrics));
   reply->set_maxtime(std::get<4>(metrics));
+
+  // TODO(cao) - need meta data system to query table info
+  auto schema = table_.getSchema();
+  for (size_t i = 0, size = schema->size(); i < size; ++i) {
+    auto column = schema->childType(i);
+    if (!column->isScalar(column->k())) {
+      reply->add_dimension(column->name());
+    } else {
+      reply->add_metric(column->name());
+    }
+  }
 
   return Status::OK;
 }
@@ -75,6 +100,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
 
   // set time range constraints in execution plan directly since it should always present
   plan->setWindow(std::make_pair(request->start(), request->end()));
+  plan->display();
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }

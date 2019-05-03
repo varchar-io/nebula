@@ -16,6 +16,12 @@ include_directories(include ${NEBULA_SRC})
 # set compiler features - use C++ 17 and above
 # Valid values after CMake 3.8 for CMAKE_CXX_STANDARD are 98, 11 and 14, with 17
 # set_property(GLOBAL PROPERTY CXX_STANDARD 17)
+# NOTE: sometimes, cmake has some stale cache which causes errors for "cmake .." like
+# CMake Error in CMakeLists.txt:
+#   Target "MainTest" requires the language dialect "CXX17" (with compiler
+#   extensions), but CMake does not know the compile flags to use to enable it.
+# To fix it, just remove all cmake related files in build folder
+# rm -rf CMakeFiles && rm -rf *.cmake && rm CMakeCache.txt
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_VERBOSE_MAKEFILE on)
@@ -37,16 +43,11 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(BUILD_SHARED_LIBS OFF)
 
 # by default using clang, turn this line on to use gcc
-# on linux use g++-7
-if(APPLE)
-  set(CMAKE_CXX_COMPILER /usr/bin/g++)
-  set(CMAKE_CC_COMPILER /usr/bin/g++)
-  set(CMAKE_C_COMPILER /usr/bin/gcc)
-else()
-  set(CMAKE_CXX_COMPILER /usr/bin/g++-7)
-  set(CMAKE_CC_COMPILER /usr/bin/g++-7)
-  set(CMAKE_C_COMPILER /usr/bin/gcc-7)
-endif()
+# link g++-7 on linux to default g++ / gcc 
+# sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 20 --slave /usr/bin/g++ g++ /usr/bin/g++-7
+set(CMAKE_CXX_COMPILER /usr/bin/g++)
+set(CMAKE_CC_COMPILER /usr/bin/g++)
+set(CMAKE_C_COMPILER /usr/bin/gcc)
 
 # TODO(cao) - move to jemalloc
 # ref https://www.facebook.com/notes/facebook-engineering/scalable-memory-allocation-using-jemalloc/480222803919/

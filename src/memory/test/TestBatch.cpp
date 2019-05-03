@@ -95,7 +95,8 @@ TEST(BatchTest, TestBatchRead) {
                      row.readString("event"),
                      i % 3 != 0 ? nullptr : row.readList("items"),
                      // row.isNull("items") ? nullptr : row.readList("items"),
-                     row.readBool("flag") });
+                     row.readBool("flag"),
+                     row.readByte("value") });
   }
 
   // print single row as string.
@@ -132,8 +133,6 @@ TEST(BatchTest, TestBatchRead) {
     for (auto i = 0; i < count; ++i) {
       const auto& r1 = rows[i];
       const auto& r2 = accessor->seek(i);
-      // LOG(INFO) << "r1: " << line(r1);
-      // LOG(INFO) << "r2: " << line(r2);
       EXPECT_EQ(line(r1), line(r2));
     }
 

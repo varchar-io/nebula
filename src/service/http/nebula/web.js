@@ -3,51 +3,114 @@ import {
 } from "./dist/web/main.js";
 
 var serviceAddr = "http://dev-shawncao:8080";
-var client = new NebulaClient.EchoClient(serviceAddr);
-// simple unary call 
-var request = new NebulaClient.EchoRequest();
-request.setName('Trends On Nebula');
-client.echoBack(request, {}, (err, response) => {
-    var display = document.getElementById("output");
-    if (err !== null) {
-        display.innerText = "Error code: " + err;
-    } else {
-        display.innerText = (response == null) ? "Failed to get reply" : response.getMessage();
+var v1Client = new NebulaClient.V1Client(serviceAddr);
+
+var formatTime = (unix) => {
+    var date = new Date(unix * 1000);
+    let y = date.getFullYear();
+    let m = date.getMonth();
+    let d = date.getDate();
+    return `${y}-${m}-${d}`;
+};
+
+let initTable = (table) => {
+    var req = new NebulaClient.TableStateRequest();
+    req.setTable(table);
+
+    // call the service 
+    v1Client.state(req, {}, (err, reply) => {
+        var stats = $('#stats');
+        if (err !== null) {
+            stats.text("Error code: " + err);
+        } else if (reply == null) {
+            stats.text("Failed to get reply");
+        } else {
+            let bc = reply.getBlockcount();
+            let rc = reply.getRowcount();
+            let ms = reply.getMemsize();
+            let mit = formatTime(reply.getMintime());
+            let mat = formatTime(reply.getMaxtime());
+
+            stats.text(`[Blocks: ${bc}, Rows: ${rc}, Mem: ${ms}, Min T: ${mit}, Max T: ${mat}]`);
+
+            // get dimension columns and metric columns
+            var dimensions = reply.getDimensionList();
+            $.each(dimensions, (key) => {
+                let v = dimensions[key];
+                if (v === "_time_") {
+                    return;
+                }
+                $('#dcolumns').append($('<option>', {
+                    value: v
+                }).text(v));
+
+                $('#fcolumns').append($('<option>', {
+                    value: v
+                }).text(v));
+            });
+            let metrics = reply.getMetricList();
+            $.each(metrics, (key) => {
+                let v = metrics[key];
+                if (v === "_time_") {
+                    return;
+                }
+
+                $('#mcolumns').append($('<option>', {
+                    value: v
+                }).text(v));
+
+                $('#fcolumns').append($('<option>', {
+                    value: v
+                }).text(v));
+            });
+
+
+        }
+    });
+};
+
+// load table list 
+var listReq = new NebulaClient.ListTables();
+listReq.setLimit(5);
+v1Client.tables(listReq, {}, (err, reply) => {
+    var list = reply.getTableList();
+    for (var i = 0; i < list.length; ++i) {
+        var key = list[i];
+        $('#tables').append($('<option>', {
+            value: key
+        }).text(key));
     }
+
+    // properties of the first table
+    initTable(list[0]);
+
 });
 
-var v1Client = new NebulaClient.V1Client(serviceAddr);
-var req = new NebulaClient.TableStateRequest();
-req.setTable("pin.trends");
-// call the service 
-v1Client.state(req, {}, (err, reply) => {
-    var result = document.getElementById("result");
-    if (err !== null) {
-        result.innerText = "Error code: " + err;
-    } else if (reply == null) {
-        result.innerText = "Failed to get reply";
-    } else {
-        let bc = reply.getBlockcount();
-        let rc = reply.getRowcount();
-        let ms = reply.getMemsize();
-        let mit = reply.getMintime();
-        let mat = reply.getMaxtime();
-        result.innerText = `[Blocks: ${bc}, Rows: ${rc}, Mem: ${ms}, Min T: ${mit}, Max T: ${mat}`;
+var opFilter = () => {
+    var op = $('#fop').val();
+    switch (op) {
+        case "EQ":
+            return NebulaClient.Operation.EQ;
+        case "NEQ":
+            return NebulaClient.Operation.NEQ;
+        case "GT":
+            return NebulaClient.Operation.MORE;
+        case "LT":
+            return NebulaClient.Operation.LESS;
+        case "LK":
+            return NebulaClient.Operation.LIKE;
     }
-});
+}
 
 // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019] 
 var execute = () => {
-    var term = document.getElementById('term').value;
-    console.log("start query...: " + term);
     var q = new NebulaClient.QueryRequest();
-    q.setTable("pin.trends");
+    q.setTable($('#tables').val());
 
     // new Date('2012.08.10').getTime() / 1000
-    var start = document.getElementById('start').value;
-    console.log("start box: " + start);
-    var end = document.getElementById('end').value;
-    if (!start) {
+    var start = $('#start').val();
+    var end = $('#end').val();
+    if (!start || !end) {
         alert('please enter start and end time');
         return;
     }
@@ -57,25 +120,23 @@ var execute = () => {
     console.log("start: " + utStart + ", end: " + utEnd);
     q.setStart(utStart);
     q.setEnd(utEnd);
-    // set constraints 
-    // var p1 = new NebulaClient.Predicate();
-    // p1.setColumn("count");
-    // p1.setOp(NebulaClient.Operation.MORE);
-    // p1.setValueList(["2"]);
+
     var p2 = new NebulaClient.Predicate();
-    p2.setColumn("query");
-    p2.setOp(NebulaClient.Operation.LIKE);
-    p2.setValueList([term + "%"]);
+    p2.setColumn($("#fcolumns").val());
+    p2.setOp(opFilter());
+    p2.setValueList([$('#fvalue').val()]);
     var filter = new NebulaClient.PredicateAnd();
     filter.setExpressionList([p2]);
     q.setFiltera(filter);
 
     // set dimensions 
-    q.setDimensionList(["query"]);
+    q.setDimensionList([$("#dcolumns").val()]);
+
     // set metric 
     var m = new NebulaClient.Metric();
-    m.setColumn("count");
-    var rollupType = document.getElementById('ru').value;
+    var mcol = $("#mcolumns").val();
+    m.setColumn(mcol);
+    var rollupType = $('#ru').val();
     switch (rollupType) {
         case "0":
             m.setMethod(NebulaClient.Rollup.COUNT);
@@ -97,25 +158,26 @@ var execute = () => {
 
     // set order and limit
     var o = new NebulaClient.Order();
-    o.setColumn("count");
-    var orderType = document.getElementById('ob').value;
+    o.setColumn(mcol);
+    var orderType = $('#ob').val();
     o.setType(orderType === "1" ? NebulaClient.OrderType.DESC : NebulaClient.OrderType.ASC);
     q.setOrder(o);
-    q.setTop(document.getElementById('limit').value);
+    q.setTop($('#limit').val());
 
     // do the query 
     v1Client.query(q, {}, (err, reply) => {
-        document.getElementById('table_head').innerHTML = "";
-        document.getElementById('table_content').innerHTML = "";
-        var result = document.getElementById('qr');
+        $('#table_head').html("");
+        $('#table_content').html("");
+
+        var result = $('#qr');
         if (err !== null) {
-            result.innerText += "Error code: " + err;
+            result.text("Error code: " + err);
         } else if (reply == null) {
-            result.innerText += "Failed to get reply";
+            result.text("Failed to get reply");
         } else {
             var stats = reply.getStats();
             var json = JSON.parse(NebulaClient.bytes2utf8(reply.getData()));
-            result.innerText = "query: " + term + ", error: " + stats.getError() + ", latency: " + stats.getQuerytimems() + " ms " + ", results: " + json.length;
+            result.text(`[query: error=${stats.getError()}, latency=${stats.getQuerytimems()}ms, rows=${json.length}]`);
 
             // Get Table headers and print 
             if (json.length > 0) {
@@ -141,9 +203,4 @@ var execute = () => {
     });
 };
 
-document.getElementById('btn').onclick = execute;
-document.getElementById('term').onkeyup = (e) => {
-    if (e.keyCode === 13) {
-        execute();
-    }
-}
+$('#btn').click(execute);

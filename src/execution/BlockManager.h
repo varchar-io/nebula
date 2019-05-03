@@ -67,6 +67,19 @@ public:
     return tableStates_.at(table);
   }
 
+  std::vector<std::string> getTables(const size_t limit) const noexcept {
+    std::vector<std::string> tables;
+    tables.reserve(limit);
+    for (auto& item : tableStates_) {
+      tables.push_back(item.first);
+      if (tables.size() >= limit) {
+        break;
+      }
+    }
+
+    return tables;
+  }
+
 private:
   void collectBlockMetrics(const nebula::meta::NBlock& meta, const nebula::memory::Batch& block) {
     const auto& table = meta.getTable();

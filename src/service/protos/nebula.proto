@@ -36,6 +36,7 @@ message EchoResponse {
 
 // all service methods are captilized compared to other regular methods
 service V1 {
+  rpc Tables(ListTables) returns(TableList) {}
   rpc State(TableStateRequest) returns(TableStateResponse) {}
   rpc Query(QueryRequest) returns(QueryResponse) {}
 }
@@ -44,12 +45,25 @@ message TableStateRequest {
   string table = 1;
 }
 
+message ListTables {
+  uint32 limit = 1;
+}
+
+message TableList {
+  repeated string table = 1;
+}
+
 message TableStateResponse {
   int32 blockCount = 1;
   int64 rowCount = 2;
   int64 memSize = 3;
   uint64 minTime = 4;
   uint64 maxTime = 5;
+
+  // columns = dimension columns + metric columns
+  // metric column are column with number types, others are dimension columns
+  repeated string dimension = 6;
+  repeated string metric = 7;
 }
 
 // define query request and response

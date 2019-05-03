@@ -74,7 +74,8 @@ TEST(FlatBufferTest, TestFlatBufferWrite) {
                      row.readString("event"),
                      i % 3 != 0 ? nullptr : row.readList("items"),
                      // row.isNull("items") ? nullptr : row.readList("items"),
-                     row.readBool("flag") });
+                     row.readBool("flag"),
+                     row.readByte("value") });
   }
 
   LOG(INFO) << "Data was generated with seed: " << seed;

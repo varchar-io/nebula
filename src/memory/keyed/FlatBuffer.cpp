@@ -242,6 +242,14 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
 }
 
 // random access to a row - may require internal seek
+const std::unique_ptr<RowData> FlatBuffer::crow(size_t rowId) const {
+  auto& rowProp = rows_[rowId];
+  auto rowOffset = std::get<0>(rowProp);
+  // calculate each column: null or not, offset,
+
+  return std::make_unique<RowAccessor>(*this, rowOffset, columnProps(rowOffset));
+}
+
 const RowData& FlatBuffer::row(size_t rowId) {
   auto& rowProp = rows_[rowId];
   auto rowOffset = std::get<0>(rowProp);
@@ -461,7 +469,7 @@ bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-RowAccessor::RowAccessor(FlatBuffer& fb, size_t offset, FlatColumnProps colProps)
+RowAccessor::RowAccessor(const FlatBuffer& fb, size_t offset, FlatColumnProps colProps)
   : fb_{ fb }, offset_{ offset }, colProps_{ std::move(colProps) } {}
 
 bool RowAccessor::isNull(IndexType index) const {

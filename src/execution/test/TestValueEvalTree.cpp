@@ -19,6 +19,7 @@
 #include "common/Evidence.h"
 #include "execution/eval/ValueEval.h"
 #include "fmt/format.h"
+#include "gmock/gmock.h"
 #include "surface/DataSurface.h"
 
 namespace nebula {
@@ -33,98 +34,130 @@ using nebula::execution::eval::ValueEval;
 using nebula::surface::MockRowData;
 using nebula::surface::RowData;
 
+class MockRow : public nebula::surface::MockRowData {
+public:
+  MockRow() = default;
+  MOCK_CONST_METHOD1(readBool, bool(const std::string&));
+  MOCK_CONST_METHOD1(readInt, int32_t(const std::string&));
+  MOCK_CONST_METHOD1(readFloat, float(const std::string&));
+  MOCK_CONST_METHOD1(isNull, bool(const std::string&));
+};
+
 TEST(ValueEvalTest, TestValueEval) {
-  MockRowData row(1);
+  auto ivalue = 10;
+  MockRow row;
+  EXPECT_CALL(row, readBool("flag")).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(row, readInt(testing::_)).WillRepeatedly(testing::Return(ivalue));
+  EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
   // int = 3 + col('a')
-  auto b1 = nebula::execution::eval::constant(3);
+  auto b1 = nebula::execution::eval::constant(ivalue);
   bool valid = true;
   auto v1 = b1->eval<int>(row, valid);
   LOG(INFO) << "b1 eval: " << v1 << ", valid:" << valid;
-  EXPECT_EQ(v1, 3);
+  EXPECT_EQ(v1, ivalue);
 
   auto b2 = nebula::execution::eval::column<int>("a");
 
-  MockRowData mirror(1);
   valid = true;
   auto v2 = b2->eval<int>(row, valid);
   LOG(INFO) << "b2 eval: " << v2;
-  EXPECT_EQ(v2, mirror.readInt("a"));
+  EXPECT_EQ(v1, v2);
 
   auto b3 = nebula::execution::eval::add<int, int, int>(std::move(b1), std::move(b2));
   valid = true;
   auto sum = b3->eval<int>(row, valid);
-  auto expected_sum = v1 + mirror.readInt("a");
+  auto expected_sum = v1 + v2;
   LOG(INFO) << "b3 eval: " << sum;
   EXPECT_EQ(sum, expected_sum);
 
-  auto b4 = nebula::execution::eval::constant(10);
+  auto b4 = nebula::execution::eval::constant(ivalue);
   auto b5 = nebula::execution::eval::lt<int, int>(std::move(b3), std::move(b4));
   valid = true;
   EXPECT_FALSE(b5->eval<bool>(row, valid));
 }
 
 TEST(ValueEvalTest, TestValueEvalArthmetic) {
-  auto seed = Evidence::ticks();
-  // add two values
-  MockRowData row(seed);
-  MockRowData mirror(seed);
-
   // add two values
   {
     const int cvalue = 128;
+    MockRow row;
+    EXPECT_CALL(row, readBool("flag")).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(row, readInt(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+
     auto b1 = nebula::execution::eval::constant(cvalue);
     auto b2 = nebula::execution::eval::column<float>("x");
     auto b3 = nebula::execution::eval::add<float, int, float>(std::move(b1), std::move(b2));
     bool valid = true;
     float add = b3->eval<float>(row, valid);
-    EXPECT_EQ(add, mirror.readFloat("x") + cvalue);
+    EXPECT_EQ(add, row.readFloat("x") + cvalue);
   }
 
   {
     const int cvalue = 10;
+    MockRow row;
+    EXPECT_CALL(row, readBool("flag")).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(row, readInt(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+
     auto b1 = nebula::execution::eval::constant(cvalue);
     auto b2 = nebula::execution::eval::column<float>("y");
     auto b3 = nebula::execution::eval::mul<float, int, float>(std::move(b1), std::move(b2));
     bool valid = true;
     float mul = b3->eval<float>(row, valid);
-    EXPECT_EQ(mul, mirror.readFloat("y") * cvalue);
+    EXPECT_EQ(mul, row.readFloat("y") * cvalue);
   }
 
   {
     const int cvalue = 2;
+    MockRow row;
+    EXPECT_CALL(row, readBool("flag")).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(row, readInt(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+
     auto b1 = nebula::execution::eval::constant(cvalue);
     auto b2 = nebula::execution::eval::column<float>("z");
     auto b3 = nebula::execution::eval::sub<float, int, float>(std::move(b1), std::move(b2));
     bool valid = true;
     float sub = b3->eval<float>(row, valid);
-    EXPECT_EQ(sub, cvalue - mirror.readFloat("z"));
+    EXPECT_EQ(sub, cvalue - row.readFloat("z"));
   }
 
   {
     const int cvalue = 2;
+    MockRow row;
+    EXPECT_CALL(row, readBool("flag")).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(row, readInt(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+
     auto b1 = nebula::execution::eval::constant(cvalue);
     auto b2 = nebula::execution::eval::column<float>("d");
     auto b3 = nebula::execution::eval::div<float, float, int>(std::move(b2), std::move(b1));
     bool valid = true;
     float div = b3->eval<float>(row, valid);
-    EXPECT_EQ(div, mirror.readFloat("d") / cvalue);
+    EXPECT_EQ(div, row.readFloat("d") / cvalue);
   }
 }
 
 TEST(ValueEvalTest, TestValueEvalLogical) {
-  auto seed = Evidence::ticks();
-  // add two values
-  MockRowData row(seed);
-  MockRowData mirror(seed);
-
   // add two values
   {
     const int cvalue = 32;
+    MockRow row;
+    EXPECT_CALL(row, readBool("flag")).WillRepeatedly(testing::Return(true));
+    EXPECT_CALL(row, readInt(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
+    EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+
     auto b1 = nebula::execution::eval::constant(cvalue);
     auto b2 = nebula::execution::eval::column<float>("x");
     auto b3 = nebula::execution::eval::mul<float, int, float>(std::move(b1), std::move(b2));
-    auto b4 = nebula::execution::eval::constant(64);
+    auto b4 = nebula::execution::eval::constant(32 * 33);
     auto b5 = nebula::execution::eval::gt<float, int>(std::move(b3), std::move(b4));
     bool valid = true;
     EXPECT_EQ(b5->eval<bool>(row, valid), false);

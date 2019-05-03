@@ -42,7 +42,8 @@ public:
   // TODO(cao) - might be too expensive if there are many items/rows to iterate on
   virtual const T& next() = 0;
 
-  virtual const T& item(size_t) const = 0;
+  // a const interface return an unique ptr for secure randome access
+  virtual std::unique_ptr<T> item(size_t) const = 0;
 
   inline size_t size() const {
     return size_;
@@ -85,7 +86,7 @@ public:
     return lists_[cursor_]->next();
   }
 
-  virtual const T& item(size_t index) const override {
+  virtual std::unique_ptr<T> item(size_t index) const override {
     // TODO(cao) - need optimize this for loop out by pre-computing the index and inside offset
     size_t i = 0;
     for (size_t size = sizes_.size(); i < size; ++i) {

@@ -3,29 +3,38 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Nebula Test Page</title>
-    <script src="jquery.min.js"></script>
+    <title>Nebula Demo Page</title>
     <script type="module" src="web.js"></script>
     <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
 
 <body>
-    <p>Response from nebula service: </p>
-    <div id="output"></div>
+    <h1>Nebula</h1>
 
-    <p>Table Statistics</p>
-    <div id="result"></div>
-    <p>Query Trends Table</p>
-    <div>Time Start: <input type="text" id="start" placeholder="2019-01-01"></div>
-    <div>Time End: <input type="text" id="end" placeholder="2019-01-01"></div>
-    <div> Term: <input id="term" type="text"></div>
-    <div> Rollup:
+    <div>Table:
+        <select id="tables"></select> <span id="stats"></span>
+    </div>
+    <hr />
+    <div>Time Start: <input type="text" id="start" value="2019-04-01">Time End: <input type="text" id="end"
+            value="2019-04-15"></div>
+    <div></div>
+    <div> Filter: <select id="fcolumns"></select><select id="fop">
+            <option value="EQ">=</option>
+            <option value="NEQ">!=</option>
+            <option value="GT">&gt;</option>
+            <option value="LT">&lt;</option>
+            <option value="LK">LIKE</option>
+        </select>
+        <input type="text" id="fvalue"></div>
+    <div> Dimension: <select id="dcolumns"></select></div>
+    <div> Metric:
         <select id="ru">
             <option value="0">COUNT</option>
             <option value="1">SUM</option>
             <option value="2">MIN</option>
             <option value="3">MAX</option>
         </select>
+        <select id="mcolumns"></select>
     </div>
     <div> Order:
         <select id="ob">
@@ -35,13 +44,14 @@
     </div>
     <div> Limit:
         <select id="limit">
+            <option value="100">20</option>
             <option value="100">100</option>
             <option value="200">200</option>
             <option value="500">500</option>
         </select>
     </div>
-    <input type="button" value="Query" id="btn">
-    <p>Query Result</p>>
+    <button id="btn">Query</button>
+    <hr />
     <div id="qr"></div>
     <table>
         <thead>

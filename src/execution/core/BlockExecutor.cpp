@@ -56,7 +56,7 @@ void BlockExecutor::compute() {
     // if not fullfil the condition
     // ignore valid here - if system can't determine how to act on NULL value
     // we don't know how to make decision here too
-    bool valid;
+    bool valid = true;
     if (!filter.eval<bool>(row, valid)) {
       continue;
     }
@@ -95,8 +95,8 @@ const RowData& BlockExecutor::next() {
   return result_->row(index_++);
 }
 
-const RowData& BlockExecutor::item(size_t index) const {
-  return result_->row(index);
+std::unique_ptr<RowData> BlockExecutor::item(size_t index) const {
+  return result_->crow(index);
 }
 
 bool ComputedRow::isNull(const std::string&) const {

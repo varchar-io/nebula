@@ -34,7 +34,7 @@ public:
   // for count, we don't need evaluate inner expr
   // unless it's distinct a column, so we can safely replace it with a const expression with value 0
   Count(std::shared_ptr<nebula::api::dsl::Expression>)
-    : CommonUDAF<KIND>(std::make_shared<nebula::api::dsl::ConstExpression<NativeType>>(0),
+    : CommonUDAF<KIND>(std::make_shared<nebula::api::dsl::ConstExpression<NativeType>>(1),
                        // block aggregate - count each item
                        [](NativeType ov, NativeType) {
                          return ov + 1;

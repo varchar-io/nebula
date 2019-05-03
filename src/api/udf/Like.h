@@ -37,8 +37,12 @@ using UdfLikeBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::V
 class Like : public UdfLikeBase {
 public:
   Like(std::shared_ptr<nebula::api::dsl::Expression> expr, const std::string& pattern)
-    : UdfLikeBase(expr, [pattern](const ExprType& source) -> ReturnType {
-        return match(source.data(), source.size(), 0, pattern.data(), pattern.size(), 0);
+    : UdfLikeBase(expr, [pattern](const ExprType& source, bool& valid) -> ReturnType {
+        if (valid) {
+          return match(source.data(), source.size(), 0, pattern.data(), pattern.size(), 0);
+        }
+
+        return false;
       }) {}
   virtual ~Like() = default;
 };
