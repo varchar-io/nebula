@@ -1,4 +1,4 @@
-import './jquery.min.js'
+import * as d3 from './d3.v5.min.js';
 
 const {
     EchoRequest,
@@ -71,5 +71,5 @@ export default {
     DataType,
     QueryResponse,
     bytes2utf8,
-    jQuery
+    d3
 };

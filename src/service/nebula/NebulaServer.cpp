@@ -97,13 +97,13 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
   ErrorCode error = ErrorCode::NONE;
   // compile the query into a plan
   auto plan = handler_.compile(*request, error);
+  if (error != ErrorCode::NONE) {
+    return replyError(error, reply, 0);
+  }
 
   // set time range constraints in execution plan directly since it should always present
   plan->setWindow(std::make_pair(request->start(), request->end()));
   plan->display();
-  if (error != ErrorCode::NONE) {
-    return replyError(error, reply, 0);
-  }
 
   RowCursor result = handler_.query(*plan, error);
   auto durationMs = tick.elapsedMs();

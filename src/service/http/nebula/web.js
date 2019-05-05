@@ -2,6 +2,10 @@ import {
     NebulaClient
 } from "./dist/web/main.js";
 
+// define jquery style selector 
+let $ = NebulaClient.d3.select;
+let $$ = (e) => $(e).property('value');
+
 var serviceAddr = "http://dev-shawncao:8080";
 var v1Client = new NebulaClient.V1Client(serviceAddr);
 
@@ -33,38 +37,20 @@ let initTable = (table) => {
 
             stats.text(`[Blocks: ${bc}, Rows: ${rc}, Mem: ${ms}, Min T: ${mit}, Max T: ${mat}]`);
 
-            // get dimension columns and metric columns
-            var dimensions = reply.getDimensionList();
-            $.each(dimensions, (key) => {
-                let v = dimensions[key];
-                if (v === "_time_") {
-                    return;
-                }
-                $('#dcolumns').append($('<option>', {
-                    value: v
-                }).text(v));
+            // populate dimension columns
+            var dimensions = reply.getDimensionList().filter((v) => v !== '_time_');
+            var options = $('#dcolumns').selectAll("option").data(dimensions).enter().append('option');
+            options.text(d => d).attr("value", d => d);
 
-                $('#fcolumns').append($('<option>', {
-                    value: v
-                }).text(v));
-            });
-            let metrics = reply.getMetricList();
-            $.each(metrics, (key) => {
-                let v = metrics[key];
-                if (v === "_time_") {
-                    return;
-                }
+            // populate metrics columns
+            var metrics = reply.getMetricList().filter((v) => v !== '_time_');
+            var options = $('#mcolumns').selectAll("option").data(metrics).enter().append('option');
+            options.text(d => d).attr("value", d => d);
 
-                $('#mcolumns').append($('<option>', {
-                    value: v
-                }).text(v));
-
-                $('#fcolumns').append($('<option>', {
-                    value: v
-                }).text(v));
-            });
-
-
+            // populate all columns
+            var all = dimensions.concat(metrics);
+            var options = $('#fcolumns').selectAll("option").data(all).enter().append('option');
+            options.text(d => d).attr("value", d => d);
         }
     });
 };
@@ -74,12 +60,8 @@ var listReq = new NebulaClient.ListTables();
 listReq.setLimit(5);
 v1Client.tables(listReq, {}, (err, reply) => {
     var list = reply.getTableList();
-    for (var i = 0; i < list.length; ++i) {
-        var key = list[i];
-        $('#tables').append($('<option>', {
-            value: key
-        }).text(key));
-    }
+    var options = $('#tables').selectAll("option").data(list).enter().append('option');
+    options.text(d => d).attr("value", d => d);
 
     // properties of the first table
     initTable(list[0]);
@@ -87,7 +69,7 @@ v1Client.tables(listReq, {}, (err, reply) => {
 });
 
 var opFilter = () => {
-    var op = $('#fop').val();
+    var op = $$('#fop');
     switch (op) {
         case "EQ":
             return NebulaClient.Operation.EQ;
@@ -105,11 +87,11 @@ var opFilter = () => {
 // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019] 
 var execute = () => {
     var q = new NebulaClient.QueryRequest();
-    q.setTable($('#tables').val());
+    q.setTable($$('#tables'));
 
     // new Date('2012.08.10').getTime() / 1000
-    var start = $('#start').val();
-    var end = $('#end').val();
+    var start = $$('#start');
+    var end = $$('#end');
     if (!start || !end) {
         alert('please enter start and end time');
         return;
@@ -122,21 +104,21 @@ var execute = () => {
     q.setEnd(utEnd);
 
     var p2 = new NebulaClient.Predicate();
-    p2.setColumn($("#fcolumns").val());
+    p2.setColumn($$("#fcolumns"));
     p2.setOp(opFilter());
-    p2.setValueList([$('#fvalue').val()]);
+    p2.setValueList([$$('#fvalue')]);
     var filter = new NebulaClient.PredicateAnd();
     filter.setExpressionList([p2]);
     q.setFiltera(filter);
 
     // set dimensions 
-    q.setDimensionList([$("#dcolumns").val()]);
+    q.setDimensionList([$$("#dcolumns")]);
 
     // set metric 
     var m = new NebulaClient.Metric();
-    var mcol = $("#mcolumns").val();
+    var mcol = $$("#mcolumns");
     m.setColumn(mcol);
-    var rollupType = $('#ru').val();
+    var rollupType = $$('#ru');
     switch (rollupType) {
         case "0":
             m.setMethod(NebulaClient.Rollup.COUNT);
@@ -159,10 +141,10 @@ var execute = () => {
     // set order and limit
     var o = new NebulaClient.Order();
     o.setColumn(mcol);
-    var orderType = $('#ob').val();
+    var orderType = $$('#ob');
     o.setType(orderType === "1" ? NebulaClient.OrderType.DESC : NebulaClient.OrderType.ASC);
     q.setOrder(o);
-    q.setTop($('#limit').val());
+    q.setTop($$('#limit'));
 
     // do the query 
     v1Client.query(q, {}, (err, reply) => {
@@ -181,26 +163,27 @@ var execute = () => {
 
             // Get Table headers and print 
             if (json.length > 0) {
-                var h = $('#table_head');
+                // append header
                 var keys = Object.keys(json[0]);
-                var columns = keys.length;
-                for (var k = 0; k < columns; k++) {
-                    h.append('<td>' + keys[k] + '</td>');
-                }
+                $('#table_head').selectAll("th").data(keys).enter().append('th').text(d => d);
 
                 // Get table body and print 
-                var c = $('#table_content');
-                for (var i = 0; i < json.length; i++) {
-                    c.append('<tr>');
-                    var row = json[i];
-                    for (var j = 0; j < columns; j++) {
-                        c.append('<td>' + row[keys[j]] + '</td>');
-                    }
-                    c.append('</tr>');
-                }
+                $('#table_content').selectAll('tr').data(json).enter().append('tr')
+                    .selectAll('td')
+                    .data((row) => {
+                        return keys.map((column) => {
+                            return {
+                                column: column,
+                                value: row[column]
+                            };
+                        });
+                    })
+                    .enter()
+                    .append('td')
+                    .text(d => d.value);
             }
         }
     });
 };
 
-$('#btn').click(execute);
+$('#btn').on("click", execute);
