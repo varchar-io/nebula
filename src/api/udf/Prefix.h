@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "CommonUDF.h"
 
 /**
@@ -25,25 +26,33 @@ namespace nebula {
 namespace api {
 namespace udf {
 
-// This UDF is doing the pattern match
-// Not sure if this is standard SQL like spec
-// It only accepts % as pattern matcher
+// This UDF similar to LIKE which does simple regular expression match
+// Prefix is specifically for prefix match, special LIKE expression can be converted to prefix match
+// such as "<anything>%"
 // when pattern see %, treat it as macro, no escape support here.
-bool match(const char* sp, const size_t ss, size_t si,
-           const char* pp, const size_t ps, size_t pi);
-
-using UdfLikeBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR>;
-class Like : public UdfLikeBase {
+using UdfPrefixBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR>;
+class Prefix : public UdfPrefixBase {
 public:
-  Like(std::shared_ptr<nebula::api::dsl::Expression> expr, const std::string& pattern)
-    : UdfLikeBase(expr, [pattern](const ExprType& source, bool& valid) -> ReturnType {
+  Prefix(std::shared_ptr<nebula::api::dsl::Expression> expr, const std::string& prefix)
+    : UdfPrefixBase(expr, [prefix](const ExprType& source, bool& valid) -> ReturnType {
         if (valid) {
-          return match(source.data(), source.size(), 0, pattern.data(), pattern.size(), 0);
+          const auto prefixSize = prefix.size();
+          if (source.size() < prefixSize) {
+            return false;
+          }
+
+          for (size_t i = 0; i < prefixSize; ++i) {
+            if (source.at(i) != prefix.at(i)) {
+              return false;
+            }
+          }
+
+          return true;
         }
 
         return false;
       }) {}
-  virtual ~Like() = default;
+  virtual ~Prefix() = default;
 };
 
 } // namespace udf

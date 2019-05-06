@@ -190,6 +190,12 @@ static LikeExpression like(const T& expr, const std::string& pattern) {
   return LikeExpression(std::shared_ptr<Expression>(new T(expr)), pattern);
 }
 
+template <typename T>
+static PrefixExpression starts(const T& expr, const std::string& prefix) {
+  // TODO(cao) - model UDAF/UDF with existing expression
+  return PrefixExpression(std::shared_ptr<Expression>(new T(expr)), prefix);
+}
+
 // TODO(cao) - we should move UDF creation out of DSL as it's logical concept
 // follow example of UDAF to be consistent
 template <typename T>

@@ -145,33 +145,33 @@ public:
   MockRowData(size_t seed = 0) : MockData(seed), seed_{ seed } {}
 
 public:
-  bool isNull(const std::string& field) const override;
-  bool readBool(const std::string& field) const override;
-  int8_t readByte(const std::string& field) const override;
-  int16_t readShort(const std::string& field) const override;
-  int32_t readInt(const std::string& field) const override;
-  int64_t readLong(const std::string& field) const override;
-  float readFloat(const std::string& field) const override;
-  double readDouble(const std::string& field) const override;
-  std::string readString(const std::string& field) const override;
+  virtual bool isNull(const std::string& field) const override;
+  virtual bool readBool(const std::string& field) const override;
+  virtual int8_t readByte(const std::string& field) const override;
+  virtual int16_t readShort(const std::string& field) const override;
+  virtual int32_t readInt(const std::string& field) const override;
+  virtual int64_t readLong(const std::string& field) const override;
+  virtual float readFloat(const std::string& field) const override;
+  virtual double readDouble(const std::string& field) const override;
+  virtual std::string readString(const std::string& field) const override;
 
   // compound types
-  std::unique_ptr<ListData> readList(const std::string& field) const override;
-  std::unique_ptr<MapData> readMap(const std::string& field) const override;
+  virtual std::unique_ptr<ListData> readList(const std::string& field) const override;
+  virtual std::unique_ptr<MapData> readMap(const std::string& field) const override;
 
-  bool isNull(IndexType index) const override;
-  bool readBool(IndexType index) const override;
-  int8_t readByte(IndexType index) const override;
-  int16_t readShort(IndexType index) const override;
-  int32_t readInt(IndexType index) const override;
-  int64_t readLong(IndexType index) const override;
-  float readFloat(IndexType index) const override;
-  double readDouble(IndexType index) const override;
-  std::string readString(IndexType index) const override;
+  virtual bool isNull(IndexType index) const override;
+  virtual bool readBool(IndexType index) const override;
+  virtual int8_t readByte(IndexType index) const override;
+  virtual int16_t readShort(IndexType index) const override;
+  virtual int32_t readInt(IndexType index) const override;
+  virtual int64_t readLong(IndexType index) const override;
+  virtual float readFloat(IndexType index) const override;
+  virtual double readDouble(IndexType index) const override;
+  virtual std::string readString(IndexType index) const override;
 
   // compound types
-  std::unique_ptr<ListData> readList(IndexType index) const override;
-  std::unique_ptr<MapData> readMap(IndexType index) const override;
+  virtual std::unique_ptr<ListData> readList(IndexType index) const override;
+  virtual std::unique_ptr<MapData> readMap(IndexType index) const override;
 
 private:
   size_t seed_;

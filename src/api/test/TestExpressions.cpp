@@ -196,6 +196,77 @@ TEST(ExpressionsTest, TestArthmeticTypeCombination) {
   }
 }
 
+// NOTE: in the test app, the MockRow may be linked to another declaration
+// in TestApi.cpp or TestValueEvalTree.cpp, better to put this in different namespace
+// or abstract it in some common place for reuse.
+class MockRow2 : public nebula::surface::MockRowData {
+public:
+  MockRow2() = default;
+
+  virtual std::string readString(const std::string&) const override {
+    return "abcdefg";
+  }
+  virtual std::string readString(size_t) const override {
+    return "abcdefg";
+  }
+  MOCK_CONST_METHOD1(isNull, bool(const std::string&));
+};
+
+TEST(ExpressionsTest, TestLikeAndPrefix) {
+  // set up table for testing
+  MockRow2 rowData;
+
+  EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+
+  nebula::meta::MockMs ms;
+  auto tbl = ms.query("nebula.test");
+
+  // verify the mocked data has expected result
+  EXPECT_EQ(rowData.readString("event"), "abcdefg");
+
+  // evaluate like
+  {
+    auto eventValue = nebula::api::dsl::like(nebula::api::dsl::col("event"), "abc%");
+    eventValue.type(*tbl);
+
+    auto eval = eventValue.asEval();
+    bool valid = true;
+    bool res = eval->eval<bool>(rowData, valid);
+    EXPECT_EQ(res, true);
+  }
+
+  {
+    auto eventValue = nebula::api::dsl::like(nebula::api::dsl::col("event"), "bc%");
+    eventValue.type(*tbl);
+
+    auto eval = eventValue.asEval();
+    bool valid = true;
+    bool res = eval->eval<bool>(rowData, valid);
+    EXPECT_EQ(res, false);
+  }
+
+  // evaluate prefix
+  {
+    auto eventValue = nebula::api::dsl::starts(nebula::api::dsl::col("event"), "abc");
+    eventValue.type(*tbl);
+
+    auto eval = eventValue.asEval();
+    bool valid = true;
+    bool res = eval->eval<bool>(rowData, valid);
+    EXPECT_EQ(res, true);
+  }
+
+  {
+    auto eventValue = nebula::api::dsl::starts(nebula::api::dsl::col("event"), "bc");
+    eventValue.type(*tbl);
+
+    auto eval = eventValue.asEval();
+    bool valid = true;
+    bool res = eval->eval<bool>(rowData, valid);
+    EXPECT_EQ(res, false);
+  }
+}
+
 #undef VERIFY_ITEM_I
 
 } // namespace test

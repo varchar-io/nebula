@@ -39,6 +39,7 @@ using nebula::api::dsl::LogicalExpression;
 using nebula::api::dsl::LogicalOp;
 using nebula::api::dsl::Query;
 using nebula::api::dsl::SortType;
+using nebula::api::dsl::starts;
 using nebula::api::dsl::table;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::core::ServerExecutor;
@@ -257,12 +258,39 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     BUILD_LOGICAL_CASE(MORE, >)
     BUILD_LOGICAL_CASE(LESS, <)
   case Operation::LIKE: {
-    auto exp = like(columnExpression, pred.value(0));
-    if (prev != nullptr) {
-      auto chain = exp && prev;
-      return std::make_shared<decltype(chain)>(chain);
+    // Optimization:
+    // like expression can be fall back to "starts" if the pattern satisfy it
+    static constexpr char matcher = '%';
+    const auto& pattern = pred.value(0);
+    size_t pos = 0;
+    auto cursor = pattern.cbegin();
+    auto end = pattern.cend();
+    while (cursor < end) {
+      if (*cursor == matcher) {
+        break;
+      }
+
+      ++pos;
+      ++cursor;
     }
-    return std::make_shared<decltype(exp)>(exp);
+
+#define RETURN_EXP(exp)                              \
+  if (prev != nullptr) {                             \
+    auto chain = exp && prev;                        \
+    return std::make_shared<decltype(chain)>(chain); \
+  }                                                  \
+  return std::make_shared<decltype(exp)>(exp);
+
+    // matcher is only at last position
+    if (pos == pattern.size() - 1) {
+      auto exp = starts(columnExpression, pattern.substr(0, pos));
+      RETURN_EXP(exp)
+    }
+
+    auto exp = like(columnExpression, pattern);
+    RETURN_EXP(exp)
+
+#undef RETURN_EXP
   }
   default:
     throw NException("Nebula predicate operation not supported yet");

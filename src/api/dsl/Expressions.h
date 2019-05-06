@@ -439,44 +439,63 @@ public:
 
 #undef CASE_KIND_UDF
 
-private:
+protected:
   std::shared_ptr<Expression> inner_;
 };
 
-class LikeExpression : public Expression {
+template <nebula::execution::eval::UDFType UDF>
+class BoolUDF : public Expression {
 public:
-  LikeExpression(std::shared_ptr<Expression> left, const std::string& pattern)
-    : left_{ left }, pattern_{ pattern } {}
-  LikeExpression(const LikeExpression&) = default;
-  LikeExpression& operator=(const LikeExpression&) = default;
-  virtual ~LikeExpression() = default;
+  BoolUDF(std::shared_ptr<Expression> expr)
+    : expr_{ expr } {}
 
 public:
-  ALL_LOGICAL_OPS()
-
   ALIAS()
 
-  IS_AGG(execution::eval::UdfTraits<nebula::execution::eval::UDFType::LIKE>::UDAF)
+  IS_AGG(execution::eval::UdfTraits<UDF>::UDAF)
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
-    auto innerType = left_->type(table);
+    expr_->type(table);
 
     // inner type is
     kind_ = nebula::type::Kind::BOOLEAN;
     return typeCreate(kind_, alias_);
   }
 
-  inline virtual std::vector<std::string> columnRefs() const override {
-    return left_->columnRefs();
-  }
+protected:
+  std::shared_ptr<Expression> expr_;
+};
+
+class LikeExpression : public BoolUDF<nebula::execution::eval::UDFType::LIKE> {
+public:
+  LikeExpression(std::shared_ptr<Expression> left, const std::string& pattern)
+    : BoolUDF<nebula::execution::eval::UDFType::LIKE>(left), pattern_{ pattern } {}
+
+public:
+  ALL_LOGICAL_OPS()
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    return nebula::api::udf::UDFFactory::createUDF<nebula::execution::eval::UDFType::LIKE, nebula::type::Kind::BOOLEAN>(left_, pattern_);
+    return nebula::api::udf::UDFFactory::createUDF<nebula::execution::eval::UDFType::LIKE, nebula::type::Kind::BOOLEAN>(expr_, pattern_);
   }
 
 private:
-  std::shared_ptr<Expression> left_;
   std::string pattern_;
+};
+
+class PrefixExpression : public BoolUDF<nebula::execution::eval::UDFType::PREFIX> {
+public:
+  PrefixExpression(std::shared_ptr<Expression> left, const std::string& prefix)
+    : BoolUDF<nebula::execution::eval::UDFType::PREFIX>(left), prefix_{ prefix } {}
+
+public:
+  ALL_LOGICAL_OPS()
+
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+    return nebula::api::udf::UDFFactory::createUDF<nebula::execution::eval::UDFType::PREFIX, nebula::type::Kind::BOOLEAN>(expr_, prefix_);
+  }
+
+private:
+  std::string prefix_;
 };
 
 #undef ARTHMETIC_OP_CONST

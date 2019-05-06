@@ -21,6 +21,7 @@
 #include "Max.h"
 #include "Min.h"
 #include "MyUdf.h"
+#include "Prefix.h"
 #include "Sum.h"
 #include "api/dsl/Base.h"
 #include "execution/eval/UDF.h"
@@ -59,6 +60,10 @@ public:
 
     if constexpr (UKIND == UDFKind::LIKE) {
       return std::make_unique<Like>(expr, std::forward<Args>(args)...);
+    }
+
+    if constexpr (UKIND == UDFKind::PREFIX) {
+      return std::make_unique<Prefix>(expr, std::forward<Args>(args)...);
     }
 
     throw NException("Unimplemented UDF");

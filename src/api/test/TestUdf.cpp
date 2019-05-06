@@ -19,6 +19,7 @@
 #include "api/dsl/Expressions.h"
 #include "api/udf/Like.h"
 #include "api/udf/MyUdf.h"
+#include "api/udf/Prefix.h"
 #include "surface/DataSurface.h"
 
 namespace nebula {
@@ -60,6 +61,31 @@ TEST(UDFTest, TestLike) {
     nebula::api::udf::Like l(c, p);
     bool valid = true;
     EXPECT_EQ(l.eval(row, valid), r);
+  }
+}
+
+TEST(UDFTest, TestPrefix) {
+  std::vector<std::tuple<std::string, std::string, bool>> data{
+    { "abcdefg", "abc", true },
+    { "Shawn says hi", "says", false },
+    { "long time no see", "long time", true },
+    { "nebula is cool", "is", false },
+    { "nebula is awesome", "nebula", true },
+    { "hi there ", "%i th", false },
+    { "hi there ", "i th", false },
+    { "hi there", "hi there", true }
+  };
+  nebula::surface::MockRowData row;
+
+  for (const auto& item : data) {
+    const auto& s = std::get<0>(item);
+    const auto& p = std::get<1>(item);
+    auto r = std::get<2>(item);
+    LOG(INFO) << "Match " << s << " with " << p << " is " << r;
+    auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string>>(s);
+    nebula::api::udf::Prefix prefix(c, p);
+    bool valid = true;
+    EXPECT_EQ(prefix.eval(row, valid), r);
   }
 }
 
