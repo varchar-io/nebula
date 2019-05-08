@@ -19,6 +19,7 @@
 #include <string>
 #include "MetaService.h"
 #include "Table.h"
+#include "type/Serde.h"
 
 /**
  * Nebula test table used for integration test.
@@ -27,18 +28,6 @@
 namespace nebula {
 namespace meta {
 
-class TestTable {
-public:
-  static const std::string& name();
-  static const std::string& schema();
-};
-
-class MockTable : public Table {
-public:
-  MockTable(const std::string&);
-  virtual ~MockTable() = default;
-};
-
 class MockMs : public MetaService {
 public:
   virtual std::shared_ptr<nebula::meta::Table> query(const std::string& name) override;
@@ -46,6 +35,21 @@ public:
   virtual std::vector<nebula::meta::NNode> queryNodes(
     const std::shared_ptr<nebula::meta::Table>,
     std::function<bool(const nebula::meta::NNode&)>) override;
+};
+
+class TestTable : public Table {
+  static constexpr auto NAME = "nebula.test";
+
+public:
+  TestTable() : Table(NAME) {
+    // TODO(cao) - let's make date as a number
+    schema_ = nebula::type::TypeSerializer::from(
+      "ROW<_time_: bigint, id:int, event:string, items:list<string>, flag:bool, value:tinyint>");
+  }
+
+  virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override {
+    return std::make_shared<MockMs>();
+  }
 };
 
 } // namespace meta

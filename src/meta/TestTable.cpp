@@ -15,7 +15,6 @@
  */
 
 #include "TestTable.h"
-#include "type/Serde.h"
 
 /**
  * Nebula test table used for integration test.
@@ -27,24 +26,8 @@ namespace meta {
 
 using nebula::type::TypeSerializer;
 
-const std::string& TestTable::name() {
-  static const std::string NAME = "nebula.test";
-  return NAME;
-}
-
-const std::string& TestTable::schema() {
-  static const std::string SCHEMA = "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>";
-  return SCHEMA;
-}
-
-MockTable::MockTable(const std::string& name) : Table(name) {
-  if (name == nebula::meta::TestTable::name()) {
-    schema_ = TypeSerializer::from(nebula::meta::TestTable::schema());
-  }
-}
-
-std::shared_ptr<nebula::meta::Table> MockMs::query(const std::string& name) {
-  return std::make_shared<MockTable>(name);
+std::shared_ptr<nebula::meta::Table> MockMs::query(const std::string&) {
+  return std::make_shared<TestTable>();
 }
 
 std::vector<nebula::meta::NNode> MockMs::queryNodes(

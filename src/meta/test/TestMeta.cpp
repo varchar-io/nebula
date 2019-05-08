@@ -26,9 +26,10 @@ namespace meta {
 namespace test {
 
 TEST(MetaTest, TestTestTable) {
+  nebula::meta::TestTable test;
   LOG(INFO) << "Table provides table logic data and physical data";
-  LOG(INFO) << "Test table name: " << TestTable::name();
-  LOG(INFO) << "Test table schema: " << TestTable::schema();
+  LOG(INFO) << "Test table name: " << test.name();
+  LOG(INFO) << "Test table schema: " << test.getSchema();
 }
 
 TEST(MetaTest, TestNBlock) {

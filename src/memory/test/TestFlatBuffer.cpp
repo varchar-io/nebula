@@ -57,20 +57,21 @@ static constexpr auto line = [](const RowData& r) {
 };
 
 TEST(FlatBufferTest, TestFlatBufferWrite) {
-  // should be a covariant of TypeNode shared_ptr<RowType> -> shared_ptr<TypeBase>
-  auto schema = TypeSerializer::from(nebula::meta::TestTable::schema());
+  nebula::meta::TestTable test;
 
   // initialize a flat row with given schema
-  FlatBuffer fb(schema);
+  FlatBuffer fb(test.getSchema());
 
   // add 10 rows
   constexpr auto rows2test = 1024;
+
   auto seed = Evidence::unix_timestamp();
   MockRowData row(seed);
   std::vector<nebula::surface::StaticRow> rows;
   // fill rows
   for (auto i = 0; i < rows2test; ++i) {
-    rows.push_back({ row.readInt("id"),
+    rows.push_back({ row.readLong("_time_"),
+                     row.readInt("id"),
                      row.readString("event"),
                      i % 3 != 0 ? nullptr : row.readList("items"),
                      // row.isNull("items") ? nullptr : row.readList("items"),
@@ -95,11 +96,10 @@ TEST(FlatBufferTest, TestFlatBufferWrite) {
 }
 
 TEST(FlatBufferTest, TestRollback) {
-  // should be a covariant of TypeNode shared_ptr<RowType> -> shared_ptr<TypeBase>
-  auto schema = TypeSerializer::from(nebula::meta::TestTable::schema());
+  nebula::meta::TestTable test;
 
   // initialize a flat row with given schema
-  FlatBuffer fb(schema);
+  FlatBuffer fb(test.getSchema());
 
   // add 10 rows
   constexpr auto rows2test = 5;

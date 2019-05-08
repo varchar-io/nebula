@@ -17,10 +17,8 @@
 #pragma once
 
 #include <glog/logging.h>
-#include "execution/ExecutionPlan.h"
 #include "memory/Batch.h"
 #include "meta/NBlock.h"
-#include "meta/TestTable.h"
 
 /**
  * This node executor accepts one request of an execution plan.
@@ -36,7 +34,8 @@ public:
 
 private:
   // Test Hook
-  std::unique_ptr<nebula::memory::Batch> loadTestBlock();
+  std::unique_ptr<nebula::memory::Batch> loadTestBlock(const nebula::meta::NBlock&);
+
   // Trends Data Hook
   std::unique_ptr<nebula::memory::Batch> loadTrendsBlock(const nebula::meta::NBlock&);
 };

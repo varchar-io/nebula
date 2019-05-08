@@ -79,9 +79,9 @@ TEST(BatchTest, TestBatch) {
 }
 
 TEST(BatchTest, TestBatchRead) {
+  nebula::meta::TestTable test;
   // need some stable data set to write out and can be verified
-  auto schema = TypeSerializer::from(nebula::meta::TestTable::schema());
-  Batch batch(schema);
+  Batch batch(test.getSchema());
 
   // add 10 rows
   auto count = 1000;
@@ -91,7 +91,8 @@ TEST(BatchTest, TestBatchRead) {
   MockRowData row;
   // fill rows
   for (auto i = 0; i < count; ++i) {
-    rows.push_back({ row.readInt("id"),
+    rows.push_back({ row.readLong("_time_"),
+                     row.readInt("id"),
                      row.readString("event"),
                      i % 3 != 0 ? nullptr : row.readList("items"),
                      // row.isNull("items") ? nullptr : row.readList("items"),

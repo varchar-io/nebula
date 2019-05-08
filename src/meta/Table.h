@@ -32,6 +32,8 @@ namespace meta {
 
 using nebula::type::Schema;
 
+class MetaService;
+
 class Table {
 public:
   Table(const std::string& name) : name_{ name }, schema_{ nullptr } {
@@ -56,6 +58,12 @@ public:
 
   inline std::string name() const {
     return name_;
+  }
+
+  // TODO(cao) - to be removed after we have meta service
+  // this is facility hard code tables for now such as TrendsTable and TestTable
+  virtual std::shared_ptr<nebula::meta::MetaService> getMs() const {
+    throw NException("Should be removed except test tables");
   }
 
 protected:

@@ -18,6 +18,7 @@
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "execution/ExecutionPlan.h"
+#include "meta/Table.h"
 #include "nebula.grpc.pb.h"
 #include "service/nebula/NebulaService.h"
 #include "surface/DataSurface.h"
@@ -30,16 +31,16 @@ namespace service {
 
 class QueryHandler final {
 public:
-  std::unique_ptr<nebula::execution::ExecutionPlan> compile(const QueryRequest&, ErrorCode&) const noexcept;
+  std::unique_ptr<nebula::execution::ExecutionPlan> compile(const nebula::meta::Table&, const QueryRequest&, ErrorCode&) const noexcept;
   nebula::surface::RowCursor query(const nebula::execution::ExecutionPlan&, ErrorCode&) const noexcept;
 
 private:
   // build the query object to execute
-  nebula::api::dsl::Query build(const QueryRequest&) const;
+  nebula::api::dsl::Query build(const nebula::meta::Table&, const QueryRequest&) const;
   // build predicate into the query
   std::shared_ptr<nebula::api::dsl::Expression> buildPredicate(
     const Predicate&,
-    const std::shared_ptr<nebula::meta::Table>,
+    const nebula::meta::Table&,
     const std::shared_ptr<nebula::api::dsl::Expression> = nullptr,
     const nebula::api::dsl::LogicalOp = nebula::api::dsl::LogicalOp::AND) const;
 

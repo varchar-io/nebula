@@ -20,7 +20,6 @@
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Trends.h"
 #include "fmt/format.h"
-#include "meta/TestTable.h"
 #include "service/nebula/NebulaService.h"
 #include "service/nebula/QueryHandler.h"
 #include "surface/DataSurface.h"
@@ -82,7 +81,7 @@ TEST(ServiceTest, TestServiceEndpoint) {
   QueryHandler handler;
   ErrorCode error = ErrorCode::NONE;
   // compile the query into a plan
-  auto plan = handler.compile(request, error);
+  auto plan = handler.compile(trends, request, error);
 
   // set time range constraints in execution plan directly since it should always present
   plan->setWindow(std::make_pair(request.start(), request.end()));

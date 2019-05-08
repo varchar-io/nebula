@@ -17,7 +17,6 @@
 #include "QueryHandler.h"
 #include <folly/Conv.h>
 #include "execution/core/ServerExecutor.h"
-#include "execution/io/trends/Trends.h"
 
 /**
  * Define some basic sharable proerpties for nebula service
@@ -43,8 +42,6 @@ using nebula::api::dsl::starts;
 using nebula::api::dsl::table;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::core::ServerExecutor;
-using nebula::execution::io::trends::TrendsTable;
-using nebula::meta::MockMs;
 using nebula::meta::Table;
 using nebula::service::Operation;
 using nebula::surface::RowCursor;
@@ -52,7 +49,7 @@ using nebula::type::Kind;
 using nebula::type::Schema;
 using nebula::type::TypeNode;
 
-std::unique_ptr<ExecutionPlan> QueryHandler::compile(const QueryRequest& request, ErrorCode& err) const noexcept {
+std::unique_ptr<ExecutionPlan> QueryHandler::compile(const Table& tb, const QueryRequest& request, ErrorCode& err) const noexcept {
   // 1. validate the query request, if failed, we can return right away
   if ((err = validate(request)) != 0) {
     return {};
@@ -61,7 +58,7 @@ std::unique_ptr<ExecutionPlan> QueryHandler::compile(const QueryRequest& request
   // 2. build query out of the request
   std::unique_ptr<ExecutionPlan> plan = nullptr;
   try {
-    Query q = build(request);
+    Query q = build(tb, request);
     return q.compile();
   } catch (const std::exception& exp) {
     LOG(ERROR) << "Error in building query: " << exp.what();
@@ -86,12 +83,11 @@ inline SortType orderTypeConvert(OrderType type) {
 }
 
 // build the query object to execute
-Query QueryHandler::build(const QueryRequest& req) const {
+Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
   // build filter
   // TODO(cao) - currently, we're using trends table to demo
   // will remove with generic meta service
-  auto tb = std::make_shared<TrendsTable>();
-  auto q = table(req.table(), tb->getMs());
+  auto q = table(req.table(), tb.getMs());
 
   std::shared_ptr<Expression> expr = nullptr;
 #define BUILD_EXPR(PREDS, LOP)                                    \
@@ -189,10 +185,10 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
 
 std::shared_ptr<Expression> QueryHandler::buildPredicate(
   const Predicate& pred,
-  const std::shared_ptr<Table> table,
+  const Table& table,
   const std::shared_ptr<Expression> prev,
   const LogicalOp op) const {
-  auto schema = table->getSchema();
+  auto schema = table.getSchema();
   const auto& columnName = pred.column();
   auto column = col(columnName);
   Kind columnType = Kind::INVALID;

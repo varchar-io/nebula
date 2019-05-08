@@ -20,7 +20,6 @@
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Trends.h"
 #include "fmt/format.h"
-#include "meta/TestTable.h"
 #include "service/nebula/NebulaService.h"
 #include "service/nebula/QueryHandler.h"
 #include "surface/DataSurface.h"
@@ -70,7 +69,7 @@ TEST(ServiceTest, TestQueryHandler) {
   ErrorCode err = ErrorCode::NONE;
 
   // No error in compiling the query
-  auto plan = handler.compile(request, err);
+  auto plan = handler.compile(trends, request, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
@@ -128,7 +127,7 @@ TEST(ServiceTest, TestJsonifyResults) {
   ErrorCode err = ErrorCode::NONE;
 
   // No error in compiling the query
-  auto plan = handler.compile(request, err);
+  auto plan = handler.compile(trends, request, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query

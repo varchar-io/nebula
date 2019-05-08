@@ -46,7 +46,7 @@ public:
   // load trends data in current process
   void loadTrends(size_t max = 0);
 
-  std::shared_ptr<nebula::meta::MetaService> getMs() const;
+  virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override;
 };
 
 class TrendsMetaService : public nebula::meta::MetaService {

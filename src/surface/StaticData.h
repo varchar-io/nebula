@@ -64,8 +64,8 @@ private:
 
 class StaticRow : public RowData {
 public:
-  StaticRow(int i, std::string s, std::unique_ptr<ListData> list, bool f, char b)
-    : id_{ i }, event_{ std::move(s) }, flag_{ f }, byte_{ b } {
+  StaticRow(int64_t t, int i, std::string s, std::unique_ptr<ListData> list, bool f, char b)
+    : time_{ t }, id_{ i }, event_{ std::move(s) }, flag_{ f }, byte_{ b } {
     if (list != nullptr) {
       items_.reserve(list->getItems());
       for (size_t k = 0; k < items_.capacity(); ++k) {
@@ -80,7 +80,7 @@ public:
   }
 
   bool isNull(IndexType index) const override {
-    return index == 2 && items_.size() == 0;
+    return index == 3 && items_.size() == 0;
   }
 
   bool readBool(const std::string&) const override {
@@ -115,6 +115,14 @@ public:
     return event_;
   }
 
+  int64_t readLong(const std::string&) const override {
+    return time_;
+  }
+
+  int64_t readLong(IndexType) const override {
+    return time_;
+  }
+
   std::unique_ptr<ListData> readList(const std::string&) const override {
     return items_.size() == 0 ? nullptr : std::make_unique<StaticList>(items_);
   }
@@ -124,7 +132,6 @@ public:
   }
 
   NOT_IMPL_FUNC(int16_t, readShort)
-  NOT_IMPL_FUNC(int64_t, readLong)
   NOT_IMPL_FUNC(float, readFloat)
   NOT_IMPL_FUNC(double, readDouble)
   NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
@@ -132,6 +139,7 @@ public:
 #undef NOT_IMPL_FUNC
 
 private:
+  int64_t time_;
   int id_;
   std::string event_;
   std::vector<std::string> items_;

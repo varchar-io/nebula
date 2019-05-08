@@ -15,9 +15,7 @@
  */
 
 #include "BlockLoader.h"
-#include "storage/CsvReader.h"
-#include "trends/Trends.h"
-#include "type/Serde.h"
+#include "meta/TestTable.h"
 
 /**
  * Exchange block units between memory and storage.s
@@ -26,37 +24,57 @@ namespace nebula {
 namespace execution {
 namespace io {
 
-using nebula::execution::io::trends::TrendsTable;
+using nebula::common::Evidence;
 using nebula::memory::Batch;
+using nebula::meta::NBlock;
 using nebula::meta::TestTable;
-using nebula::storage::CsvReader;
-using nebula::type::TypeSerializer;
+using nebula::surface::MockRowData;
 
-std::unique_ptr<nebula::memory::Batch> BlockLoader::load(const nebula::meta::NBlock& block) {
-  if (block.getTable() == TestTable::name()) {
-    return loadTestBlock();
+std::unique_ptr<Batch> BlockLoader::load(const NBlock& block) {
+  TestTable test;
+  if (block.getTable() == test.name()) {
+    return loadTestBlock(block);
   }
 
   throw NException("Not implemented yet");
 }
 
-std::unique_ptr<nebula::memory::Batch> BlockLoader::loadTestBlock() {
-  auto schema = TypeSerializer::from(TestTable::schema());
-  auto block = std::make_unique<Batch>(schema);
+class TimeProvidedRow : public MockRowData {
+public:
+  TimeProvidedRow(size_t seed, size_t start, size_t end)
+    : MockRowData(seed), rRand_{ Evidence::rand(start, end, seed) } {}
+
+  virtual int64_t readLong(const std::string& field) const override {
+    if (field == nebula::meta::Table::TIME_COLUMN) {
+      return rRand_();
+    }
+
+    return MockRowData::readLong(field);
+  }
+
+private:
+  // range [start_, end_]
+  std::function<int64_t()> rRand_;
+};
+
+std::unique_ptr<Batch> BlockLoader::loadTestBlock(const NBlock& nb) {
+  TestTable test;
+  auto block = std::make_unique<Batch>(test.getSchema());
 
   // use 1024 rows for testing
   auto rows = 10000;
 
   // use the specified seed so taht the data can repeat
-  auto seed = nebula::common::Evidence::unix_timestamp();
+  auto seed = Evidence::unix_timestamp();
 
   // a seed that triggers a bug
   // seed = 1556824936;
 
-  nebula::surface::MockRowData row(seed);
+  TimeProvidedRow row(seed, nb.start(), nb.end());
   for (auto i = 0; i < rows; ++i) {
     block->add(row);
   }
+
   // print out the block state
   LOG(INFO) << "Loaded test block: seed=" << seed << ", state=" << block->state();
 

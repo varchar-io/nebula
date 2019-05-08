@@ -39,16 +39,19 @@ let initTable = (table) => {
 
             // populate dimension columns
             var dimensions = reply.getDimensionList().filter((v) => v !== '_time_');
+            $('#dcolumns').html("");
             var options = $('#dcolumns').selectAll("option").data(dimensions).enter().append('option');
             options.text(d => d).attr("value", d => d);
 
             // populate metrics columns
             var metrics = reply.getMetricList().filter((v) => v !== '_time_');
+            $('#mcolumns').html("");
             var options = $('#mcolumns').selectAll("option").data(metrics).enter().append('option');
             options.text(d => d).attr("value", d => d);
 
             // populate all columns
             var all = dimensions.concat(metrics);
+            $('#fcolumns').html("");
             var options = $('#fcolumns').selectAll("option").data(all).enter().append('option');
             options.text(d => d).attr("value", d => d);
         }
@@ -66,6 +69,10 @@ v1Client.tables(listReq, {}, (err, reply) => {
     // properties of the first table
     initTable(list[0]);
 
+    // if user change the table selection, initialize it again
+    $('#tables').on('change', () => {
+        initTable($$('#tables'));
+    });
 });
 
 var opFilter = () => {

@@ -59,17 +59,21 @@ public: /** only static methods */
     return timegm(&t);
   }
 
-  // rand in a range
-  inline static auto rand(size_t min, size_t max, size_t seed = unix_timestamp()) -> std::function<size_t()> {
-    auto x = std::bind(std::uniform_int_distribution<size_t>(min, max), std::mt19937(seed));
+  // rand in a range [min, max] inclusively
+  template <typename T = int>
+  inline static auto rand(size_t min, size_t max, size_t seed = unix_timestamp())
+    -> std::function<std::enable_if_t<std::is_integral<T>::value, T>()> {
+    auto x = std::bind(std::uniform_int_distribution<T>(min, max), std::mt19937(seed));
     return [=]() mutable {
       return x();
     };
   }
 
   // rand in a real range of [0,1) for percentiles
-  inline static auto rand(size_t seed = unix_timestamp()) -> std::function<double()> {
-    auto x = std::bind(std::uniform_real_distribution<double>(0, 1), std::mt19937(seed));
+  template <typename T = double>
+  inline static auto rand(size_t seed = unix_timestamp())
+    -> std::function<std::enable_if_t<std::is_floating_point<T>::value, T>()> {
+    auto x = std::bind(std::uniform_real_distribution<T>(0, 1), std::mt19937(seed));
     return [x]() mutable {
       return x();
     };

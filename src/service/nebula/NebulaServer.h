@@ -18,10 +18,8 @@
 #include <grpcpp/grpcpp.h>
 #include "QueryHandler.h"
 #include "execution/io/trends/Trends.h"
-#include "meta/Table.h"
 #include "meta/TestTable.h"
 #include "nebula.grpc.pb.h"
-#include "type/Serde.h"
 
 /**
  * A cursor template that help iterating a container.
@@ -36,19 +34,34 @@ class V1ServiceImpl final : public V1::Service {
   grpc::Status State(grpc::ServerContext*, const TableStateRequest*, TableStateResponse*);
   grpc::Status Query(grpc::ServerContext*, const QueryRequest*, QueryResponse*);
 
-  // TODO(cao) - designed to serve trends table specifically, remove after having real meta service.
-  nebula::execution::io::trends::TrendsTable table_;
-
   // query handler to handle all the queries
   QueryHandler handler_;
 
 private:
   grpc::Status replyError(ErrorCode, QueryResponse*, size_t) const;
 
+  // TODO(cao) - designed to serve trends table specifically, remove after having real meta service.
+  const nebula::meta::Table& getTable(const std::string& name) const {
+    if (trends_.name() == name) {
+      return trends_;
+    }
+
+    if (test_.name() == name) {
+      return test_;
+    }
+
+    throw NException("Table not found here");
+  }
+
+  nebula::execution::io::trends::TrendsTable trends_;
+  nebula::meta::TestTable test_;
+
 public:
   void loadTrends() {
-    table_.loadTrends();
+    trends_.loadTrends();
   }
+
+  void loadNebulaTest();
 };
 
 } // namespace service

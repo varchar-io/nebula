@@ -18,6 +18,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 #include "common/Evidence.h"
 
 #include <folly/init/Init.h>
@@ -28,6 +29,7 @@
 #include "execution/BlockManager.h"
 #include "fmt/format.h"
 #include "memory/Batch.h"
+#include "meta/NBlock.h"
 #include "meta/Table.h"
 #include "nebula.grpc.pb.h"
 #include "storage/CsvReader.h"
@@ -44,6 +46,7 @@ using grpc::Status;
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::memory::Batch;
+using nebula::meta::NBlock;
 using nebula::meta::Table;
 using nebula::storage::CsvReader;
 using nebula::surface::RowCursor;
@@ -68,9 +71,10 @@ grpc::Status V1ServiceImpl::Tables(grpc::ServerContext*, const ListTables* reque
 }
 
 grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest* request, TableStateResponse* reply) {
+  const Table& table = getTable(request->table());
   auto bm = BlockManager::init();
   // query the table's state
-  auto metrics = bm->getTableMetrics(request->table());
+  auto metrics = bm->getTableMetrics(table.name());
   reply->set_blockcount(std::get<0>(metrics));
   reply->set_rowcount(std::get<1>(metrics));
   reply->set_memsize(std::get<2>(metrics));
@@ -78,7 +82,8 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest*
   reply->set_maxtime(std::get<4>(metrics));
 
   // TODO(cao) - need meta data system to query table info
-  auto schema = table_.getSchema();
+
+  auto schema = table.getSchema();
   for (size_t i = 0, size = schema->size(); i < size; ++i) {
     auto column = schema->childType(i);
     if (!column->isScalar(column->k())) {
@@ -96,7 +101,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
   nebula::common::Evidence::Duration tick;
   ErrorCode error = ErrorCode::NONE;
   // compile the query into a plan
-  auto plan = handler_.compile(*request, error);
+  auto plan = handler_.compile(getTable(request->table()), *request, error);
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }
@@ -138,6 +143,24 @@ grpc::Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, siz
   return grpc::Status(grpc::StatusCode::INTERNAL, "error: check stats");
 }
 
+void V1ServiceImpl::loadNebulaTest() {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  auto start = Evidence::time("2019-01-01", "%Y-%m-%d");
+  auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    auto begin = start + i * window;
+    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+  }
+}
+
 // Logic and data behind the server's behavior.
 class EchoServiceImpl final : public Echo::Service {
   Status EchoBack(ServerContext*, const EchoRequest* request, EchoResponse* reply) override {
@@ -160,6 +183,9 @@ void RunServer() {
   // loading data into memory
   LOG(INFO) << "Loading data for table [pin.trends] in single node.";
   v1Service.loadTrends();
+
+  // loading some rand generated data for nebula.test category
+  v1Service.loadNebulaTest();
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
