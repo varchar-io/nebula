@@ -9,6 +9,13 @@ hr {
     margin: 10pt;
 }
 
+span select {
+    font-size: 1em;
+    margin: 5pt;
+    background: azure;
+    height: 2em;
+}
+
 select {
     font-size: 0.8em;
     margin: 0 5pt;
@@ -52,4 +59,33 @@ thead {
 tbody {
     text-align: left;
     background: #eee;
+}
+
+/* BAR CHART STYLES */
+.axis {
+    font: 1em;
+}
+
+.axis path,
+.axis line {
+    fill: none;
+    stroke: #000;
+    shape-rendering: crispEdges;
+}
+
+/* PIE CHART STYLES */
+.slice text {
+    font-size: 16pt;
+    font-family: Arial;
+}
+
+.legend text {
+    font-size: 16pt;
+}
+
+/* LINE CHART STYLES */
+.line {
+    fill: none;
+    stroke: steelblue;
+    stroke-width: 2px;
 }

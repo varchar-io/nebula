@@ -67,6 +67,7 @@ grpc::Status V1ServiceImpl::Tables(grpc::ServerContext*, const ListTables* reque
     reply->add_table(table);
   }
 
+  LOG(INFO) << "Served table list request.";
   return Status::OK;
 }
 
@@ -87,12 +88,15 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest*
   for (size_t i = 0, size = schema->size(); i < size; ++i) {
     auto column = schema->childType(i);
     if (!column->isScalar(column->k())) {
-      reply->add_dimension(column->name());
+      if (!column->isCompound(column->k())) {
+        reply->add_dimension(column->name());
+      }
     } else {
       reply->add_metric(column->name());
     }
   }
 
+  LOG(INFO) << "Served table stats request for " << request->table();
   return Status::OK;
 }
 
@@ -108,7 +112,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
 
   // set time range constraints in execution plan directly since it should always present
   plan->setWindow(std::make_pair(request->start(), request->end()));
-  plan->display();
+  // plan->display();
 
   RowCursor result = handler_.query(*plan, error);
   auto durationMs = tick.elapsedMs();
