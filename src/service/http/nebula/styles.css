@@ -1,7 +1,32 @@
 div {
     background: whitesmoke;
-    font-size: 1.2em;
+    font-size: 1.1em;
     margin: 4pt 8pt;
+}
+
+.main {
+    display: table;
+    width: 100%;
+}
+
+.left {
+    width: 300pt;
+    display: table-cell;
+    border-right: #000 2px dashed;
+}
+
+.right {
+    display: table-cell;
+}
+
+div .text,
+.text input {
+    margin: 0;
+    width: 100%;
+}
+
+#stats {
+    font-size: 0.5em;
 }
 
 hr {
@@ -9,7 +34,7 @@ hr {
     margin: 10pt;
 }
 
-span select {
+#display {
     font-size: 1em;
     margin: 5pt;
     background: azure;
@@ -29,9 +54,10 @@ input {
 button {
     margin: 5pt 0;
     padding: 5pt;
-    width: 10%;
+    width: 80pt;
     background-color: #4CAF50;
     font-size: 1.2em;
+    float: right;
 }
 
 table {

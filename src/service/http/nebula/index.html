@@ -10,60 +10,74 @@
 
 <body>
     <h1>Nebula</h1>
+    <div class="main">
+        <div class="left">
+            <div>Table:
+                <select id="tables"></select>
+            </div>
+            <div id="stats"></div>
+            <hr />
+            <div>
+                <select id="display">
+                    <option value="0">Table</option>
+                    <option value="1">Time Series</option>
+                    <option value="2">Bar</option>
+                    <option value="3">Pie</option>
+                    <option value="4">Line</option>
+                </select>
+                <button id="btn">Query</button>
+            </div>
 
-    <div>Table:
-        <select id="tables"></select> <span id="stats"></span>
+            <div>Time Start: <input type="text" id="start" value="2019-04-01"></div>
+            <div>Time End: <input type="text" id="end" value="2019-04-15"></div>
+            <div>Window: <select id="window">
+                    <option value="60">1 Minute</option>
+                    <option value="3600">1 Hour</option>
+                    <option value="21600">6 Hrs</option>
+                    <option value="86400">1 Day</option>
+                    <option value="604800">1 Week</option>
+                </select>
+            </div>
+            <div> Filter: <select id="fcolumns"></select><select id="fop">
+                    <option value="EQ">=</option>
+                    <option value="NEQ">!=</option>
+                    <option value="GT">&gt;</option>
+                    <option value="LT">&lt;</option>
+                    <option value="LK">LIKE</option>
+                </select>
+                <div class="text"><input type="text" id="fvalue"></div>
+            </div>
+            <div> Dimension: <select id="dcolumns"></select></div>
+            <div> Metric:
+                <select id="ru">
+                    <option value="0">COUNT</option>
+                    <option value="1">SUM</option>
+                    <option value="2">MIN</option>
+                    <option value="3">MAX</option>
+                </select>
+                <select id="mcolumns"></select>
+            </div>
+            <div> Order:
+                <select id="ob">
+                    <option value="0">ASC</option>
+                    <option value="1">DESC</option>
+                </select>
+            </div>
+            <div> Limit:
+                <select id="limit">
+                    <option value="20">20</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                    <option value="500">500</option>
+                </select>
+            </div>
+        </div>
+        <div class="right">
+            <hr />
+            <div id="qr"></div>
+            <div id='show'></div>
+        </div>
     </div>
-    <hr />
-    <div>Time Start: <input type="text" id="start" value="2019-04-01">Time End: <input type="text" id="end"
-            value="2019-04-15"></div>
-    <div></div>
-    <div> Filter: <select id="fcolumns"></select><select id="fop">
-            <option value="EQ">=</option>
-            <option value="NEQ">!=</option>
-            <option value="GT">&gt;</option>
-            <option value="LT">&lt;</option>
-            <option value="LK">LIKE</option>
-        </select>
-        <input type="text" id="fvalue"></div>
-    <div> Dimension: <select id="dcolumns"></select></div>
-    <div> Metric:
-        <select id="ru">
-            <option value="0">COUNT</option>
-            <option value="1">SUM</option>
-            <option value="2">MIN</option>
-            <option value="3">MAX</option>
-        </select>
-        <select id="mcolumns"></select>
-    </div>
-    <div> Order:
-        <select id="ob">
-            <option value="0">ASC</option>
-            <option value="1">DESC</option>
-        </select>
-    </div>
-    <div> Limit:
-        <select id="limit">
-            <option value="20">20</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-            <option value="500">500</option>
-        </select>
-    </div>
-    <span>
-        <select id="display">
-            <option value="0">Table</option>
-            <option value="1">Time Series</option>
-            <option value="2">Bar</option>
-            <option value="3">Pie</option>
-            <option value="4">Line</option>
-        </select>
-    </span>
-    <button id="btn">Query</button>
-
-    <hr />
-    <div id="qr"></div>
-    <div id='show'></div>
 </body>
 
 </html>

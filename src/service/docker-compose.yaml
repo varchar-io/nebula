@@ -7,6 +7,10 @@ services:
     image: nebula/server
     ports:
       - "9190:9190"
+    # We're using this for performance profiling NET_ADMIN, SYS_ADMIN
+    # remove it in final production.
+    cap_add:
+      - ALL
   envoy:
     build:
       context: ./

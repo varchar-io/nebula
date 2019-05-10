@@ -55,3 +55,25 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 
 ### C++ Patterns References
 - SNIFAE - http://jguegant.github.io/blogs/tech/sfinae-introduction.html
+
+
+### profile C++ service running in a container 
+1. Run perf to profile the running server inside docker container
+    update> apt-get update
+    install perf > apt-get install linux-tools-generic
+    link perf > ln -fs /usr/lib/linux-tools/3.13.0-169-generic/perf /usr/bin/perf
+    (version may differ depends on when it's running)
+2. Find PID to attach
+    list > docker ps
+    enter > docker exec -ti service_server_1 /bin/bash
+3. Attach perf to running server and issue slow query 
+    attach > perf record -p <pid> -g
+4. Failed to run perf due to permission? 
+    try > https://blog.alicegoldfuss.com/enabling-perf-in-kubernetes/
+    something like > docker run --cap-add SYS_ADMIN ...
+5. Copy perf data from container to host
+    copy > docker cp <containerId>:/perf.data /tmp/perf.data
+6. View perf report (if no input, it will look for perf.data in current folder). 
+    report > perf report -i /tmp/perf.data
+7. To have readable report, make sure the binary has symbols in it.
+    build with symbols > -g?
