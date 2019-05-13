@@ -58,8 +58,12 @@ std::unique_ptr<ExecutionPlan> QueryHandler::compile(const Table& tb, const Quer
   // 2. build query out of the request
   std::unique_ptr<ExecutionPlan> plan = nullptr;
   try {
-    Query q = build(tb, request);
-    return q.compile();
+    auto plan = build(tb, request).compile();
+
+    // set time window in query plan
+    plan->setWindow(std::make_pair(request.start(), request.end()));
+
+    return plan;
   } catch (const std::exception& exp) {
     LOG(ERROR) << "Error in building query: " << exp.what();
     err = ErrorCode::FAIL_BUILD_QUERY_PLAN;
@@ -126,14 +130,47 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
   std::vector<std::shared_ptr<Expression>> fields;
   std::vector<size_t> keys;
   std::vector<std::string> columns;
-  for (auto i = 0, size = req.dimension_size(); i < size; ++i) {
-    const auto& colName = req.dimension(i);
-    columns.push_back(colName);
-    fields.push_back(std::make_shared<ColumnExpression>(colName));
 
-    // group by clause uses 1-based index
-    keys.push_back(i + 1);
+  // If this is a timeline query, we only build time as dimension ignoring any any pre-set dimensions
+  const auto isTimeline = req.display() == DisplayType::TIMELINE;
+  if (isTimeline) {
+    const auto& column = Table::TIME_COLUMN;
+
+    columns.push_back(column);
+
+    // fields.push_back(std::make_shared<U>(Table::TIME_COLUMN, ));
+    auto range = req.end() - req.start();
+    int32_t window = (int32_t)req.window();
+    auto buckets = window == 0 ? req.top() : range / window;
+
+    // only one bucket?
+    std::shared_ptr<Expression> windowExpr = nullptr;
+    if (buckets < 2) {
+      auto w = std::make_shared<ConstExpression<int64_t>>(0);
+      w->as(Table::WINDOW_COLUMN);
+      windowExpr = w;
+    } else {
+      int64_t beginTime = (int64_t)req.start();
+      auto expr = ((col(column) - beginTime) / window).as(Table::WINDOW_COLUMN);
+      windowExpr = std::make_shared<decltype(expr)>(expr);
+    }
+
+    N_ENSURE_NOT_NULL(windowExpr, "window expr should be built");
+    N_ENSURE_EQ(windowExpr->alias(), Table::WINDOW_COLUMN, "expected window alias");
+    fields.push_back(windowExpr);
+
+    keys.push_back(1);
+  } else {
+    for (auto i = 0, size = req.dimension_size(); i < size; ++i) {
+      const auto& colName = req.dimension(i);
+      columns.push_back(colName);
+      fields.push_back(std::make_shared<ColumnExpression>(colName));
+
+      // group by clause uses 1-based index
+      keys.push_back(i + 1);
+    }
   }
+
   for (auto i = 0, size = req.metric_size(); i < size; ++i) {
     const auto& m = req.metric(i);
     // build metric may change column name, using its alais
@@ -144,7 +181,10 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
   q.select(fields).groupby(keys);
 
   // build sorting and limit/top property
-  if (req.has_order()) {
+  if (isTimeline) {
+    // timeline always sort by time window as first column
+    q.sortby({ 1 });
+  } else if (req.has_order()) {
     auto order = req.order();
     // search column index
     for (size_t i = 0, size = columns.size(); i < size; ++i) {

@@ -92,21 +92,25 @@ enum class UDFType {
 template <UDFType UDFKind>
 struct UdfTraits {};
 
-#define DEFINE_UDF_TRAITS(NAME, IsUdaf)  \
-  template <>                            \
-  struct UdfTraits<UDFType::NAME> {      \
-    static constexpr bool UDAF = IsUdaf; \
+#define DEFINE_UDF_TRAITS(NAME, ISUDAF, KIND)        \
+  template <>                                        \
+  struct UdfTraits<UDFType::NAME> {                  \
+    static constexpr bool UDAF = ISUDAF;             \
+    static constexpr nebula::type::Kind Type = KIND; \
   };
 
-// define each UDAF type taits
-DEFINE_UDF_TRAITS(NOT, false)
-DEFINE_UDF_TRAITS(LIKE, false)
-DEFINE_UDF_TRAITS(PREFIX, false)
-DEFINE_UDF_TRAITS(MAX, true)
-DEFINE_UDF_TRAITS(MIN, true)
-DEFINE_UDF_TRAITS(AVG, true)
-DEFINE_UDF_TRAITS(COUNT, true)
-DEFINE_UDF_TRAITS(SUM, true)
+// define each UDAF type taits:
+// ISUDAF: whether it is UDAF or normal UDF
+// KIND: does this UDF has fixied result type, such as count -> bigint
+// invalid means unknown determined at runt time
+DEFINE_UDF_TRAITS(NOT, false, nebula::type::Kind::BOOLEAN)
+DEFINE_UDF_TRAITS(LIKE, false, nebula::type::Kind::BOOLEAN)
+DEFINE_UDF_TRAITS(PREFIX, false, nebula::type::Kind::BOOLEAN)
+DEFINE_UDF_TRAITS(MAX, true, nebula::type::Kind::INVALID)
+DEFINE_UDF_TRAITS(MIN, true, nebula::type::Kind::INVALID)
+DEFINE_UDF_TRAITS(AVG, true, nebula::type::Kind::INVALID)
+DEFINE_UDF_TRAITS(COUNT, true, nebula::type::Kind::BIGINT)
+DEFINE_UDF_TRAITS(SUM, true, nebula::type::Kind::INVALID)
 
 #undef DEFINE_UDF_TRAITS
 

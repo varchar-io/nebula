@@ -84,7 +84,6 @@ TEST(ServiceTest, TestServiceEndpoint) {
   auto plan = handler.compile(trends, request, error);
 
   // set time range constraints in execution plan directly since it should always present
-  plan->setWindow(std::make_pair(request.start(), request.end()));
   plan->display();
   EXPECT_EQ(error, ErrorCode::NONE);
 

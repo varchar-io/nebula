@@ -22,6 +22,7 @@
 #include "api/dsl/Expressions.h"
 #include "common/Cursor.h"
 #include "common/Errors.h"
+#include "common/Evidence.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
 #include "execution/BlockManager.h"
@@ -30,6 +31,7 @@
 #include "execution/io/trends/Trends.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
+#include "meta/NBlock.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"
 #include "type/Serde.h"
@@ -40,10 +42,13 @@ namespace test {
 
 using namespace nebula::api::dsl;
 using nebula::common::Cursor;
+using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::TrendsTable;
 using nebula::meta::MockMs;
+using nebula::meta::NBlock;
+using nebula::meta::TestTable;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
@@ -123,26 +128,38 @@ TEST(ApiTest, TestMatchedKeys) {
 }
 
 TEST(ApiTest, TestMultipleBlocks) {
-  TrendsTable trends;
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  int64_t start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
+  int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    auto begin = start + i * window;
+    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+  }
+
   // query this table
-  const auto query = table(trends.name(), trends.getMs())
-                       .where(col("_time_") > 1554076800 && col("_time_") < 1556582400 && like(col("query"), "apple%"))
+  const auto query = table(testTable.name(), testTable.getMs())
+                       .where(col("_time_") > start && col("_time_") < end && like(col("event"), "NN%"))
                        .select(
-                         col("query"),
-                         count(col("count")).as("total"))
+                         col("event"),
+                         count(col("value")).as("total"))
                        .groupby({ 1 })
                        .sortby({ 2 }, SortType::DESC)
                        .limit(10);
 
   // compile the query into an execution plan
   auto plan = query.compile();
-  plan->setWindow({ 1554076800, 1556582400 });
+  plan->setWindow({ start, end });
 
   // print out the plan through logging
   plan->display();
-
-  // load test data to run this query
-  trends.loadTrends(10);
 
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
@@ -154,11 +171,11 @@ TEST(ApiTest, TestMultipleBlocks) {
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
   LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << fmt::format("col: {0:20} | {1:12}", "Query", "Total");
+  LOG(INFO) << fmt::format("col: {0:20} | {1:12}", "event", "Total");
   while (result->hasNext()) {
     const auto& row = result->next();
     LOG(INFO) << fmt::format("row: {0:20} | {1:12}",
-                             row.readString("query"),
+                             row.readString("event"),
                              row.readInt("total"));
   }
 }

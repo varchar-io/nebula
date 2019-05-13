@@ -171,13 +171,11 @@ public:
 
   ArthmeticExpression(const ArthmeticExpression& other)
     : Expression(other), op1_{ other.op1_ }, op2_{ other.op2_ } {
-    extractAlias(op1_->alias(), op2_->alias());
   }
 
   ArthmeticExpression& operator=(const ArthmeticExpression& other) {
     op1_ = other.op1_;
     op2_ = other.op2_;
-    extractAlias(op1_->alias(), op2_->alias());
     return *this;
   }
 
@@ -247,13 +245,11 @@ public:
   }
   LogicalExpression(const LogicalExpression& other)
     : Expression(other), op1_{ other.op1_ }, op2_{ other.op2_ } {
-    extractAlias(op1_->alias(), op2_->alias());
   }
 
   LogicalExpression& operator=(const LogicalExpression& other) {
     op1_ = other.op1_;
     op2_ = other.op2_;
-    extractAlias(op1_->alias(), op2_->alias());
     return *this;
   }
   virtual ~LogicalExpression() = default;
@@ -405,10 +401,25 @@ public:
   IS_AGG(execution::eval::UdfTraits<UT>::UDAF)
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
-    auto innerType = inner_->type(table);
+    // if this UDF has pre-defined type, we don't need to get it from inner expression then
+    kind_ = execution::eval::UdfTraits<UT>::Type;
+    if (kind_ == nebula::type::Kind::INVALID) {
+      auto innerType = inner_->type(table);
+      // inner type is
+      kind_ = inner_->kind();
 
-    // inner type is
-    kind_ = inner_->kind();
+      // TODO(cao) - do some tweak on sum to aovid overflow.
+      // This can be done in user query side by providing type casing function.
+      // instead of changing types here, we can also allow user to do "sum(col("tinyint_col").cast(bigint))"
+      if constexpr (UT == nebula::execution::eval::UDFType::SUM) {
+        if (kind_ >= nebula::type::Kind::TINYINT && kind_ <= nebula::type::Kind::BIGINT) {
+          kind_ = nebula::type::Kind::BIGINT;
+        } else if (kind_ == nebula::type::Kind::REAL || kind_ == nebula::type::Kind::DOUBLE) {
+          kind_ = nebula::type::Kind::DOUBLE;
+        }
+      }
+    }
+
     return typeCreate(kind_, alias_);
   }
 

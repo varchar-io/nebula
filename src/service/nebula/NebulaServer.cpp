@@ -110,8 +110,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
     return replyError(error, reply, 0);
   }
 
-  // set time range constraints in execution plan directly since it should always present
-  plan->setWindow(std::make_pair(request->start(), request->end()));
+  // display query plan in console
   // plan->display();
 
   RowCursor result = handler_.query(*plan, error);

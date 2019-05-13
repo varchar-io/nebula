@@ -125,6 +125,19 @@ message Order {
   OrderType type = 2;
 }
 
+// display type of the result data set in client side
+// This may or may not be used by server
+// It is optional for potential optimization
+enum DisplayType {
+  UNKNOWN = 0;
+  SAMPLES = 1;
+  TABLE = 2;
+  TIMELINE = 3;
+  BAR = 4;
+  PIE = 5;
+  LINE = 6;
+}
+
 // define query request 
 message QueryRequest {
   string table = 1;
@@ -155,6 +168,9 @@ message QueryRequest {
 
   // define order spec
   Order order = 10;
+
+  // display type for query result
+  DisplayType display = 11;
 }
 
 // define query processing metrics

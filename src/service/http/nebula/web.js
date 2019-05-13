@@ -106,7 +106,23 @@ const opFilter = () => {
         case "LK":
             return NebulaClient.Operation.LIKE;
     }
-}
+};
+
+const displayType = () => {
+    const op = $$('#display');
+    switch (op) {
+        case "0":
+            return NebulaClient.DisplayType.TABLE;
+        case "1":
+            return NebulaClient.DisplayType.TIMELINE;
+        case "2":
+            return NebulaClient.DisplayType.BAR;
+        case "3":
+            return NebulaClient.DisplayType.PIE;
+        case "4":
+            return NebulaClient.DisplayType.LINE;
+    }
+};
 
 // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019] 
 const execute = () => {
@@ -137,6 +153,10 @@ const execute = () => {
 
     // set dimensions 
     q.setDimensionList([$$("#dcolumns")]);
+
+    // set query type and window
+    q.setDisplay(displayType());
+    q.setWindow($$("#window"));
 
     // set metric 
     const m = new NebulaClient.Metric();
@@ -417,6 +437,7 @@ const execute = () => {
                         displayTable(json);
                         break;
                     case '1':
+                        displayLine(json, keys.d, keys.m);
                         break;
                     case '2':
                         displayBar(json, keys.d, keys.m);

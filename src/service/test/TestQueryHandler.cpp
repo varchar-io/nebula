@@ -20,6 +20,8 @@
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Trends.h"
 #include "fmt/format.h"
+#include "meta/NBlock.h"
+#include "meta/TestTable.h"
 #include "service/nebula/NebulaService.h"
 #include "service/nebula/QueryHandler.h"
 #include "surface/DataSurface.h"
@@ -35,6 +37,8 @@ using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::TrendsTable;
+using nebula::meta::NBlock;
+using nebula::meta::TestTable;
 using nebula::service::ErrorCode;
 using nebula::surface::RowData;
 using nebula::type::Schema;
@@ -128,6 +132,60 @@ TEST(ServiceTest, TestJsonifyResults) {
 
   // No error in compiling the query
   auto plan = handler.compile(trends, request, err);
+  EXPECT_EQ(err, ErrorCode::NONE);
+
+  // No error in exeucting the query
+  auto result = handler.query(*plan, err);
+  EXPECT_EQ(err, ErrorCode::NONE);
+
+  LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << ServiceProperties::jsonify(result, plan->getOutputSchema());
+}
+
+TEST(ServiceTest, TestQueryTimeline) {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  auto start = Evidence::time("2019-01-01", "%Y-%m-%d");
+  auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    auto begin = start + i * window;
+    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+  }
+
+  // load test data to run this query
+  nebula::common::Evidence::Duration tick;
+  QueryHandler handler;
+  QueryRequest request;
+  request.set_table(testTable.name());
+  request.set_start(Evidence::time("2019-02-01", "%Y-%m-%d"));
+  request.set_end(Evidence::time("2019-05-01", "%Y-%m-%d"));
+  auto pa = request.mutable_filtera();
+  // COUNT needs to be more than 2
+  {
+    auto expr = pa->add_expression();
+    expr->set_column("event");
+    expr->set_op(Operation::LIKE);
+    expr->add_value("NN%");
+  }
+
+  // set the query purpose as timeline
+  request.set_display(DisplayType::TIMELINE);
+  request.set_window(7 * 24 * 3600);
+  auto metric = request.add_metric();
+  metric->set_column("value");
+  metric->set_method(Rollup::COUNT);
+
+  ErrorCode err = ErrorCode::NONE;
+
+  // No error in compiling the query
+  auto plan = handler.compile(testTable, request, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query

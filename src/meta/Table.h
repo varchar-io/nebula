@@ -50,6 +50,9 @@ public:
   // move this to core/meta to be shared everywhere
   static constexpr auto TIME_COLUMN = "_time_";
 
+  // window column is produced from time window based on windowing algorithm
+  static constexpr auto WINDOW_COLUMN = "_window_";
+
 public:
   virtual Schema getSchema() const {
     N_ENSURE_NOT_NULL(schema_, fmt::format("invalid table not found = {0}", name_));
