@@ -125,6 +125,27 @@ const displayType = () => {
 };
 
 // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019] 
+// place basic check before sending to server
+// return true if failed the check
+const checkRequest = () => {
+    // 1. timeline query
+    const display = $$("#display");
+    if (display === "1") {
+        const windowSize = $$("#window");
+        const start = new Date($$("#start")).getTime();
+        const end = new Date($$("#end")).getTime();
+        const rangeSeconds = (end - start) / 1000;
+        const buckets = rangeSeconds / windowSize;
+        if (buckets > 500) {
+            $("#qr").text(`Too many data points to return ${buckets}, please increase window granularity.`);
+            return true;
+        }
+    }
+
+    // pass the check
+    return false;
+};
+
 const execute = () => {
     const q = new NebulaClient.QueryRequest();
     q.setTable($$('#tables'));
@@ -343,7 +364,7 @@ const execute = () => {
             .text((d, i) => json[i][key]);
     };
 
-    const displayLine = (json, key, value) => {
+    const displayLine = (json, value, format) => {
         // clear the area first
         const area = $('#show');
         area.html("");
@@ -388,7 +409,7 @@ const execute = () => {
             .attr("transform", `translate(0, ${height})`)
             .call(
                 d3.axisBottom(x)
-                .tickFormat((d, i) => json[i][key]));
+                .tickFormat(format()));
 
         // Add the Y Axis
         svg.append("g").call(d3.axisLeft(y));
@@ -414,6 +435,31 @@ const execute = () => {
         };
     };
 
+    const MIN_SECONDS = 60;
+    const HOUR_SECONDS = MIN_SECONDS * 60;
+    const DAY_SECONDS = HOUR_SECONDS * 24;
+    const WEEK_SECONDS = DAY_SECONDS * 7;
+    const timeFormat = (unit) => {
+        // unit is secnods value
+        // format refer: https://github.com/d3/d3-time-format
+        let fmt = "%b,%Y";
+        if (unit < MIN_SECONDS) {
+            fmt = "%S";
+        } else if (unit < HOUR_SECONDS) {
+            fmt = "%H:%M:%S";
+        } else if (unit < DAY_SECONDS) {
+            fmt = "%H:%M";
+        } else if (unit < WEEK_SECONDS) {
+            fmt = "%m/%d";
+        }
+
+        return d3.timeFormat(fmt);
+    };
+
+    if (checkRequest()) {
+        return;
+    }
+
     v1Client.query(q, {}, (err, reply) => {
         $('#table_head').html("");
         $('#table_content').html("");
@@ -437,7 +483,12 @@ const execute = () => {
                         displayTable(json);
                         break;
                     case '1':
-                        displayLine(json, keys.d, keys.m);
+                        const WINDOW_KEY = '_window_';
+                        const start = new Date($$('#start')).getTime();
+                        const window = +$$('#window');
+                        const fmt = timeFormat(window);
+
+                        displayLine(json, keys.m, () => (d, i) => fmt(new Date(start + window * 1000 * json[i][WINDOW_KEY])));
                         break;
                     case '2':
                         displayBar(json, keys.d, keys.m);
@@ -446,7 +497,7 @@ const execute = () => {
                         displayPie(json, keys.d, keys.m);
                         break;
                     case '4':
-                        displayLine(json, keys.d, keys.m);
+                        displayLine(json, keys.m, () => (d, i) => json[i][key]);
                         break;
                 }
             }

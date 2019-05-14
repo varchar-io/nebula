@@ -159,6 +159,9 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
     N_ENSURE_EQ(windowExpr->alias(), Table::WINDOW_COLUMN, "expected window alias");
     fields.push_back(windowExpr);
 
+    // timeline doesn't follow limit settings
+    q.limit(buckets);
+
     keys.push_back(1);
   } else {
     for (auto i = 0, size = req.dimension_size(); i < size; ++i) {
@@ -196,11 +199,13 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
   }
 
   // set number of results to return
-  auto limit = req.top();
-  if (limit == 0) {
-    limit = ServiceProperties::DEFAULT_TOP_SIZE;
+  if (!isTimeline) {
+    auto limit = req.top();
+    if (limit == 0) {
+      limit = ServiceProperties::DEFAULT_TOP_SIZE;
+    }
+    q.limit(limit);
   }
-  q.limit(limit);
 
   return q;
 }
