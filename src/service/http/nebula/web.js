@@ -497,7 +497,7 @@ const execute = () => {
                         displayPie(json, keys.d, keys.m);
                         break;
                     case '4':
-                        displayLine(json, keys.m, () => (d, i) => json[i][key]);
+                        displayLine(json, keys.m, () => (d, i) => json[i][keys.d]);
                         break;
                 }
             }
