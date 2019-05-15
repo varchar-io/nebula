@@ -164,13 +164,18 @@ const execute = () => {
     q.setStart(utStart);
     q.setEnd(utEnd);
 
-    const p2 = new NebulaClient.Predicate();
-    p2.setColumn($$("#fcolumns"));
-    p2.setOp(opFilter());
-    p2.setValueList([$$('#fvalue')]);
-    const filter = new NebulaClient.PredicateAnd();
-    filter.setExpressionList([p2]);
-    q.setFiltera(filter);
+    // the filter can be much more complex
+    // but now, it only take one filter
+    const fvalue = $$('#fvalue');
+    if (fvalue) {
+        const p2 = new NebulaClient.Predicate();
+        p2.setColumn($$("#fcolumns"));
+        p2.setOp(opFilter());
+        p2.setValueList([fvalue]);
+        const filter = new NebulaClient.PredicateAnd();
+        filter.setExpressionList([p2]);
+        q.setFiltera(filter);
+    }
 
     // set dimensions 
     q.setDimensionList([$$("#dcolumns")]);
@@ -372,9 +377,9 @@ const execute = () => {
         // set the dimensions and margins of the graph
         const margin = {
             top: 20,
-            right: 50,
+            right: 60,
             bottom: 20,
-            left: 50
+            left: 60
         };
 
         const width = area.node().scrollWidth - margin.left - margin.right;
