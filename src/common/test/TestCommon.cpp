@@ -195,6 +195,20 @@ TEST(SliceTest, TestSliceWrite) {
 
 TEST(EvidenceTest, TestTimeParsing) {
   LOG(INFO) << "2019-04-01 = " << Evidence::time("2019-04-01", "%Y-%m-%d");
+
+  {
+    auto time1 = Evidence::time("2019-04-01 23:23:45", "%Y-%m-%d %H:%M:%S");
+    auto time2 = Evidence::time("2019-04-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+    LOG(INFO) << "time1: " << time1 << ", time2:" << time2;
+    EXPECT_EQ(Evidence::date(time1), time2);
+  }
+
+  {
+    auto time1 = Evidence::time("2019-03-31 00:45:22", "%Y-%m-%d %H:%M:%S");
+    auto time2 = Evidence::time("2019-03-31 00:00:00", "%Y-%m-%d %H:%M:%S");
+    LOG(INFO) << "time1: " << time1 << ", time2:" << time2;
+    EXPECT_EQ(Evidence::date(time1), time2);
+  }
 }
 
 TEST(EvidenceTest, TestRand) {

@@ -81,7 +81,7 @@ std::shared_ptr<nebula::meta::MetaService> TrendsTable::getMs() const {
   return std::shared_ptr<nebula::meta::MetaService>(new TrendsMetaService());
 }
 
-void TrendsTable::loadTrends(size_t max) {
+void TrendsTable::load(size_t max) {
   // load test data to run this query
   auto bm = BlockManager::init();
 

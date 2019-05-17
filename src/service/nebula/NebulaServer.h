@@ -17,6 +17,7 @@
 
 #include <grpcpp/grpcpp.h>
 #include "QueryHandler.h"
+#include "execution/io/trends/Pins.h"
 #include "execution/io/trends/Trends.h"
 #include "meta/TestTable.h"
 #include "nebula.grpc.pb.h"
@@ -46,6 +47,10 @@ private:
       return trends_;
     }
 
+    if (pins_.name() == name) {
+      return pins_;
+    }
+
     if (test_.name() == name) {
       return test_;
     }
@@ -54,11 +59,16 @@ private:
   }
 
   nebula::execution::io::trends::TrendsTable trends_;
+  nebula::execution::io::trends::PinsTable pins_;
   nebula::meta::TestTable test_;
 
 public:
   void loadTrends() {
-    trends_.loadTrends();
+    trends_.load();
+  }
+
+  void loadPins() {
+    pins_.load();
   }
 
   void loadNebulaTest();

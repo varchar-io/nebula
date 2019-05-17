@@ -8,6 +8,7 @@ add_library(${NEBULA_EXEC} STATIC
     ${NEBULA_SRC}/execution/core/NodeExecutor.cpp    
     ${NEBULA_SRC}/execution/core/ServerExecutor.cpp    
     ${NEBULA_SRC}/execution/io/BlockLoader.cpp
+    ${NEBULA_SRC}/execution/io/trends/Pins.cpp
     ${NEBULA_SRC}/execution/io/trends/Trends.cpp
     ${NEBULA_SRC}/execution/op/Operator.cpp
     ${NEBULA_SRC}/execution/BlockManager.cpp
@@ -20,7 +21,10 @@ target_link_libraries(${NEBULA_EXEC}
     PRIVATE ${NEBULA_SURFACE}
     PRIVATE ${NEBULA_STORAGE}
     PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${FMT_LIBRARY})
+    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${ROARING_LIBRARY})
 
 # include its own root directory for searching headers
 # set(NEXEC_INCLUDE_DIRS ${NEBULA_SRC}/execution)
@@ -50,9 +54,6 @@ target_link_libraries(ExecTests
     PRIVATE ${NEBULA_EXEC}
     PRIVATE ${GTEST_LIBRARY}
     PRIVATE ${GTEST_MAIN_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GMOCK_LIBRARY})
 
 # discover all gtests in this module

@@ -43,7 +43,7 @@ using nebula::type::TypeSerializer;
 TEST(ServiceTest, TestServiceEndpoint) {
   TrendsTable trends;
   // load test data to run this query
-  trends.loadTrends(10);
+  trends.load(10);
 
   //    .where(col("_time_") > 1554076800 && col("_time_") < 1556582400 && like(col("query"), "apple%"))
   //    .select(

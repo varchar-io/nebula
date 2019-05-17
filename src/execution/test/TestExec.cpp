@@ -14,15 +14,21 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
-#include "fmt/format.h"
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
+#include "execution/io/trends/Pins.h"
 
 namespace nebula {
 namespace execution {
 namespace test {
 TEST(ExecutionTest, TestOperator) {
   LOG(INFO) << "Execution provides physical executuin units at any stage";
+}
+
+TEST(ExecutionTest, TestLoadPins) {
+  nebula::execution::io::trends::PinsTable pins;
+  pins.load(1);
 }
 } // namespace test
 } // namespace execution

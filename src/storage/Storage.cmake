@@ -28,20 +28,20 @@ include_directories(include ${ROARING_INCLUDE_DIRS})
 # set up directory to search for headers
 include_directories(include ${GTEST_INCLUDE_DIRS})
 
-# build test binary
-# add_executable(StorageTests
-#     ${NEBULA_SRC}/storage/test/TestStorage.cpp)
+#build test binary
+add_executable(StorageTests
+    ${NEBULA_SRC}/storage/test/TestStorage.cpp)
 
-# target_link_libraries(StorageTests 
-#     PRIVATE ${GTEST_LIBRARY} 
-#     PRIVATE ${GTEST_MAIN_LIBRARY} 
-#     PRIVATE ${FMT_LIBRARY}
-#     PRIVATE ${ROARING_LIBRARY}
-#     PRIVATE ${GFLAGS_LIBRARY}
-#     PRIVATE ${GLOG_LIBRARY}
-#     PRIVATE ${NEBULA_STORAGE}
-#     PRIVATE ${FOLLY_LIBRARY})
+target_link_libraries(StorageTests 
+    PRIVATE ${NEBULA_STORAGE}    
+    PRIVATE ${GTEST_LIBRARY} 
+    PRIVATE ${GTEST_MAIN_LIBRARY} 
+    PRIVATE ${FOLLY_LIBRARY}
+    PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${ROARING_LIBRARY})
 
-# # discover all gtests in this module
-# include(GoogleTest)
-# gtest_discover_tests(StorageTests TEST_LIST ALL)
+# discover all gtests in this module
+include(GoogleTest)
+gtest_discover_tests(StorageTests TEST_LIST ALL)

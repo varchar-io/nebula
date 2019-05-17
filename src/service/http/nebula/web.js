@@ -381,12 +381,20 @@ const execute = () => {
             bottom: 20,
             left: 60
         };
+        const tickWidth = 80;
 
         const width = area.node().scrollWidth - margin.left - margin.right;
         const height = 400 - margin.top - margin.bottom;
+        let ticks = Math.ceil(width / tickWidth);
+        let scale = Math.floor(json.length / ticks);
+        if (scale < 1) {
+            scale = 1;
+            ticks = json.length - 1;
+        }
+        console.log(`Total ticks: ${ticks} -> ${scale}`);
 
         // set the ranges
-        const x = d3.scaleTime().range([0, width]).domain(d3.extent(json, (d, i) => i));
+        const x = d3.scaleLinear().range([0, width]).domain([0, json.length - 1]);
         const y = d3.scaleLinear().range([height, 0]).domain([0, d3.max(json, (d) => d[value])]);
 
         // define the line
@@ -414,7 +422,8 @@ const execute = () => {
             .attr("transform", `translate(0, ${height})`)
             .call(
                 d3.axisBottom(x)
-                .tickFormat(format()));
+                .ticks(ticks)
+                .tickFormat(format(scale)));
 
         // Add the Y Axis
         svg.append("g").call(d3.axisLeft(y));
@@ -455,7 +464,7 @@ const execute = () => {
         } else if (unit < DAY_SECONDS) {
             fmt = "%H:%M";
         } else if (unit < WEEK_SECONDS) {
-            fmt = "%m/%d";
+            fmt = "%m/%d/%y";
         }
 
         return d3.timeFormat(fmt);
@@ -493,7 +502,7 @@ const execute = () => {
                         const window = +$$('#window');
                         const fmt = timeFormat(window);
 
-                        displayLine(json, keys.m, () => (d, i) => fmt(new Date(start + window * 1000 * json[i][WINDOW_KEY])));
+                        displayLine(json, keys.m, (scale = 1) => (d, i) => fmt(new Date(start + window * 1000 * json[Math.floor(i * scale)][WINDOW_KEY])));
                         break;
                     case '2':
                         displayBar(json, keys.d, keys.m);

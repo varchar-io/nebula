@@ -11,6 +11,9 @@ services:
     # remove it in final production.
     cap_add:
       - ALL
+    volumes:
+      - /tmp/pins:/tmp/pins:rw
+      - /tmp/pinss:/tmp/pinss:rw
   envoy:
     build:
       context: ./

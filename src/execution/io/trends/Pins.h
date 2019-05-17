@@ -30,29 +30,37 @@ namespace execution {
 namespace io {
 namespace trends {
 
-class TrendsMetaService;
-
-class TrendsTable : public nebula::meta::Table {
-  static constexpr auto NAME = "pin.trends";
+class PinsTable : public nebula::meta::Table {
+  static constexpr auto NAME = "pin.pins";
 
 public:
-  TrendsTable() : Table(NAME) {
+  PinsTable() : Table(NAME) {
     // TODO(cao) - let's make date as a number
-    schema_ = nebula::type::TypeSerializer::from("ROW<_time_:long, query:string, count:long>");
+    // id bigint,
+    // board_id bigint,
+    // user_id bigint,
+    // created_at string => map to _time_ in "Y-M-D H:M:S" format,
+    // title string,
+    // details string,
+    // image_signature string,
+    // repins bigint
+    schema_ = nebula::type::TypeSerializer::from(
+      "ROW<_time_:long, id:long, board_id:long, user_id:long, title:string, details:string, signature:string, repins:long>");
   }
 
-  virtual ~TrendsTable() = default;
+  virtual ~PinsTable() = default;
 
-  // load trends data in current process
+  // load pins data in current process
+  // load pins data as max
   void load(size_t max = 0);
 
   virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override;
 };
 
-class TrendsMetaService : public nebula::meta::MetaService {
+class PinsMetaService : public nebula::meta::MetaService {
 public:
   virtual std::shared_ptr<nebula::meta::Table> query(const std::string&) override {
-    return std::make_shared<TrendsTable>();
+    return std::make_shared<PinsTable>();
   }
 
   virtual std::vector<nebula::meta::NNode> queryNodes(

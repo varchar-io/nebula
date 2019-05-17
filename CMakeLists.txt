@@ -43,8 +43,10 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(BUILD_SHARED_LIBS OFF)
 
 # by default using clang, turn this line on to use gcc
-# link g++-7 on linux to default g++ / gcc 
-# sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 20 --slave /usr/bin/g++ g++ /usr/bin/g++-7
+# link g++-8 on linux to default g++ / gcc 
+# sudo apt-get update
+# sudo apt-get install gcc-8 g++-8
+# sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
 set(CMAKE_CC_COMPILER /usr/bin/g++)
 set(CMAKE_C_COMPILER /usr/bin/gcc)

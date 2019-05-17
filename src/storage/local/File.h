@@ -14,37 +14,40 @@
  * limitations under the License.
  */
 
-#include "CsvReader.h"
-#include <sstream>
+#pragma once
+
+#include <dirent.h>
+#include <string>
+#include <vector>
+#include "common/Errors.h"
 
 /**
- * A wrapper for reading csv file and return row cursor
+ * A wrapper for interacting with AWS / S3
  */
 namespace nebula {
 namespace storage {
-void CsvRow::readNext(std::istream& str) {
-  std::string line;
-  std::getline(str, line);
+namespace local {
+class File {
+public:
+  static std::vector<std::string> list(const std::string& dir) {
+    std::vector<std::string> files;
+    DIR* d = opendir(dir.c_str());
+    if (d) {
+      // read all entries
+      struct dirent* dp;
+      while ((dp = readdir(d))) {
+        // only need regular files
+        if (dp->d_type == 8) {
+          files.push_back(dp->d_name);
+        }
+      }
+      closedir(d);
+    }
 
-  std::stringstream lineStream(line);
-  std::string cell;
-
-  data_.clear();
-  while (std::getline(lineStream, cell, delimiter_)) {
-    data_.push_back(folly::trimWhitespace(cell).toString());
+    // it may be empty
+    return files;
   }
-
-  // This checks for a trailing comma with no data after it.
-  if (!lineStream && cell.empty()) {
-    // If there was a trailing comma then add an empty element.
-    data_.push_back("");
-  }
-}
-
-std::istream& operator>>(std::istream& str, CsvRow& data) {
-  data.readNext(str);
-  return str;
-}
-
+};
+} // namespace local
 } // namespace storage
 } // namespace nebula

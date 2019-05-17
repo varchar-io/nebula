@@ -190,6 +190,9 @@ void RunServer() {
   // loading some rand generated data for nebula.test category
   v1Service.loadNebulaTest();
 
+  // loading pins data into memory
+  v1Service.loadPins();
+
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());

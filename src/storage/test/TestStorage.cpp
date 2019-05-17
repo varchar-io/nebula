@@ -18,13 +18,20 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "storage/CsvReader.h"
+#include "storage/local/File.h"
 
 namespace nebula {
 namespace storage {
 namespace test {
 
-TEST(StorageTest, TestS3) {
+TEST(StorageTest, TestLocalFiles) {
   LOG(INFO) << "Run storage test here";
+  auto files = nebula::storage::local::File::list(".");
+  for (auto& f : files) {
+    LOG(INFO) << "File: " << f;
+  }
+
+  EXPECT_TRUE(files.size() > 0);
 }
 
 TEST(LocalCsvTest, TestLoadingCsv) {

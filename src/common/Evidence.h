@@ -59,6 +59,15 @@ public: /** only static methods */
     return timegm(&t);
   }
 
+  // given a date time value, stripe time out to date granularity
+  // such as value of (2019-05-15 23:01:34) => value of (2019-05-15 00:00:00)
+  static std::time_t date(std::time_t time) {
+    auto tm = std::gmtime(&time);
+    // caculate how much seconds to stripe
+    auto delta = tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec;
+    return time - delta;
+  }
+
   // rand in a range [min, max] inclusively
   template <typename T = int>
   inline static auto rand(size_t min, size_t max, size_t seed = unix_timestamp())

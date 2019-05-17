@@ -48,7 +48,7 @@ TEST(ServiceTest, TestQueryHandler) {
   TrendsTable trends;
 
   // load test data to run this query
-  trends.loadTrends(10);
+  trends.load(10);
 
   nebula::common::Evidence::Duration tick;
   QueryHandler handler;
@@ -98,7 +98,7 @@ TEST(ServiceTest, TestJsonifyResults) {
   TrendsTable trends;
 
   // load test data to run this query
-  trends.loadTrends(4);
+  trends.load(4);
 
   nebula::common::Evidence::Duration tick;
   QueryHandler handler;
