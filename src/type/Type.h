@@ -314,27 +314,38 @@ public:
 template <typename T>
 struct TypeDetect {};
 
-#define DEFINE_TYPE_DETECT(NT, NAME, KT)                                                 \
+#define DEFINE_TYPE_DETECT(NT, NAME, KT, VALUE)                                          \
   template <>                                                                            \
   struct TypeDetect<NT> {                                                                \
     static constexpr Kind kind = Kind::NAME;                                             \
     static constexpr auto name = #NAME;                                                  \
     static constexpr auto type = [](const std::string& n) { return KT::createTree(n); }; \
+    static constexpr NT value = VALUE;                                                   \
   };
 
 // TODO(cao) - guidelines for nebula API usage
 // define all traits for each KIND - incomplete list
-DEFINE_TYPE_DETECT(bool, BOOLEAN, BoolType)
-DEFINE_TYPE_DETECT(int8_t, TINYINT, ByteType)
-DEFINE_TYPE_DETECT(int16_t, SMALLINT, ShortType)
-DEFINE_TYPE_DETECT(int32_t, INTEGER, IntType)
-DEFINE_TYPE_DETECT(int64_t, BIGINT, LongType)
-DEFINE_TYPE_DETECT(float, REAL, FloatType)
-DEFINE_TYPE_DETECT(double, DOUBLE, DoubleType)
-DEFINE_TYPE_DETECT(std::string, VARCHAR, StringType)
-DEFINE_TYPE_DETECT(const char*, VARCHAR, StringType)
+DEFINE_TYPE_DETECT(bool, BOOLEAN, BoolType, false)
+DEFINE_TYPE_DETECT(int8_t, TINYINT, ByteType, 0)
+DEFINE_TYPE_DETECT(int16_t, SMALLINT, ShortType, 0)
+DEFINE_TYPE_DETECT(int32_t, INTEGER, IntType, 0)
+DEFINE_TYPE_DETECT(int64_t, BIGINT, LongType, 0)
+DEFINE_TYPE_DETECT(float, REAL, FloatType, 0)
+DEFINE_TYPE_DETECT(double, DOUBLE, DoubleType, 0)
+DEFINE_TYPE_DETECT(const char*, VARCHAR, StringType, "")
 
 #undef DEFINE_TYPE_DETECT
+
+template <>
+struct TypeDetect<std::string> {
+  static constexpr Kind kind = Kind::VARCHAR;
+  static constexpr auto name = "VARCHAR";
+  static constexpr auto type = [](const std::string& n) { return StringType::createTree(n); };
+  static const std::string value;
+};
+
+// initialize
+// const std::string TypeDetect<std::string>::value{};
 
 } // namespace type
 } // namespace nebula
