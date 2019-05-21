@@ -35,6 +35,7 @@ template <nebula::type::Kind KIND>
 class UDF : public TYPE_VALUE_EVAL_KIND {
 public:
   UDF() : TYPE_VALUE_EVAL_KIND(
+            "U",
             [this](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
               // call the UDF to evalue the result
               return this->run(row, valid);

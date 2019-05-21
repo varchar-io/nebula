@@ -17,6 +17,7 @@
 #include "gtest/gtest.h"
 #include <glog/logging.h>
 #include "common/Evidence.h"
+#include "execution/eval/EvalContext.h"
 #include "execution/eval/ValueEval.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
@@ -29,6 +30,7 @@ namespace test {
 using nebula::common::Evidence;
 using nebula::execution::eval::column;
 using nebula::execution::eval::constant;
+using nebula::execution::eval::EvalContext;
 using nebula::execution::eval::TypeValueEval;
 using nebula::execution::eval::ValueEval;
 using nebula::surface::MockRowData;
@@ -172,6 +174,66 @@ TEST(ValueEvalTest, TestValueEvalLogical) {
     auto b10 = nebula::execution::eval::column<std::string>("s");
     valid = true;
     LOG(INFO) << "b10=" << b10->eval<std::string>(row, valid);
+  }
+}
+
+TEST(ValueEvalTest, TestEvaluationContext) {
+  EvalContext context;
+  auto b1 = nebula::execution::eval::constant(2);
+  auto b2 = nebula::execution::eval::column<float>("x");
+  auto b3 = nebula::execution::eval::mul<float, int, float>(std::move(b1), std::move(b2));
+  auto b4 = nebula::execution::eval::constant(3);
+  auto b5 = nebula::execution::eval::gt<float, int>(std::move(b3), std::move(b4));
+
+  {
+    MockRow row;
+    EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(1));
+    EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+
+    // 1*2 < 3
+    context.reset(row);
+    bool valid = true;
+    // value cached by the same row, so no matter how many calls.
+    // evaluate result should be the same
+    LOG(INFO) << "signature of b5=" << b5->signature();
+    for (auto i = 0; i < 1000; ++i) {
+      EXPECT_EQ(valid, true);
+      EXPECT_EQ(context.eval<bool>(*b5, valid), false);
+    }
+  }
+
+  // reset the row to context, it will get larger data since incrementation
+  {
+    MockRow row;
+    EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(2));
+    EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+
+    // 2*2 > 3
+    bool valid = true;
+    context.reset(row);
+    for (auto i = 0; i < 1000; ++i) {
+      auto result = context.eval<bool>(*b5, valid);
+      EXPECT_EQ(valid, true);
+      EXPECT_EQ(result, true);
+    }
+  }
+
+  // reset the row to context, it will get larger data since incrementation
+  {
+    MockRow row;
+    EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(2));
+    EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(true));
+
+    // 2*2 > 3
+    context.reset(row);
+    for (auto i = 0; i < 1000; ++i) {
+      bool valid = true;
+      auto result = context.eval<bool>(*b5, valid);
+      EXPECT_EQ(valid, false);
+      if (valid) {
+        EXPECT_EQ(result, true);
+      }
+    }
   }
 }
 

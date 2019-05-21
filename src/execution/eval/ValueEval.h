@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <glog/logging.h>
 #include "common/Cursor.h"
 #include "common/Likely.h"
@@ -30,12 +31,13 @@ namespace execution {
 namespace eval {
 
 template <typename T>
-struct TypeValueEval;
+class TypeValueEval;
 
 // this is a tree, with each node to be either macro/value or operator
 // this is translated from expression.
-struct ValueEval {
-  ValueEval() = default;
+class ValueEval {
+public:
+  ValueEval(const std::string& sign) : sign_{ sign } {}
   virtual ~ValueEval() = default;
 
   // TODO(cao) - we definitely need to revisit and reevaluate if we should use std::optional<T> here
@@ -58,6 +60,15 @@ struct ValueEval {
     // 2. we can enforce std::enable_if more on the template type to ensure the function is called in the expected "type"
     return static_cast<const TypeValueEval<T>*>(this)->eval(row, valid);
   }
+
+  // identify a unique value evaluation object in given query context
+  // TODO(cao) - consider using number instead for fast hashing
+  const std::string& signature() const {
+    return sign_;
+  }
+
+protected:
+  std::string sign_;
 };
 
 // two utilities
@@ -68,11 +79,13 @@ struct ValueEval {
   })
 
 template <typename T>
-struct TypeValueEval : public ValueEval {
+class TypeValueEval : public ValueEval {
+public:
   TypeValueEval(
+    const std::string& sign,
     const OPT& op,
     std::vector<std::unique_ptr<ValueEval>> children)
-    : op_{ op }, children_{ std::move(children) } {}
+    : ValueEval(sign), op_{ op }, children_{ std::move(children) } {}
 
   virtual ~TypeValueEval() = default;
 
@@ -80,6 +93,7 @@ struct TypeValueEval : public ValueEval {
     return op_(row, this->children_, valid);
   }
 
+private:
   OPT op_;
   std::vector<std::unique_ptr<ValueEval>> children_;
 };
@@ -92,6 +106,7 @@ template <typename T>
 std::unique_ptr<ValueEval> constant(T v) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
+      fmt::format("C:{0}", v),
       [v](const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> T {
         return v;
       },
@@ -108,7 +123,9 @@ template <typename T>
 std::unique_ptr<ValueEval> column(const std::string& name) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
-      [name](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> T {
+      fmt::format("F:{0}", name),
+      [name](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid)
+        -> T {
         // compile time branching based on template type T
         // I think it's better than using template specialization for this case
         if constexpr (std::is_same<T, bool>::value) {
@@ -165,24 +182,28 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
   template <typename T, typename T1, typename T2>                                                 \
   std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
     static constexpr T INVALID = 0;                                                               \
+    const auto s1 = v1->signature();                                                              \
+    const auto s2 = v2->signature();                                                              \
     std::vector<std::unique_ptr<ValueEval>> branch;                                               \
     branch.reserve(2);                                                                            \
     branch.push_back(std::move(v1));                                                              \
     branch.push_back(std::move(v2));                                                              \
                                                                                                   \
     return std::unique_ptr<ValueEval>(                                                            \
-      new TypeValueEval<T>(OPT_LAMBDA({                                                           \
-                             auto v1 = children[0]->eval<T1>(row, valid);                         \
-                             if (UNLIKELY(!valid)) {                                              \
-                               return INVALID;                                                    \
-                             }                                                                    \
-                             auto v2 = children[1]->eval<T2>(row, valid);                         \
-                             if (UNLIKELY(!valid)) {                                              \
-                               return INVALID;                                                    \
-                             }                                                                    \
-                             return T(v1 SIGN v2);                                                \
-                           }),                                                                    \
-                           std::move(branch)));                                                   \
+      new TypeValueEval<T>(                                                                       \
+        fmt::format("{0}:{1}:{2}", s1, #SIGN, s2),                                                \
+        OPT_LAMBDA({                                                                              \
+          auto v1 = children[0]->eval<T1>(row, valid);                                            \
+          if (UNLIKELY(!valid)) {                                                                 \
+            return INVALID;                                                                       \
+          }                                                                                       \
+          auto v2 = children[1]->eval<T2>(row, valid);                                            \
+          if (UNLIKELY(!valid)) {                                                                 \
+            return INVALID;                                                                       \
+          }                                                                                       \
+          return T(v1 SIGN v2);                                                                   \
+        }),                                                                                       \
+        std::move(branch)));                                                                      \
   }
 
 ARTHMETIC_VE(add, +)
@@ -198,12 +219,15 @@ ARTHMETIC_VE(mod, %)
 #define COMPARE_VE(NAME, SIGN)                                                                    \
   template <typename T1, typename T2>                                                             \
   std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
+    const auto s1 = v1->signature();                                                              \
+    const auto s2 = v2->signature();                                                              \
     std::vector<std::unique_ptr<ValueEval>> branch;                                               \
     branch.reserve(2);                                                                            \
     branch.push_back(std::move(v1));                                                              \
     branch.push_back(std::move(v2));                                                              \
     return std::unique_ptr<ValueEval>(                                                            \
       new TypeValueEval<bool>(                                                                    \
+        fmt::format("{0}:{1}:{2}", s1, #SIGN, s2),                                                \
         OPT_LAMBDA({                                                                              \
           auto v1 = children[0]->eval<T1>(row, valid);                                            \
           if (UNLIKELY(!valid)) {                                                                 \
