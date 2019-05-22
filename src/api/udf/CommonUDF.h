@@ -35,18 +35,13 @@ public:
   using ExprType = typename nebula::type::TypeTraits<EK>::CppType;
   using Logic = std::function<ReturnType(const ExprType&, bool& valid)>;
 
-  explicit CommonUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Logic&& logic)
-    : expr_{ expr->asEval() },
-      colrefs_{ expr->columnRefs() },
+  explicit CommonUDF(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr, Logic&& logic)
+    : nebula::execution::eval::UDF<RK>(fmt::format("{0}({1})", name, expr->signature())),
+      expr_{ std::move(expr) },
       logic_{ std::move(logic) } {}
   virtual ~CommonUDF() = default;
 
 public:
-  // columns referenced
-  virtual std::vector<std::string> columns() const override {
-    return colrefs_;
-  }
-
   // apply a row data to get result
   virtual inline ReturnType run(const nebula::surface::RowData& row, bool& valid) const override {
     return logic_(expr_->eval<ExprType>(row, valid), valid);
@@ -54,7 +49,6 @@ public:
 
 private:
   std::unique_ptr<nebula::execution::eval::ValueEval> expr_;
-  std::vector<std::string> colrefs_;
   Logic logic_;
 };
 

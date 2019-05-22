@@ -31,8 +31,9 @@ class Sum : public CommonUDAF<KIND> {
   using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
 
 public:
-  Sum(std::shared_ptr<nebula::api::dsl::Expression> expr)
-    : CommonUDAF<KIND>(expr,
+  Sum(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
+    : CommonUDAF<KIND>(name,
+                       std::move(expr),
                        [](NativeType ov, NativeType nv) {
                          return ov + nv;
                        },
@@ -43,7 +44,7 @@ public:
 };
 
 template <>
-Sum<nebula::type::Kind::VARCHAR>::Sum(std::shared_ptr<nebula::api::dsl::Expression> expr);
+Sum<nebula::type::Kind::VARCHAR>::Sum(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
 
 } // namespace udf
 } // namespace api

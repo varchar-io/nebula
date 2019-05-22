@@ -27,7 +27,7 @@ namespace udf {
 template <>
 typename std::unique_ptr<nebula::execution::eval::UDF<TypeKind::BOOLEAN>>
   UDFFactory::createUDF<UDFKind::NOT, TypeKind::BOOLEAN>(std::shared_ptr<nebula::api::dsl::Expression> expr) {
-  return std::make_unique<Not>(expr);
+  return std::make_unique<Not>(nebula::execution::eval::UdfTraits<UDFKind::NOT>::Name, expr->asEval());
 }
 
 } // namespace udf

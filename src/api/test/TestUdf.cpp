@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include "api/dsl/Expressions.h"
 #include "api/udf/Like.h"
 #include "api/udf/MyUdf.h"
 #include "api/udf/Prefix.h"
+#include "execution/eval/EvalContext.h"
 #include "surface/DataSurface.h"
 
 namespace nebula {
@@ -29,12 +30,12 @@ namespace test {
 TEST(UDFTest, TestNot) {
   nebula::surface::MockRowData row;
   auto f = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(false);
-  nebula::api::udf::Not n(f);
+  nebula::api::udf::Not n("n", f->asEval());
   bool valid = true;
   EXPECT_EQ(n.eval(row, valid), true);
 
   auto t = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(true);
-  nebula::api::udf::Not y(t);
+  nebula::api::udf::Not y("n", t->asEval());
   valid = true;
   EXPECT_EQ(y.eval(row, valid), false);
 }
@@ -58,7 +59,7 @@ TEST(UDFTest, TestLike) {
     auto r = std::get<2>(item);
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string>>(s);
-    nebula::api::udf::Like l(c, p);
+    nebula::api::udf::Like l("l", c->asEval(), p);
     bool valid = true;
     EXPECT_EQ(l.eval(row, valid), r);
   }
@@ -83,9 +84,29 @@ TEST(UDFTest, TestPrefix) {
     auto r = std::get<2>(item);
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string>>(s);
-    nebula::api::udf::Prefix prefix(c, p);
+    nebula::api::udf::Prefix prefix("p", c->asEval(), p);
     bool valid = true;
     EXPECT_EQ(prefix.eval(row, valid), r);
+  }
+}
+
+TEST(UDFTest, TestPrefixContext) {
+  std::vector<std::tuple<std::string, std::string, bool>> data{
+    { "abcdefg", "abc", true },
+  };
+
+  nebula::surface::MockRowData row;
+  nebula::execution::eval::EvalContext context;
+  context.reset(row);
+
+  auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string>>("abcdfeg");
+  nebula::api::udf::Prefix prefix("p", c->asEval(), "abc");
+  for (auto i = 0; i < 1000; ++i) {
+    bool valid = true;
+    // auto result = prefix.eval(row, valid);
+    auto result = context.eval<bool>(prefix, valid);
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(result, true);
   }
 }
 

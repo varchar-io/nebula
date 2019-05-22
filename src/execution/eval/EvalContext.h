@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 #include <unordered_map>
 #include "ValueEval.h"
+#include "common/Memory.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
 
@@ -33,11 +34,12 @@ namespace execution {
 namespace eval {
 
 class EvalContext {
-  // if evaluated, the first item indicating if it's evaluated as NULL, ignoring offset and length in the data buffer.
-  // otherwise using {offset, length} to fetch the data desired from buffer.
-  using Meta = std::pair<bool, std::any>;
-
 public:
+  EvalContext() : slice_{ 1024 } {
+    cursor_ = 1;
+  }
+  virtual ~EvalContext() = default;
+
   // change reference to row data, clear all cache.
   // and start build cache based on evaluation signautre.
   void reset(const nebula::surface::RowData&);
@@ -45,33 +47,41 @@ public:
   // evaluate a value eval object in current context and return value reference.
   template <typename T>
   const T& eval(const nebula::execution::eval::ValueEval& ve, bool& valid) {
-    const auto& sign = ve.signature();
+    auto sign = ve.signature();
 
     // if in evaluated list
     auto itr = map_.find(sign);
     if (itr != map_.end()) {
-      valid = itr->second.first;
+      auto offset = itr->second;
+      valid = offset > 0;
       if (!valid) {
         return nebula::type::TypeDetect<T>::value;
       }
 
-      return std::any_cast<const T&>(itr->second.second);
+      return slice_.read<T>(offset);
     }
 
     N_ENSURE_NOT_NULL(row_, "reference a row object before evaluation.");
     const auto value = ve.eval<T>(*row_, valid);
-    map_[sign] = Meta{ valid, value };
     if (!valid) {
+      map_[sign] = 0;
       return nebula::type::TypeDetect<T>::value;
     }
+    const auto offset = cursor_;
+    map_[sign] = offset;
+    cursor_ += slice_.write<T>(cursor_, value);
 
-    return std::any_cast<const T&>(map_.at(sign).second);
+    return slice_.read<T>(offset);
   }
 
 private:
   const nebula::surface::RowData* row_;
   // a signature keyed tuples indicating if this expr evaluated (having entry) or not.
-  std::unordered_map<std::string, Meta> map_;
+  std::unordered_map<std::string_view, size_t> map_;
+  // layout all cached data, when reset, just move the cursor to 1
+  // 0 is reserved, any evaluated data points to 0 if it is NULL
+  size_t cursor_;
+  nebula::common::PagedSlice slice_;
 };
 
 } // namespace eval

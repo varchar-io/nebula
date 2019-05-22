@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include "CommonUDAF.h"
 
 /**
@@ -31,14 +32,16 @@ class Min : public CommonUDAF<KIND> {
   using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
 
 public:
-  Min(std::shared_ptr<nebula::api::dsl::Expression> expr)
-    : CommonUDAF<KIND>(expr,
-                       [](NativeType ov, NativeType nv) {
-                         return std::min<NativeType>(ov, nv);
-                       },
-                       [](NativeType ov, NativeType nv) {
-                         return std::min<NativeType>(ov, nv);
-                       }) {}
+  Min(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
+    : CommonUDAF<KIND>(
+        name,
+        std::move(expr),
+        [](NativeType ov, NativeType nv) {
+          return std::min<NativeType>(ov, nv);
+        },
+        [](NativeType ov, NativeType nv) {
+          return std::min<NativeType>(ov, nv);
+        }) {}
   virtual ~Min() = default;
 };
 

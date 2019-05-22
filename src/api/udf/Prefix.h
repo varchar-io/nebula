@@ -33,25 +33,31 @@ namespace udf {
 using UdfPrefixBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR>;
 class Prefix : public UdfPrefixBase {
 public:
-  Prefix(std::shared_ptr<nebula::api::dsl::Expression> expr, const std::string& prefix)
-    : UdfPrefixBase(expr, [prefix](const ExprType& source, bool& valid) -> ReturnType {
-        if (valid) {
-          const auto prefixSize = prefix.size();
-          if (source.size() < prefixSize) {
-            return false;
-          }
-
-          for (size_t i = 0; i < prefixSize; ++i) {
-            if (source.at(i) != prefix.at(i)) {
+  Prefix(
+    const std::string& name,
+    std::unique_ptr<nebula::execution::eval::ValueEval> expr,
+    const std::string& prefix)
+    : UdfPrefixBase(
+        name,
+        std::move(expr),
+        [prefix](const ExprType& source, bool& valid) -> ReturnType {
+          if (valid) {
+            const auto prefixSize = prefix.size();
+            if (source.size() < prefixSize) {
               return false;
             }
+
+            for (size_t i = 0; i < prefixSize; ++i) {
+              if (source.at(i) != prefix.at(i)) {
+                return false;
+              }
+            }
+
+            return true;
           }
 
-          return true;
-        }
-
-        return false;
-      }) {}
+          return false;
+        }) {}
   virtual ~Prefix() = default;
 };
 

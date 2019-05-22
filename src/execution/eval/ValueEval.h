@@ -63,7 +63,7 @@ public:
 
   // identify a unique value evaluation object in given query context
   // TODO(cao) - consider using number instead for fast hashing
-  const std::string& signature() const {
+  const std::string_view signature() const {
     return sign_;
   }
 

@@ -29,6 +29,7 @@ namespace eval {
 // reset to a new row
 void EvalContext::reset(const nebula::surface::RowData& row) {
   // clear t he evaluation map
+  cursor_ = 1;
   map_.clear();
 
   // std::addressof ?
