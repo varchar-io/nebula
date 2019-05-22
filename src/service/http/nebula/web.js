@@ -2,6 +2,10 @@ import {
     NebulaClient
 } from "./dist/web/main.js";
 
+import {
+    Charts
+} from "./charts.min.js";
+
 // define jquery style selector 
 const d3 = NebulaClient.d3;
 const $ = NebulaClient.d3.select;
@@ -19,7 +23,7 @@ const formatTime = (unix) => {
     return `${y}-${m}-${d}`;
 };
 
-const initTable = (table) => {
+const initTable = (table, callback) => {
     const req = new NebulaClient.TableStateRequest();
     req.setTable(table);
 
@@ -72,28 +76,14 @@ const initTable = (table) => {
                 .text(d => d)
                 .attr("value", d => d);
         }
+
+        if (callback) {
+            callback();
+        }
     });
 };
 
-// load table list 
-const listReq = new NebulaClient.ListTables();
-listReq.setLimit(5);
-v1Client.tables(listReq, {}, (err, reply) => {
-    const list = reply.getTableList();
-    const options = $('#tables').selectAll("option").data(list).enter().append('option');
-    options.text(d => d).attr("value", d => d);
-
-    // properties of the first table
-    initTable(list[0]);
-
-    // if user change the table selection, initialize it again
-    $('#tables').on('change', () => {
-        initTable($$('#tables'));
-    });
-});
-
-const opFilter = () => {
-    const op = $$('#fop');
+const opFilter = (op) => {
     switch (op) {
         case "EQ":
             return NebulaClient.Operation.EQ;
@@ -108,8 +98,7 @@ const opFilter = () => {
     }
 };
 
-const displayType = () => {
-    const op = $$('#display');
+const displayType = (op) => {
     switch (op) {
         case "0":
             return NebulaClient.DisplayType.TABLE;
@@ -146,31 +135,94 @@ const checkRequest = () => {
     return false;
 };
 
-const execute = () => {
-    const q = new NebulaClient.QueryRequest();
-    q.setTable($$('#tables'));
+const hash = (v) => {
+    if (v) {
+        window.location.hash = v;
+    }
 
-    // new Date('2012.08.10').getTime() / 1000
-    const start = $$('#start');
-    const end = $$('#end');
-    if (!start || !end) {
+    return window.location.hash;
+};
+
+const build = () => {
+    // build URL and set URL
+    const Q = {
+        t: $$('#tables'),
+        s: $$('#start'),
+        e: $$('#end'),
+        fv: $$('#fvalue'),
+        fo: $$('#fop'),
+        ff: $$("#fcolumns"),
+        ds: [$$('#dcolumns')],
+        w: $$("#window"),
+        d: $$('#display'),
+        m: $$('#mcolumns'),
+        r: $$('#ru'),
+        o: $$('#ob'),
+        l: $$('#limit')
+    };
+
+    if (!Q.s || !Q.e) {
         alert('please enter start and end time');
         return;
     }
 
-    const utStart = new Date(start).getTime() / 1000;
-    const utEnd = new Date(end).getTime() / 1000;;
-    console.log("start: " + utStart + ", end: " + utEnd);
-    q.setStart(utStart);
-    q.setEnd(utEnd);
+    // change hash will trigger query
+    hash('#' + encodeURI(JSON.stringify(Q)));
+};
+
+const restore = () => {
+    const h = hash();
+    if (!h || h.length < 10) {
+        console.log(`Bad URL: ${h}`);
+        return;
+    }
+
+    // get parameters from URL
+    const p = JSON.parse(decodeURI(h.substr(1)));
+    const set = (N, V) => $(N).property('value', V);
+    if (p.t) {
+        set('#tables', p.t);
+        initTable(p.t, () => {
+            // set other fields
+            set('#start', p.s);
+            set('#end', p.e);
+            set('#fvalue', p.fv);
+            set('#fop', p.fo);
+            set('#fcolumns', p.ff);
+            set('#dcolumns', p.ds[0]);
+            set("#window", p.w);
+            set('#display', p.d);
+            set('#mcolumns', p.m);
+            set('#ru', p.r);
+            set('#ob', p.o);
+            set('#limit', p.l);
+
+            // the URL needs to be executed
+            execute();
+        });
+    }
+};
+
+const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
+
+const execute = () => {
+    // get parameters from URL
+    const p = JSON.parse(decodeURI(hash().substr(1)));
+    console.log(`Query: ${p}`);
+
+    // URL decoding the string and json object parsing
+    const q = new NebulaClient.QueryRequest();
+    q.setTable(p.t);
+    q.setStart(seconds(p.s));
+    q.setEnd(seconds(p.e));
 
     // the filter can be much more complex
     // but now, it only take one filter
-    const fvalue = $$('#fvalue');
+    const fvalue = p.fv;
     if (fvalue) {
         const p2 = new NebulaClient.Predicate();
-        p2.setColumn($$("#fcolumns"));
-        p2.setOp(opFilter());
+        p2.setColumn(p.ff);
+        p2.setOp(opFilter(p.fo));
         p2.setValueList([fvalue]);
         const filter = new NebulaClient.PredicateAnd();
         filter.setExpressionList([p2]);
@@ -178,17 +230,17 @@ const execute = () => {
     }
 
     // set dimensions 
-    q.setDimensionList([$$("#dcolumns")]);
+    q.setDimensionList(p.ds);
 
     // set query type and window
-    q.setDisplay(displayType());
-    q.setWindow($$("#window"));
+    q.setDisplay(displayType(p.d));
+    q.setWindow(p.w);
 
     // set metric 
     const m = new NebulaClient.Metric();
-    const mcol = $$("#mcolumns");
+    const mcol = p.m;
     m.setColumn(mcol);
-    const rollupType = $$('#ru');
+    const rollupType = p.r;
     switch (rollupType) {
         case "0":
             m.setMethod(NebulaClient.Rollup.COUNT);
@@ -211,223 +263,10 @@ const execute = () => {
     // set order and limit
     const o = new NebulaClient.Order();
     o.setColumn(mcol);
-    const orderType = $$('#ob');
+    const orderType = p.o;
     o.setType(orderType === "1" ? NebulaClient.OrderType.DESC : NebulaClient.OrderType.ASC);
     q.setOrder(o);
-    q.setTop($$('#limit'));
-
-    const displayTable = (json) => {
-        // Get Table headers and print 
-        if (json.length > 0) {
-            const area = $('#show');
-            area.html("");
-            const tb = area.append("table");
-            tb.append("thead").append("tr").attr("id", "table_head");
-            tb.append("tbody").attr("id", "table_content");
-
-            // append header
-            const keys = Object.keys(json[0]);
-            $('#table_head').selectAll("th").data(keys).enter().append('th').text(d => d);
-
-            // Get table body and print 
-            $('#table_content').selectAll('tr').data(json).enter().append('tr')
-                .selectAll('td')
-                .data((row) => {
-                    return keys.map((column) => {
-                        return {
-                            column: column,
-                            value: row[column]
-                        };
-                    });
-                })
-                .enter()
-                .append('td')
-                .text(d => d.value);
-        }
-    };
-
-    const displayBar = (json, key, value) => {
-        // clear the area first
-        const area = $('#show');
-        area.html("");
-        const margin = {
-            top: 20,
-            right: 20,
-            bottom: 70,
-            left: 40
-        };
-        const width = area.node().scrollWidth - margin.left - margin.right;
-        const height = 600;
-
-        const x = d3.scaleBand()
-            .rangeRound([0, width])
-            .paddingInner([0.2])
-            .paddingOuter([0.4])
-            .align([0.5]);
-        const y = d3.scaleLinear().range([height, 0]);
-        const xAxis = d3.axisBottom(x);
-        const yAxis = d3.axisLeft(y).ticks(10);
-
-        const svg = area.append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .append("g")
-            .attr("transform", `translate(${margin.left},${margin.top})`);
-
-        // json is object list
-        // set value range for both x and y axis
-        x.domain(json.map(row => row[key]));
-        y.domain([0, d3.max(json, row => row[value])]);
-
-        svg.append("g")
-            .attr("class", "x axis")
-            .attr("transform", `translate(0, ${height})`)
-            .call(xAxis)
-            .selectAll("text")
-            .style("text-anchor", "end")
-            .attr("dx", "-.8em")
-            .attr("dy", "-.55em")
-            .attr("transform", "rotate(-45)");
-
-        svg.append("g")
-            .attr("class", "y axis")
-            .call(yAxis)
-            .append("text")
-            .attr("transform", "rotate(-90)")
-            .attr("y", 6)
-            .attr("dy", ".71em")
-            .style("text-anchor", "end")
-            .text("Value ($)");
-
-        svg.selectAll("bar")
-            .data(json)
-            .enter().append("rect")
-            .style("fill", "steelblue")
-            .attr("x", row => x(row[key]))
-            .attr("y", row => y(row[value]))
-            .attr("width", x.bandwidth())
-            .attr("height", row => height - y(row[value]));
-    };
-
-    const displayPie = (json, key, value) => {
-        // clear the area first
-        const area = $('#show');
-        area.html("");
-
-        // we limit to display 10 values only, long tail will be aggregated as others
-        json.sort((a, b) => {
-            return b[value] - a[value];
-        });
-
-        const top = 10;
-        if (json.length > top) {
-            json[top - 1][key] = 'others';
-            for (let i = top; i < json.length; ++i) {
-                json[top - 1][value] += json[i][value];
-            }
-
-            json.length = top;
-        }
-
-        const w = area.node().scrollWidth;
-        const h = 400;
-        const r = Math.min(w, h) / 2;
-        const color = (i) => d3.schemeCategory10[i % 10];
-
-        const vis = area
-            .append("svg:svg")
-            .data([json])
-            .attr("width", w)
-            .attr("height", h)
-            .append("svg:g")
-            .attr("transform", `translate(${w/2},${h/2})`);
-
-        const arc = d3.arc().outerRadius(r - 10).innerRadius(0);
-        const pie = d3.pie().value(row => row[value]);
-
-        const arcs = vis.selectAll("g.slice").data(pie).enter().append("svg:g").attr("class", "slice");
-        arcs.append("svg:path")
-            .attr("fill", (d, i) => color(i))
-            .attr("d", arc);
-
-        // display legends 
-        // place each legend on the right and bump each one down 15 pixels
-        // the posiiton of translate is relative to its parent, so the delta is computed to the center of the pie
-        const legend = vis.selectAll("g.legend").data(pie).enter().append("svg:g").attr("class", "legend")
-            .attr("transform", (d, i) => `translate(${r+100},${-r + i * 20 + 20})`);
-
-        // make a matching color rect
-        legend.append("svg:rect")
-            .attr("width", 15)
-            .attr("height", 15)
-            .attr("fill", (d, i) => color(i));
-
-        legend.append("svg:text")
-            .attr("text-anchor", "left")
-            .attr("x", 18)
-            .attr("y", 15)
-            .text((d, i) => json[i][key]);
-    };
-
-    const displayLine = (json, value, format) => {
-        // clear the area first
-        const area = $('#show');
-        area.html("");
-
-        // set the dimensions and margins of the graph
-        const margin = {
-            top: 20,
-            right: 60,
-            bottom: 20,
-            left: 60
-        };
-        const tickWidth = 80;
-
-        const width = area.node().scrollWidth - margin.left - margin.right;
-        const height = 400 - margin.top - margin.bottom;
-        let ticks = Math.ceil(width / tickWidth);
-        let scale = Math.floor(json.length / ticks);
-        if (scale < 1) {
-            scale = 1;
-            ticks = json.length - 1;
-        }
-        console.log(`Total ticks: ${ticks} -> ${scale}`);
-
-        // set the ranges
-        const x = d3.scaleLinear().range([0, width]).domain([0, json.length - 1]);
-        const y = d3.scaleLinear().range([height, 0]).domain([0, d3.max(json, (d) => d[value])]);
-
-        // define the line
-        var line = d3.line()
-            .x((d, i) => x(i))
-            .y((d) => y(d[value]));
-
-        // append the svg obgect to the body of the page
-        // appends a 'group' element to 'svg'
-        // moves the 'group' element to the top left margin
-        var svg = area.append("svg")
-            .attr("width", width + margin.left + margin.right)
-            .attr("height", height + margin.top + margin.bottom)
-            .append("g")
-            .attr("transform", `translate(${margin.left}, ${margin.top})`);
-
-        // Add the valueline path.
-        svg.append("path")
-            .data([json])
-            .attr("class", "line")
-            .attr("d", line);
-
-        // Add the X Axis
-        svg.append("g")
-            .attr("transform", `translate(0, ${height})`)
-            .call(
-                d3.axisBottom(x)
-                .ticks(ticks)
-                .tickFormat(format(scale)));
-
-        // Add the Y Axis
-        svg.append("g").call(d3.axisLeft(y));
-    };
+    q.setTop(p.l);
 
     // do the query 
     const extractXY = (json, q) => {
@@ -490,11 +329,12 @@ const execute = () => {
 
             // get display option
             if (json.length > 0) {
+                const charts = new Charts();
                 const display = $$('#display');
                 const keys = extractXY(json, q);
                 switch (display) {
                     case '0':
-                        displayTable(json);
+                        charts.displayTable(json);
                         break;
                     case '1':
                         const WINDOW_KEY = '_window_';
@@ -502,16 +342,16 @@ const execute = () => {
                         const window = +$$('#window');
                         const fmt = timeFormat(window);
 
-                        displayLine(json, keys.m, (scale = 1) => (d, i) => fmt(new Date(start + window * 1000 * json[Math.floor(i * scale)][WINDOW_KEY])));
+                        charts.displayLine(json, keys.m, (scale = 1) => (d, i) => fmt(new Date(start + window * 1000 * json[Math.floor(i * scale)][WINDOW_KEY])));
                         break;
                     case '2':
-                        displayBar(json, keys.d, keys.m);
+                        charts.displayBar(json, keys.d, keys.m);
                         break;
                     case '3':
-                        displayPie(json, keys.d, keys.m);
+                        charts.displayPie(json, keys.d, keys.m);
                         break;
                     case '4':
-                        displayLine(json, keys.m, () => (d, i) => json[i][keys.d]);
+                        charts.displayLine(json, keys.m, () => (d, i) => json[i][keys.d]);
                         break;
                 }
             }
@@ -519,4 +359,29 @@ const execute = () => {
     });
 };
 
-$('#btn').on("click", execute);
+$('#btn').on("click", build);
+
+// hook up hash change event
+window.onhashchange = function () {
+    execute();
+};
+
+// load table list 
+const listReq = new NebulaClient.ListTables();
+listReq.setLimit(5);
+v1Client.tables(listReq, {}, (err, reply) => {
+    const list = reply.getTableList();
+    const options = $('#tables').selectAll("option").data(list).enter().append('option');
+    options.text(d => d).attr("value", d => d);
+
+    // properties of the first table
+    initTable(list[0]);
+
+    // if user change the table selection, initialize it again
+    $('#tables').on('change', () => {
+        initTable($$('#tables'));
+    });
+
+    // restore the selection
+    setTimeout(restore, 50);
+});
