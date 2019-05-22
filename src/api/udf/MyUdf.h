@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include "CommonUDF.h"
 
 /**
@@ -29,15 +30,18 @@ using UdfNotBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::BO
 class Not : public UdfNotBase {
 public:
   using NativeType = nebula::type::TypeTraits<nebula::type::Kind::BOOLEAN>::CppType;
-  Not(std::shared_ptr<nebula::api::dsl::Expression> expr)
-    : UdfNotBase(expr, [](const NativeType& origin, bool& valid) {
-        if (!valid) {
-          return true;
-        }
+  Not(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
+    : UdfNotBase(
+        name,
+        std::move(expr),
+        [](const NativeType& origin, bool& valid) {
+          if (!valid) {
+            return true;
+          }
 
-        // otherwise reverse
-        return !origin;
-      }) {}
+          // otherwise reverse
+          return !origin;
+        }) {}
   virtual ~Not() = default;
 };
 

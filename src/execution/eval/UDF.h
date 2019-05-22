@@ -34,17 +34,15 @@ namespace eval {
 template <nebula::type::Kind KIND>
 class UDF : public TYPE_VALUE_EVAL_KIND {
 public:
-  UDF() : TYPE_VALUE_EVAL_KIND(
-            "U",
-            [this](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
-              // call the UDF to evalue the result
-              return this->run(row, valid);
-            },
-            {}) {}
+  UDF(const std::string& sign)
+    : TYPE_VALUE_EVAL_KIND(
+        sign,
+        [this](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
+          // call the UDF to evalue the result
+          return this->run(row, valid);
+        },
+        {}) {}
   virtual ~UDF() = default;
-
-  // columns referenced
-  virtual std::vector<std::string> columns() const = 0;
 
   virtual typename nebula::type::TypeTraits<KIND>::CppType run(const nebula::surface::RowData&, bool&) const = 0;
 };
@@ -55,8 +53,9 @@ class UDAF : public UDF<KIND> {
 public:
   using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
   using AggFunction = std::function<NativeType(NativeType, NativeType)>;
-  UDAF(AggFunction&& agg, AggFunction&& partial)
-    : agg_{ std::move(agg) },
+  UDAF(const std::string& sign, AggFunction&& agg, AggFunction&& partial)
+    : UDF<KIND>(sign),
+      agg_{ std::move(agg) },
       partial_{ std::move(partial) } {}
   virtual ~UDAF() = default;
 
@@ -96,6 +95,7 @@ struct UdfTraits {};
 #define DEFINE_UDF_TRAITS(NAME, ISUDAF, KIND)        \
   template <>                                        \
   struct UdfTraits<UDFType::NAME> {                  \
+    static constexpr char const* Name = #NAME;       \
     static constexpr bool UDAF = ISUDAF;             \
     static constexpr nebula::type::Kind Type = KIND; \
   };

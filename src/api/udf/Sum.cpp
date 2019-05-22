@@ -25,8 +25,9 @@ namespace udf {
 using nebula::type::Kind;
 using VarcharNative = nebula::type::TypeTraits<Kind::VARCHAR>::CppType;
 template <>
-Sum<Kind::VARCHAR>::Sum(std::shared_ptr<nebula::api::dsl::Expression> expr)
-  : CommonUDAF<Kind::VARCHAR>(expr,
+Sum<Kind::VARCHAR>::Sum(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
+  : CommonUDAF<Kind::VARCHAR>(name,
+                              std::move(expr),
                               [](VarcharNative, VarcharNative) -> VarcharNative {
                                 throw NException("sum string is not supported currently");
                               },

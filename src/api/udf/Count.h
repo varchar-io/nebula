@@ -33,8 +33,9 @@ class Count : public CommonUDAF<KIND> {
 public:
   // for count, we don't need evaluate inner expr
   // unless it's distinct a column, so we can safely replace it with a const expression with value 0
-  Count(std::shared_ptr<nebula::api::dsl::Expression>)
-    : CommonUDAF<KIND>(std::make_shared<nebula::api::dsl::ConstExpression<NativeType>>(1),
+  Count(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval>)
+    : CommonUDAF<KIND>(name,
+                       nebula::execution::eval::constant(1),
                        // block aggregate - count each item
                        [](NativeType ov, NativeType) {
                          return ov + 1;
@@ -47,7 +48,7 @@ public:
 };
 
 template <>
-Count<nebula::type::Kind::VARCHAR>::Count(std::shared_ptr<nebula::api::dsl::Expression> expr);
+Count<nebula::type::Kind::VARCHAR>::Count(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
 
 } // namespace udf
 } // namespace api

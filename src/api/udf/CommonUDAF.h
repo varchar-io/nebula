@@ -34,18 +34,19 @@ class CommonUDAF : public nebula::execution::eval::UDAF<KIND> {
   using AggFunc = std::function<NativeType(NativeType, NativeType)>;
 
 public:
-  CommonUDAF(std::shared_ptr<nebula::api::dsl::Expression> expr, AggFunc&& aggFunc, AggFunc&& partialFunc)
-    : nebula::execution::eval::UDAF<KIND>(std::move(aggFunc), std::move(partialFunc)),
-      expr_{ expr->asEval() },
-      colrefs_{ expr->columnRefs() } {}
+  CommonUDAF(
+    const std::string& name,
+    std::unique_ptr<nebula::execution::eval::ValueEval> expr,
+    AggFunc&& aggFunc,
+    AggFunc&& partialFunc)
+    : nebula::execution::eval::UDAF<KIND>(
+        fmt::format("{0}({1})", name, expr->signature()),
+        std::move(aggFunc),
+        std::move(partialFunc)),
+      expr_{ std::move(expr) } {}
   virtual ~CommonUDAF() = default;
 
 public:
-  // columns referenced
-  virtual std::vector<std::string> columns() const override {
-    return colrefs_;
-  }
-
   // apply a row data to get result
   virtual NativeType run(const nebula::surface::RowData& row, bool& valid) const override {
     return expr_->eval<NativeType>(row, valid);
@@ -58,7 +59,6 @@ public:
 
 private:
   std::unique_ptr<nebula::execution::eval::ValueEval> expr_;
-  std::vector<std::string> colrefs_;
 };
 
 } // namespace udf

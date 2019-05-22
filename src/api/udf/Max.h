@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include "CommonUDAF.h"
 
 /**
@@ -31,16 +32,18 @@ class Max : public CommonUDAF<KIND> {
   using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
 
 public:
-  Max(std::shared_ptr<nebula::api::dsl::Expression> expr)
-    : CommonUDAF<KIND>(expr,
-                       [](NativeType ov, NativeType nv) {
-                         // LOG(INFO) << "b max o=" << ov << ", n=" << nv;
-                         return std::max<NativeType>(ov, nv);
-                       },
-                       [](NativeType ov, NativeType nv) {
-                         // LOG(INFO) << "p max o=" << ov << ", n=" << nv;
-                         return std::max<NativeType>(ov, nv);
-                       }) {}
+  Max(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
+    : CommonUDAF<KIND>(
+        name,
+        std::move(expr),
+        [](NativeType ov, NativeType nv) {
+          // LOG(INFO) << "b max o=" << ov << ", n=" << nv;
+          return std::max<NativeType>(ov, nv);
+        },
+        [](NativeType ov, NativeType nv) {
+          // LOG(INFO) << "p max o=" << ov << ", n=" << nv;
+          return std::max<NativeType>(ov, nv);
+        }) {}
   virtual ~Max() = default;
 };
 
