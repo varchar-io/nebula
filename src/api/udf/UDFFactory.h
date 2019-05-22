@@ -42,30 +42,29 @@ public:
   template <UDFKind UKIND, TypeKind KIND, typename... Args>
   static typename std::unique_ptr<nebula::execution::eval::UDF<KIND>>
     createUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Args&&... args) {
-    constexpr auto name = nebula::execution::eval::UdfTraits<UKIND>::Name;
 
     if constexpr (UKIND == UDFKind::MAX) {
-      return std::make_unique<Max<KIND>>(name, expr->asEval());
+      return std::make_unique<Max<KIND>>(nebula::execution::eval::UdfTraits<UKIND>::Name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::MIN) {
-      return std::make_unique<Min<KIND>>(name, expr->asEval());
+      return std::make_unique<Min<KIND>>(nebula::execution::eval::UdfTraits<UKIND>::Name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::COUNT) {
-      return std::make_unique<Count<KIND>>(name, expr->asEval());
+      return std::make_unique<Count<KIND>>(nebula::execution::eval::UdfTraits<UKIND>::Name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::SUM) {
-      return std::make_unique<Sum<KIND>>(name, expr->asEval());
+      return std::make_unique<Sum<KIND>>(nebula::execution::eval::UdfTraits<UKIND>::Name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::LIKE) {
-      return std::make_unique<Like>(name, expr->asEval(), std::forward<Args>(args)...);
+      return std::make_unique<Like>(nebula::execution::eval::UdfTraits<UKIND>::Name, expr->asEval(), std::forward<Args>(args)...);
     }
 
     if constexpr (UKIND == UDFKind::PREFIX) {
-      return std::make_unique<Prefix>(name, expr->asEval(), std::forward<Args>(args)...);
+      return std::make_unique<Prefix>(nebula::execution::eval::UdfTraits<UKIND>::Name, expr->asEval(), std::forward<Args>(args)...);
     }
 
     throw NException("Unimplemented UDF");
