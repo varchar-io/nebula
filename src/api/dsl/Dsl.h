@@ -208,8 +208,8 @@ static ConstExpression<T> v(const T& value) {
   return ConstExpression<T>(value);
 }
 
-__attribute__((unused)) static ConstExpression<std::string> v(const std::string& value) {
-  return ConstExpression<std::string>(value);
+__attribute__((unused)) static ConstExpression<std::string_view> v(const std::string& value) {
+  return ConstExpression<std::string_view>(value);
 }
 
 #undef NSE

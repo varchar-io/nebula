@@ -51,7 +51,7 @@ public:
   template <typename T>
   T eval(const nebula::surface::RowData& row, bool& valid) const {
     // TODO(cao) - there is a problem wasted me a WHOLE day to figure out the root cause.
-    // So docuemnt here for further robust engineering work, the case is like this:
+    // So document here for further robust engineering work, the case is like this:
     // When it create ValueEval, it uses template to generate TypeValueEval<std::string> for VARCHAR type
     // However, there is some mismatch to cause this function call to be eval<char*>(row)
     // obviously, below static_cast will give us a corrupted object since the concrete types mismatch.
@@ -163,7 +163,7 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
           return row.readDouble(name);
         }
 
-        if constexpr (std::is_same<T, std::string>::value) {
+        if constexpr (std::is_same<T, std::string_view>::value) {
           NULL_CHECK("")
           return row.readString(name);
         }

@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "common/Errors.h"
 #include "common/Memory.h"
 #include "encode/Encoder.h"
-#include <glog/logging.h>
 #include "serde/TypeData.h"
 #include "serde/TypeDataFactory.h"
 #include "serde/TypeMetadata.h"
@@ -76,8 +76,6 @@ public: // data appending API
 
   template <typename T>
   size_t append(T v);
-
-  size_t append(const std::string&);
 
 public: // data reading API
   // use std::optional to simplify the interface

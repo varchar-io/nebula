@@ -101,10 +101,7 @@ private:
   bool appendNull(bool, nebula::type::Kind, Buffer&);
 
   template <typename T>
-  size_t appendScalar(T, Buffer&);
-
-  // goes to data_
-  size_t appendString(const std::string&, Buffer&);
+  size_t append(T, Buffer&);
 
   // goes to list_
   size_t appendList(nebula::type::Kind, std::unique_ptr<nebula::surface::ListData>);
@@ -147,7 +144,7 @@ public:
   int64_t readLong(const std::string& field) const override;
   float readFloat(const std::string& field) const override;
   double readDouble(const std::string& field) const override;
-  std::string readString(const std::string& field) const override;
+  std::string_view readString(const std::string& field) const override;
 
   // compound types
   std::unique_ptr<nebula::surface::ListData> readList(const std::string& field) const override;
@@ -161,7 +158,7 @@ public:
   int64_t readLong(IndexType) const override;
   float readFloat(IndexType) const override;
   double readDouble(IndexType) const override;
-  std::string readString(IndexType) const override;
+  std::string_view readString(IndexType) const override;
 
   // compound types
   std::unique_ptr<nebula::surface::ListData> readList(IndexType) const override;
@@ -208,7 +205,7 @@ public:
   int64_t readLong(IndexType index) const override;
   float readFloat(IndexType index) const override;
   double readDouble(IndexType index) const override;
-  std::string readString(IndexType index) const override;
+  std::string_view readString(IndexType index) const override;
 
 private:
   inline bool isOffsetNull(size_t itemOffset) const {

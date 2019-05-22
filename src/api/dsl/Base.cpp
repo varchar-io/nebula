@@ -24,7 +24,31 @@ namespace api {
 namespace dsl {
 
 using nebula::type::Kind;
+using nebula::type::TreeNode;
+using nebula::type::TypeBase;
 using nebula::type::TypeTraits;
+
+TreeNode Expression::typeCreate(Kind kind, std::string& alias) {
+#define TYPE_CREATE_NODE(KIND, TYPE)              \
+  case nebula::type::KIND: {                      \
+    return nebula::type::TYPE::createTree(alias); \
+  }
+
+  // no result should have the final type KIND
+  switch (kind) {
+    TYPE_CREATE_NODE(BOOLEAN, BoolType)
+    TYPE_CREATE_NODE(TINYINT, ByteType)
+    TYPE_CREATE_NODE(SMALLINT, ShortType)
+    TYPE_CREATE_NODE(INTEGER, IntType)
+    TYPE_CREATE_NODE(BIGINT, LongType)
+    TYPE_CREATE_NODE(REAL, FloatType)
+    TYPE_CREATE_NODE(DOUBLE, DoubleType)
+    TYPE_CREATE_NODE(VARCHAR, StringType)
+  default:
+    throw NException(fmt::format("Not supported type {0}", TypeBase::kname(kind)));
+  }
+#undef TYPE_CREATE_NODE
+}
 
 #define CROSS_COMBINE4_FOR(M, OP, F, K1, K2, K3, K4) \
   M(OP, K1, K1, F),                                  \

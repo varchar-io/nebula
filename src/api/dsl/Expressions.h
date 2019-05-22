@@ -90,7 +90,7 @@ namespace dsl {
   }
 
 #define LOGICAL_OP_STRING(OP, TYPE) \
-  auto operator OP(const std::string&)->LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string>>;
+  auto operator OP(std::string_view)->LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string_view>>;
 
 #define ALL_ARTHMETIC_OPS()    \
   ARTHMETIC_OP_CONST(+, ADD)   \
@@ -401,10 +401,12 @@ public:
   IS_AGG(execution::eval::UdfTraits<UT>::UDAF)
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+    // always call inner_ type since it's going to change its state
+    inner_->type(table);
+
     // if this UDF has pre-defined type, we don't need to get it from inner expression then
     kind_ = execution::eval::UdfTraits<UT>::Type;
     if (kind_ == nebula::type::Kind::INVALID) {
-      auto innerType = inner_->type(table);
       // inner type is
       kind_ = inner_->kind();
 

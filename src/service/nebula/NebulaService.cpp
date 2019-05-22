@@ -76,7 +76,14 @@ const std::string ServiceProperties::jsonify(const RowCursor data, const Schema 
       CALLBACK_CASE(BIGINT, Int64, readLong)
       CALLBACK_CASE(REAL, Double, readFloat)
       CALLBACK_CASE(DOUBLE, Double, readDouble)
-      CALLBACK_CASE(VARCHAR, String, readString)
+    case Kind::VARCHAR: {
+      jsonCalls.push_back([name, &json](const RowData& row) {
+        json.Key(name);
+        auto sv = row.readString(name);
+        json.String(sv.data());
+      });
+      break;
+    }
     default:
       throw NException("Json serialization not supporting this type yet");
     }

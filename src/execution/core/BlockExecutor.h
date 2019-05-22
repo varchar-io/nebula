@@ -77,7 +77,7 @@ public:
   NOT_IMPL_FUNC(int64_t, readLong)
   NOT_IMPL_FUNC(float, readFloat)
   NOT_IMPL_FUNC(double, readDouble)
-  NOT_IMPL_FUNC(std::string, readString)
+  NOT_IMPL_FUNC(std::string_view, readString)
   NOT_IMPL_FUNC(std::unique_ptr<nebula::surface::ListData>, readList)
   NOT_IMPL_FUNC(std::unique_ptr<nebula::surface::MapData>, readMap)
 
@@ -92,7 +92,7 @@ public:
   int64_t readLong(IndexType) const override;
   float readFloat(IndexType) const override;
   double readDouble(IndexType) const override;
-  std::string readString(IndexType) const override;
+  std::string_view readString(IndexType) const override;
 
   // compound types
   std::unique_ptr<nebula::surface::ListData> readList(IndexType) const override;

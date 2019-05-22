@@ -39,7 +39,7 @@ public:
     return false;
   }
 
-  std::string readString(IndexType index) const override {
+  std::string_view readString(IndexType index) const override {
     return data_.at(index);
   }
 
@@ -64,12 +64,12 @@ private:
 
 class StaticRow : public RowData {
 public:
-  StaticRow(int64_t t, int i, std::string s, std::unique_ptr<ListData> list, bool f, char b)
-    : time_{ t }, id_{ i }, event_{ std::move(s) }, flag_{ f }, byte_{ b } {
+  StaticRow(int64_t t, int i, std::string_view s, std::unique_ptr<ListData> list, bool f, char b)
+    : time_{ t }, id_{ i }, event_{ s }, flag_{ f }, byte_{ b } {
     if (list != nullptr) {
       items_.reserve(list->getItems());
       for (size_t k = 0; k < items_.capacity(); ++k) {
-        items_.push_back(list->readString(k));
+        items_.push_back(std::string(list->readString(k)));
       }
     }
   }
@@ -107,11 +107,11 @@ public:
     return id_;
   }
 
-  std::string readString(const std::string&) const override {
+  std::string_view readString(const std::string&) const override {
     return event_;
   }
 
-  std::string readString(IndexType) const override {
+  std::string_view readString(IndexType) const override {
     return event_;
   }
 

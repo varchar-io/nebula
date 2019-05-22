@@ -136,12 +136,12 @@ public:
     return *reinterpret_cast<T*>(this->ptr_ + position);
   }
 
-  std::string read(size_t position, size_t length) const {
+  std::string_view read(size_t position, size_t length) const {
     N_ENSURE(position + length <= capacity(),
              fmt::format("invalid position ({0}, {1}) to read data", position, length));
 
     // build data using copy elision
-    return std::string(this->ptr_ + position, length);
+    return std::string_view(this->ptr_ + position, length);
   }
 
   // capacity

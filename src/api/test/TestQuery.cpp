@@ -56,10 +56,11 @@ using nebula::type::TypeSerializer;
 TEST(ApiTest, TestDataFromCsv) {
   TrendsTable trends;
   // query this table
+  const auto upbound = std::numeric_limits<int64_t>::max();
   const auto query = table(trends.name(), trends.getMs())
-                       .where(col("query") == "yoga")
+                       .where(col("_time_") > 0 && col("_time_") < upbound && starts(col("query"), "bedroom idea"))
                        .select(
-                         col("_time_").as("date"),
+                         col("query"),
                          sum(col("count")).as("total"))
                        .groupby({ 1 });
 
@@ -67,10 +68,11 @@ TEST(ApiTest, TestDataFromCsv) {
   auto plan = query.compile();
 
   // print out the plan through logging
+  plan->setWindow({ 0, upbound });
   plan->display();
 
   // load test data to run this query
-  trends.load(2);
+  trends.load(256);
 
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
@@ -78,14 +80,13 @@ TEST(ApiTest, TestDataFromCsv) {
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
-  LOG(INFO) << "Query: select dt, sum(count) as total from trends.draft where query='yoga' group by 1;";
   LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << fmt::format("col: {0:12} | {1:12}", "Date", "Total");
+  LOG(INFO) << fmt::format("col: {0:20} | {1:12}", "Query", "Total");
   while (result->hasNext()) {
     const auto& row = result->next();
-    LOG(INFO) << fmt::format("row: {0:50} | {1:12}",
-                             row.readLong("date"),
-                             row.readInt("total"));
+    LOG(INFO) << fmt::format("row: {0:20} | {1:12}",
+                             row.readString("query"),
+                             row.readLong("total"));
   }
 }
 

@@ -30,8 +30,9 @@ class TopRows : public nebula::common::Cursor<RowData> {
   using Less = std::function<bool(const std::unique_ptr<RowData>&, const std::unique_ptr<RowData>&)>;
 
 public:
+  // top rows will pick sorted top N rows, if max is 0, it means we don't apply limit and return all
   TopRows(const RowCursor& rows, size_t max, const Less& less)
-    : nebula::common::Cursor<RowData>(std::min(max, rows->size())),
+    : nebula::common::Cursor<RowData>(max == 0 ? rows->size() : std::min(max, rows->size())),
       heap_(rows->size()),
       rows_{ rows } {
     // build heap / priority queue

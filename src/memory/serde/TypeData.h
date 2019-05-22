@@ -16,9 +16,9 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include "common/Likely.h"
 #include "common/Memory.h"
-#include <glog/logging.h>
 #include "type/Type.h"
 
 namespace nebula {
@@ -79,7 +79,7 @@ public:
   template <typename T>
   T read(IndexType);
 
-  inline std::string read(IndexType offset, IndexType size) {
+  inline std::string_view read(IndexType offset, IndexType size) {
     return slice_.read(offset, size);
   }
 
@@ -108,8 +108,6 @@ public:
   template <typename T>
   void add(IndexType, T);
 
-  void add(IndexType, const std::string&);
-
   inline void addVoid(IndexType index) {
     if (LIKELY(void_ != nullptr)) {
       void_(index);
@@ -120,7 +118,7 @@ public:
   template <typename T>
   T read(IndexType);
 
-  inline std::string read(IndexType offset, IndexType size) {
+  inline std::string_view read(IndexType offset, IndexType size) {
     return std_->read(offset, size);
   }
 

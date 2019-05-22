@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 #include "common/Cursor.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
@@ -59,7 +60,7 @@ public:
   virtual int64_t readLong(const std::string& field) const = 0;
   virtual float readFloat(const std::string& field) const = 0;
   virtual double readDouble(const std::string& field) const = 0;
-  virtual std::string readString(const std::string& field) const = 0;
+  virtual std::string_view readString(const std::string& field) const = 0;
 
   // compound types
   virtual std::unique_ptr<ListData> readList(const std::string& field) const = 0;
@@ -81,7 +82,7 @@ public:
   NOT_IMPL_FUNC(int64_t, readLong)
   NOT_IMPL_FUNC(float, readFloat)
   NOT_IMPL_FUNC(double, readDouble)
-  NOT_IMPL_FUNC(std::string, readString)
+  NOT_IMPL_FUNC(std::string_view, readString)
   NOT_IMPL_FUNC(std::unique_ptr<ListData>, readList)
   NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
 
@@ -106,7 +107,7 @@ public:
   virtual int64_t readLong(IndexType index) const = 0;
   virtual float readFloat(IndexType index) const = 0;
   virtual double readDouble(IndexType index) const = 0;
-  virtual std::string readString(IndexType index) const = 0;
+  virtual std::string_view readString(IndexType index) const = 0;
 
 private:
   IndexType items_;
@@ -142,7 +143,12 @@ protected:
 // Supported compound types
 class MockRowData : public RowData, protected MockData {
 public:
-  MockRowData(size_t seed = 0) : MockData(seed), seed_{ seed } {}
+  MockRowData(size_t seed = 0) : MockData(seed), seed_{ seed } {
+    strings_.reserve(32);
+    for (auto i = 0; i < 32; ++i) {
+      strings_.push_back(std::string(rand_() * 10, 'N'));
+    }
+  }
 
 public:
   virtual bool isNull(const std::string& field) const override;
@@ -153,7 +159,7 @@ public:
   virtual int64_t readLong(const std::string& field) const override;
   virtual float readFloat(const std::string& field) const override;
   virtual double readDouble(const std::string& field) const override;
-  virtual std::string readString(const std::string& field) const override;
+  virtual std::string_view readString(const std::string& field) const override;
 
   // compound types
   virtual std::unique_ptr<ListData> readList(const std::string& field) const override;
@@ -167,7 +173,7 @@ public:
   virtual int64_t readLong(IndexType index) const override;
   virtual float readFloat(IndexType index) const override;
   virtual double readDouble(IndexType index) const override;
-  virtual std::string readString(IndexType index) const override;
+  virtual std::string_view readString(IndexType index) const override;
 
   // compound types
   virtual std::unique_ptr<ListData> readList(IndexType index) const override;
@@ -175,6 +181,7 @@ public:
 
 private:
   size_t seed_;
+  std::vector<std::string> strings_;
 };
 
 class MockRowCursor : public nebula::common::Cursor<RowData> {
@@ -196,7 +203,12 @@ private:
 
 class MockListData : public ListData, protected MockData {
 public:
-  MockListData(IndexType items, size_t seed = 0) : ListData(items), MockData(seed) {}
+  MockListData(IndexType items, size_t seed = 0) : ListData(items), MockData(seed) {
+    strings_.reserve(32);
+    for (auto i = 0; i < 32; ++i) {
+      strings_.push_back(std::string(rand_() * 10, 'N'));
+    }
+  }
   bool isNull(IndexType index) const override;
   bool readBool(IndexType index) const override;
   std::int8_t readByte(IndexType index) const override;
@@ -205,7 +217,10 @@ public:
   int64_t readLong(IndexType index) const override;
   float readFloat(IndexType index) const override;
   double readDouble(IndexType index) const override;
-  std::string readString(IndexType index) const override;
+  std::string_view readString(IndexType index) const override;
+
+private:
+  std::vector<std::string> strings_;
 };
 
 class MockMapData : public MapData, protected MockData {

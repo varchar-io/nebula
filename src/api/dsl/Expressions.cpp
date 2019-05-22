@@ -31,10 +31,10 @@ using nebula::type::TypeNode;
 
 //////////////////////////////////////// Column Expression Impl ///////////////////////////////////
 // for column expression
-#define LOGICAL_OP_STRING(OP, TYPE)                                                                                                           \
-  auto ColumnExpression::operator OP(const std::string& value)->LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string>> { \
-    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string>>(                                                       \
-      std::make_shared<THIS_TYPE>(*this), std::make_shared<ConstExpression<std::string>>(value));                                             \
+#define LOGICAL_OP_STRING(OP, TYPE)                                                                                                                    \
+  auto ColumnExpression::operator OP(const std::string_view value)->LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string_view>> { \
+    return LogicalExpression<LogicalOp::TYPE, THIS_TYPE, ConstExpression<std::string_view>>(                                                           \
+      std::make_shared<THIS_TYPE>(*this), std::make_shared<ConstExpression<std::string_view>>(value));                                                 \
   }
 
 LOGICAL_OP_STRING(==, EQ)
@@ -46,9 +46,6 @@ LOGICAL_OP_STRING(<=, LE)
 #undef LOGICAL_OP_STRING
 
 TreeNode ColumnExpression::type(const Table& table) {
-  // TODO(cao) - respect passed in alias to rename current column expression
-  // for example: select col1 as COOL from table
-
   // look up the table schema to deduce the table
   const auto& schema = table.getSchema();
   TreeNode nodeType;
@@ -58,7 +55,7 @@ TreeNode ColumnExpression::type(const Table& table) {
 
   N_ENSURE_NOT_NULL(nodeType, fmt::format("column not found: {0}", column_));
   kind_ = TypeBase::k(nodeType);
-  return nodeType;
+  return typeCreate(kind_, alias_);
 }
 
 // convert to value eval
@@ -81,7 +78,7 @@ std::unique_ptr<ValueEval> ColumnExpression::asEval() const {
     KIND_CASE_VE(BIGINT, int64_t)
     KIND_CASE_VE(REAL, float)
     KIND_CASE_VE(DOUBLE, double)
-    KIND_CASE_VE(VARCHAR, std::string)
+    KIND_CASE_VE(VARCHAR, std::string_view)
   default:
     // TODO(cao) - support list and map type for UDF to compute values on
     throw NException(fmt::format(

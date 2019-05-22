@@ -54,8 +54,8 @@ float MockRowData::readFloat(const std::string&) const {
 double MockRowData::readDouble(const std::string&) const {
   return rand_();
 }
-std::string MockRowData::readString(const std::string&) const {
-  return std::string(rand_() * 10, 'N');
+std::string_view MockRowData::readString(const std::string&) const {
+  return strings_.at(rand_() * strings_.size());
 }
 
 // compound types
@@ -97,8 +97,8 @@ float MockRowData::readFloat(IndexType) const {
 double MockRowData::readDouble(IndexType) const {
   return rand_();
 }
-std::string MockRowData::readString(IndexType) const {
-  return std::string(rand_() * 10, 'N');
+std::string_view MockRowData::readString(IndexType) const {
+  return strings_.at(rand_() * strings_.size());
 }
 
 // compound types
@@ -142,8 +142,8 @@ float MockListData::readFloat(IndexType) const {
 double MockListData::readDouble(IndexType) const {
   return rand_();
 }
-std::string MockListData::readString(IndexType) const {
-  return std::string(rand_() * 10, 'N');
+std::string_view MockListData::readString(IndexType) const {
+  return strings_.at(rand_() * strings_.size());
 }
 
 //------------ Mock Map

@@ -137,7 +137,8 @@ size_t DataNode::append(double d) {
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
 
-size_t DataNode::append(const std::string& str) {
+template <>
+size_t DataNode::append(std::string_view str) {
   N_ENSURE(type_.k() == nebula::type::StringType::kind, "string type expected");
 
   const size_t size = str.size();
@@ -289,7 +290,7 @@ TYPE_READ_DELEGATE(float)
 TYPE_READ_DELEGATE(double)
 
 template <>
-std::string DataNode::read(size_t index) {
+std::string_view DataNode::read(size_t index) {
   auto os = meta_->offsetSize(index);
   return data_->read(std::get<0>(os), std::get<1>(os));
 }

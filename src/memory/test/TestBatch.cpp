@@ -106,7 +106,7 @@ TEST(BatchTest, TestBatchRead) {
     if (!r.isNull("items")) {
       const auto list = r.readList("items");
       for (auto k = 0; k < list->getItems(); ++k) {
-        s += list->readString(k) + ",";
+        s += fmt::format("{0},", list->readString(k));
       }
     }
 

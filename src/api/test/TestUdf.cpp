@@ -58,7 +58,7 @@ TEST(UDFTest, TestLike) {
     const auto& p = std::get<1>(item);
     auto r = std::get<2>(item);
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
-    auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string>>(s);
+    auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
     nebula::api::udf::Like l("l", c->asEval(), p);
     bool valid = true;
     EXPECT_EQ(l.eval(row, valid), r);
@@ -83,7 +83,7 @@ TEST(UDFTest, TestPrefix) {
     const auto& p = std::get<1>(item);
     auto r = std::get<2>(item);
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
-    auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string>>(s);
+    auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
     nebula::api::udf::Prefix prefix("p", c->asEval(), p);
     bool valid = true;
     EXPECT_EQ(prefix.eval(row, valid), r);
@@ -99,7 +99,7 @@ TEST(UDFTest, TestPrefixContext) {
   nebula::execution::eval::EvalContext context;
   context.reset(row);
 
-  auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string>>("abcdfeg");
+  auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>("abcdfeg");
   nebula::api::udf::Prefix prefix("p", c->asEval(), "abc");
   for (auto i = 0; i < 1000; ++i) {
     bool valid = true;

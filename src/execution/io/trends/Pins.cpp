@@ -62,7 +62,7 @@ public:
   TRANSFER(int32_t, readInt)
   TRANSFER(float, readFloat)
   TRANSFER(double, readDouble)
-  TRANSFER(std::string, readString)
+  TRANSFER(std::string_view, readString)
   TRANSFER(std::unique_ptr<nebula::surface::ListData>, readList)
   TRANSFER(std::unique_ptr<nebula::surface::MapData>, readMap)
 
@@ -99,7 +99,7 @@ void PinsTable::load(size_t max) {
   std::unordered_map<size_t, std::pair<size_t, size_t>> timeRangeByDate;
   size_t blockId = 0;
   auto files = File::list(dir);
-  auto filesLimit = max == 0 ? files.size() : max;
+  auto filesLimit = max == 0 ? files.size() : std::min(max, files.size());
   for (size_t i = 0; i < filesLimit; ++i) {
     // do not load more than max blocks max==0: load all
     auto& file = files.at(i);

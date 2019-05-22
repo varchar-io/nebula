@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <string_view>
 #include <unordered_map>
 #include "DataNode.h"
 #include "surface/DataSurface.h"
@@ -90,7 +91,7 @@ public:
   int64_t readLong(const std::string& field) const override;
   float readFloat(const std::string& field) const override;
   double readDouble(const std::string& field) const override;
-  std::string readString(const std::string& field) const override;
+  std::string_view readString(const std::string& field) const override;
 
   // compound types
   std::unique_ptr<ListData> readList(const std::string& field) const override;
@@ -117,7 +118,7 @@ public:
   int64_t readLong(IndexType index) const override;
   float readFloat(IndexType index) const override;
   double readDouble(IndexType index) const override;
-  std::string readString(IndexType index) const override;
+  std::string_view readString(IndexType index) const override;
 
 private:
   PDataNode node_;

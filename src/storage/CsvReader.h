@@ -59,7 +59,7 @@ public:
   CONV_TYPE_INDEX(float, readFloat)
   CONV_TYPE_INDEX(double, readDouble)
 
-  std::string readString(const std::string& field) const override {
+  std::string_view readString(const std::string& field) const override {
     auto index = columnLookup_(field);
     return data_.at(index);
   }

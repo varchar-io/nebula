@@ -171,9 +171,9 @@ TEST(ValueEvalTest, TestValueEvalLogical) {
     valid = true;
     EXPECT_EQ(b9->eval<bool>(row, valid), true);
 
-    auto b10 = nebula::execution::eval::column<std::string>("s");
+    auto b10 = nebula::execution::eval::column<std::string_view>("s");
     valid = true;
-    LOG(INFO) << "b10=" << b10->eval<std::string>(row, valid);
+    LOG(INFO) << "b10=" << b10->eval<std::string_view>(row, valid);
   }
 }
 

@@ -57,7 +57,7 @@ public:
   TRANSFER(int32_t, readInt)
   TRANSFER(float, readFloat)
   TRANSFER(double, readDouble)
-  TRANSFER(std::string, readString)
+  TRANSFER(std::string_view, readString)
   TRANSFER(std::unique_ptr<nebula::surface::ListData>, readList)
   TRANSFER(std::unique_ptr<nebula::surface::MapData>, readMap)
 
@@ -131,7 +131,7 @@ void TrendsTable::load(size_t max) {
   }
 
   // move all blocks in map into block manager
-  for (auto itr = blocksByTime.begin(); itr != blocksByTime.end(); ++itr) {
+  for (auto itr = blocksByTime.begin(); itr != blocksByTime.end() && blockId < max; ++itr) {
     bm->add(NBlock(name_, blockId++, itr->first, itr->first), std::move(itr->second));
   }
 }

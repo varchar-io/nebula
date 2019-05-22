@@ -22,6 +22,7 @@
 #include <iomanip>
 #include <random>
 #include <sstream>
+#include <string_view>
 #include <thread>
 
 /**
@@ -46,9 +47,11 @@ public: /** only static methods */
   }
 
   // given date time string and parsing pattern, return GMT unix time stamp
-  static std::time_t time(const std::string& datetime, const std::string& pattern) {
+  static std::time_t time(const std::string_view datetime, const std::string& pattern) {
     std::tm t = {};
-    std::istringstream value(datetime);
+
+    // set buffer to it - can we avoid constructing std::string here?
+    std::istringstream value(datetime.data());
     value >> std::get_time(&t, pattern.c_str());
     if (value.fail()) {
       LOG(ERROR) << "Failed to parse time: " << datetime;

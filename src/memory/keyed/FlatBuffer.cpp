@@ -86,7 +86,7 @@ bool FlatBuffer::appendNull(bool isNull, nebula::type::Kind kind, Buffer& dest) 
 }
 
 template <typename T>
-size_t FlatBuffer::appendScalar(T value, Buffer& dest) {
+size_t FlatBuffer::append(T value, Buffer& dest) {
   size_t len = dest.slice.write(dest.offset, value);
   dest.offset += len;
 
@@ -94,13 +94,14 @@ size_t FlatBuffer::appendScalar(T value, Buffer& dest) {
   return dest.offset;
 }
 
-size_t FlatBuffer::appendString(const std::string& str, Buffer& dest) {
+template <>
+size_t FlatBuffer::append(std::string_view str, Buffer& dest) {
   // write variable data into dirty buffer and get offset and length
   auto len = data_.slice.write(data_.offset, str.data(), str.size());
 
   // write offset and length in main chunk
-  appendScalar<int32_t>(data_.offset, dest);
-  appendScalar<int32_t>(len, dest);
+  append<int32_t>(data_.offset, dest);
+  append<int32_t>(len, dest);
 
   // move forward data offset for next
   data_.offset += len;
@@ -124,10 +125,10 @@ size_t FlatBuffer::appendList(Kind itemKind, std::unique_ptr<ListData> list) {
       continue;
     }
 
-#define SCALAR_DATA_DISTR(KIND, FUNC)   \
-  case Kind::KIND: {                    \
-    appendScalar(list->FUNC(i), list_); \
-    break;                              \
+#define SCALAR_DATA_DISTR(KIND, FUNC) \
+  case Kind::KIND: {                  \
+    append(list->FUNC(i), list_);     \
+    break;                            \
   }
 
     // add solid values for each type
@@ -139,10 +140,7 @@ size_t FlatBuffer::appendList(Kind itemKind, std::unique_ptr<ListData> list) {
       SCALAR_DATA_DISTR(BIGINT, readLong)
       SCALAR_DATA_DISTR(REAL, readFloat)
       SCALAR_DATA_DISTR(DOUBLE, readDouble)
-    case Kind::VARCHAR: {
-      appendString(list->readString(i), list_);
-      break;
-    }
+      SCALAR_DATA_DISTR(VARCHAR, readString)
     default:
       throw NException("other types not supported yet");
     }
@@ -190,7 +188,7 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
 
 #define SCALAR_DATA_DISTR(KIND, FUNC) \
   case Kind::KIND: {                  \
-    appendScalar(row.FUNC(i), main_); \
+    append(row.FUNC(i), main_);       \
     break;                            \
   }
 
@@ -213,19 +211,17 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
       SCALAR_DATA_DISTR(BIGINT, readLong)
       SCALAR_DATA_DISTR(REAL, readFloat)
       SCALAR_DATA_DISTR(DOUBLE, readDouble)
-    case Kind::VARCHAR: {
-      appendString(row.readString(i), main_);
-      break;
-    }
+      SCALAR_DATA_DISTR(VARCHAR, readString)
+
     case Kind::ARRAY: {
       auto list = row.readList(i);
 
       // write 4 bytes of N = number of items
-      appendScalar<int32_t>(list->getItems(), main_);
+      append<int32_t>(list->getItems(), main_);
       auto listType = std::dynamic_pointer_cast<nebula::type::ListType>(type);
       auto childKind = listType->childType(0)->k();
       auto listOffset = appendList(childKind, std::move(list));
-      appendScalar<int32_t>(listOffset, main_);
+      append<int32_t>(listOffset, main_);
 
       break;
     }
@@ -239,7 +235,7 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
   rows_.push_back(std::make_tuple(rowOffset, main_.offset - rowOffset));
 
   return rowOffset;
-}
+} // namespace keyed
 
 // random access to a row - may require internal seek
 const std::unique_ptr<RowData> FlatBuffer::crow(size_t rowId) const {
@@ -323,7 +319,7 @@ size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
                       // read the real data from data_
                       // TODO(cao) - we don't need convert strings from bytes for hash
                       // instead, slice should be able to hash the range[offset, len] much cheaper
-                      n8bytes = std::hash<std::string>()(data_.slice.read(offset, len));
+                      n8bytes = std::hash<std::string_view>()(data_.slice.read(offset, len));
                       break;
                     }
                     default:
@@ -493,7 +489,7 @@ READ_FIELD(double, readDouble)
 
 #undef READ_FIELD
 
-std::string RowAccessor::readString(IndexType index) const {
+std::string_view RowAccessor::readString(IndexType index) const {
   auto colOffset = std::get<1>(colProps_[index]);
   // read 4 bytes offset and 4 bytes length
   auto offset = fb_.main_.slice.read<int32_t>(offset_ + colOffset);
@@ -537,7 +533,7 @@ FORWARD_NAME_2_INDEX(int32_t, readInt)
 FORWARD_NAME_2_INDEX(int64_t, readLong)
 FORWARD_NAME_2_INDEX(float, readFloat)
 FORWARD_NAME_2_INDEX(double, readDouble)
-FORWARD_NAME_2_INDEX(std::string, readString)
+FORWARD_NAME_2_INDEX(std::string_view, readString)
 FORWARD_NAME_2_INDEX(std::unique_ptr<nebula::surface::ListData>, readList)
 
 #undef FORWARD_NAME_2_INDEX
@@ -561,7 +557,7 @@ READ_FIELD(double, readDouble)
 
 #undef READ_FIELD
 
-std::string ListAccessor::readString(IndexType index) const {
+std::string_view ListAccessor::readString(IndexType index) const {
   // we need to plus 1 to skip the first byte of null indicator
   const auto itemOffset = itemOffsets_[index] + 1;
   // read 4 bytes offset and 4 bytes length

@@ -203,10 +203,10 @@ class MockRow2 : public nebula::surface::MockRowData {
 public:
   MockRow2() = default;
 
-  virtual std::string readString(const std::string&) const override {
+  virtual std::string_view readString(const std::string&) const override {
     return "abcdefg";
   }
-  virtual std::string readString(size_t) const override {
+  virtual std::string_view readString(size_t) const override {
     return "abcdefg";
   }
   MOCK_CONST_METHOD1(isNull, bool(const std::string&));

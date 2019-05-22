@@ -97,27 +97,8 @@ protected:
   inline void extractAlias(const std::string& a1, const std::string& a2) {
     alias_ = a1.size() > 0 ? a1 : a2;
   }
-  static nebula::type::TreeNode typeCreate(nebula::type::Kind kind, std::string& alias) {
-#define TYPE_CREATE_NODE(KIND, TYPE)              \
-  case nebula::type::KIND: {                      \
-    return nebula::type::TYPE::createTree(alias); \
-  }
 
-    // no result should have the final type KIND
-    switch (kind) {
-      TYPE_CREATE_NODE(BOOLEAN, BoolType)
-      TYPE_CREATE_NODE(TINYINT, ByteType)
-      TYPE_CREATE_NODE(SMALLINT, ShortType)
-      TYPE_CREATE_NODE(INTEGER, IntType)
-      TYPE_CREATE_NODE(BIGINT, LongType)
-      TYPE_CREATE_NODE(REAL, FloatType)
-      TYPE_CREATE_NODE(DOUBLE, DoubleType)
-    default:
-      throw NException(fmt::format("not supported type {0} in arthmetic operations",
-                                   nebula::type::TypeBase::kname(kind)));
-    }
-#undef TYPE_CREATE_NODE
-  }
+  static nebula::type::TreeNode typeCreate(nebula::type::Kind kind, std::string&);
 
   // only one alias can be updated if client calls "as" multiple times
   std::string alias_;

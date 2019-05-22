@@ -15,10 +15,10 @@
  */
 
 #include "gtest/gtest.h"
+#include <glog/logging.h>
 #include <valarray>
 #include "common/Memory.h"
 #include "fmt/format.h"
-#include <glog/logging.h>
 #include "memory/Batch.h"
 #include "memory/DataNode.h"
 #include "memory/FlatRow.h"
@@ -42,11 +42,11 @@ TEST(TypeDataTest, TestAddTypedData) {
 
 TEST(TypeDataTest, TestStringReadWrite) {
   auto s = nebula::memory::serde::TypeDataFactory::createData(nebula::type::Kind::VARCHAR);
-  std::string s1 = "Nebula";
-  std::string s2 = "Is";
-  std::string s3 = "So";
-  std::string s4 = "Awesome";
-  std::string s5 = "!";
+  std::string_view s1 = "Nebula";
+  std::string_view s2 = "Is";
+  std::string_view s3 = "So";
+  std::string_view s4 = "Awesome";
+  std::string_view s5 = "!";
   s->add(0, s1);
   s->add(1, s2);
   s->add(2, s3);

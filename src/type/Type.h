@@ -108,7 +108,7 @@ DEFINE_TYPE_TRAITS(INTEGER, true, 4, int32_t)
 DEFINE_TYPE_TRAITS(BIGINT, true, 8, int64_t)
 DEFINE_TYPE_TRAITS(REAL, true, 4, float)
 DEFINE_TYPE_TRAITS(DOUBLE, true, 8, double)
-DEFINE_TYPE_TRAITS(VARCHAR, true, 0, std::string)
+DEFINE_TYPE_TRAITS(VARCHAR, true, 0, std::string_view)
 DEFINE_TYPE_TRAITS(ARRAY, false, 0, void)
 DEFINE_TYPE_TRAITS(MAP, false, 0, void)
 DEFINE_TYPE_TRAITS(STRUCT, false, 0, void)
@@ -337,7 +337,7 @@ DEFINE_TYPE_DETECT(const char*, VARCHAR, StringType, "")
 #undef DEFINE_TYPE_DETECT
 
 template <>
-struct TypeDetect<std::string> {
+struct TypeDetect<std::string_view> {
   static constexpr Kind kind = Kind::VARCHAR;
   static constexpr auto name = "VARCHAR";
   static constexpr auto type = [](const std::string& n) { return StringType::createTree(n); };

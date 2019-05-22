@@ -124,7 +124,7 @@ FORWARD_EVAL_FIELD(int32_t, readInt)
 FORWARD_EVAL_FIELD(int64_t, readLong)
 FORWARD_EVAL_FIELD(float, readFloat)
 FORWARD_EVAL_FIELD(double, readDouble)
-FORWARD_EVAL_FIELD(std::string, readString)
+FORWARD_EVAL_FIELD(std::string_view, readString)
 
 #undef FORWARD_EVAL_FIELD
 

@@ -122,7 +122,7 @@ void DoubleData::add(IndexType, double value) {
 
 template <>
 template <>
-void StringData::add(IndexType, const std::string& value) {
+void StringData::add(IndexType, std::string_view value) {
   size_ += slice_.write(size_, value.data(), value.size());
 }
 
@@ -215,10 +215,7 @@ TYPE_ADD_PROXY(int32_t, id_)
 TYPE_ADD_PROXY(int64_t, ld_)
 TYPE_ADD_PROXY(float, fd_)
 TYPE_ADD_PROXY(double, dd_)
-
-void TypeDataProxy::add(IndexType index, const std::string& value) {
-  std_->add<const std::string&>(index, value);
-}
+TYPE_ADD_PROXY(std::string_view, std_)
 
 #undef TYPE_PROXY
 
