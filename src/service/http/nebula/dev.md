@@ -1,0 +1,7 @@
+- install grunt "npm install -g grunt-cli"
+- use selectize for multi-values input
+- go to "selectize/" and "npm install"
+- build with plugins "grunt --plugins=remove_button,restore_on_backspace"
+- we can also use it from CDNJS directly if no changes in the build
+- https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js
+- https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/css/selectize.min.css

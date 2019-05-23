@@ -1,15 +1,15 @@
 import {
     NebulaClient
-} from "./dist/web/main.js";
+} from "/dist/web/main.js";
 
 import {
     Charts
-} from "./charts.min.js";
+} from "/c/charts.min.js";
 
 // define jquery style selector 
 const d3 = NebulaClient.d3;
-const $ = NebulaClient.d3.select;
-const $$ = (e) => $(e).property('value');
+const ds = NebulaClient.d3.select;
+const $$ = (e) => ds(e).property('value');
 
 const serviceAddr = "http://dev-shawncao:8080";
 const v1Client = new NebulaClient.V1Client(serviceAddr);
@@ -29,7 +29,7 @@ const initTable = (table, callback) => {
 
     // call the service 
     v1Client.state(req, {}, (err, reply) => {
-        const stats = $('#stats');
+        const stats = ds('#stats');
         if (err !== null) {
             stats.text("Error code: " + err);
         } else if (reply == null) {
@@ -45,7 +45,7 @@ const initTable = (table, callback) => {
 
             // populate dimension columns
             const dimensions = reply.getDimensionList().filter((v) => v !== '_time_');
-            $('#dcolumns')
+            ds('#dcolumns')
                 .html("")
                 .selectAll("option")
                 .data(dimensions)
@@ -56,7 +56,7 @@ const initTable = (table, callback) => {
 
             // populate metrics columns
             const metrics = reply.getMetricList().filter((v) => v !== '_time_');
-            $('#mcolumns')
+            ds('#mcolumns')
                 .html("")
                 .selectAll("option")
                 .data(metrics)
@@ -67,7 +67,7 @@ const initTable = (table, callback) => {
 
             // populate all columns
             const all = dimensions.concat(metrics);
-            $('#fcolumns')
+            ds('#fcolumns')
                 .html("")
                 .selectAll("option")
                 .data(all)
@@ -126,7 +126,7 @@ const checkRequest = () => {
         const rangeSeconds = (end - start) / 1000;
         const buckets = rangeSeconds / windowSize;
         if (buckets > 500) {
-            $("#qr").text(`Too many data points to return ${buckets}, please increase window granularity.`);
+            ds("#qr").text(`Too many data points to return ${buckets}, please increase window granularity.`);
             return true;
         }
     }
@@ -179,7 +179,7 @@ const restore = () => {
 
     // get parameters from URL
     const p = JSON.parse(decodeURI(h.substr(1)));
-    const set = (N, V) => $(N).property('value', V);
+    const set = (N, V) => ds(N).property('value', V);
     if (p.t) {
         set('#tables', p.t);
         initTable(p.t, () => {
@@ -314,10 +314,10 @@ const execute = () => {
     }
 
     v1Client.query(q, {}, (err, reply) => {
-        $('#table_head').html("");
-        $('#table_content').html("");
+        ds('#table_head').html("");
+        ds('#table_content').html("");
 
-        const result = $('#qr');
+        const result = ds('#qr');
         if (err !== null) {
             result.text("Error code: " + err);
         } else if (reply == null) {
@@ -359,7 +359,7 @@ const execute = () => {
     });
 };
 
-$('#btn').on("click", build);
+ds('#btn').on("click", build);
 
 // hook up hash change event
 window.onhashchange = function () {
@@ -371,17 +371,28 @@ const listReq = new NebulaClient.ListTables();
 listReq.setLimit(5);
 v1Client.tables(listReq, {}, (err, reply) => {
     const list = reply.getTableList();
-    const options = $('#tables').selectAll("option").data(list).enter().append('option');
+    const options = ds('#tables').selectAll("option").data(list).enter().append('option');
     options.text(d => d).attr("value", d => d);
 
     // properties of the first table
     initTable(list[0]);
 
     // if user change the table selection, initialize it again
-    $('#tables').on('change', () => {
+    ds('#tables').on('change', () => {
         initTable($$('#tables'));
     });
 
     // restore the selection
     setTimeout(restore, 50);
+});
+
+$('#fvalue').selectize({
+    plugins: ['restore_on_backspace', 'remove_button'],
+    persist: false,
+    create: function (input) {
+        return {
+            value: input,
+            text: input
+        }
+    }
 });

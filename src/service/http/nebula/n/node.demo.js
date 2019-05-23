@@ -1,5 +1,5 @@
 const grpc = require('grpc');
-const NebulaClient = require("./dist/node/main");
+const NebulaClient = require("../dist/node/main");
 
 var serviceAddr = "dev-shawncao:9190";
 var client = new NebulaClient.EchoClient(serviceAddr, grpc.credentials.createInsecure());

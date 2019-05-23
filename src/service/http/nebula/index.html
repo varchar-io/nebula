@@ -4,6 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Nebula Demo Page</title>
+    <script src="s/jquery.min.js"></script>
+    <script src="s/selectize.min.js"></script>
     <script type="module" src="web.min.js"></script>
     <link rel="stylesheet" type="text/css" href="styles.min.css">
 </head>
@@ -28,8 +30,8 @@
                 <button id="btn">Query</button>
             </div>
 
-            <div>Time Start: <input type="text" id="start" value="2019-04-01"></div>
-            <div>Time End: <input type="text" id="end" value="2019-04-15"></div>
+            <div>Time Start: <input type="text" id="start" class="selectize-input" value="2019-04-01"></div>
+            <div>Time End: <input type="text" id="end" class="selectize-input" value="2019-04-15"></div>
             <div>Window: <select id="window">
                     <option value="60">1 Minute</option>
                     <option value="3600">1 Hour</option>
@@ -38,14 +40,17 @@
                     <option value="604800">1 Week</option>
                 </select>
             </div>
-            <div> Filter: <select id="fcolumns"></select><select id="fop">
+            <div> Filter:
+                <select id="fcolumns"></select>
+                <select id="fop">
                     <option value="EQ">=</option>
                     <option value="NEQ">!=</option>
                     <option value="GT">&gt;</option>
                     <option value="LT">&lt;</option>
                     <option value="LK">LIKE</option>
                 </select>
-                <div class="text"><input type="text" id="fvalue"></div>
+                <div class="text">
+                    <input type="text" id="fvalue"></div>
             </div>
             <div> Dimension: <select id="dcolumns"></select></div>
             <div> Metric:

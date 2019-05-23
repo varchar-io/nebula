@@ -1,17 +1,17 @@
 import {
     NebulaClient
-} from "./dist/web/main.js";
+} from "/dist/web/main.js";
 
 // define jquery style selector 
 const d3 = NebulaClient.d3;
-const $ = NebulaClient.d3.select;
+const ds = NebulaClient.d3.select;
 
 export class Charts {
     constructor() {
         this.displayTable = (json) => {
             // Get Table headers and print 
             if (json.length > 0) {
-                const area = $('#show');
+                const area = ds('#show');
                 area.html("");
                 const tb = area.append("table");
                 tb.append("thead").append("tr").attr("id", "table_head");
@@ -19,10 +19,10 @@ export class Charts {
 
                 // append header
                 const keys = Object.keys(json[0]);
-                $('#table_head').selectAll("th").data(keys).enter().append('th').text(d => d);
+                ds('#table_head').selectAll("th").data(keys).enter().append('th').text(d => d);
 
                 // Get table body and print 
-                $('#table_content').selectAll('tr').data(json).enter().append('tr')
+                ds('#table_content').selectAll('tr').data(json).enter().append('tr')
                     .selectAll('td')
                     .data((row) => {
                         return keys.map((column) => {
@@ -40,7 +40,7 @@ export class Charts {
 
         this.displayBar = (json, key, value) => {
             // clear the area first
-            const area = $('#show');
+            const area = ds('#show');
             area.html("");
             const margin = {
                 top: 20,
@@ -103,7 +103,7 @@ export class Charts {
 
         this.displayPie = (json, key, value) => {
             // clear the area first
-            const area = $('#show');
+            const area = ds('#show');
             area.html("");
 
             // we limit to display 10 values only, long tail will be aggregated as others
@@ -163,7 +163,7 @@ export class Charts {
 
         this.displayLine = (json, value, format) => {
             // clear the area first
-            const area = $('#show');
+            const area = ds('#show');
             area.html("");
 
             // set the dimensions and margins of the graph
