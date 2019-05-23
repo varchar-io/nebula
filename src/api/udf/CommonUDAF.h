@@ -48,8 +48,8 @@ public:
 
 public:
   // apply a row data to get result
-  virtual NativeType run(const nebula::surface::RowData& row, bool& valid) const override {
-    return expr_->eval<NativeType>(row, valid);
+  virtual NativeType run(nebula::execution::eval::EvalContext& ctx, bool& valid) const override {
+    return expr_->eval<NativeType>(ctx, valid);
   }
 
   // global aggregate

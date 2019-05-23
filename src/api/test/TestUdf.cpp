@@ -20,7 +20,7 @@
 #include "api/udf/Like.h"
 #include "api/udf/MyUdf.h"
 #include "api/udf/Prefix.h"
-#include "execution/eval/EvalContext.h"
+#include "execution/eval/ValueEval.h"
 #include "surface/DataSurface.h"
 
 namespace nebula {
@@ -29,15 +29,18 @@ namespace test {
 
 TEST(UDFTest, TestNot) {
   nebula::surface::MockRowData row;
+  nebula::execution::eval::EvalContext ctx;
+  ctx.reset(row);
+
   auto f = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(false);
   nebula::api::udf::Not n("n", f->asEval());
   bool valid = true;
-  EXPECT_EQ(n.eval(row, valid), true);
+  EXPECT_EQ(n.eval(ctx, valid), true);
 
   auto t = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(true);
   nebula::api::udf::Not y("n", t->asEval());
   valid = true;
-  EXPECT_EQ(y.eval(row, valid), false);
+  EXPECT_EQ(y.eval(ctx, valid), false);
 }
 
 TEST(UDFTest, TestLike) {
@@ -52,6 +55,8 @@ TEST(UDFTest, TestLike) {
     { "hi there", "%there", true }
   };
   nebula::surface::MockRowData row;
+  nebula::execution::eval::EvalContext ctx;
+  ctx.reset(row);
 
   for (const auto& item : data) {
     const auto& s = std::get<0>(item);
@@ -61,7 +66,7 @@ TEST(UDFTest, TestLike) {
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
     nebula::api::udf::Like l("l", c->asEval(), p);
     bool valid = true;
-    EXPECT_EQ(l.eval(row, valid), r);
+    EXPECT_EQ(l.eval(ctx, valid), r);
   }
 }
 
@@ -77,6 +82,8 @@ TEST(UDFTest, TestPrefix) {
     { "hi there", "hi there", true }
   };
   nebula::surface::MockRowData row;
+  nebula::execution::eval::EvalContext ctx;
+  ctx.reset(row);
 
   for (const auto& item : data) {
     const auto& s = std::get<0>(item);
@@ -86,7 +93,7 @@ TEST(UDFTest, TestPrefix) {
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
     nebula::api::udf::Prefix prefix("p", c->asEval(), p);
     bool valid = true;
-    EXPECT_EQ(prefix.eval(row, valid), r);
+    EXPECT_EQ(prefix.eval(ctx, valid), r);
   }
 }
 

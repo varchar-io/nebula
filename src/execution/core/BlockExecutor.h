@@ -17,6 +17,7 @@
 #pragma once
 
 #include "execution/ExecutionPlan.h"
+#include "execution/eval/ValueEval.h"
 #include "memory/Batch.h"
 #include "memory/keyed/HashFlat.h"
 #include "surface/DataSurface.h"
@@ -54,13 +55,17 @@ private:
   std::unique_ptr<nebula::memory::keyed::HashFlat> result_;
 };
 
+// TODO(cao) - we should remove this constructor.
+// Feels expensive to construct every one for each row.
 // computed row use index based interfaces rather than name based interface.
 class ComputedRow : public nebula::surface::RowData {
   using IndexType = nebula::surface::IndexType;
 
 public:
-  ComputedRow(const nebula::surface::RowData& input, const std::vector<std::unique_ptr<eval::ValueEval>>& fields)
-    : input_{ input }, fields_{ fields } {
+  ComputedRow(
+    nebula::execution::eval::EvalContext& ctx,
+    const std::vector<std::unique_ptr<eval::ValueEval>>& fields)
+    : ctx_{ ctx }, fields_{ fields } {
   }
   virtual ~ComputedRow() = default;
 
@@ -99,7 +104,7 @@ public:
   std::unique_ptr<nebula::surface::MapData> readMap(IndexType) const override;
 
 private:
-  const nebula::surface::RowData& input_;
+  nebula::execution::eval::EvalContext& ctx_;
   const std::vector<std::unique_ptr<eval::ValueEval>>& fields_;
 };
 

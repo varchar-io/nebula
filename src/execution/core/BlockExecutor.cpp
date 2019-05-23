@@ -26,6 +26,7 @@ namespace nebula {
 namespace execution {
 namespace core {
 
+using nebula::execution::eval::EvalContext;
 using nebula::execution::eval::UDAF;
 using nebula::execution::eval::ValueEval;
 using nebula::memory::keyed::HashFlat;
@@ -50,19 +51,21 @@ void BlockExecutor::compute() {
     return true;                                                                                                                        \
   }
 
+  // build context and computed row associated with this context
+  EvalContext ctx(plan_.cacheEval());
+  ComputedRow cr(ctx, fields);
   for (size_t i = 0, size = data_.getRows(); i < size; ++i) {
-    const RowData& row = accessor->seek(i);
+    ctx.reset(accessor->seek(i));
 
     // if not fullfil the condition
     // ignore valid here - if system can't determine how to act on NULL value
     // we don't know how to make decision here too
     bool valid = true;
-    if (!filter.eval<bool>(row, valid)) {
+    if (!ctx.eval<bool>(filter, valid)) {
       continue;
     }
 
     // flat compute every new value of each field and set to corresponding column in flat
-    auto cr = ComputedRow(row, fields);
     result_->update(cr, [&fields, &keys](size_t column, Kind kind, void* ov, void* nv, void* value) {
       // we don't update keys since they are the same
       if (keys.find(column) != keys.end()) {
@@ -111,10 +114,10 @@ bool ComputedRow::isNull(IndexType) const {
 
 // TODO(cao) - need to implement isNull (maybe cache to ensure evaluate once)
 // otherwise - this may return invalid values
-#define FORWARD_EVAL_FIELD(TYPE, NAME)                \
-  TYPE ComputedRow::NAME(IndexType index) const {     \
-    bool valid = true;                                \
-    return fields_[index]->eval<TYPE>(input_, valid); \
+#define FORWARD_EVAL_FIELD(TYPE, NAME)              \
+  TYPE ComputedRow::NAME(IndexType index) const {   \
+    bool valid = true;                              \
+    return ctx_.eval<TYPE>(*fields_[index], valid); \
   }
 
 FORWARD_EVAL_FIELD(bool, readBool)

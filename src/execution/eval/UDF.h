@@ -37,14 +37,14 @@ public:
   UDF(const std::string& sign)
     : TYPE_VALUE_EVAL_KIND(
         sign,
-        [this](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
+        [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
           // call the UDF to evalue the result
-          return this->run(row, valid);
+          return this->run(ctx, valid);
         },
         {}) {}
   virtual ~UDF() = default;
 
-  virtual typename nebula::type::TypeTraits<KIND>::CppType run(const nebula::surface::RowData&, bool&) const = 0;
+  virtual typename nebula::type::TypeTraits<KIND>::CppType run(EvalContext&, bool&) const = 0;
 };
 
 // UDAF is a state ful object

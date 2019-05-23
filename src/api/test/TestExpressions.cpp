@@ -23,6 +23,7 @@
 #include "common/Likely.h"
 #include "common/Memory.h"
 #include "execution/ExecutionPlan.h"
+#include "execution/eval/ValueEval.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "meta/TestTable.h"
@@ -148,8 +149,10 @@ TEST(ExpressionsTest, TestExpressionEval) {
 
     auto eval = idvalue.asEval();
     nebula::surface::MockRowData mr;
+    nebula::execution::eval::EvalContext ctx;
+    ctx.reset(mr);
     bool valid = true;
-    bool res = eval->eval<bool>(mr, valid);
+    bool res = eval->eval<bool>(ctx, valid);
     EXPECT_EQ(res, false);
   }
 
@@ -159,8 +162,10 @@ TEST(ExpressionsTest, TestExpressionEval) {
 
     auto eval = eventValue.asEval();
     nebula::surface::MockRowData mr;
+    nebula::execution::eval::EvalContext ctx;
+    ctx.reset(mr);
     bool valid = true;
-    bool res = eval->eval<bool>(mr, valid);
+    bool res = eval->eval<bool>(ctx, valid);
     EXPECT_EQ(res, false);
   }
 }
@@ -224,6 +229,8 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
   // verify the mocked data has expected result
   EXPECT_EQ(rowData.readString("event"), "abcdefg");
 
+  nebula::execution::eval::EvalContext ctx;
+  ctx.reset(rowData);
   // evaluate like
   {
     auto eventValue = nebula::api::dsl::like(nebula::api::dsl::col("event"), "abc%");
@@ -231,7 +238,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
     auto eval = eventValue.asEval();
     bool valid = true;
-    bool res = eval->eval<bool>(rowData, valid);
+    bool res = eval->eval<bool>(ctx, valid);
     EXPECT_EQ(res, true);
   }
 
@@ -241,7 +248,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
     auto eval = eventValue.asEval();
     bool valid = true;
-    bool res = eval->eval<bool>(rowData, valid);
+    bool res = eval->eval<bool>(ctx, valid);
     EXPECT_EQ(res, false);
   }
 
@@ -252,7 +259,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
     auto eval = eventValue.asEval();
     bool valid = true;
-    bool res = eval->eval<bool>(rowData, valid);
+    bool res = eval->eval<bool>(ctx, valid);
     EXPECT_EQ(res, true);
   }
 
@@ -262,7 +269,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
     auto eval = eventValue.asEval();
     bool valid = true;
-    bool res = eval->eval<bool>(rowData, valid);
+    bool res = eval->eval<bool>(ctx, valid);
     EXPECT_EQ(res, false);
   }
 }

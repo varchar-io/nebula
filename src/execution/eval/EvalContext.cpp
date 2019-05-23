@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "EvalContext.h"
+#include "ValueEval.h"
 
 /**
  * Value evaluation context.
@@ -34,6 +34,42 @@ void EvalContext::reset(const nebula::surface::RowData& row) {
 
   // std::addressof ?
   this->row_ = &row;
+}
+
+template <>
+std::string_view EvalContext::eval(const nebula::execution::eval::ValueEval& ve, bool& valid) {
+  if (LIKELY(!cache_)) {
+    return ve.eval<std::string_view>(*this, valid);
+  }
+
+  auto sign = ve.signature();
+
+  // if in evaluated list
+  auto itr = map_.find(sign);
+  if (itr != map_.end()) {
+    // offset length
+    const auto& ol = itr->second;
+    valid = ol.first > 0;
+    if (!valid) {
+      return "";
+    }
+
+    return slice_.read(ol.first, ol.second);
+  }
+
+  N_ENSURE_NOT_NULL(row_, "reference a row object before evaluation.");
+  const auto value = ve.eval<std::string_view>(*this, valid);
+  if (!valid) {
+    map_[sign] = { 0, 0 };
+    return "";
+  }
+
+  const auto offset = cursor_;
+  const auto size = value.size();
+  map_[sign] = { offset, size };
+  cursor_ += slice_.write(cursor_, value.data(), value.size());
+
+  return slice_.read(offset, size);
 }
 
 } // namespace eval

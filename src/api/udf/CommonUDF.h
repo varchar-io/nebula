@@ -43,8 +43,8 @@ public:
 
 public:
   // apply a row data to get result
-  virtual inline ReturnType run(const nebula::surface::RowData& row, bool& valid) const override {
-    return logic_(expr_->eval<ExprType>(row, valid), valid);
+  virtual inline ReturnType run(nebula::execution::eval::EvalContext& ctx, bool& valid) const override {
+    return logic_(expr_->eval<ExprType>(ctx, valid), valid);
   }
 
 private:

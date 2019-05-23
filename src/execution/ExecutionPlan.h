@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <unordered_set>
 #include "common/Cursor.h"
 #include "eval/ValueEval.h"
 #include "meta/NNode.h"
@@ -197,6 +198,15 @@ public:
 
   inline const eval::ValueEval& filter() const {
     return *filter_;
+  }
+
+  // decide if we want to cache expression evaluations
+  // TODO(cao) - cache evaluation is interesting, some work need to be done to have fair evaluation
+  // 1. collect both leaf and composition of evaluation expressions. asEval can open to receive and set
+  // 2. we need to push EvalContext to every level evaluation, rather than just BlockExecutor which only test top level
+  // 3. we need to keep constant evaluation from erasing, we can use signature to decide if its a const value or variables.
+  inline bool cacheEval() const {
+    return false;
   }
 
 private:

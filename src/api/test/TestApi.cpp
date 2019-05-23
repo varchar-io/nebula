@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
 #include <folly/init/Init.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <sys/mman.h>
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
@@ -27,6 +27,7 @@
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
+#include "execution/eval/ValueEval.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "meta/NBlock.h"
@@ -42,6 +43,7 @@ using namespace nebula::api::dsl;
 using nebula::common::Cursor;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
+using nebula::execution::eval::EvalContext;
 using nebula::meta::MockMs;
 using nebula::meta::NBlock;
 using nebula::surface::RowData;
@@ -184,10 +186,12 @@ TEST(ApiTest, TestExprValueEval) {
   auto v1 = expr.asEval();
   auto v2 = expr2.asEval();
 
+  EvalContext ctx;
+  ctx.reset(rowData);
   bool valid = true;
-  auto x = v1->eval<bool>(rowData, valid);
+  auto x = v1->eval<bool>(ctx, valid);
   valid = true;
-  auto y = v2->eval<int>(rowData, valid);
+  auto y = v2->eval<int>(ctx, valid);
   EXPECT_EQ(x, expected1);
   EXPECT_EQ(y, expected2);
 
@@ -202,7 +206,7 @@ TEST(ApiTest, TestExprValueEval) {
     EXPECT_EQ(colrefs[0], "flag");
 
     bool valid = true;
-    auto r = v3->eval<bool>(rowData, valid);
+    auto r = v3->eval<bool>(ctx, valid);
     LOG(INFO) << " UDF eval result: " << r << " valid=" << valid;
     bool exp3 = !(mirror.readBool("flag") == true);
     EXPECT_EQ(r, exp3);
@@ -223,14 +227,14 @@ TEST(ApiTest, TestExprValueEval) {
 
     // call evaluate multiple times and see max value out of
     bool valid = true;
-    auto r1 = v4->eval(rowData, valid);
-    auto r2 = v4->eval(rowData, valid);
+    auto r1 = v4->eval(ctx, valid);
+    auto r2 = v4->eval(ctx, valid);
     r2 = v4->agg(r1, r2);
     EXPECT_GE(r2, r1);
-    auto r3 = v4->eval(rowData, valid);
+    auto r3 = v4->eval(ctx, valid);
     r3 = v4->agg(r2, r3);
     EXPECT_GE(r3, r2);
-    auto r4 = v4->eval(rowData, valid);
+    auto r4 = v4->eval(ctx, valid);
     r4 = v4->agg(r3, r4);
     EXPECT_GE(r4, r3);
     LOG(INFO) << " 4 values: " << r1 << ", " << r2 << ", " << r3 << ", " << r4;

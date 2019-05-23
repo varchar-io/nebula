@@ -18,8 +18,10 @@
 
 #include <fmt/format.h>
 #include <glog/logging.h>
+#include <unordered_map>
 #include "common/Cursor.h"
 #include "common/Likely.h"
+#include "common/Memory.h"
 #include "meta/NNode.h"
 #include "surface/DataSurface.h"
 
@@ -29,6 +31,7 @@
 namespace nebula {
 namespace execution {
 namespace eval {
+class EvalContext;
 
 template <typename T>
 class TypeValueEval;
@@ -49,7 +52,7 @@ public:
   // 2. std::optinal<T> to return optional value.
   // 3. a flag to indicate the return value should not be used
   template <typename T>
-  T eval(const nebula::surface::RowData& row, bool& valid) const {
+  T eval(EvalContext& ctx, bool& valid) const {
     // TODO(cao) - there is a problem wasted me a WHOLE day to figure out the root cause.
     // So document here for further robust engineering work, the case is like this:
     // When it create ValueEval, it uses template to generate TypeValueEval<std::string> for VARCHAR type
@@ -58,7 +61,7 @@ public:
     // This is a hard problem if we don't pay attention and waste lots of time to debug it, so how can we prevent similar problem
     // 1. we should do stronger type check to ensure the type used is consistent everywhere.
     // 2. we can enforce std::enable_if more on the template type to ensure the function is called in the expected "type"
-    return static_cast<const TypeValueEval<T>*>(this)->eval(row, valid);
+    return static_cast<const TypeValueEval<T>*>(this)->eval(ctx, valid);
   }
 
   // identify a unique value evaluation object in given query context
@@ -71,11 +74,74 @@ protected:
   std::string sign_;
 };
 
+class EvalContext {
+public:
+  EvalContext(bool cache = false) : cache_{ cache }, slice_{ 1024 } {
+    cursor_ = 1;
+  }
+  virtual ~EvalContext() = default;
+
+  // change reference to row data, clear all cache.
+  // and start build cache based on evaluation signautre.
+  void reset(const nebula::surface::RowData&);
+
+  // evaluate a value eval object in current context and return value reference.
+  template <typename T>
+  T eval(const nebula::execution::eval::ValueEval& ve, bool& valid) {
+    if (LIKELY(!cache_)) {
+      return ve.eval<T>(*this, valid);
+    }
+
+    auto sign = ve.signature();
+
+    // if in evaluated list
+    auto itr = map_.find(sign);
+    if (itr != map_.end()) {
+      auto offset = itr->second.first;
+      valid = offset > 0;
+      if (!valid) {
+        return nebula::type::TypeDetect<T>::value;
+      }
+
+      return slice_.read<T>(offset);
+    }
+
+    N_ENSURE_NOT_NULL(row_, "reference a row object before evaluation.");
+    const auto value = ve.eval<T>(*this, valid);
+    if (!valid) {
+      map_[sign] = { 0, 0 };
+      return nebula::type::TypeDetect<T>::value;
+    }
+    const auto offset = cursor_;
+    map_[sign] = { offset, 0 };
+    cursor_ += slice_.write<T>(cursor_, value);
+
+    return slice_.read<T>(offset);
+  }
+
+  inline const nebula::surface::RowData& row() const {
+    return *row_;
+  }
+
+private:
+  const bool cache_;
+  const nebula::surface::RowData* row_;
+  // a signature keyed tuples indicating if this expr evaluated (having entry) or not.
+  std::unordered_map<std::string_view, std::pair<size_t, size_t>> map_;
+  // layout all cached data, when reset, just move the cursor to 1
+  // 0 is reserved, any evaluated data points to 0 if it is NULL
+  size_t cursor_;
+  nebula::common::PagedSlice slice_;
+};
+
+template <>
+std::string_view EvalContext::eval(const nebula::execution::eval::ValueEval& ve, bool& valid);
+
 // two utilities
-#define OPT std::function<T(const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&, bool&)>
-#define OPT_LAMBDA(X)                                                                                              \
-  ([](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>& children, bool& valid) { \
-    X                                                                                                              \
+#define OPT std::function<T(EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&)>
+#define OPT_LAMBDA(X)                                                                           \
+  ([](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>& children, bool& valid) { \
+    X                                                                                           \
   })
 
 template <typename T>
@@ -89,8 +155,8 @@ public:
 
   virtual ~TypeValueEval() = default;
 
-  inline T eval(const nebula::surface::RowData& row, bool& valid) const {
-    return op_(row, this->children_, valid);
+  inline T eval(EvalContext& ctx, bool& valid) const {
+    return op_(ctx, this->children_, valid);
   }
 
 private:
@@ -107,7 +173,7 @@ std::unique_ptr<ValueEval> constant(T v) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
       fmt::format("C:{0}", v),
-      [v](const nebula::surface::RowData&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> T {
+      [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> T {
         return v;
       },
       {}));
@@ -124,8 +190,11 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
       fmt::format("F:{0}", name),
-      [name](const nebula::surface::RowData& row, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid)
+      [name](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid)
         -> T {
+        // This is the only place we need row object
+        const auto& row = ctx.row();
+
         // compile time branching based on template type T
         // I think it's better than using template specialization for this case
         if constexpr (std::is_same<T, bool>::value) {
@@ -191,13 +260,13 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
                                                                                                   \
     return std::unique_ptr<ValueEval>(                                                            \
       new TypeValueEval<T>(                                                                       \
-        fmt::format("{0}:{1}:{2}", s1, #SIGN, s2),                                                \
+        fmt::format("({0}{1}{2})", s1, #SIGN, s2),                                                \
         OPT_LAMBDA({                                                                              \
-          auto v1 = children[0]->eval<T1>(row, valid);                                            \
+          auto v1 = ctx.eval<T1>(*children[0], valid);                                            \
           if (UNLIKELY(!valid)) {                                                                 \
             return INVALID;                                                                       \
           }                                                                                       \
-          auto v2 = children[1]->eval<T2>(row, valid);                                            \
+          auto v2 = ctx.eval<T2>(*children[1], valid);                                            \
           if (UNLIKELY(!valid)) {                                                                 \
             return INVALID;                                                                       \
           }                                                                                       \
@@ -227,13 +296,14 @@ ARTHMETIC_VE(mod, %)
     branch.push_back(std::move(v2));                                                              \
     return std::unique_ptr<ValueEval>(                                                            \
       new TypeValueEval<bool>(                                                                    \
-        fmt::format("{0}:{1}:{2}", s1, #SIGN, s2),                                                \
+        fmt::format("({0}{1}{2})", s1, #SIGN, s2),                                                \
         OPT_LAMBDA({                                                                              \
-          auto v1 = children[0]->eval<T1>(row, valid);                                            \
+          const auto& e1 = *children.at(0);                                                       \
+          auto v1 = ctx.eval<T1>(e1, valid);                                                      \
           if (UNLIKELY(!valid)) {                                                                 \
             return false;                                                                         \
           }                                                                                       \
-          auto v2 = children[1]->eval<T2>(row, valid);                                            \
+          auto v2 = ctx.eval<T2>(*children[1], valid);                                            \
           if (UNLIKELY(!valid)) {                                                                 \
             return false;                                                                         \
           }                                                                                       \
@@ -254,6 +324,9 @@ COMPARE_VE(band, &&)
 COMPARE_VE(bor, ||)
 
 #undef COMPARE_VE
+
+#undef OPT_LAMBDA
+#undef OPT
 
 } // namespace eval
 } // namespace execution
