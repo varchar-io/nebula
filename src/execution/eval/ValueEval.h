@@ -52,7 +52,7 @@ public:
   // 2. std::optinal<T> to return optional value.
   // 3. a flag to indicate the return value should not be used
   template <typename T>
-  T eval(EvalContext& ctx, bool& valid) const {
+  inline T eval(EvalContext& ctx, bool& valid) const {
     // TODO(cao) - there is a problem wasted me a WHOLE day to figure out the root cause.
     // So document here for further robust engineering work, the case is like this:
     // When it create ValueEval, it uses template to generate TypeValueEval<std::string> for VARCHAR type
@@ -61,12 +61,15 @@ public:
     // This is a hard problem if we don't pay attention and waste lots of time to debug it, so how can we prevent similar problem
     // 1. we should do stronger type check to ensure the type used is consistent everywhere.
     // 2. we can enforce std::enable_if more on the template type to ensure the function is called in the expected "type"
-    return static_cast<const TypeValueEval<T>*>(this)->eval(ctx, valid);
+    // N_ENSURE_NOT_NULL(p, "type should match");
+    auto p = static_cast<const TypeValueEval<T>*>(this);
+    // N_ENSURE_NOT_NULL(p, "Type should match in value eval!");
+    return p->eval(ctx, valid);
   }
 
   // identify a unique value evaluation object in given query context
   // TODO(cao) - consider using number instead for fast hashing
-  const std::string_view signature() const {
+  inline const std::string_view signature() const {
     return sign_;
   }
 
@@ -92,7 +95,7 @@ public:
       return ve.eval<T>(*this, valid);
     }
 
-    auto sign = ve.signature();
+    const auto& sign = ve.signature();
 
     // if in evaluated list
     auto itr = map_.find(sign);
@@ -170,10 +173,12 @@ private:
 // And we will see lots of issues like "xxx defined in discarded section"
 template <typename T>
 std::unique_ptr<ValueEval> constant(T v) {
+  // get standard type for this constant after removing reference and const decors
+  using ST = typename nebula::type::TypeDetect<std::remove_reference_t<std::remove_cv_t<T>>>::StandardType;
   return std::unique_ptr<ValueEval>(
-    new TypeValueEval<T>(
+    new TypeValueEval<ST>(
       fmt::format("C:{0}", v),
-      [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> T {
+      [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> ST {
         return v;
       },
       {}));

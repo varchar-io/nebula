@@ -396,3 +396,4 @@ $('#fvalue').selectize({
         }
     }
 });
+$('#fvalue').data('selectize').setValue("Option Value Here");

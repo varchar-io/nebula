@@ -82,6 +82,10 @@ std::shared_ptr<nebula::meta::MetaService> TrendsTable::getMs() const {
 }
 
 void TrendsTable::load(size_t max) {
+  const auto shouldStop = [max](size_t blockId) -> bool {
+    return max > 0 && blockId >= max;
+  };
+
   // load test data to run this query
   auto bm = BlockManager::init();
 
@@ -125,13 +129,13 @@ void TrendsTable::load(size_t max) {
     block->add(trendsRow);
 
     // do not load more than max blocks max==0: load all
-    if (max > 0 && blockId >= max) {
+    if (shouldStop(blockId)) {
       return;
     }
   }
 
   // move all blocks in map into block manager
-  for (auto itr = blocksByTime.begin(); itr != blocksByTime.end() && blockId < max; ++itr) {
+  for (auto itr = blocksByTime.begin(); itr != blocksByTime.end() && !shouldStop(blockId); ++itr) {
     bm->add(NBlock(name_, blockId++, itr->first, itr->first), std::move(itr->second));
   }
 }

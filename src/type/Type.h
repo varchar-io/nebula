@@ -314,38 +314,33 @@ public:
 template <typename T>
 struct TypeDetect {};
 
-#define DEFINE_TYPE_DETECT(NT, NAME, KT, VALUE)                                          \
+#define DEFINE_TYPE_DETECT(NT, KN, KT, ST, DV)                                           \
   template <>                                                                            \
   struct TypeDetect<NT> {                                                                \
-    static constexpr Kind kind = Kind::NAME;                                             \
-    static constexpr auto name = #NAME;                                                  \
+    using StandardType = ST;                                                             \
+    static constexpr Kind kind = Kind::KN;                                               \
+    static constexpr auto name = #KN;                                                    \
     static constexpr auto type = [](const std::string& n) { return KT::createTree(n); }; \
-    static constexpr NT value = VALUE;                                                   \
+    static constexpr ST value = DV;                                                      \
   };
 
 // TODO(cao) - guidelines for nebula API usage
 // define all traits for each KIND - incomplete list
-DEFINE_TYPE_DETECT(bool, BOOLEAN, BoolType, false)
-DEFINE_TYPE_DETECT(int8_t, TINYINT, ByteType, 0)
-DEFINE_TYPE_DETECT(int16_t, SMALLINT, ShortType, 0)
-DEFINE_TYPE_DETECT(int32_t, INTEGER, IntType, 0)
-DEFINE_TYPE_DETECT(int64_t, BIGINT, LongType, 0)
-DEFINE_TYPE_DETECT(float, REAL, FloatType, 0)
-DEFINE_TYPE_DETECT(double, DOUBLE, DoubleType, 0)
-DEFINE_TYPE_DETECT(const char*, VARCHAR, StringType, "")
+// please use remove reference and remove const before using type detect
+// std::remove_reference<std::remove_cv<T>::type>::type
+DEFINE_TYPE_DETECT(bool, BOOLEAN, BoolType, bool, false)
+DEFINE_TYPE_DETECT(int8_t, TINYINT, ByteType, int8_t, 0)
+DEFINE_TYPE_DETECT(int16_t, SMALLINT, ShortType, int16_t, 0)
+DEFINE_TYPE_DETECT(int32_t, INTEGER, IntType, int32_t, 0)
+DEFINE_TYPE_DETECT(int64_t, BIGINT, LongType, int64_t, 0)
+DEFINE_TYPE_DETECT(float, REAL, FloatType, float, 0)
+DEFINE_TYPE_DETECT(double, DOUBLE, DoubleType, double, 0)
+DEFINE_TYPE_DETECT(const char*, VARCHAR, StringType, std::string_view, "")
+DEFINE_TYPE_DETECT(char*, VARCHAR, StringType, std::string_view, "")
+DEFINE_TYPE_DETECT(std::string_view, VARCHAR, StringType, std::string_view, "")
+DEFINE_TYPE_DETECT(std::string, VARCHAR, StringType, std::string_view, "")
 
 #undef DEFINE_TYPE_DETECT
-
-template <>
-struct TypeDetect<std::string_view> {
-  static constexpr Kind kind = Kind::VARCHAR;
-  static constexpr auto name = "VARCHAR";
-  static constexpr auto type = [](const std::string& n) { return StringType::createTree(n); };
-  static const std::string value;
-};
-
-// initialize
-// const std::string TypeDetect<std::string>::value{};
 
 } // namespace type
 } // namespace nebula

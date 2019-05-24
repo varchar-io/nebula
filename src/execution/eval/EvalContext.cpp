@@ -28,12 +28,14 @@ namespace eval {
 
 // reset to a new row
 void EvalContext::reset(const nebula::surface::RowData& row) {
-  // clear t he evaluation map
-  cursor_ = 1;
-  map_.clear();
-
   // std::addressof ?
   this->row_ = &row;
+
+  if (UNLIKELY(cache_)) {
+    // clear t he evaluation map
+    cursor_ = 1;
+    map_.clear();
+  }
 }
 
 template <>
@@ -42,7 +44,7 @@ std::string_view EvalContext::eval(const nebula::execution::eval::ValueEval& ve,
     return ve.eval<std::string_view>(*this, valid);
   }
 
-  auto sign = ve.signature();
+  const auto& sign = ve.signature();
 
   // if in evaluated list
   auto itr = map_.find(sign);

@@ -29,7 +29,9 @@ namespace test {
 using nebula::common::Evidence;
 using nebula::execution::eval::column;
 using nebula::execution::eval::constant;
+using nebula::execution::eval::eq;
 using nebula::execution::eval::EvalContext;
+using nebula::execution::eval::gt;
 using nebula::execution::eval::TypeValueEval;
 using nebula::execution::eval::ValueEval;
 using nebula::surface::MockRowData;
@@ -41,6 +43,7 @@ public:
   MOCK_CONST_METHOD1(readBool, bool(const std::string&));
   MOCK_CONST_METHOD1(readInt, int32_t(const std::string&));
   MOCK_CONST_METHOD1(readFloat, float(const std::string&));
+  MOCK_CONST_METHOD1(readString, std::string_view(const std::string&));
   MOCK_CONST_METHOD1(isNull, bool(const std::string&));
 };
 
@@ -186,6 +189,69 @@ TEST(ValueEvalTest, TestValueEvalLogical) {
     auto b10 = nebula::execution::eval::column<std::string_view>("s");
     valid = true;
     LOG(INFO) << "b10=" << b10->eval<std::string_view>(ctx, valid);
+  }
+}
+
+TEST(ValueEvalTest, TestStringValues) {
+  MockRow row;
+  const auto c = "abcdefg";
+  EXPECT_CALL(row, readString(testing::_)).WillRepeatedly(testing::Return(c));
+  EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+
+  EvalContext ctx;
+  ctx.reset(row);
+  bool valid = true;
+
+  {
+    auto b1 = nebula::execution::eval::constant("abcdef");
+    auto v1 = b1->eval<std::string_view>(ctx, valid);
+    EXPECT_EQ(v1, "abcdef");
+
+    valid = true;
+    auto b2 = nebula::execution::eval::column<std::string_view>("x");
+    auto v2 = b2->eval<std::string_view>(ctx, valid);
+    EXPECT_EQ(v2, c);
+
+    valid = true;
+    auto b3 = eq<std::string_view, std::string_view>(std::move(b1), std::move(b2));
+    EXPECT_EQ(b3->eval<bool>(ctx, valid), false);
+  }
+
+  {
+    valid = true;
+    auto b1 = nebula::execution::eval::constant(c);
+    EXPECT_EQ(b1->eval<std::string_view>(ctx, valid), c);
+
+    valid = true;
+    auto b2 = nebula::execution::eval::column<std::string_view>("x");
+    EXPECT_EQ(b2->eval<std::string_view>(ctx, valid), c);
+
+    valid = true;
+    auto b3 = eq<std::string_view, std::string_view>(std::move(b1), std::move(b2));
+    EXPECT_EQ(b3->eval<bool>(ctx, valid), true);
+  }
+
+  {
+    valid = true;
+    auto b1 = nebula::execution::eval::constant("abc");
+    EXPECT_EQ(b1->eval<std::string_view>(ctx, valid), "abc");
+
+    valid = true;
+    auto b2 = nebula::execution::eval::column<std::string_view>("x");
+    EXPECT_EQ(b2->eval<std::string_view>(ctx, valid), c);
+
+    valid = true;
+    auto b3 = gt<std::string_view, std::string_view>(std::move(b2), std::move(b1));
+    EXPECT_EQ(b3->eval<bool>(ctx, valid), true);
+  }
+
+  {
+    auto b1 = nebula::execution::eval::column<std::string_view>("x");
+    auto b2 = nebula::execution::eval::column<std::string_view>("x");
+
+    valid = true;
+    auto b3 = gt<std::string_view, std::string_view>(std::move(b1), std::move(b2));
+    EXPECT_EQ(b3->eval<bool>(ctx, valid), false);
   }
 }
 

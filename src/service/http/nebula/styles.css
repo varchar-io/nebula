@@ -16,7 +16,7 @@ div {
 .left {
     width: 300pt;
     display: table-cell;
-    border-right: #000 2px dashed;
+    border-right: #888 1px dotted;
 }
 
 .right {
