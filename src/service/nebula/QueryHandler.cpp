@@ -233,9 +233,8 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
   const Table& table,
   const std::shared_ptr<Expression> prev,
   const LogicalOp op) const {
-  auto schema = table.getSchema();
+  auto schema = table.schema();
   const auto& columnName = pred.column();
-  auto column = col(columnName);
   Kind columnType = Kind::INVALID;
   // check column type
   schema->onChild(columnName, [&columnType](const TypeNode& found) {

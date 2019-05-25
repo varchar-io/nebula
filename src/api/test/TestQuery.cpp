@@ -34,6 +34,7 @@
 #include "meta/NBlock.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 #include "type/Serde.h"
 
 namespace nebula {
@@ -53,12 +54,49 @@ using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
+TEST(ApiTest, TestReadSamples) {
+  TrendsTable trends;
+  // query this table
+  const auto upbound = std::numeric_limits<int64_t>::max();
+  const auto query = table(trends.name(), trends.getMs())
+                       .where(col("_time_") > 0 && col("_time_") < upbound && starts(col("query"), "winter"))
+                       .select(
+                         col("*"))
+                       .limit(10);
+
+  // compile the query into an execution plan
+  auto plan = query.compile();
+
+  // print out the plan through logging
+  plan->setWindow({ 0, upbound });
+  plan->display();
+
+  // load test data to run this query
+  trends.load(256);
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << fmt::format("col: {0:20} | {1:12} | {2:12}", "Query", "Count", "Time");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << fmt::format("row: {0:20} | {1:12} | {2:12}",
+                             row.readString("query"),
+                             row.readLong("count"),
+                             row.readLong(nebula::meta::Table::TIME_COLUMN));
+  }
+}
+
 TEST(ApiTest, TestDataFromCsv) {
   TrendsTable trends;
   // query this table
   const auto upbound = std::numeric_limits<int64_t>::max();
   const auto query = table(trends.name(), trends.getMs())
-                       .where(col("_time_") > 0 && col("_time_") < upbound && starts(col("query"), "bedroom idea"))
+                       .where(col("_time_") > 0 && col("_time_") < upbound && starts(col("query"), "winter"))
                        .select(
                          col("query"),
                          sum(col("count")).as("total"))
@@ -168,6 +206,59 @@ TEST(ApiTest, TestMultipleBlocks) {
 
   // query should have results
   EXPECT_GT(result->size(), 0);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << fmt::format("col: {0:20} | {1:12}", "event", "Total");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << fmt::format("row: {0:20} | {1:12}",
+                             row.readString("event"),
+                             row.readInt("total"));
+  }
+}
+
+TEST(ApiTest, TestStringEqEmpty) {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  int64_t start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
+  int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    auto begin = start + i * window;
+    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+  }
+
+  // query this table
+  const auto query = table(testTable.name(), testTable.getMs())
+                       .where(col("_time_") > start && col("_time_") < end && col("event") == "")
+                       .select(
+                         col("event"),
+                         count(col("value")).as("total"))
+                       .groupby({ 1 })
+                       .sortby({ 2 }, SortType::DESC)
+                       .limit(10);
+
+  // compile the query into an execution plan
+  auto plan = query.compile();
+  plan->setWindow({ start, end });
+
+  // print out the plan through logging
+  plan->display();
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+
+  // query should have results
+  EXPECT_EQ(result->size(), 1);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";

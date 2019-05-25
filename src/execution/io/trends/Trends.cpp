@@ -120,7 +120,7 @@ void TrendsTable::load(size_t max) {
     // add a new entry
     if (empty) {
       // emplace basically means
-      blocksByTime[time] = std::make_unique<Batch>(this->getSchema());
+      blocksByTime[time] = std::make_unique<Batch>(this->schema());
     }
 
     // for sure, we have it now

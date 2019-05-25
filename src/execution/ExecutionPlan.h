@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <numeric>
 #include <unordered_set>
 #include "common/Cursor.h"
 #include "eval/ValueEval.h"
@@ -136,6 +137,10 @@ public:
     return *upstream_;
   }
 
+  inline size_t top() const {
+    return limit_;
+  }
+
   virtual void display() const = 0;
 
   virtual PhaseType type() const = 0;
@@ -143,6 +148,7 @@ public:
 protected:
   nebula::type::Schema input_;
   std::unique_ptr<ExecutionPhase> upstream_;
+  size_t limit_;
 };
 
 template <>
@@ -170,6 +176,16 @@ public:
 
   Phase& keys(const std::vector<size_t>& keys) {
     keys_ = keys;
+    return *this;
+  }
+
+  Phase& limit(size_t limit) {
+    limit_ = limit;
+    return *this;
+  }
+
+  Phase& aggregate(bool hasAgg) {
+    hasAgg_ = hasAgg;
     return *this;
   }
 
@@ -209,11 +225,16 @@ public:
     return false;
   }
 
+  inline bool hasAggregation() const {
+    return hasAgg_;
+  }
+
 private:
   std::string table_;
   std::vector<std::unique_ptr<eval::ValueEval>> fields_;
   std::unique_ptr<eval::ValueEval> filter_;
   std::vector<size_t> keys_;
+  bool hasAgg_;
   nebula::type::Schema output_;
 };
 
@@ -304,15 +325,10 @@ public:
     return desc_;
   }
 
-  inline size_t top() const {
-    return limit_;
-  }
-
 private:
   std::vector<size_t> sorts_;
   // TODO(cao) - every sort column may have different order, single direction now
   bool desc_;
-  size_t limit_;
 };
 
 template <>

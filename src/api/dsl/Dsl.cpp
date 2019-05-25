@@ -30,10 +30,37 @@ using nebula::execution::FinalPhase;
 using nebula::execution::NodePhase;
 using nebula::execution::eval::ValueEval;
 using nebula::meta::NNode;
+using nebula::meta::Table;
 using nebula::surface::RowData;
 using nebula::type::RowType;
 using nebula::type::Schema;
 using nebula::type::TreeNode;
+
+// TODO(cao) - a better way to handle this is to have struct expression type
+// which automatically represents a struct value. Hence col(*) => struct expression.
+std::vector<std::shared_ptr<Expression>> Query::preprocess(
+  const Schema& schema,
+  const std::vector<std::shared_ptr<Expression>>& selects) {
+  // 1. expand * if it presents
+  const auto size = selects.size();
+  std::vector<std::shared_ptr<Expression>> expansion;
+  // max capacity
+  expansion.reserve(size + schema->size());
+  for (size_t i = 0; i < size; ++i) {
+    const auto& item = selects.at(i);
+    if (item->alias() == Table::ALL_COLUMNS) {
+      for (size_t field = 0; field < schema->size(); ++field) {
+        // expand in-place
+        expansion.push_back(std::make_shared<ColumnExpression>(schema->childType(field)->name()));
+      }
+    } else {
+      expansion.push_back(item);
+    }
+  }
+
+  // expansion is a copy of selects or a modified version
+  return expansion;
+}
 
 // execute current query to get result list
 std::unique_ptr<ExecutionPlan> Query::compile() const {
@@ -47,7 +74,7 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
 
   // fetch schema of the table first
   // validate
-  auto schema = table_->getSchema();
+  auto schema = table_->schema();
 
   // build output schema tree
   const auto numOutputFields = this->selects_.size();
@@ -74,19 +101,23 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   auto output = std::static_pointer_cast<RowType>(nebula::type::RowType::create("", children));
   LOG(INFO) << "Query output schema: " << nebula::type::TypeSerializer::to(output) << " w/ agg columns: " << numAggColumns;
 
-  // validations
-  // 1. group by index has to be all those columns that are not aggregate columns
-  // group by count has to be the same as non-agg column count
-  N_ENSURE_EQ(groups_.size(), numOutputFields - numAggColumns, "query key count");
-
-  // check the index are correct values and convert 1-based group by keys into 0-based keys for internal usage
+  // if we have aggregation
+  const auto groupSize = groups_.size();
   std::vector<size_t> zbKeys;
-  zbKeys.reserve(groups_.size());
-  std::transform(groups_.begin(), groups_.end(), std::back_inserter(zbKeys), [&aggColumns](size_t index) {
-    auto zbIndex = index - 1;
-    N_ENSURE(!aggColumns[zbIndex], "group by column should not be aggregate column");
-    return zbIndex;
-  });
+  zbKeys.reserve(groupSize);
+  if (groupSize > 0) {
+    // validations
+    // 1. group by index has to be all those columns that are not aggregate columns
+    // group by count has to be the same as non-agg column count
+    N_ENSURE_EQ(groupSize, numOutputFields - numAggColumns, "query key count");
+
+    // check the index are correct values and convert 1-based group by keys into 0-based keys for internal usage
+    std::transform(groups_.begin(), groups_.end(), std::back_inserter(zbKeys), [&aggColumns](size_t index) {
+      auto zbIndex = index - 1;
+      N_ENSURE(!aggColumns[zbIndex], "group by column should not be aggregate column");
+      return zbIndex;
+    });
+  }
 
   // check the index are correct values and convert 1-based sort keys into 0-based keys for internal usage
   std::vector<size_t> zbSorts;
@@ -107,15 +138,26 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
                  [](std::shared_ptr<Expression> expr) -> std::unique_ptr<ValueEval> { return expr->asEval(); });
   auto block = std::make_unique<BlockPhase>(schema, output);
   filter_->type(*table_);
-  (*block).scan(table_->name()).filter(filter_->asEval()).keys(zbKeys).compute(std::move(fields));
+  // a query can have aggregation but no keys, such as "select count(1)"
+  (*block)
+    .scan(table_->name())
+    .filter(filter_->asEval())
+    .keys(zbKeys)
+    .compute(std::move(fields))
+    .limit(limit_)
+    .aggregate(numAggColumns > 0);
 
   // partial aggrgation, keys and agg methods
   auto node = std::make_unique<NodePhase>(std::move(block));
-  (*node).agg(numAggColumns, aggColumns);
+  (*node)
+    .agg(numAggColumns, aggColumns);
 
   // global aggregation, keys and agg methods
   auto controller = std::make_unique<FinalPhase>(std::move(node));
-  (*controller).agg().sort(zbSorts, sortType_ == SortType::DESC).limit(limit_);
+  (*controller)
+    .agg()
+    .sort(zbSorts, sortType_ == SortType::DESC)
+    .limit(limit_);
 
   //1. get total nodes that we will run the query, filter_ will help prune results
   auto nodeList = ms_->queryNodes(table_, [](const NNode&) { return true; });

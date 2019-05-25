@@ -21,6 +21,7 @@
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 
 namespace nebula {
 namespace execution {

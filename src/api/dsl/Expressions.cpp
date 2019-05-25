@@ -47,7 +47,7 @@ LOGICAL_OP_STRING(<=, LE)
 
 TreeNode ColumnExpression::type(const Table& table) {
   // look up the table schema to deduce the table
-  const auto& schema = table.getSchema();
+  const auto& schema = table.schema();
   TreeNode nodeType;
   schema->onChild(column_, [&nodeType](const TypeNode& found) {
     nodeType = std::dynamic_pointer_cast<TreeBase>(found);

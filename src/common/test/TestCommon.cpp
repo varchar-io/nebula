@@ -236,6 +236,12 @@ TEST(EvidenceTest, TestRand) {
   }
 }
 
+TEST(StringViewTest, TestStringView) {
+  auto str = "abcdefg";
+  std::string_view v1(str, 2);
+  EXPECT_EQ(v1, "cdefg");
+}
+
 } // namespace test
 } // namespace common
 } // namespace nebula

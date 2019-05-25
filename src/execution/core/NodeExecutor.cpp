@@ -34,7 +34,6 @@ using nebula::memory::Batch;
 using nebula::memory::keyed::FlatRowCursor;
 using nebula::memory::keyed::HashFlat;
 using nebula::meta::MetaService;
-using nebula::surface::MockRowCursor;
 using nebula::surface::RowCursor;
 using nebula::surface::RowData;
 using nebula::type::Kind;
@@ -128,7 +127,7 @@ folly::Future<RowCursor> NodeExecutor::compute(const Batch& block, const BlockPh
   auto p = std::make_shared<folly::Promise<RowCursor>>();
   threadPool_.add([&block, &phase, p]() {
     // compute phase on block and return the result
-    p->setValue(std::make_shared<BlockExecutor>(block, phase));
+    p->setValue(nebula::execution::core::compute(block, phase));
   });
 
   return p->getFuture();

@@ -29,7 +29,7 @@ TEST(MetaTest, TestTestTable) {
   nebula::meta::TestTable test;
   LOG(INFO) << "Table provides table logic data and physical data";
   LOG(INFO) << "Test table name: " << test.name();
-  LOG(INFO) << "Test table schema: " << test.getSchema();
+  LOG(INFO) << "Test table schema: " << test.schema();
 }
 
 TEST(MetaTest, TestNBlock) {

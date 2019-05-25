@@ -75,13 +75,13 @@ public:
   template <typename... E>
   Query& select(const E&... select) {
     // make a copy in a shared pointer and save it.
-    selects_ = { std::shared_ptr<Expression>(new E(select))... };
+    selects_ = preprocess(table_->schema(), { std::shared_ptr<Expression>(new E(select))... });
     return *this;
   }
 
   Query& select(const std::vector<std::shared_ptr<Expression>>& selects) {
     // make a copy in a shared pointer and save it.
-    selects_ = selects;
+    selects_ = preprocess(table_->schema(), selects);
     return *this;
   }
 
@@ -105,6 +105,10 @@ public:
 public:
   // compile the query into an execution plan
   std::unique_ptr<nebula::execution::ExecutionPlan> compile() const;
+
+private:
+  static std::vector<std::shared_ptr<Expression>> preprocess(
+    const nebula::type::Schema&, const std::vector<std::shared_ptr<Expression>>&);
 
 private:
   // table identifier

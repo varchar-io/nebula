@@ -20,6 +20,7 @@
 #include "common/Evidence.h"
 #include "fmt/format.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 
 namespace nebula {
 namespace memory {

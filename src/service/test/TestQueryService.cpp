@@ -23,6 +23,7 @@
 #include "service/nebula/NebulaService.h"
 #include "service/nebula/QueryHandler.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 #include "type/Serde.h"
 
 namespace nebula {

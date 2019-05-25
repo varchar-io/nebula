@@ -22,6 +22,7 @@
 #include "api/dsl/Expressions.h"
 #include "common/Cursor.h"
 #include "common/Errors.h"
+#include "common/Evidence.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
 #include "execution/BlockManager.h"
@@ -33,6 +34,7 @@
 #include "meta/NBlock.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 #include "type/Serde.h"
 
 namespace nebula {

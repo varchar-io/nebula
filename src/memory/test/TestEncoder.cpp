@@ -23,6 +23,7 @@
 #include "memory/DataNode.h"
 #include "memory/FlatRow.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 #include "type/Serde.h"
 
 namespace nebula {

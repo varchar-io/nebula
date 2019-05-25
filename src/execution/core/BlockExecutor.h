@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "ComputedRow.h"
+#include "ReferenceRows.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/eval/ValueEval.h"
 #include "memory/Batch.h"
@@ -28,7 +30,6 @@
 namespace nebula {
 namespace execution {
 namespace core {
-
 /**
  * Block executor defines the smallest compute unit and itself is a row data cursor
  */
@@ -43,8 +44,13 @@ public:
   }
   virtual ~BlockExecutor() = default;
 
-  virtual const nebula::surface::RowData& next() override;
-  virtual std::unique_ptr<nebula::surface::RowData> item(size_t) const override;
+  inline virtual const nebula::surface::RowData& next() override {
+    return result_->row(index_++);
+  }
+
+  inline virtual std::unique_ptr<nebula::surface::RowData> item(size_t index) const override {
+    return result_->crow(index);
+  }
 
 private:
   void compute();
@@ -55,58 +61,36 @@ private:
   std::unique_ptr<nebula::memory::keyed::HashFlat> result_;
 };
 
-// TODO(cao) - we should remove this constructor.
-// Feels expensive to construct every one for each row.
-// computed row use index based interfaces rather than name based interface.
-class ComputedRow : public nebula::surface::RowData {
-  using IndexType = nebula::surface::IndexType;
+class SamplesExecutor : public nebula::common::Cursor<nebula::surface::RowData> {
+  using Base = nebula::common::Cursor<nebula::surface::RowData>;
 
 public:
-  ComputedRow(
-    nebula::execution::eval::EvalContext& ctx,
-    const std::vector<std::unique_ptr<eval::ValueEval>>& fields)
-    : ctx_{ ctx }, fields_{ fields } {
+  SamplesExecutor(const nebula::memory::Batch& data, const nebula::execution::BlockPhase& plan)
+    : Base(0), data_{ data }, plan_{ plan } {
+    // compute will finish the compute and fill the data state in
+    this->compute();
   }
-  virtual ~ComputedRow() = default;
+  virtual ~SamplesExecutor() = default;
 
-public:
-#define NOT_IMPL_FUNC(TYPE, FUNC)                  \
-  TYPE FUNC(const std::string&) const override {   \
-    throw NException(#FUNC " is not implemented"); \
+  inline virtual const nebula::surface::RowData& next() override {
+    index_++;
+    return samples_->next();
   }
-
-  NOT_IMPL_FUNC(bool, readBool)
-  NOT_IMPL_FUNC(int8_t, readByte)
-  NOT_IMPL_FUNC(int16_t, readShort)
-  NOT_IMPL_FUNC(int32_t, readInt)
-  NOT_IMPL_FUNC(int64_t, readLong)
-  NOT_IMPL_FUNC(float, readFloat)
-  NOT_IMPL_FUNC(double, readDouble)
-  NOT_IMPL_FUNC(std::string_view, readString)
-  NOT_IMPL_FUNC(std::unique_ptr<nebula::surface::ListData>, readList)
-  NOT_IMPL_FUNC(std::unique_ptr<nebula::surface::MapData>, readMap)
-
-#undef NOT_IMPL_FUNC
-
-  bool isNull(const std::string& field) const override;
-  bool isNull(IndexType) const override;
-  bool readBool(IndexType) const override;
-  int8_t readByte(IndexType) const override;
-  int16_t readShort(IndexType) const override;
-  int32_t readInt(IndexType) const override;
-  int64_t readLong(IndexType) const override;
-  float readFloat(IndexType) const override;
-  double readDouble(IndexType) const override;
-  std::string_view readString(IndexType) const override;
-
-  // compound types
-  std::unique_ptr<nebula::surface::ListData> readList(IndexType) const override;
-  std::unique_ptr<nebula::surface::MapData> readMap(IndexType) const override;
+  inline virtual std::unique_ptr<nebula::surface::RowData> item(size_t index) const override {
+    return samples_->item(index);
+  }
 
 private:
-  nebula::execution::eval::EvalContext& ctx_;
-  const std::vector<std::unique_ptr<eval::ValueEval>>& fields_;
+  void compute();
+
+private:
+  const nebula::memory::Batch& data_;
+  const nebula::execution::BlockPhase& plan_;
+  std::unique_ptr<ReferenceRows> samples_;
 };
+
+std::shared_ptr<nebula::common::Cursor<nebula::surface::RowData>>
+  compute(const nebula::memory::Batch&, const nebula::execution::BlockPhase&);
 
 } // namespace core
 } // namespace execution

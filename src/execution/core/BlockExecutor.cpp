@@ -33,14 +33,20 @@ using nebula::memory::keyed::HashFlat;
 using nebula::surface::RowData;
 using nebula::type::Kind;
 
+std::shared_ptr<nebula::common::Cursor<nebula::surface::RowData>>
+  compute(const nebula::memory::Batch& data, const nebula::execution::BlockPhase& plan) {
+  if (plan.hasAggregation()) {
+    return std::make_shared<BlockExecutor>(data, plan);
+  }
+
+  return std::make_shared<SamplesExecutor>(data, plan);
+}
+
 void BlockExecutor::compute() {
   // process every single row and put result in HashFlat
   const auto& k = plan_.keys();
   std::unordered_set<size_t> keys(k.begin(), k.end());
 
-  //plan_.fields()
-  // build the runtime data set
-  result_ = std::make_unique<HashFlat>(plan_.outputSchema(), k);
   auto accessor = data_.makeAccessor();
   const auto& fields = plan_.fields();
   const auto& filter = plan_.filter();
@@ -53,7 +59,9 @@ void BlockExecutor::compute() {
 
   // build context and computed row associated with this context
   EvalContext ctx(plan_.cacheEval());
-  ComputedRow cr(ctx, fields);
+  ComputedRow cr(plan_.outputSchema(), ctx, fields);
+  result_ = std::make_unique<HashFlat>(plan_.outputSchema(), k);
+
   for (size_t i = 0, size = data_.getRows(); i < size; ++i) {
     ctx.reset(accessor->seek(i));
 
@@ -94,49 +102,20 @@ void BlockExecutor::compute() {
   size_ = result_->getRows();
 }
 
-const RowData& BlockExecutor::next() {
-  return result_->row(index_++);
-}
+void SamplesExecutor::compute() {
+  // build context and computed row associated with this context
+  samples_ = std::make_unique<ReferenceRows>(plan_, data_);
 
-std::unique_ptr<RowData> BlockExecutor::item(size_t index) const {
-  return result_->crow(index);
-}
-
-bool ComputedRow::isNull(const std::string&) const {
-  // TODO(cao): how to determine nullbility of output field?
-  return false;
-}
-
-bool ComputedRow::isNull(IndexType) const {
-  // TODO(cao): how to determine nullbility of output field?
-  return false;
-}
-
-// TODO(cao) - need to implement isNull (maybe cache to ensure evaluate once)
-// otherwise - this may return invalid values
-#define FORWARD_EVAL_FIELD(TYPE, NAME)              \
-  TYPE ComputedRow::NAME(IndexType index) const {   \
-    bool valid = true;                              \
-    return ctx_.eval<TYPE>(*fields_[index], valid); \
+  for (size_t i = 0, size = data_.getRows(); i < size; ++i) {
+    // if we have enough samples, just return
+    if (samples_->check(i) >= plan_.top()) {
+      break;
+    }
   }
 
-FORWARD_EVAL_FIELD(bool, readBool)
-FORWARD_EVAL_FIELD(int8_t, readByte)
-FORWARD_EVAL_FIELD(int16_t, readShort)
-FORWARD_EVAL_FIELD(int32_t, readInt)
-FORWARD_EVAL_FIELD(int64_t, readLong)
-FORWARD_EVAL_FIELD(float, readFloat)
-FORWARD_EVAL_FIELD(double, readDouble)
-FORWARD_EVAL_FIELD(std::string_view, readString)
-
-#undef FORWARD_EVAL_FIELD
-
-std::unique_ptr<nebula::surface::ListData> ComputedRow::readList(IndexType) const {
-  throw NException("Not implemented yet");
-}
-
-std::unique_ptr<nebula::surface::MapData> ComputedRow::readMap(IndexType) const {
-  throw NException("Not implemented yet");
+  // after the compute flat should contain all the data we need.
+  index_ = 0;
+  size_ = samples_->size();
 }
 
 } // namespace core

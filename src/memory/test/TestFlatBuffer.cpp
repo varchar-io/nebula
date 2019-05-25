@@ -22,6 +22,7 @@
 #include "memory/keyed/FlatBuffer.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 #include "surface/StaticData.h"
 #include "type/Serde.h"
 
@@ -60,7 +61,7 @@ TEST(FlatBufferTest, TestFlatBufferWrite) {
   nebula::meta::TestTable test;
 
   // initialize a flat row with given schema
-  FlatBuffer fb(test.getSchema());
+  FlatBuffer fb(test.schema());
 
   // add 10 rows
   constexpr auto rows2test = 1024;
@@ -99,7 +100,7 @@ TEST(FlatBufferTest, TestRollback) {
   nebula::meta::TestTable test;
 
   // initialize a flat row with given schema
-  FlatBuffer fb(test.getSchema());
+  FlatBuffer fb(test.schema());
 
   // add 10 rows
   constexpr auto rows2test = 5;

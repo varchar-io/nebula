@@ -25,6 +25,7 @@
 #include "service/nebula/NebulaService.h"
 #include "service/nebula/QueryHandler.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 #include "type/Serde.h"
 
 namespace nebula {
@@ -104,7 +105,7 @@ TEST(ServiceTest, TestJsonifyResults) {
   QueryHandler handler;
   QueryRequest request;
   request.set_table(trends.name());
-  request.set_start(Evidence::time("2019-02-01", "%Y-%m-%d"));
+  request.set_start(Evidence::time("2017-02-01", "%Y-%m-%d"));
   request.set_end(Evidence::time("2019-05-01", "%Y-%m-%d"));
   auto pa = request.mutable_filtera();
   // COUNT needs to be more than 2
@@ -119,7 +120,7 @@ TEST(ServiceTest, TestJsonifyResults) {
     auto expr = pa->add_expression();
     expr->set_column("query");
     expr->set_op(Operation::LIKE);
-    expr->add_value("lego %");
+    expr->add_value("apple%");
   }
 
   request.add_dimension("query");
@@ -181,6 +182,113 @@ TEST(ServiceTest, TestQueryTimeline) {
   auto metric = request.add_metric();
   metric->set_column("value");
   metric->set_method(Rollup::COUNT);
+
+  ErrorCode err = ErrorCode::NONE;
+
+  // No error in compiling the query
+  auto plan = handler.compile(testTable, request, err);
+  EXPECT_EQ(err, ErrorCode::NONE);
+
+  // No error in exeucting the query
+  auto result = handler.query(*plan, err);
+  EXPECT_EQ(err, ErrorCode::NONE);
+
+  LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << ServiceProperties::jsonify(result, plan->getOutputSchema());
+}
+
+TEST(ServiceTest, TestStringFilters) {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  auto start = Evidence::time("2019-01-01", "%Y-%m-%d");
+  auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    auto begin = start + i * window;
+    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+  }
+
+  // load test data to run this query
+  nebula::common::Evidence::Duration tick;
+  QueryHandler handler;
+  QueryRequest request;
+  request.set_table(testTable.name());
+  request.set_start(Evidence::time("2019-02-01", "%Y-%m-%d"));
+  request.set_end(Evidence::time("2019-05-01", "%Y-%m-%d"));
+  auto pa = request.mutable_filtera();
+  // COUNT needs to be more than 2
+  {
+    auto expr = pa->add_expression();
+    expr->set_column("event");
+    expr->set_op(Operation::EQ);
+    expr->add_value("");
+  }
+
+  // set the query purpose as timeline
+  request.set_display(DisplayType::TABLE);
+  auto metric = request.add_metric();
+  metric->set_column("value");
+  metric->set_method(Rollup::COUNT);
+
+  ErrorCode err = ErrorCode::NONE;
+
+  // No error in compiling the query
+  auto plan = handler.compile(testTable, request, err);
+  EXPECT_EQ(err, ErrorCode::NONE);
+
+  // No error in exeucting the query
+  auto result = handler.query(*plan, err);
+  EXPECT_EQ(err, ErrorCode::NONE);
+
+  LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << ServiceProperties::jsonify(result, plan->getOutputSchema());
+}
+
+TEST(ServiceTest, TestQuerySamples) {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  auto start = Evidence::time("2019-01-01", "%Y-%m-%d");
+  auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    auto begin = start + i * window;
+    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+  }
+
+  // load test data to run this query
+  nebula::common::Evidence::Duration tick;
+  QueryHandler handler;
+  QueryRequest request;
+  request.set_table(testTable.name());
+  request.set_start(Evidence::time("2019-02-01", "%Y-%m-%d"));
+  request.set_end(Evidence::time("2019-05-01", "%Y-%m-%d"));
+  auto pa = request.mutable_filtera();
+  // COUNT needs to be more than 2
+  {
+    auto expr = pa->add_expression();
+    expr->set_column("event");
+    expr->set_op(Operation::LIKE);
+    expr->add_value("NN%");
+  }
+
+  // set the query purpose as timeline
+  request.set_display(DisplayType::TABLE);
+  request.add_dimension("id");
+  request.add_dimension("event");
+  request.add_dimension("flag");
+  request.add_dimension("value");
 
   ErrorCode err = ErrorCode::NONE;
 

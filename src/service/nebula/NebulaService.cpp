@@ -80,7 +80,7 @@ const std::string ServiceProperties::jsonify(const RowCursor data, const Schema 
       jsonCalls.push_back([name, &json](const RowData& row) {
         json.Key(name);
         auto sv = row.readString(name);
-        json.String(sv.data());
+        json.String(sv.data(), sv.size());
       });
       break;
     }

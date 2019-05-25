@@ -28,6 +28,7 @@
 #include "gmock/gmock.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 #include "type/Serde.h"
 
 namespace nebula {

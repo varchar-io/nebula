@@ -84,7 +84,7 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest*
 
   // TODO(cao) - need meta data system to query table info
 
-  auto schema = table.getSchema();
+  auto schema = table.schema();
   for (size_t i = 0, size = schema->size(); i < size; ++i) {
     auto column = schema->childType(i);
     if (!column->isScalar(column->k())) {

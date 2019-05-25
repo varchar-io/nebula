@@ -15,7 +15,9 @@
  */
 
 #include "BlockLoader.h"
+#include "common/Evidence.h"
 #include "meta/TestTable.h"
+#include "surface/MockSurface.h"
 
 /**
  * Exchange block units between memory and storage.s
@@ -59,7 +61,7 @@ private:
 
 std::unique_ptr<Batch> BlockLoader::loadTestBlock(const NBlock& nb) {
   TestTable test;
-  auto block = std::make_unique<Batch>(test.getSchema());
+  auto block = std::make_unique<Batch>(test.schema());
 
   // use 1024 rows for testing
   auto rows = 10000;

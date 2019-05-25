@@ -22,6 +22,7 @@
 #include "api/udf/Prefix.h"
 #include "execution/eval/ValueEval.h"
 #include "surface/DataSurface.h"
+#include "surface/MockSurface.h"
 
 namespace nebula {
 namespace api {
