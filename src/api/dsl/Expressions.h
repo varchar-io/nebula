@@ -367,7 +367,7 @@ public:
 
   // convert to value eval
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    return nebula::execution::eval::constant<T>(value_);
+    return nebula::execution::eval::constant(value_);
   }
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table&) override {

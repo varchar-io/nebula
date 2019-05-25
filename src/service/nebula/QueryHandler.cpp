@@ -267,7 +267,7 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     BUILD_CONST_CASE(REAL)
     BUILD_CONST_CASE(DOUBLE)
   case Kind::VARCHAR: {
-    constExpression = std::make_unique<ConstExpression<std::string_view>>(pred.value(0));
+    constExpression = std::make_shared<ConstExpression<std::string>>(pred.value(0));
     break;
   }
   default:

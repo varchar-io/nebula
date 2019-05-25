@@ -279,8 +279,8 @@ TEST(ServiceTest, TestQuerySamples) {
   {
     auto expr = pa->add_expression();
     expr->set_column("event");
-    expr->set_op(Operation::LIKE);
-    expr->add_value("NN%");
+    expr->set_op(Operation::EQ);
+    expr->add_value("NN");
   }
 
   // set the query purpose as timeline
@@ -294,6 +294,7 @@ TEST(ServiceTest, TestQuerySamples) {
 
   // No error in compiling the query
   auto plan = handler.compile(testTable, request, err);
+  plan->display();
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query

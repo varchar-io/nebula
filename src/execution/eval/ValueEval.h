@@ -179,6 +179,7 @@ std::unique_ptr<ValueEval> constant(T v) {
     new TypeValueEval<ST>(
       fmt::format("C:{0}", v),
       [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> ST {
+        LOG(INFO) << "const value=" << v;
         return v;
       },
       {}));
@@ -275,6 +276,7 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
           if (UNLIKELY(!valid)) {                                                                 \
             return INVALID;                                                                       \
           }                                                                                       \
+          LOG(INFO) << "v1=" << v1 << #SIGN << "v2=" << v2;                                       \
           return T(v1 SIGN v2);                                                                   \
         }),                                                                                       \
         std::move(branch)));                                                                      \
@@ -303,12 +305,11 @@ ARTHMETIC_VE(mod, %)
       new TypeValueEval<bool>(                                                                    \
         fmt::format("({0}{1}{2})", s1, #SIGN, s2),                                                \
         OPT_LAMBDA({                                                                              \
-          const auto& e1 = *children.at(0);                                                       \
-          auto v1 = ctx.eval<T1>(e1, valid);                                                      \
+          auto v1 = ctx.eval<T1>(*children.at(0), valid);                                         \
           if (UNLIKELY(!valid)) {                                                                 \
             return false;                                                                         \
           }                                                                                       \
-          auto v2 = ctx.eval<T2>(*children[1], valid);                                            \
+          auto v2 = ctx.eval<T2>(*children.at(1), valid);                                         \
           if (UNLIKELY(!valid)) {                                                                 \
             return false;                                                                         \
           }                                                                                       \
