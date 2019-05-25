@@ -1,4 +1,4 @@
-import * as d3 from './d3.v5.min.js';
+import * as d3 from './c/d3.v5.min.js';
 
 const {
     EchoRequest,

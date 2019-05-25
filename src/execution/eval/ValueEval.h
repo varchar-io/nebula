@@ -179,7 +179,6 @@ std::unique_ptr<ValueEval> constant(T v) {
     new TypeValueEval<ST>(
       fmt::format("C:{0}", v),
       [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> ST {
-        LOG(INFO) << "const value=" << v;
         return v;
       },
       {}));
@@ -276,7 +275,6 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
           if (UNLIKELY(!valid)) {                                                                 \
             return INVALID;                                                                       \
           }                                                                                       \
-          LOG(INFO) << "v1=" << v1 << #SIGN << "v2=" << v2;                                       \
           return T(v1 SIGN v2);                                                                   \
         }),                                                                                       \
         std::move(branch)));                                                                      \

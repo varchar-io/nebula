@@ -9,7 +9,7 @@ import {
 // define jquery style selector 
 const d3 = NebulaClient.d3;
 const ds = NebulaClient.d3.select;
-const $$ = (e) => ds(e).property('value');
+const $$ = (e) => $(e).val();
 
 const serviceAddr = "http://dev-shawncao:8080";
 const v1Client = new NebulaClient.V1Client(serviceAddr);
@@ -45,6 +45,8 @@ const initTable = (table, callback) => {
 
             // populate dimension columns
             const dimensions = reply.getDimensionList().filter((v) => v !== '_time_');
+
+            $('#dwrapper').html("Dimension: <select id=\"dcolumns\" multiple></select>");
             ds('#dcolumns')
                 .html("")
                 .selectAll("option")
@@ -53,6 +55,8 @@ const initTable = (table, callback) => {
                 .append('option')
                 .text(d => d)
                 .attr("value", d => d);
+
+            $('#dcolumns').selectize();
 
             // populate metrics columns
             const metrics = reply.getMetricList().filter((v) => v !== '_time_');
@@ -75,6 +79,43 @@ const initTable = (table, callback) => {
                 .append('option')
                 .text(d => d)
                 .attr("value", d => d);
+
+            // populate all display types
+            ds('#display')
+                .html("")
+                .selectAll("option")
+                .data(Object.keys(NebulaClient.DisplayType))
+                .enter()
+                .append('option')
+                .text(k => k.toLowerCase())
+                .attr("value", k => NebulaClient.DisplayType[k]);
+
+            // populate all operations
+            const om = {
+                EQ: "=",
+                NEQ: "!=",
+                MORE: ">",
+                LESS: "<",
+                LIKE: "like"
+            };
+            ds('#fop')
+                .html("")
+                .selectAll("option")
+                .data(Object.keys(NebulaClient.Operation))
+                .enter()
+                .append('option')
+                .text(k => om[k])
+                .attr("value", k => NebulaClient.Operation[k]);
+
+            // roll up methods
+            ds('#ru')
+                .html("")
+                .selectAll("option")
+                .data(Object.keys(NebulaClient.Rollup))
+                .enter()
+                .append('option')
+                .text(k => k.toLowerCase())
+                .attr("value", k => NebulaClient.Rollup[k]);
         }
 
         if (callback) {
@@ -83,43 +124,13 @@ const initTable = (table, callback) => {
     });
 };
 
-const opFilter = (op) => {
-    switch (op) {
-        case "EQ":
-            return NebulaClient.Operation.EQ;
-        case "NEQ":
-            return NebulaClient.Operation.NEQ;
-        case "GT":
-            return NebulaClient.Operation.MORE;
-        case "LT":
-            return NebulaClient.Operation.LESS;
-        case "LK":
-            return NebulaClient.Operation.LIKE;
-    }
-};
-
-const displayType = (op) => {
-    switch (op) {
-        case "0":
-            return NebulaClient.DisplayType.TABLE;
-        case "1":
-            return NebulaClient.DisplayType.TIMELINE;
-        case "2":
-            return NebulaClient.DisplayType.BAR;
-        case "3":
-            return NebulaClient.DisplayType.PIE;
-        case "4":
-            return NebulaClient.DisplayType.LINE;
-    }
-};
-
 // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019] 
 // place basic check before sending to server
 // return true if failed the check
 const checkRequest = () => {
     // 1. timeline query
     const display = $$("#display");
-    if (display === "1") {
+    if (display == NebulaClient.DisplayType.TIMELINE) {
         const windowSize = $$("#window");
         const start = new Date($$("#start")).getTime();
         const end = new Date($$("#end")).getTime();
@@ -127,6 +138,15 @@ const checkRequest = () => {
         const buckets = rangeSeconds / windowSize;
         if (buckets > 500) {
             ds("#qr").text(`Too many data points to return ${buckets}, please increase window granularity.`);
+            return true;
+        }
+    }
+
+    if (display == NebulaClient.DisplayType.SAMPLES) {
+        // TODO(cao) - support * when user doesn't select any dimemsions
+        const dimensions = $$("#dcolumns");
+        if (dimensions.length == 0) {
+            ds("#qr").text(`Please specify dimensions for samples`);
             return true;
         }
     }
@@ -145,6 +165,7 @@ const hash = (v) => {
 
 const build = () => {
     // build URL and set URL
+    const dimensions = $$('#dcolumns');
     const Q = {
         t: $$('#tables'),
         s: $$('#start'),
@@ -152,7 +173,7 @@ const build = () => {
         fv: $$('#fvalue'),
         fo: $$('#fop'),
         ff: $$("#fcolumns"),
-        ds: [$$('#dcolumns')],
+        ds: dimensions,
         w: $$("#window"),
         d: $$('#display'),
         m: $$('#mcolumns'),
@@ -219,53 +240,59 @@ const execute = () => {
     // the filter can be much more complex
     // but now, it only take one filter
     const fvalue = p.fv;
-    if (fvalue) {
+    if (fvalue.length > 0) {
         const p2 = new NebulaClient.Predicate();
         p2.setColumn(p.ff);
-        p2.setOp(opFilter(p.fo));
-        p2.setValueList([fvalue]);
+        p2.setOp(p.fo);
+        p2.setValueList(fvalue);
         const filter = new NebulaClient.PredicateAnd();
         filter.setExpressionList([p2]);
         q.setFiltera(filter);
     }
 
-    // set dimensions 
+    // set dimension
     q.setDimensionList(p.ds);
 
+
     // set query type and window
-    q.setDisplay(displayType(p.d));
+    q.setDisplay(p.d);
     q.setWindow(p.w);
 
-    // set metric 
-    const m = new NebulaClient.Metric();
-    const mcol = p.m;
-    m.setColumn(mcol);
-    const rollupType = p.r;
-    switch (rollupType) {
-        case "0":
-            m.setMethod(NebulaClient.Rollup.COUNT);
-            break;
-        case "1":
-            m.setMethod(NebulaClient.Rollup.SUM);
-            break;
-        case "2":
-            m.setMethod(NebulaClient.Rollup.MIN);
-            break;
-        case "3":
-            m.setMethod(NebulaClient.Rollup.MAX);
-            break;
-        default:
-            m.setMethod(NebulaClient.Rollup.SUM);
-            break;
-    }
-    q.setMetricList([m]);
+    // set metric for non-samples query 
+    // (use implicit type convert != instead of !==)
+    if (p.d != NebulaClient.DisplayType.SAMPLES) {
+        const m = new NebulaClient.Metric();
+        const mcol = p.m;
+        m.setColumn(mcol);
+        const rollupType = p.r;
+        switch (rollupType) {
+            case "0":
+                m.setMethod(NebulaClient.Rollup.COUNT);
+                break;
+            case "1":
+                m.setMethod(NebulaClient.Rollup.SUM);
+                break;
+            case "2":
+                m.setMethod(NebulaClient.Rollup.MIN);
+                break;
+            case "3":
+                m.setMethod(NebulaClient.Rollup.MAX);
+                break;
+            default:
+                m.setMethod(NebulaClient.Rollup.SUM);
+                break;
+        }
+        q.setMetricList([m]);
 
-    // set order and limit
-    const o = new NebulaClient.Order();
-    o.setColumn(mcol);
-    const orderType = p.o;
-    o.setType(orderType === "1" ? NebulaClient.OrderType.DESC : NebulaClient.OrderType.ASC);
-    q.setOrder(o);
+        // set order on metric only means we don't order on samples for now
+        const o = new NebulaClient.Order();
+        o.setColumn(mcol);
+        const orderType = p.o;
+        o.setType(orderType === "1" ? NebulaClient.OrderType.DESC : NebulaClient.OrderType.ASC);
+        q.setOrder(o);
+    }
+
+    // set limit
     q.setTop(p.l);
 
     // do the query 
@@ -396,4 +423,3 @@ $('#fvalue').selectize({
         }
     }
 });
-$('#fvalue').data('selectize').setValue("Option Value Here");

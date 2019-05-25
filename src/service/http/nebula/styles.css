@@ -2,6 +2,11 @@ h1 {
     margin: 8pt;
 }
 
+h1 a {
+    color: inherit;
+    text-decoration: none;
+}
+
 div {
     background: whitesmoke;
     font-size: 1.1em;
@@ -30,7 +35,7 @@ div .text,
 }
 
 #stats {
-    font-size: 0.5em;
+    font-size: 0.6em;
 }
 
 hr {

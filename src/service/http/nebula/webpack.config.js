@@ -44,7 +44,7 @@ const nodeConfig = {
     node: false,
     externals: [nodeExternals()],
     entry: {
-        node: './node.js'
+        node: './n/node.js'
     },
     output: {
         filename: './[name]/main.js',

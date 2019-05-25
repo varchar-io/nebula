@@ -12,7 +12,7 @@
 </head>
 
 <body>
-    <h1>Nebula</h1>
+    <h1><a href="/">Nebula</a></h1>
     <div class="main">
         <div class="left">
             <div>Table:
@@ -21,13 +21,7 @@
             <div id="stats"></div>
             <hr />
             <div>
-                <select id="display">
-                    <option value="0">Table</option>
-                    <option value="1">Timeline</option>
-                    <option value="2">Bar</option>
-                    <option value="3">Pie</option>
-                    <option value="4">Line</option>
-                </select>
+                <select id="display"></select>
                 <button id="btn">Query</button>
             </div>
 
@@ -41,28 +35,20 @@
                     <option value="604800">1 Week</option>
                 </select>
             </div>
+            <hr />
             <div> Filter:
                 <select id="fcolumns"></select>
-                <select id="fop">
-                    <option value="EQ">=</option>
-                    <option value="NEQ">!=</option>
-                    <option value="GT">&gt;</option>
-                    <option value="LT">&lt;</option>
-                    <option value="LK">LIKE</option>
-                </select>
+                <select id="fop"></select>
                 <div class="text">
-                    <input type="text" id="fvalue"></div>
+                    <select id="fvalue" multiple></select>
+                </div>
             </div>
-            <div> Dimension: <select id="dcolumns"></select></div>
+            <div id="dwrapper"></div>
             <div> Metric:
-                <select id="ru">
-                    <option value="0">COUNT</option>
-                    <option value="1">SUM</option>
-                    <option value="2">MIN</option>
-                    <option value="3">MAX</option>
-                </select>
+                <select id="ru"></select>
                 <select id="mcolumns"></select>
             </div>
+            <hr />
             <div> Order:
                 <select id="ob">
                     <option value="0">ASC</option>

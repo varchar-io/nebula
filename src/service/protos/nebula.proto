@@ -129,13 +129,12 @@ message Order {
 // This may or may not be used by server
 // It is optional for potential optimization
 enum DisplayType {
-  UNKNOWN = 0;
-  SAMPLES = 1;
-  TABLE = 2;
-  TIMELINE = 3;
-  BAR = 4;
-  PIE = 5;
-  LINE = 6;
+  SAMPLES = 0;
+  TABLE = 1;
+  TIMELINE = 2;
+  BAR = 3;
+  PIE = 4;
+  LINE = 5;
 }
 
 // define query request 
