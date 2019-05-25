@@ -55,8 +55,7 @@ const initTable = (table, callback) => {
                 .append('option')
                 .text(d => d)
                 .attr("value", d => d);
-
-            $('#dcolumns').selectize();
+            $sdc = $('#dcolumns').selectize();
 
             // populate metrics columns
             const metrics = reply.getMetricList().filter((v) => v !== '_time_');
@@ -116,6 +115,17 @@ const initTable = (table, callback) => {
                 .append('option')
                 .text(k => k.toLowerCase())
                 .attr("value", k => NebulaClient.Rollup[k]);
+
+            // order type 
+            ds('#ob')
+                .html("")
+                .selectAll("option")
+                .data(Object.keys(NebulaClient.OrderType))
+                .enter()
+                .append('option')
+                .text(k => k.toLowerCase())
+                .attr("value", k => NebulaClient.OrderType[k]);
+
         }
 
         if (callback) {
@@ -165,7 +175,6 @@ const hash = (v) => {
 
 const build = () => {
     // build URL and set URL
-    const dimensions = $$('#dcolumns');
     const Q = {
         t: $$('#tables'),
         s: $$('#start'),
@@ -173,7 +182,7 @@ const build = () => {
         fv: $$('#fvalue'),
         fo: $$('#fop'),
         ff: $$("#fcolumns"),
-        ds: dimensions,
+        ds: $$('#dcolumns'),
         w: $$("#window"),
         d: $$('#display'),
         m: $$('#mcolumns'),
@@ -207,10 +216,8 @@ const restore = () => {
             // set other fields
             set('#start', p.s);
             set('#end', p.e);
-            set('#fvalue', p.fv);
             set('#fop', p.fo);
             set('#fcolumns', p.ff);
-            set('#dcolumns', p.ds[0]);
             set("#window", p.w);
             set('#display', p.d);
             set('#mcolumns', p.m);
@@ -218,6 +225,14 @@ const restore = () => {
             set('#ob', p.o);
             set('#limit', p.l);
 
+            // selectize init value
+            {
+                // TODO(cao) - this doesn't work?
+                $sfv[0].selectize.setValue(p.fv);
+                if ($sdc) {
+                    $sdc[0].selectize.setValue(p.ds);
+                }
+            }
             // the URL needs to be executed
             execute();
         });
@@ -264,31 +279,13 @@ const execute = () => {
         const m = new NebulaClient.Metric();
         const mcol = p.m;
         m.setColumn(mcol);
-        const rollupType = p.r;
-        switch (rollupType) {
-            case "0":
-                m.setMethod(NebulaClient.Rollup.COUNT);
-                break;
-            case "1":
-                m.setMethod(NebulaClient.Rollup.SUM);
-                break;
-            case "2":
-                m.setMethod(NebulaClient.Rollup.MIN);
-                break;
-            case "3":
-                m.setMethod(NebulaClient.Rollup.MAX);
-                break;
-            default:
-                m.setMethod(NebulaClient.Rollup.SUM);
-                break;
-        }
+        m.setMethod(p.r);
         q.setMetricList([m]);
 
         // set order on metric only means we don't order on samples for now
         const o = new NebulaClient.Order();
         o.setColumn(mcol);
-        const orderType = p.o;
-        o.setType(orderType === "1" ? NebulaClient.OrderType.DESC : NebulaClient.OrderType.ASC);
+        o.setType(p.o);
         q.setOrder(o);
     }
 
@@ -357,13 +354,15 @@ const execute = () => {
             // get display option
             if (json.length > 0) {
                 const charts = new Charts();
-                const display = $$('#display');
+                // enum value are number and switch/case are strong typed match
+                const display = +$$('#display');
                 const keys = extractXY(json, q);
                 switch (display) {
-                    case '0':
+                    case NebulaClient.DisplayType.SAMPLES:
+                    case NebulaClient.DisplayType.TABLE:
                         charts.displayTable(json);
                         break;
-                    case '1':
+                    case NebulaClient.DisplayType.TIMELINE:
                         const WINDOW_KEY = '_window_';
                         const start = new Date($$('#start')).getTime();
                         const window = +$$('#window');
@@ -371,13 +370,13 @@ const execute = () => {
 
                         charts.displayLine(json, keys.m, (scale = 1) => (d, i) => fmt(new Date(start + window * 1000 * json[Math.floor(i * scale)][WINDOW_KEY])));
                         break;
-                    case '2':
+                    case NebulaClient.DisplayType.BAR:
                         charts.displayBar(json, keys.d, keys.m);
                         break;
-                    case '3':
+                    case NebulaClient.DisplayType.PIE:
                         charts.displayPie(json, keys.d, keys.m);
                         break;
-                    case '4':
+                    case NebulaClient.DisplayType.LINE:
                         charts.displayLine(json, keys.m, () => (d, i) => json[i][keys.d]);
                         break;
                 }
@@ -413,13 +412,17 @@ v1Client.tables(listReq, {}, (err, reply) => {
     setTimeout(restore, 50);
 });
 
-$('#fvalue').selectize({
+
+// a pointer to latest dimensions selectize
+let $sfv = $('#fvalue').selectize({
     plugins: ['restore_on_backspace', 'remove_button'],
     persist: false,
-    create: function (input) {
+    create: input => {
         return {
             value: input,
             text: input
-        }
+        };
     }
 });
+
+let $sdc = null;

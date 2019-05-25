@@ -27,9 +27,9 @@ using nebula::type::Kind;
 
 FlatBuffer::FlatBuffer(const nebula::type::Schema& schema)
   : schema_{ schema },
-    main_{ 1024 },
-    data_{ 1024 },
-    list_{ 1024 } {
+    main_{ 2 * 1024 },
+    data_{ 32 * 1024 },
+    list_{ 4 * 1024 } {
   // build name to index look up
   // build a field name to data node
   const auto numCols = schema_->size();

@@ -27,7 +27,7 @@ Pool& Pool::getDefault() {
 // not-threadsafe
 void PagedSlice::ensure(size_t size) {
   // increase 10 slices requests, logging warning, increase over 30 slices requests, logging error.
-  static constexpr int errors[] = { 10, 20 };
+  static constexpr int errors[] = { 50, 100 };
   if (UNLIKELY(size >= capacity())) {
     auto slices = slices_;
     auto detects = 0;
