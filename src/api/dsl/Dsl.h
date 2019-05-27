@@ -200,6 +200,16 @@ static PrefixExpression starts(const T& expr, const std::string& prefix) {
   return PrefixExpression(std::shared_ptr<Expression>(new T(expr)), prefix);
 }
 
+template <typename T, typename U>
+static InExpression<U> in(const T& expr, const std::vector<U>& values) {
+  return InExpression(std::shared_ptr<Expression>(new T(expr)), values);
+}
+
+template <typename T, typename U>
+static InExpression<U> nin(const T& expr, const std::vector<U>& values) {
+  return InExpression(std::shared_ptr<Expression>(new T(expr)), values, false);
+}
+
 // TODO(cao) - we should move UDF creation out of DSL as it's logical concept
 // follow example of UDAF to be consistent
 template <typename T>

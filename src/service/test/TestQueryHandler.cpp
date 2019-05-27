@@ -281,6 +281,7 @@ TEST(ServiceTest, TestQuerySamples) {
     expr->set_column("event");
     expr->set_op(Operation::EQ);
     expr->add_value("NN");
+    expr->add_value("NNN");
   }
 
   // set the query purpose as timeline

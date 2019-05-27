@@ -161,6 +161,15 @@ const checkRequest = () => {
         }
     }
 
+    // if data aggregations, we enforce filter
+    if (display != NebulaClient.DisplayType.SAMPLES &&
+        display != NebulaClient.DisplayType.TIMELINE) {
+        if ($$('#fvalue').length == 0) {
+            ds("#qr").text(`Please specify filters for specific aggregations`);
+            return true;
+        }
+    }
+
     // pass the check
     return false;
 };

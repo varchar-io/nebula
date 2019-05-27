@@ -33,9 +33,11 @@ using nebula::api::dsl::sum;
 using nebula::api::dsl::ColumnExpression;
 using nebula::api::dsl::ConstExpression;
 using nebula::api::dsl::Expression;
+using nebula::api::dsl::in;
 using nebula::api::dsl::like;
 using nebula::api::dsl::LogicalExpression;
 using nebula::api::dsl::LogicalOp;
+using nebula::api::dsl::nin;
 using nebula::api::dsl::Query;
 using nebula::api::dsl::SortType;
 using nebula::api::dsl::starts;
@@ -48,6 +50,7 @@ using nebula::surface::RowCursor;
 using nebula::type::Kind;
 using nebula::type::Schema;
 using nebula::type::TypeNode;
+using nebula::type::TypeTraits;
 
 std::unique_ptr<ExecutionPlan> QueryHandler::compile(const Table& tb, const QueryRequest& request, ErrorCode& err) const noexcept {
   // 1. validate the query request, if failed, we can return right away
@@ -118,7 +121,7 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
 #undef BUILD_EXPR
 
   // set filter - has normal combined filter or not
-  using LT = nebula::type::TypeTraits<Kind::BIGINT>::CppType;
+  using LT = TypeTraits<Kind::BIGINT>::CppType;
   auto timeFilter = (col(nebula::meta::Table::TIME_COLUMN) >= (LT)req.start()) && (col(nebula::meta::Table::TIME_COLUMN) <= (LT)req.end());
   if (expr == nullptr) {
     q.where(timeFilter);
@@ -228,6 +231,30 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
   }
 }
 
+#define CHAIN_AND_RET                                  \
+  if (prev != nullptr) {                               \
+    if (op == LogicalOp::AND) {                        \
+      auto chain = exp && prev;                        \
+      return std::make_shared<decltype(chain)>(chain); \
+    } else {                                           \
+      auto chain = exp || prev;                        \
+      return std::make_shared<decltype(chain)>(chain); \
+    }                                                  \
+  }                                                    \
+  return std::make_shared<decltype(exp)>(exp);
+
+template <typename T>
+auto vectorize(const Predicate& pred) -> std::vector<T> {
+  const auto size = pred.value_size();
+  std::vector<T> values;
+  values.reserve(size);
+  for (auto i = 0; i < size; ++i) {
+    values.push_back(folly::to<T>(pred.value(i)));
+  }
+
+  return values;
+}
+
 std::shared_ptr<Expression> QueryHandler::buildPredicate(
   const Predicate& pred,
   const Table& table,
@@ -249,6 +276,51 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
   // right now, we only support EQ to single value
   auto valueCount = pred.value_size();
   N_ENSURE_GT(valueCount, 0, "predicate requires at least one value");
+
+  // if specified multiple values for EQ and NEQ, they should convert to
+  // IN and NOT IN expression isntead
+  const auto pop = pred.op();
+  if (valueCount > 1) {
+    // in expression
+    if (pop == Operation::EQ || pop == Operation::NEQ) {
+#define BUILD_IN_CLAUSE(KIND, UDF)                                         \
+  case Kind::KIND: {                                                       \
+    auto data = vectorize<typename TypeTraits<Kind::KIND>::CppType>(pred); \
+    auto exp = UDF(columnExpression, data);                                \
+    CHAIN_AND_RET                                                          \
+    break;                                                                 \
+  }
+
+#define PROCESS_UDF(func)                                        \
+  switch (columnType) {                                          \
+    BUILD_IN_CLAUSE(BOOLEAN, func)                               \
+    BUILD_IN_CLAUSE(TINYINT, func)                               \
+    BUILD_IN_CLAUSE(SMALLINT, func)                              \
+    BUILD_IN_CLAUSE(INTEGER, func)                               \
+    BUILD_IN_CLAUSE(BIGINT, func)                                \
+    BUILD_IN_CLAUSE(REAL, func)                                  \
+    BUILD_IN_CLAUSE(DOUBLE, func)                                \
+  case Kind::VARCHAR: {                                          \
+    auto data = vectorize<std::string>(pred);                    \
+    auto exp = func(columnExpression, data);                     \
+    CHAIN_AND_RET                                                \
+    break;                                                       \
+  }                                                              \
+  default:                                                       \
+    throw NException("Not supported column type in predicates"); \
+  }
+
+      if (pop == Operation::EQ) {
+        PROCESS_UDF(in)
+      } else {
+        PROCESS_UDF(nin)
+      }
+
+#undef PROCESS_UDF
+#undef BUILD_IN_CLAUSE
+    }
+  }
+
   std::shared_ptr<Expression> constExpression = nullptr;
 
 #define BUILD_CONST_CASE(KIND)                                                           \
@@ -276,23 +348,15 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
 #undef BUILD_CONST_CASE
 
   N_ENSURE(op == LogicalOp::AND || op == LogicalOp::OR, "connection op can only be AND or OR");
+
 // build the logical expression based on op
-#define BUILD_LOGICAL_CASE(TYPE, OP)                     \
-  case Operation::TYPE: {                                \
-    auto exp = columnExpression OP constExpression;      \
-    if (prev != nullptr) {                               \
-      if (op == LogicalOp::AND) {                        \
-        auto chain = exp && prev;                        \
-        return std::make_shared<decltype(chain)>(chain); \
-      } else {                                           \
-        auto chain = exp || prev;                        \
-        return std::make_shared<decltype(chain)>(chain); \
-      }                                                  \
-    }                                                    \
-    return std::make_shared<decltype(exp)>(exp);         \
+#define BUILD_LOGICAL_CASE(TYPE, OP)                \
+  case Operation::TYPE: {                           \
+    auto exp = columnExpression OP constExpression; \
+    CHAIN_AND_RET                                   \
   }
 
-  switch (pred.op()) {
+  switch (pop) {
     BUILD_LOGICAL_CASE(EQ, ==)
     BUILD_LOGICAL_CASE(NEQ, !=)
     BUILD_LOGICAL_CASE(MORE, >)
@@ -314,29 +378,22 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
       ++cursor;
     }
 
-#define RETURN_EXP(exp)                              \
-  if (prev != nullptr) {                             \
-    auto chain = exp && prev;                        \
-    return std::make_shared<decltype(chain)>(chain); \
-  }                                                  \
-  return std::make_shared<decltype(exp)>(exp);
-
     // matcher is only at last position
     if (pos == pattern.size() - 1) {
       auto exp = starts(columnExpression, pattern.substr(0, pos));
-      RETURN_EXP(exp)
+      CHAIN_AND_RET
     }
 
     auto exp = like(columnExpression, pattern);
-    RETURN_EXP(exp)
-
-#undef RETURN_EXP
+    CHAIN_AND_RET
   }
   default:
     throw NException("Nebula predicate operation not supported yet");
   }
 #undef BUILD_LOGICAL_CASE
 }
+
+#undef CHAIN_AND_RET
 
 // validate the query request
 ErrorCode QueryHandler::validate(const QueryRequest& req) const noexcept {

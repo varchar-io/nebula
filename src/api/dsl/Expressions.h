@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 #include "Base.h"
+#include "api/udf/In.h"
 #include "api/udf/UDFFactory.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
@@ -429,9 +430,12 @@ public:
     return inner_->columnRefs();
   }
 
-#define CASE_KIND_UDF(KIND)                                                               \
-  case nebula::type::Kind::KIND: {                                                        \
-    return nebula::api::udf::UDFFactory::createUDF<UT, nebula::type::Kind::KIND>(inner_); \
+#define CASE_KIND_UDF(KIND)                         \
+  case nebula::type::Kind::KIND: {                  \
+    return nebula::api::udf::UDFFactory::createUDF< \
+      UT,                                           \
+      nebula::type::Kind::KIND,                     \
+      nebula::type::Kind::INVALID>(inner_);         \
   }
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
@@ -488,7 +492,10 @@ public:
   ALL_LOGICAL_OPS()
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    return nebula::api::udf::UDFFactory::createUDF<nebula::execution::eval::UDFType::LIKE, nebula::type::Kind::BOOLEAN>(expr_, pattern_);
+    return nebula::api::udf::UDFFactory::createUDF<
+      nebula::execution::eval::UDFType::LIKE,
+      nebula::type::Kind::BOOLEAN,
+      nebula::type::Kind::VARCHAR>(expr_, pattern_);
   }
 
 private:
@@ -504,11 +511,42 @@ public:
   ALL_LOGICAL_OPS()
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    return nebula::api::udf::UDFFactory::createUDF<nebula::execution::eval::UDFType::PREFIX, nebula::type::Kind::BOOLEAN>(expr_, prefix_);
+    return nebula::api::udf::UDFFactory::createUDF<
+      nebula::execution::eval::UDFType::PREFIX,
+      nebula::type::Kind::BOOLEAN,
+      nebula::type::Kind::VARCHAR>(expr_, prefix_);
   }
 
 private:
   std::string prefix_;
+};
+
+template <typename T>
+class InExpression : public BoolUDF<nebula::execution::eval::UDFType::IN> {
+public:
+  InExpression(std::shared_ptr<Expression> left, const std::vector<T>& values, bool in = true)
+    : BoolUDF<nebula::execution::eval::UDFType::IN>(left), values_{ values }, in_{ in } {}
+
+public:
+  ALL_LOGICAL_OPS()
+
+  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+    if (in_) {
+      return nebula::api::udf::UDFFactory::createUDF<
+        nebula::execution::eval::UDFType::IN,
+        nebula::type::Kind::BOOLEAN,
+        nebula::type::TypeDetect<T>::kind>(expr_, values_);
+    } else {
+      return nebula::api::udf::UDFFactory::createUDF<
+        nebula::execution::eval::UDFType::IN,
+        nebula::type::Kind::BOOLEAN,
+        nebula::type::TypeDetect<T>::kind>(expr_, values_, false);
+    }
+  }
+
+private:
+  std::vector<T> values_;
+  bool in_;
 };
 
 #undef ARTHMETIC_OP_CONST

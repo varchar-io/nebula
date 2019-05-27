@@ -79,9 +79,12 @@ private:
 #undef TYPE_VALUE_EVAL_KIND
 
 enum class UDFType {
+  // UDF
   NOT,
   LIKE,
   PREFIX,
+  IN,
+  // UDAF
   MAX,
   MIN,
   AVG,
@@ -107,6 +110,7 @@ struct UdfTraits {};
 DEFINE_UDF_TRAITS(NOT, false, nebula::type::Kind::BOOLEAN)
 DEFINE_UDF_TRAITS(LIKE, false, nebula::type::Kind::BOOLEAN)
 DEFINE_UDF_TRAITS(PREFIX, false, nebula::type::Kind::BOOLEAN)
+DEFINE_UDF_TRAITS(IN, false, nebula::type::Kind::BOOLEAN)
 DEFINE_UDF_TRAITS(MAX, true, nebula::type::Kind::INVALID)
 DEFINE_UDF_TRAITS(MIN, true, nebula::type::Kind::INVALID)
 DEFINE_UDF_TRAITS(AVG, true, nebula::type::Kind::INVALID)

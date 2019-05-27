@@ -13,6 +13,10 @@ div {
     margin: 4pt 8pt;
 }
 
+.message {
+    color: red;
+}
+
 .main {
     display: table;
     width: 100%;

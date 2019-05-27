@@ -26,7 +26,7 @@ namespace udf {
 // FULL specialization is not template any more, the definition should come to cpp file
 template <>
 typename std::unique_ptr<nebula::execution::eval::UDF<TypeKind::BOOLEAN>>
-  UDFFactory::createUDF<UDFKind::NOT, TypeKind::BOOLEAN>(std::shared_ptr<nebula::api::dsl::Expression> expr) {
+  UDFFactory::createUDF<UDFKind::NOT, TypeKind::BOOLEAN, TypeKind::BOOLEAN>(std::shared_ptr<nebula::api::dsl::Expression> expr) {
   return std::make_unique<Not>(nebula::execution::eval::UdfTraits<UDFKind::NOT>::Name, expr->asEval());
 }
 

@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "api/dsl/Expressions.h"
+#include "api/udf/In.h"
 #include "api/udf/Like.h"
 #include "api/udf/MyUdf.h"
 #include "api/udf/Prefix.h"
@@ -115,6 +116,78 @@ TEST(UDFTest, TestPrefixContext) {
     auto result = context.eval<bool>(prefix, valid);
     EXPECT_EQ(valid, true);
     EXPECT_EQ(result, true);
+  }
+}
+
+TEST(UDFTest, TestIn) {
+  {
+    // set, target, in or not in, result
+    using S = std::vector<std::string>;
+    std::vector<std::tuple<S, std::string, bool, bool>> data{
+      { { "abcdefg", "abc" }, "abc", true, true },
+      { { "x", "y", "z" }, "x", true, true },
+      { { "x", "y", "z" }, "a", true, false },
+      { { "x", "y", "z" }, "x", false, false },
+      { { "x", "y", "z" }, "a", false, true },
+      { { "x", "y", "z" }, "z", false, false },
+    };
+
+    nebula::surface::MockRowData row;
+    nebula::execution::eval::EvalContext ctx;
+    ctx.reset(row);
+
+    for (const auto& item : data) {
+      const auto& s = std::get<0>(item);
+      const auto& t = std::get<1>(item);
+      const auto& f = std::get<2>(item);
+      const auto& r = std::get<3>(item);
+
+      auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(t);
+      if (f) {
+        nebula::api::udf::In<nebula::type::Kind::VARCHAR> in("i", c->asEval(), s);
+        bool valid = true;
+        EXPECT_EQ(in.eval(ctx, valid), r);
+      } else {
+        nebula::api::udf::In<nebula::type::Kind::VARCHAR> in("i", c->asEval(), s, f);
+        bool valid = true;
+        EXPECT_EQ(in.eval(ctx, valid), r);
+      }
+    }
+  }
+
+  {
+    // set, target, in or not in, result
+    using S = std::vector<int32_t>;
+    std::vector<std::tuple<S, int32_t, bool, bool>> data{
+      { { 0, 1, 2 }, 1, true, true },
+      { { 66, 73, 54 }, 54, true, true },
+      { { 23, 45, 67, 89 }, 11, true, false },
+      { { 11, 22, 33 }, 22, false, false },
+      { { 11, 22, 33 }, 44, false, true },
+      { { 23, 34, 45, 56 }, 45, false, false },
+    };
+
+    nebula::surface::MockRowData row;
+    nebula::execution::eval::EvalContext ctx;
+    ctx.reset(row);
+
+    for (const auto& item : data) {
+      const auto& s = std::get<0>(item);
+      const auto& t = std::get<1>(item);
+      const auto& f = std::get<2>(item);
+      const auto& r = std::get<3>(item);
+
+      auto c = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(t);
+      if (f) {
+        nebula::api::udf::In<nebula::type::Kind::INTEGER> in("i", c->asEval(), s);
+        bool valid = true;
+        EXPECT_EQ(in.eval(ctx, valid), r);
+      } else {
+        nebula::api::udf::In<nebula::type::Kind::INTEGER> in("i", c->asEval(), s, f);
+        bool valid = true;
+        EXPECT_EQ(in.eval(ctx, valid), r);
+      }
+    }
   }
 }
 

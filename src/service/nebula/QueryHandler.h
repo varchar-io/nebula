@@ -37,6 +37,7 @@ public:
 private:
   // build the query object to execute
   nebula::api::dsl::Query build(const nebula::meta::Table&, const QueryRequest&) const;
+
   // build predicate into the query
   std::shared_ptr<nebula::api::dsl::Expression> buildPredicate(
     const Predicate&,
