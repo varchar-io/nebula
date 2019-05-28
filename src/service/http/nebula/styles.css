@@ -30,6 +30,7 @@ div {
 
 .right {
     display: table-cell;
+    word-break: break-word;
 }
 
 div .text,

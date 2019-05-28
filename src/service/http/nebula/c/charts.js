@@ -220,5 +220,57 @@ export class Charts {
             // Add the Y Axis
             svg.append("g").call(d3.axisLeft(y));
         };
+
+        this.displayTimeline = (json, key, value, start, end, window, ts, tf) => {
+            // clear the area first
+            const area = ds('#show');
+            area.html("");
+
+            // set the dimensions and margins of the graph
+            const margin = {
+                top: 20,
+                right: 60,
+                bottom: 20,
+                left: 60
+            };
+
+            const width = area.node().scrollWidth - margin.left - margin.right;
+            const height = 400 - margin.top - margin.bottom;
+
+            // set the ranges
+            const x = d3.scaleTime().range([0, width]).domain([start, end]);
+            const y = d3.scaleLinear().range([height, 0]).domain([0, d3.max(json, (d) => d[value])]);
+
+            // define the line
+            var line = d3.line()
+                .x((d, i) => x(new Date(+start + d[key] * window)))
+                .y((d) => y(d[value]));
+
+            // append the svg obgect to the body of the page
+            // appends a 'group' element to 'svg'
+            // moves the 'group' element to the top left margin
+            var svg = area.append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+            // Add the valueline path.
+            svg.append("path")
+                .data([json])
+                .attr("class", "line")
+                .attr("d", line);
+
+            // Add the X Axis
+            svg.append("g")
+                .attr("transform", `translate(0, ${height})`)
+                .call(
+                    d3.axisBottom(x)
+                    .ticks(ts)
+                    .tickFormat(tf));
+
+            // Add the Y Axis
+            svg.append("g").call(d3.axisLeft(y));
+        };
     }
 };

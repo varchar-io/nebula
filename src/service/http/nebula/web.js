@@ -325,21 +325,35 @@ const execute = () => {
     const HOUR_SECONDS = MIN_SECONDS * 60;
     const DAY_SECONDS = HOUR_SECONDS * 24;
     const WEEK_SECONDS = DAY_SECONDS * 7;
-    const timeFormat = (unit) => {
+    const timeFormat = (unit, range) => {
         // unit is secnods value
         // format refer: https://github.com/d3/d3-time-format
-        let fmt = "%b,%Y";
+        // no more than 10 ticks
+        let scale = Math.round(range / unit / 1000 / 10);
+        if (scale < 1) {
+            scale = 1;
+        }
+
+        let ticks = d3.timeWeek.every(scale);
+        let fmt = "%b %Y";
         if (unit < MIN_SECONDS) {
+            ticks = d3.timeMinute.every(scale);
             fmt = "%S";
         } else if (unit < HOUR_SECONDS) {
+            ticks = d3.timeHour.every(scale);
             fmt = "%H:%M:%S";
         } else if (unit < DAY_SECONDS) {
+            ticks = d3.timeHour.every(scale);
             fmt = "%H:%M";
         } else if (unit < WEEK_SECONDS) {
+            ticks = d3.timeDay.every(scale);
             fmt = "%m/%d/%y";
         }
 
-        return d3.timeFormat(fmt);
+        return {
+            t: ticks,
+            f: d3.timeFormat(fmt)
+        };
     };
 
     if (checkRequest()) {
@@ -362,33 +376,41 @@ const execute = () => {
 
             // get display option
             if (json.length > 0) {
-                const charts = new Charts();
-                // enum value are number and switch/case are strong typed match
-                const display = +$$('#display');
-                const keys = extractXY(json, q);
-                switch (display) {
-                    case NebulaClient.DisplayType.SAMPLES:
-                    case NebulaClient.DisplayType.TABLE:
-                        charts.displayTable(json);
-                        break;
-                    case NebulaClient.DisplayType.TIMELINE:
-                        const WINDOW_KEY = '_window_';
-                        const start = new Date($$('#start')).getTime();
-                        const window = +$$('#window');
-                        const fmt = timeFormat(window);
+                const draw = () => {
+                    const charts = new Charts();
+                    // enum value are number and switch/case are strong typed match
+                    const display = +$$('#display');
+                    const keys = extractXY(json, q);
+                    switch (display) {
+                        case NebulaClient.DisplayType.SAMPLES:
+                        case NebulaClient.DisplayType.TABLE:
+                            charts.displayTable(json);
+                            break;
+                        case NebulaClient.DisplayType.TIMELINE:
+                            const WINDOW_KEY = '_window_';
+                            const start = new Date($$('#start'));
+                            const end = new Date($$('#end'));
+                            const window = +$$('#window');
+                            const fmt = timeFormat(window, end - start);
 
-                        charts.displayLine(json, keys.m, (scale = 1) => (d, i) => fmt(new Date(start + window * 1000 * json[Math.floor(i * scale)][WINDOW_KEY])));
-                        break;
-                    case NebulaClient.DisplayType.BAR:
-                        charts.displayBar(json, keys.d, keys.m);
-                        break;
-                    case NebulaClient.DisplayType.PIE:
-                        charts.displayPie(json, keys.d, keys.m);
-                        break;
-                    case NebulaClient.DisplayType.LINE:
-                        charts.displayLine(json, keys.m, () => (d, i) => json[i][keys.d]);
-                        break;
-                }
+                            charts.displayTimeline(json, WINDOW_KEY, keys.m, start, end, window * 1000, fmt.t, fmt.f);
+                            // charts.displayLine(json, keys.m, (scale = 1) => (d, i) => fmt(new Date(start + window * 1000 * json[Math.floor(i * scale)][WINDOW_KEY])));
+                            break;
+                        case NebulaClient.DisplayType.BAR:
+                            charts.displayBar(json, keys.d, keys.m);
+                            break;
+                        case NebulaClient.DisplayType.PIE:
+                            charts.displayPie(json, keys.d, keys.m);
+                            break;
+                        case NebulaClient.DisplayType.LINE:
+                            charts.displayLine(json, keys.m, () => (d, i) => json[i][keys.d]);
+                            break;
+                    }
+                };
+
+                // draw and redraw on window resize
+                draw();
+                $(window).on("resize", draw);
             }
         }
     });
