@@ -19,7 +19,8 @@ export class Charts {
 
                 // append header
                 const keys = Object.keys(json[0]);
-                ds('#table_head').selectAll("th").data(keys).enter().append('th').text(d => d);
+                const width = Math.round(100 / keys.length);
+                ds('#table_head').selectAll("th").data(keys).enter().append('th').attr("width", `${width}%`).text(d => d);
 
                 // Get table body and print 
                 ds('#table_content').selectAll('tr').data(json).enter().append('tr')

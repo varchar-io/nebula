@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
+#include <fmt/format.h>
 #include <folly/init/Init.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include "execution/core/ServerExecutor.h"
+#include "execution/io/trends/Pins.h"
 #include "execution/io/trends/Trends.h"
-#include "fmt/format.h"
 #include "service/nebula/NebulaService.h"
 #include "service/nebula/QueryHandler.h"
 #include "surface/DataSurface.h"
@@ -35,6 +36,7 @@ using nebula::common::Cursor;
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
+using nebula::execution::io::trends::PinsTable;
 using nebula::execution::io::trends::TrendsTable;
 using nebula::service::ErrorCode;
 using nebula::surface::RowData;
@@ -87,6 +89,44 @@ TEST(ServiceTest, TestServiceEndpoint) {
   // set time range constraints in execution plan directly since it should always present
   plan->display();
   EXPECT_EQ(error, ErrorCode::NONE);
+
+  nebula::surface::RowCursor result = handler.query(*plan, error);
+  EXPECT_EQ(error, ErrorCode::NONE);
+
+  LOG(INFO) << "JSON BLOB:";
+  LOG(INFO) << ServiceProperties::jsonify(result, plan->getOutputSchema());
+}
+TEST(ServiceTest, TestPinsData) {
+  PinsTable pins;
+  // load test data to run this query
+  pins.load(1);
+  nebula::common::Evidence::Duration tick;
+  QueryRequest request;
+  request.set_table(pins.name());
+  request.set_start(1);
+  request.set_end(2556582400);
+  auto pa = request.mutable_filtera();
+  {
+    auto expr = pa->add_expression();
+    expr->set_column("signature");
+    expr->set_op(Operation::EQ);
+    expr->add_value("43986e7f8ee2ef36561b71ee3453e1b3");
+  }
+
+  // set dimensions and metrics
+  request.add_dimension("title");
+  request.set_display(DisplayType::SAMPLES);
+  request.set_top(10);
+
+  // execute the service code
+  QueryHandler handler;
+  ErrorCode error = ErrorCode::NONE;
+  // compile the query into a plan
+  auto plan = handler.compile(pins, request, error);
+
+  // set time range constraints in execution plan directly since it should always present
+  EXPECT_EQ(error, ErrorCode::NONE);
+  plan->display();
 
   nebula::surface::RowCursor result = handler.query(*plan, error);
   EXPECT_EQ(error, ErrorCode::NONE);

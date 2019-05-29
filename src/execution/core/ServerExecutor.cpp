@@ -37,7 +37,7 @@ using nebula::surface::RowData;
 using nebula::surface::TopRows;
 using nebula::type::Kind;
 
-static std::chrono::milliseconds RPC_TIMEOUT = std::chrono::milliseconds(2000);
+static std::chrono::milliseconds RPC_TIMEOUT = std::chrono::milliseconds(5000);
 
 RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
   std::vector<folly::Future<RowCursor>> results;
@@ -58,11 +58,7 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
   auto c = std::make_shared<CompositeCursor<RowData>>();
   for (auto it = x.begin(); it < x.end(); ++it) {
     if (it->hasValue()) {
-      auto cursor = it->value();
-      if (cursor) {
-        c->combine(cursor);
-        continue;
-      }
+      c->combine(it->value());
     }
 
     LOG(INFO) << "A node doesn't return value: error or timeout";

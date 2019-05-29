@@ -63,6 +63,10 @@ public:
   virtual ~CompositeCursor() = default;
 
   void combine(CursorPtr another) {
+    if (another->size() == 0) {
+      return;
+    }
+
     this->size_ += another->size();
 
     sizes_.push_back(this->size_);

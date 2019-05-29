@@ -238,8 +238,9 @@ TEST(EvidenceTest, TestRand) {
 
 TEST(StringViewTest, TestStringView) {
   auto str = "abcdefg";
+  auto str2 = "ab";
   std::string_view v1(str, 2);
-  EXPECT_EQ(v1, "cdefg");
+  EXPECT_EQ(v1, str2);
 }
 
 } // namespace test

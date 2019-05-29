@@ -360,6 +360,7 @@ const execute = () => {
         return;
     }
 
+    ds('#qr').text("soaring in nebula to land...");
     v1Client.query(q, {}, (err, reply) => {
         ds('#table_head').html("");
         ds('#table_content').html("");

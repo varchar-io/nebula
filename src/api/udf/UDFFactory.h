@@ -85,7 +85,7 @@ public:
 
 template <>
 typename std::unique_ptr<nebula::execution::eval::UDF<TypeKind::BOOLEAN>>
-  UDFFactory::createUDF<UDFKind::NOT, TypeKind::BOOLEAN, TypeKind::BOOLEAN>(std::shared_ptr<nebula::api::dsl::Expression>);
+  UDFFactory::createUDF<UDFKind::NOT, TypeKind::BOOLEAN, TypeKind::INVALID>(std::shared_ptr<nebula::api::dsl::Expression>);
 
 } // namespace udf
 } // namespace api
