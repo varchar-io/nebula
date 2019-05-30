@@ -58,7 +58,10 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
   auto c = std::make_shared<CompositeCursor<RowData>>();
   for (auto it = x.begin(); it < x.end(); ++it) {
     if (it->hasValue()) {
-      c->combine(it->value());
+      auto& cursor = it->value();
+      if (cursor) {
+        c->combine(cursor);
+      }
     }
 
     LOG(INFO) << "A node doesn't return value: error or timeout";
