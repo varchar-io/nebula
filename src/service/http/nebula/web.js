@@ -45,12 +45,14 @@ const initTable = (table, callback) => {
 
             // populate dimension columns
             const dimensions = reply.getDimensionList().filter((v) => v !== '_time_');
+            const metrics = reply.getMetricList().filter((v) => v !== '_time_');
+            const all = dimensions.concat(metrics);
 
             $('#dwrapper').html("Dimension: <select id=\"dcolumns\" multiple></select>");
             ds('#dcolumns')
                 .html("")
                 .selectAll("option")
-                .data(dimensions)
+                .data(all)
                 .enter()
                 .append('option')
                 .text(d => d)
@@ -58,7 +60,6 @@ const initTable = (table, callback) => {
             $sdc = $('#dcolumns').selectize();
 
             // populate metrics columns
-            const metrics = reply.getMetricList().filter((v) => v !== '_time_');
             ds('#mcolumns')
                 .html("")
                 .selectAll("option")
@@ -69,7 +70,6 @@ const initTable = (table, callback) => {
                 .attr("value", d => d);
 
             // populate all columns
-            const all = dimensions.concat(metrics);
             ds('#fcolumns')
                 .html("")
                 .selectAll("option")
