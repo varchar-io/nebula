@@ -57,7 +57,10 @@ const initTable = (table, callback) => {
                 .append('option')
                 .text(d => d)
                 .attr("value", d => d);
-            $sdc = $('#dcolumns').selectize();
+            $sdc = $('#dcolumns').selectize({
+                plugins: ['restore_on_backspace', 'remove_button'],
+                persist: false
+            });
 
             // populate metrics columns
             ds('#mcolumns')
@@ -210,10 +213,12 @@ const build = () => {
 };
 
 const restore = () => {
-    const h = hash();
+    // if no hash value - use the first table as the hash
+    let h = hash();
     if (!h || h.length < 10) {
         console.log(`Bad URL: ${h}`);
-        return;
+        const tb = $$('#tables');
+        h = `?{"t": "${tb}"}`;
     }
 
     // get parameters from URL
@@ -236,9 +241,27 @@ const restore = () => {
 
             // selectize init value
             {
-                // TODO(cao) - this doesn't work?
-                $sfv[0].selectize.setValue(p.fv);
-                if ($sdc) {
+                const fv = p.fv || [];
+                ds('#fvalue')
+                    .html("")
+                    .selectAll("option")
+                    .data(fv)
+                    .enter()
+                    .append('option')
+                    .text(d => d)
+                    .attr("value", d => d);
+                const $sdv = $('#fvalue').selectize({
+                    plugins: ['restore_on_backspace', 'remove_button'],
+                    persist: false,
+                    create: input => {
+                        return {
+                            value: input,
+                            text: input
+                        };
+                    }
+                });
+                $sdv[0].selectize.setValue(fv);
+                if ($sdc && p.ds) {
                     $sdc[0].selectize.setValue(p.ds);
                 }
             }
@@ -252,7 +275,12 @@ const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
 
 const execute = () => {
     // get parameters from URL
-    const p = JSON.parse(decodeURI(hash().substr(1)));
+    const h = hash();
+    if (!h) {
+        return;
+    }
+
+    const p = JSON.parse(decodeURI(h.substr(1)));
     console.log(`Query: ${p}`);
 
     // URL decoding the string and json object parsing
@@ -432,29 +460,13 @@ v1Client.tables(listReq, {}, (err, reply) => {
     const options = ds('#tables').selectAll("option").data(list).enter().append('option');
     options.text(d => d).attr("value", d => d);
 
-    // properties of the first table
-    initTable(list[0]);
-
     // if user change the table selection, initialize it again
-    ds('#tables').on('change', () => {
-        initTable($$('#tables'));
-    });
+    ds('#tables').on('change', restore);
 
     // restore the selection
-    setTimeout(restore, 50);
+    restore();
 });
 
 
 // a pointer to latest dimensions selectize
-let $sfv = $('#fvalue').selectize({
-    plugins: ['restore_on_backspace', 'remove_button'],
-    persist: false,
-    create: input => {
-        return {
-            value: input,
-            text: input
-        };
-    }
-});
-
 let $sdc = null;

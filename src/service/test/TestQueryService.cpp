@@ -108,15 +108,16 @@ TEST(ServiceTest, TestPinsData) {
   auto pa = request.mutable_filtera();
   {
     auto expr = pa->add_expression();
-    expr->set_column("signature");
+    expr->set_column("id");
     expr->set_op(Operation::EQ);
-    expr->add_value("43986e7f8ee2ef36561b71ee3453e1b3");
+    expr->add_value("726838827343444700");
   }
 
   // set dimensions and metrics
-  request.add_dimension("title");
+  request.add_dimension("id");
+  request.add_dimension("user_id");
   request.set_display(DisplayType::SAMPLES);
-  request.set_top(10);
+  request.set_top(20);
 
   // execute the service code
   QueryHandler handler;

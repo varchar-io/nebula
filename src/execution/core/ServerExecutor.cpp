@@ -55,16 +55,22 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
 
   // collect all returns and turn it into a future
   auto x = folly::collectAll(results).get();
-  auto c = std::make_shared<CompositeCursor<RowData>>();
+  auto composite = std::make_shared<CompositeCursor<RowData>>();
+  auto failures = 0;
   for (auto it = x.begin(); it < x.end(); ++it) {
     if (it->hasValue()) {
       auto& cursor = it->value();
       if (cursor) {
-        c->combine(cursor);
+        composite->combine(cursor);
+        continue;
       }
     }
 
-    LOG(INFO) << "A node doesn't return value: error or timeout";
+    ++failures;
+  }
+
+  if (failures > 0) {
+    LOG(INFO) << "Error or timeout nodes: " << failures;
   }
 
   // do the aggregation from all different nodes
@@ -111,7 +117,7 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
 #undef LESS_KIND_CASE
   }
 
-  return std::make_shared<TopRows>(c, phase.top(), less);
+  return std::make_shared<TopRows>(composite, phase.top(), less);
 }
 
 NodeClient ServerExecutor::connect(const nebula::meta::NNode& node) {

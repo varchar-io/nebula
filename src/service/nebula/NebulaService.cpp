@@ -73,9 +73,20 @@ const std::string ServiceProperties::jsonify(const RowCursor data, const Schema 
       CALLBACK_CASE(TINYINT, Int, readByte)
       CALLBACK_CASE(SMALLINT, Int, readShort)
       CALLBACK_CASE(INTEGER, Int, readInt)
-      CALLBACK_CASE(BIGINT, Int64, readLong)
       CALLBACK_CASE(REAL, Double, readFloat)
       CALLBACK_CASE(DOUBLE, Double, readDouble)
+    case Kind::BIGINT: {
+      // TODO(cao) - we need better serializeation format exhcanging with WEB
+      // Due to JSON format on number - it can only have 16 significant digits
+      // for any long value having more than that will be round to 0 causing precision problem.
+      // So we serialize bigint into string
+      jsonCalls.push_back([name, &json](const RowData& row) {
+        json.Key(name);
+        auto lv = std::to_string(row.readLong(name));
+        json.String(lv.data(), lv.size());
+      });
+      break;
+    }
     case Kind::VARCHAR: {
       jsonCalls.push_back([name, &json](const RowData& row) {
         json.Key(name);

@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
 #include <folly/init/Init.h>
 #include <glog/logging.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Trends.h"
 #include "fmt/format.h"
@@ -41,6 +42,7 @@ using nebula::execution::io::trends::TrendsTable;
 using nebula::meta::NBlock;
 using nebula::meta::TestTable;
 using nebula::service::ErrorCode;
+using nebula::surface::RowCursor;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
@@ -304,6 +306,42 @@ TEST(ServiceTest, TestQuerySamples) {
 
   LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
   LOG(INFO) << ServiceProperties::jsonify(result, plan->getOutputSchema());
+}
+
+class MockRow : public nebula::surface::MockRowData {
+public:
+  MockRow() = default;
+  MOCK_CONST_METHOD1(readLong, int64_t(const std::string&));
+  MOCK_CONST_METHOD1(readInt, int32_t(const std::string&));
+  MOCK_CONST_METHOD1(isNull, bool(const std::string&));
+};
+
+class MockCursor : public Cursor<RowData> {
+public:
+  MockCursor(const MockRow& row) : Cursor<RowData>(1), row_{ row } {}
+  virtual const RowData& next() override {
+    index_++;
+    return row_;
+  }
+
+  virtual std::unique_ptr<RowData> item(size_t) const override {
+    return {};
+  }
+
+private:
+  const MockRow& row_;
+};
+
+TEST(ServiceTest, TestJsonLib) {
+  // set up table for testing
+  MockRow rowData;
+
+  EXPECT_CALL(rowData, readLong("id")).WillRepeatedly(testing::Return(678776975068960826));
+  EXPECT_CALL(rowData, readInt("value")).WillRepeatedly(testing::Return(320));
+
+  auto cursor = std::make_shared<MockCursor>(rowData);
+  auto json = ServiceProperties::jsonify(std::static_pointer_cast<Cursor<RowData>>(cursor), TypeSerializer::from("ROW<id:bigint, value:int>"));
+  EXPECT_EQ(json, "[{\"id\":678776975068960826,\"value\":320}]");
 }
 
 } // namespace test

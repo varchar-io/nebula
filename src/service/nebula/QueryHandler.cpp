@@ -321,13 +321,14 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     }
   }
 
+  const auto& predValue = pred.value(0);
   std::shared_ptr<Expression> constExpression = nullptr;
 
-#define BUILD_CONST_CASE(KIND)                                                           \
-  case Kind::KIND: {                                                                     \
-    using T = nebula::type::TypeTraits<Kind::KIND>::CppType;                             \
-    constExpression = std::make_shared<ConstExpression<T>>(folly::to<T>(pred.value(0))); \
-    break;                                                                               \
+#define BUILD_CONST_CASE(KIND)                                                       \
+  case Kind::KIND: {                                                                 \
+    using T = nebula::type::TypeTraits<Kind::KIND>::CppType;                         \
+    constExpression = std::make_shared<ConstExpression<T>>(folly::to<T>(predValue)); \
+    break;                                                                           \
   }
 
   switch (columnType) {
@@ -339,7 +340,7 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     BUILD_CONST_CASE(REAL)
     BUILD_CONST_CASE(DOUBLE)
   case Kind::VARCHAR: {
-    constExpression = std::make_shared<ConstExpression<std::string>>(pred.value(0));
+    constExpression = std::make_shared<ConstExpression<std::string>>(predValue);
     break;
   }
   default:
@@ -365,7 +366,7 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     // Optimization:
     // like expression can be fall back to "starts" if the pattern satisfy it
     static constexpr char matcher = '%';
-    const auto& pattern = pred.value(0);
+    const auto& pattern = predValue;
     size_t pos = 0;
     auto cursor = pattern.cbegin();
     auto end = pattern.cend();
