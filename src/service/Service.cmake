@@ -23,14 +23,15 @@ file(MAKE_DIRECTORY ${GEN_DIR})
 
 # make a placeholder file to be built
 SET(NSERVER "${CMAKE_CURRENT_BINARY_DIR}/NebulaServer")
+set(NNSERVER "${CMAKE_CURRENT_BINARY_DIR}/NodeServer")
 message("Nebula Server: ${NSERVER}")
 file(TOUCH ${NSERVER})
+file(TOUCH ${NNSERVER})
 
 get_filename_component(nproto "${SERVICE_DIR}/protos/nebula.proto" ABSOLUTE)
 get_filename_component(nproto_path "${nproto}" PATH)
 
 # Generated sources from proto file
-SET(NebulaService_DIR "${SERVICE_DIR}/nebula")
 set(nproto_srcs "${GEN_DIR}/nebula.pb.cc")
 set(nproto_hdrs "${GEN_DIR}/nebula.pb.h")
 set(ngrpc_srcs "${GEN_DIR}/nebula.grpc.pb.cc")
@@ -49,7 +50,7 @@ add_custom_command(
 include_directories("${GEN_DIR}")
 
 # generate a node client for this service
-SET(NODE_GEN "${GEN_DIR}/node")
+SET(NODE_GEN "${GEN_DIR}/nodejs")
 file(MAKE_DIRECTORY ${NODE_GEN})
 add_custom_target(nebula_node_client
       ALL COMMAND ${PROTO_COMPILER}
@@ -60,34 +61,63 @@ add_custom_target(nebula_node_client
       "${nproto}"
 DEPENDS ${nproto})
 
+# build flatbuffers schema
+get_filename_component(nfbs "${SERVICE_DIR}/fbs/node.fbs" ABSOLUTE)
+get_filename_component(nfbs_path "${nfbs}" PATH)
+
+# Generated sources from proto file
+set(NODE_GEN_DIR "${GEN_DIR}/node")
+add_custom_target(compile_fbs
+      ALL COMMAND ${FLATBUFFERS_COMPILER} -b -o "${NODE_GEN_DIR}" --cpp --grpc "${nfbs}"
+DEPENDS ${nfbs})
+
+# Include generated *.pb.h files
+set(nodegrpc_srcs "${NODE_GEN_DIR}/node.grpc.fb.cc")
+file(TOUCH ${nodegrpc_srcs})
 
 # build everything else as library except executable of NebulaServer and NebulaClient
 add_library(${NEBULA_SERVICE} STATIC 
+    ${NEBULA_SRC}/service/node/NodeClient.cpp
     ${NEBULA_SRC}/service/nebula/QueryHandler.cpp
     ${NEBULA_SRC}/service/nebula/NebulaService.cpp
     ${nproto_srcs}
-    ${ngrpc_srcs})
+    ${ngrpc_srcs}
+    ${nodegrpc_srcs})
 target_link_libraries(${NEBULA_SERVICE}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${NEBULA_API}
     PRIVATE libgrpc++
     PRIVATE ${JSON_LIBRARY}
-    PRIVATE ${PROTOBUF_LIBRARY})
+    PRIVATE ${PROTOBUF_LIBRARY}
+    PRIVATE ${FLATBUFFERS_LIBRARY})
 target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unused-parameter)
 if(APPLE)
     target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unknown-warning-option)
 endif()
 
-# Targets greeter_[async_](client|server)
-foreach(_target
-  NebulaClient NebulaServer)
-  add_executable(${_target} 
-    "${NebulaService_DIR}/${_target}.cpp")
-  
+# Targets: 
+#   nebula/NebulaClient
+#   nebula/NebulaServer
+#   node/NodeServer
+list(APPEND dirs "nebula")
+list(APPEND dirs "nebula")
+list(APPEND dirs "node")
+list(APPEND targets "NebulaClient")
+list(APPEND targets "NebulaServer")
+list(APPEND targets "NodeServer")
+list(LENGTH dirs count)
+math(EXPR list_max_index ${count}-1)
+foreach(i RANGE ${list_max_index})
+  list(GET dirs ${i} dir)
+  list(GET targets ${i} target)
+
+  # add the executable target
+  add_executable(${target} "${SERVICE_DIR}/${dir}/${target}.cpp")
+
   # NOTE that - on linux, GCC behaves wired, the order of the dependencies matter
   # which means, libgrpc++ depends on libgrpc, and likewise, libgrpc depends on libgpr and address_sorting
   # if we messed up the order, the link will report huge amount of errors like undefined referneces.
-  target_link_libraries(${_target}
+  target_link_libraries(${target}
     PRIVATE ${NEBULA_SERVICE}
     PRIVATE libgrpc++
     PRIVATE libgrpc
@@ -96,21 +126,22 @@ foreach(_target
     PRIVATE ${CARES_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${JSON_LIBRARY}
-    PRIVATE ${PROTOBUF_LIBRARY})
+    PRIVATE ${PROTOBUF_LIBRARY}
+    PRIVATE ${FLATBUFFERS_LIBRARY})
+    
     # disalbe warning into errors for due to these generated files
-    target_compile_options(${_target} PRIVATE -Wno-error=unused-parameter)
+    target_compile_options(${target} PRIVATE -Wno-error=unused-parameter)
+
+    # add post-build event to copy binary into gen folder
+    add_custom_command(TARGET ${target} POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_BINARY_DIR}/${target}"
+        "${GEN_DIR}/${target}")
 endforeach()
 
-# build a docker target for greeter server
-# get_filename_component(docker_gs "${SERVICE_DIR}/helloworld/greeter_server.Dockerfile" ABSOLUTE)
-# add_custom_target(gsdocker
-#       ALL COMMAND docker build -t nebula/greeter_server -f ${docker_gs} .
-#       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-#       DEPENDS greeter_server)
-
-# copy one server into service/gen folder for docker packing
 # configure_file is good as it is senstive on the input, when input changes, output will be updated
 configure_file(${NSERVER} ${GEN_DIR}/NebulaServer COPYONLY)
+configure_file(${NNSERVER} ${GEN_DIR}/NodeServer COPYONLY)
 
 # build web client library for nebula
 add_custom_target(nebula_web_client
@@ -163,9 +194,15 @@ target_link_libraries(ServiceTests
   PRIVATE ${GTEST_LIBRARY}
   PRIVATE ${GTEST_MAIN_LIBRARY}
   PRIVATE ${GMOCK_LIBRARY}
+  PRIVATE libgrpc++
+  PRIVATE libgrpc
+  PRIVATE libgpr
+  PRIVATE libaddress_sorting
+  PRIVATE ${CARES_LIBRARY}
+  PRIVATE ${ZLIB_LIBRARY}
   PRIVATE ${JSON_LIBRARY}
   PRIVATE ${PROTOBUF_LIBRARY}
-  PRIVATE libgrpc++)
+  PRIVATE ${FLATBUFFERS_LIBRARY})
 target_compile_options(ServiceTests PRIVATE -Wno-error=unused-parameter)
 if(APPLE)
     target_compile_options(ServiceTests PRIVATE -Wno-error=unknown-warning-option)

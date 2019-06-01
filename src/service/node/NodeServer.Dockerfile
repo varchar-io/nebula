@@ -9,8 +9,8 @@ RUN apt-get install -y curl build-essential supervisor wget libstdc++6
 RUN apt-get upgrade -y
 RUN apt-get dist-upgrade
 
-EXPOSE 9190
-COPY ./gen/nebula/NebulaServer /etc/nebula/NebulaServer
-RUN chmod +x /etc/nebula/NebulaServer
+EXPOSE 9199
+COPY ./gen/nebula/NodeServer /etc/nebula/NodeServer
+RUN chmod +x /etc/nebula/NodeServer
 COPY ./gen/nebula/pin.trends.csv /tmp/pin.trends.csv
-CMD ["/etc/nebula/NebulaServer", "--HOST_ADDR", "10.1.51.48"]
+CMD ["/etc/nebula/NodeServer"]

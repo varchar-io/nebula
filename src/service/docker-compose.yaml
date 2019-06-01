@@ -1,5 +1,12 @@
 version: '3'
 services:
+  node:
+    build:
+      context: ./
+      dockerfile: ./node/NodeServer.Dockerfile
+    image: nebula/node
+    ports:
+      - "9199:9199"
   server:
     build:
       context: ./
@@ -14,6 +21,8 @@ services:
     volumes:
       - /tmp/pins:/tmp/pins:rw
       - /tmp/pinss:/tmp/pinss:rw
+    links:
+      - node
   envoy:
     build:
       context: ./

@@ -322,6 +322,10 @@ struct TypeDetect {};
     static constexpr auto name = #KN;                                                    \
     static constexpr auto type = [](const std::string& n) { return KT::createTree(n); }; \
     static constexpr ST value = DV;                                                      \
+    static inline std::string_view tid() {                                               \
+      static std::string id{ typeid(NT).name() };                                        \
+      return id;                                                                         \
+    }                                                                                    \
   };
 
 // TODO(cao) - guidelines for nebula API usage

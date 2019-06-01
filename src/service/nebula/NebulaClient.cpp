@@ -22,6 +22,7 @@
 #include <grpcpp/grpcpp.h>
 #include "NebulaService.h"
 #include "nebula.grpc.pb.h"
+#include "service/node/NodeClient.h"
 
 /**
  * A cursor template that help iterating a container.
@@ -73,8 +74,14 @@ private:
 } // namespace nebula
 
 int main(int argc, char** argv) {
-  auto serviceAddr = fmt::format("{0}:{1}", "localhost", nebula::service::ServiceProperties::PORT);
+  constexpr auto address = "localhost";
+  auto serviceAddr = fmt::format("{0}:{1}", address, nebula::service::ServiceProperties::PORT);
   nebula::service::EchoClient greeter(grpc::CreateChannel(serviceAddr, grpc::InsecureChannelCredentials()));
-  LOG(INFO) << "Greeter received: " << greeter.echo("nebula");
+  LOG(INFO) << "Echo received from nebula server: " << greeter.echo("nebula");
+
+  // connect to node client
+  nebula::service::NodeClient client(address, nebula::service::ServiceProperties::NPORT);
+  client.echo("nebula node");
+
   return 0;
 }

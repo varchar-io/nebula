@@ -37,7 +37,7 @@ else()
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
 
 # we use static link always
 set(BUILD_SHARED_LIBS OFF)

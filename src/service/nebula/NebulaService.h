@@ -19,8 +19,9 @@
 #define RAPIDJSON_HAS_STDSTRING 1
 #endif
 
-#include "rapidjson/stringbuffer.h"
-#include "rapidjson/writer.h"
+#include "api/dsl/Query.h"
+#include "node/node.grpc.fb.h"
+#include "node/node_generated.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
 
@@ -76,7 +77,11 @@ struct ErrorTraits<ErrorCode::FAIL_EXECUTE_QUERY> {
 
 class ServiceProperties final {
 public:
+  // nebula server listening port
   static constexpr auto PORT = 9190;
+
+  // nebula node server listening port
+  static constexpr auto NPORT = 9199;
 
   // default window size is 60 seconds aka 1 minute
   static constexpr auto DEFAULT_WINDOW_SIZE = 60;
@@ -90,5 +95,16 @@ public:
   // jsonify a row set of data with given schema
   static const std::string jsonify(const nebula::surface::RowCursor, const nebula::type::Schema);
 };
+
+/**
+ * A query serializer and deserializer to transmit a query between nodes in flatbuffers
+ */
+class QuerySerde {
+public:
+  static flatbuffers::grpc::Message<QueryPlan> serialize(const nebula::api::dsl::Query&, const std::string&, uint64_t, uint64_t);
+  static nebula::api::dsl::Query deserialize(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
+  static std::unique_ptr<nebula::execution::ExecutionPlan> from(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
+};
+
 } // namespace service
 } // namespace nebula

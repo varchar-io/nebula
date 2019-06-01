@@ -15,6 +15,9 @@
  */
 
 #include "NebulaService.h"
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+#include "api/dsl/Serde.h"
 
 /**
  * provide common data operations for service
@@ -22,6 +25,10 @@
 namespace nebula {
 namespace service {
 
+using nebula::api::dsl::Expression;
+using nebula::api::dsl::Query;
+using nebula::api::dsl::Serde;
+using nebula::api::dsl::SortType;
 using nebula::surface::RowCursor;
 using nebula::surface::RowData;
 using nebula::type::Kind;
@@ -118,6 +125,108 @@ const std::string ServiceProperties::jsonify(const RowCursor data, const Schema 
 
   json.EndArray();
   return buffer.GetString();
+}
+
+// serialize a query and meta data
+flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, const std::string& id, uint64_t start, uint64_t end) {
+  flatbuffers::grpc::MessageBuilder mb;
+  auto tbl = q.table_->name();
+  auto filter = Serde::serialize(*q.filter_);
+  std::vector<flatbuffers::Offset<flatbuffers::String>> fields;
+  fields.reserve(q.selects_.size());
+  for (auto& f : q.selects_) {
+    fields.push_back(mb.CreateString(Serde::serialize(*f)));
+  }
+
+  std::vector<uint32_t> groups;
+  groups.reserve(q.groups_.size());
+  for (auto i : q.groups_) {
+    groups.push_back(i);
+  }
+
+  std::vector<uint32_t> sorts;
+  sorts.reserve(q.sorts_.size());
+  for (auto i : q.sorts_) {
+    sorts.push_back(i);
+  }
+
+  auto request_offset = CreateQueryPlanDirect(
+    mb, id.c_str(), tbl.c_str(), filter.c_str(), &fields, &groups, &sorts, q.sortType_ == SortType::DESC, q.limit_, start, end);
+  mb.Finish(request_offset);
+  return mb.ReleaseMessage<QueryPlan>();
+}
+
+nebula::api::dsl::Query QuerySerde::deserialize(
+  const std::shared_ptr<nebula::meta::MetaService> ms,
+  const flatbuffers::grpc::Message<QueryPlan>* query) {
+  auto plan = query->GetRoot();
+
+  const auto table = flatbuffers::GetString(plan->tbl());
+  Query q(table, ms);
+
+  // set filter
+  {
+    q.filter_ = Serde::deserialize(plan->filter()->c_str());
+  }
+
+  // set fields
+  {
+    auto fs = plan->fields();
+    auto size = fs->size();
+    std::vector<std::shared_ptr<Expression>> fields;
+    fields.reserve(size);
+    for (uint32_t i = 0; i < size; ++i) {
+      fields.push_back(Serde::deserialize(fs->Get(i)->c_str()));
+    }
+    q.selects_ = std::move(fields);
+  }
+
+  // set groups
+  {
+    auto gs = plan->groups();
+    auto size = gs->size();
+    std::vector<size_t> groups;
+    groups.reserve(size);
+    for (uint32_t i = 0; i < size; ++i) {
+      groups.push_back(gs->Get(i));
+    }
+    q.groups_ = std::move(groups);
+  }
+
+  // set sorts
+  {
+    auto ss = plan->sorts();
+    auto size = ss->size();
+    std::vector<size_t> sorts;
+    sorts.reserve(size);
+    for (uint32_t i = 0; i < size; ++i) {
+      sorts.push_back(ss->Get(i));
+    }
+    q.sorts_ = std::move(sorts);
+  }
+
+  // sort type
+  q.sortType_ = plan->desc() ? SortType::DESC : SortType::ASC;
+
+  // set limit
+  q.limit_ = plan->limit();
+
+  // return this deserialized query
+  return q;
+}
+
+std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(
+  const std::shared_ptr<nebula::meta::MetaService> ms,
+  const flatbuffers::grpc::Message<QueryPlan>* msg) {
+  auto query = QuerySerde::deserialize(ms, msg);
+  auto plan = query.compile();
+
+  // set a few other properties associated with execution plan
+  auto p = msg->GetRoot();
+  plan->setWindow({ p->tstart(), p->tend() });
+
+  // return this compiled plan
+  return plan;
 }
 
 } // namespace service

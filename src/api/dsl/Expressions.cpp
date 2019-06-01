@@ -88,6 +88,13 @@ std::unique_ptr<ValueEval> ColumnExpression::asEval() const {
 
 #undef KIND_CASE_VE
 
+std::unique_ptr<ExpressionData> ColumnExpression::serialize() const noexcept {
+  auto data = Expression::serialize();
+  data->type = ExpressionType::COLUMN;
+  data->c_name = column_;
+  return data;
+}
+
 } // namespace dsl
 } // namespace api
 } // namespace nebula

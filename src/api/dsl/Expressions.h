@@ -16,7 +16,10 @@
 
 #pragma once
 
+#include <folly/Conv.h>
 #include <glog/logging.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 #include "Base.h"
 #include "api/udf/In.h"
 #include "api/udf/UDFFactory.h"
@@ -225,6 +228,15 @@ public: // all operations
     return typeCreate(kind_, alias_);
   }
 
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = Expression::serialize();
+    data->type = ExpressionType::ARTHMETIC;
+    data->b_aop = op;
+    data->b_left = std::move(op1_->serialize());
+    data->b_right = std::move(op2_->serialize());
+    return data;
+  }
+
 private:
   std::shared_ptr<T1> op1_;
   std::shared_ptr<T2> op2_;
@@ -287,6 +299,15 @@ public: // all logical operations
     return nebula::type::BoolType::createTree(alias_);
   }
 
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = Expression::serialize();
+    data->type = ExpressionType::LOGICAL;
+    data->b_lop = op;
+    data->b_left = std::move(op1_->serialize());
+    data->b_right = std::move(op2_->serialize());
+    return data;
+  }
+
 #define BOTH_OPRANDS_BOOL()                                                    \
   N_ENSURE_EQ(op1_->kind(), nebula::type::Kind::BOOLEAN,                       \
               "AND/OR operations requires bool typed left and right oprands"); \
@@ -344,6 +365,7 @@ public: // all logical operations
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override;
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override;
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override;
   inline virtual std::vector<std::string> columnRefs() const override {
     return std::vector<std::string>{ column_ };
   }
@@ -376,6 +398,14 @@ public:
     auto node = nebula::type::TypeDetect<T>::type(alias_);
     kind_ = nebula::type::TypeBase::k(node);
     return node;
+  }
+
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = Expression::serialize();
+    data->type = ExpressionType::CONSTANT;
+    data->c_type = nebula::type::TypeDetect<T>::tid();
+    data->c_value = folly::to<std::string>(value_);
+    return data;
   }
 
 private:
@@ -454,6 +484,14 @@ public:
     }
   }
 
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = Expression::serialize();
+    data->type = ExpressionType::UDF;
+    data->u_type = UT;
+    data->inner = std::move(inner_->serialize());
+    return data;
+  }
+
 #undef CASE_KIND_UDF
 
 protected:
@@ -467,8 +505,6 @@ public:
     : expr_{ expr } {}
 
 public:
-  ALIAS()
-
   IS_AGG(execution::eval::UdfTraits<UDF>::UDAF)
 
   virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
@@ -479,17 +515,27 @@ public:
     return typeCreate(kind_, alias_);
   }
 
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = Expression::serialize();
+    data->type = ExpressionType::UDF;
+    data->u_type = UDF;
+    data->inner = std::move(expr_->serialize());
+    return data;
+  }
+
 protected:
   std::shared_ptr<Expression> expr_;
 };
 
-class LikeExpression : public BoolUDF<nebula::execution::eval::UDFType::LIKE> {
+using LikeBase = BoolUDF<nebula::execution::eval::UDFType::LIKE>;
+class LikeExpression : public LikeBase {
 public:
   LikeExpression(std::shared_ptr<Expression> left, const std::string& pattern)
-    : BoolUDF<nebula::execution::eval::UDFType::LIKE>(left), pattern_{ pattern } {}
+    : LikeBase(left), pattern_{ pattern } {}
 
 public:
   ALL_LOGICAL_OPS()
+  ALIAS()
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
@@ -498,17 +544,25 @@ public:
       nebula::type::Kind::VARCHAR>(expr_, pattern_);
   }
 
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = LikeBase::serialize();
+    data->custom = pattern_;
+    return data;
+  }
+
 private:
   std::string pattern_;
 };
 
-class PrefixExpression : public BoolUDF<nebula::execution::eval::UDFType::PREFIX> {
+using PrefixBase = BoolUDF<nebula::execution::eval::UDFType::PREFIX>;
+class PrefixExpression : public PrefixBase {
 public:
   PrefixExpression(std::shared_ptr<Expression> left, const std::string& prefix)
-    : BoolUDF<nebula::execution::eval::UDFType::PREFIX>(left), prefix_{ prefix } {}
+    : PrefixBase(left), prefix_{ prefix } {}
 
 public:
   ALL_LOGICAL_OPS()
+  ALIAS()
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
@@ -517,18 +571,26 @@ public:
       nebula::type::Kind::VARCHAR>(expr_, prefix_);
   }
 
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = PrefixBase::serialize();
+    data->custom = prefix_;
+    return data;
+  }
+
 private:
   std::string prefix_;
 };
 
+using InBase = BoolUDF<nebula::execution::eval::UDFType::IN>;
 template <typename T>
-class InExpression : public BoolUDF<nebula::execution::eval::UDFType::IN> {
+class InExpression : public InBase {
 public:
   InExpression(std::shared_ptr<Expression> left, const std::vector<T>& values, bool in = true)
-    : BoolUDF<nebula::execution::eval::UDFType::IN>(left), values_{ values }, in_{ in } {}
+    : InBase(left), values_{ values }, in_{ in } {}
 
 public:
   ALL_LOGICAL_OPS()
+  ALIAS()
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
     if (in_) {
@@ -543,6 +605,58 @@ public:
         nebula::type::TypeDetect<T>::kind>(expr_, values_, false);
     }
   }
+
+#define TYPE_BRANCH(CPP, FUNC)            \
+  if constexpr (std::is_same_v<T, CPP>) { \
+    for (auto v : values_) {              \
+      json.FUNC(v);                       \
+    }                                     \
+  }
+
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = InBase::serialize();
+    // itself is a simple JSON - better to use JSON library to serialize it
+    // fmt provides join function as
+    //   fmt::format("{0:.{1}f}", fmt::join(std::begin(test), std::end(test), ", ");
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> json(buffer);
+    json.StartObject();
+    json.Key("in");
+    json.Bool(in_);
+    auto dtype = nebula::type::TypeDetect<T>::tid();
+    json.Key("dtype");
+    json.String(dtype.data(), dtype.size());
+    json.Key("values");
+    json.StartArray();
+    TYPE_BRANCH(bool, Bool)
+    TYPE_BRANCH(int8_t, Int)
+    TYPE_BRANCH(int16_t, Int)
+    TYPE_BRANCH(int32_t, Int)
+    TYPE_BRANCH(float, Double)
+    TYPE_BRANCH(double, Double)
+
+    // JSON can't represent big int unfortunately
+    if constexpr (std::is_same_v<T, int64_t>) {
+      for (auto v : values_) {
+        auto str = std::to_string(v);
+        json.String(str.data(), str.size());
+      }
+    }
+
+    // string is different
+    if constexpr (std::is_same_v<T, std::string>) {
+      for (auto& v : values_) {
+        json.String(v.data(), v.size());
+      }
+    }
+
+    json.EndArray();
+    json.EndObject();
+    data->custom = buffer.GetString();
+    return data;
+  }
+
+#undef TYPE_BRANCH
 
 private:
   std::vector<T> values_;

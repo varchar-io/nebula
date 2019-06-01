@@ -6,6 +6,7 @@ add_library(${NEBULA_API} STATIC
     ${NEBULA_SRC}/api/dsl/Base.cpp
     ${NEBULA_SRC}/api/dsl/Dsl.cpp
     ${NEBULA_SRC}/api/dsl/Expressions.cpp
+    ${NEBULA_SRC}/api/dsl/Serde.cpp
     ${NEBULA_SRC}/api/udf/Count.cpp
     ${NEBULA_SRC}/api/udf/Like.cpp
     ${NEBULA_SRC}/api/udf/Sum.cpp
@@ -17,6 +18,7 @@ target_link_libraries(${NEBULA_API}
     PRIVATE ${NEBULA_META}
     PRIVATE ${NEBULA_EXEC}
     PRIVATE ${FOLLY_LIBRARY}
+    PRIVATE ${JSON_LIBRARY}
     PRIVATE ${FMT_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${ROARING_LIBRARY})
@@ -55,7 +57,8 @@ target_link_libraries(ApiTests
     PRIVATE ${NEBULA_API}
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
-    PRIVATE ${GMOCK_LIBRARY})
+    PRIVATE ${GMOCK_LIBRARY}
+    PRIVATE ${JSON_LIBRARY})
 
 if(APPLE)
     target_compile_options(ApiTests PRIVATE -Wno-error=unknown-warning-option)

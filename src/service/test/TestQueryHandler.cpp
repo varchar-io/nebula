@@ -341,7 +341,64 @@ TEST(ServiceTest, TestJsonLib) {
 
   auto cursor = std::make_shared<MockCursor>(rowData);
   auto json = ServiceProperties::jsonify(std::static_pointer_cast<Cursor<RowData>>(cursor), TypeSerializer::from("ROW<id:bigint, value:int>"));
-  EXPECT_EQ(json, "[{\"id\":678776975068960826,\"value\":320}]");
+
+  // encoding long value in string
+  EXPECT_EQ(json, "[{\"id\":\"678776975068960826\",\"value\":320}]");
+}
+
+TEST(ServiceTest, TestQuerySerde) {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  auto start = Evidence::time("2019-01-01", "%Y-%m-%d");
+  auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    auto begin = start + i * window;
+    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+  }
+
+  const auto query = table(testTable.name(), testTable.getMs())
+                       .where(like(col("event"), "NN%"))
+                       .select(
+                         col("event"),
+                         col("flag"),
+                         max(col("id") * 2).as("max_id"),
+                         min(col("id") + 1).as("min_id"),
+                         count(1).as("count"))
+                       .groupby({ 1, 2 })
+                       .sortby({ 5 }, SortType::DESC)
+                       .limit(10);
+  auto plan1 = query.compile();
+  plan1->setWindow({ start, end });
+
+  // pass the query plan to a server to execute - usually it is itself
+  auto result1 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan1);
+  auto str1 = ServiceProperties::jsonify(result1, plan1->getOutputSchema());
+
+  // serialize this query
+  nebula::common::Evidence::Duration tick;
+  auto ser = QuerySerde::serialize(query, plan1->id(), start, end);
+  auto plan2 = QuerySerde::from(testTable.getMs(), &ser);
+
+  LOG(INFO) << "Query serde time (ms): " << tick.elapsedMs();
+
+  // pass the query plan to a server to execute - usually it is itself
+  auto result2 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan2);
+  auto str2 = ServiceProperties::jsonify(result2, plan2->getOutputSchema());
+
+  // check these two plans are the same
+  EXPECT_EQ(nebula::type::TypeSerializer::to(plan1->getOutputSchema()),
+            nebula::type::TypeSerializer::to(plan2->getOutputSchema()));
+
+  // JSON results of two queries are the same
+  EXPECT_EQ(str1, str2);
+  LOG(INFO) << "result is " << str1;
 }
 
 } // namespace test

@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
+#include "api/dsl/Serde.h"
 #include "common/Cursor.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
@@ -276,6 +277,260 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 }
 
 #undef VERIFY_ITEM_I
+
+class MockRow3 : public nebula::surface::MockRowData {
+public:
+  MockRow3() = default;
+
+  MOCK_CONST_METHOD1(readByte, int8_t(const std::string&));
+  MOCK_CONST_METHOD1(readInt, int32_t(const std::string&));
+  MOCK_CONST_METHOD1(readString, std::string_view(const std::string&));
+  MOCK_CONST_METHOD1(isNull, bool(const std::string&));
+};
+
+// Test serde of expressions
+TEST(ExpressionsTest, TestSerde) {
+  nebula::meta::MockMs ms;
+  auto tbl = ms.query("nebula.test");
+  nebula::execution::eval::EvalContext ctx;
+  MockRow3 rowData;
+  EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(rowData, readByte(testing::_)).WillRepeatedly(testing::Return(20));
+  EXPECT_CALL(rowData, readInt(testing::_)).WillRepeatedly(testing::Return(32));
+  EXPECT_CALL(rowData, readString(testing::_)).WillRepeatedly(testing::Return("string"));
+  ctx.reset(rowData);
+
+  // constant expression serde - int
+  {
+    nebula::api::dsl::ConstExpression<int> i1(1);
+    auto i1ser = nebula::api::dsl::Serde::serialize(i1);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(exp->alias(), i1.alias());
+
+    // verify kind
+    i1.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->kind(), i1.kind());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = i1.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<int>(ctx, valid), 1);
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<int>(ctx, valid), 1);
+    EXPECT_EQ(valid, true);
+  }
+
+  // constant expression serde - string
+  {
+    nebula::api::dsl::ConstExpression<std::string_view> s1("abc");
+    auto s1ser = nebula::api::dsl::Serde::serialize(s1);
+    auto exp = nebula::api::dsl::Serde::deserialize(s1ser);
+
+    // vreify alias
+    EXPECT_EQ(exp->alias(), s1.alias());
+
+    // verify kind
+    s1.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->kind(), s1.kind());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = s1.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<std::string_view>(ctx, valid), "abc");
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<std::string_view>(ctx, valid), "abc");
+    EXPECT_EQ(valid, true);
+  }
+
+  // column expression serde - int col
+  {
+    auto cid = nebula::api::dsl::col("id").as("cid");
+    auto i1ser = nebula::api::dsl::Serde::serialize(cid);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(cid.alias(), "cid");
+    EXPECT_EQ(exp->alias(), "cid");
+
+    // verify kind
+    cid.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->kind(), cid.kind());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = cid.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<int>(ctx, valid), 32);
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<int>(ctx, valid), 32);
+    EXPECT_EQ(valid, true);
+  }
+  {
+    auto cid = nebula::api::dsl::col("event").as("eid");
+    auto i1ser = nebula::api::dsl::Serde::serialize(cid);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(cid.alias(), "eid");
+    EXPECT_EQ(exp->alias(), "eid");
+
+    // verify kind
+    cid.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->kind(), cid.kind());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = cid.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<std::string_view>(ctx, valid), "string");
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<std::string_view>(ctx, valid), "string");
+    EXPECT_EQ(valid, true);
+  }
+
+  // logical expression serde - int not equal
+  {
+    auto cid = (nebula::api::dsl::col("id") * 0) != 1;
+    auto i1ser = nebula::api::dsl::Serde::serialize(cid);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(cid.alias(), "id");
+    EXPECT_EQ(exp->alias(), "id");
+
+    // verify kind
+    cid.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->kind(), cid.kind());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = cid.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<bool>(ctx, valid), true);
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<bool>(ctx, valid), true);
+    EXPECT_EQ(valid, true);
+  }
+
+  // logical expression serde - strings equal
+  {
+    auto cevent = nebula::api::dsl::col("event") == "abc";
+    auto i1ser = nebula::api::dsl::Serde::serialize(cevent);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(cevent.alias(), "event");
+    EXPECT_EQ(exp->alias(), "event");
+
+    // verify kind
+    cevent.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->kind(), cevent.kind());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = cevent.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<bool>(ctx, valid), false);
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<bool>(ctx, valid), false);
+    EXPECT_EQ(valid, true);
+  }
+
+  // arthmetic expresssions
+  {
+    auto cv = nebula::api::dsl::col("value") * 10 + 100;
+    auto i1ser = nebula::api::dsl::Serde::serialize(cv);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(cv.alias(), "value");
+    EXPECT_EQ(exp->alias(), "value");
+
+    // verify kind
+    cv.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->kind(), cv.kind());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = cv.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<int>(ctx, valid), 300);
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<int>(ctx, valid), 300);
+    EXPECT_EQ(valid, true);
+  }
+
+  // expression with UDF like
+  {
+    auto cl = nebula::api::dsl::like(nebula::api::dsl::col("event"), "str%").as("el");
+    auto i1ser = nebula::api::dsl::Serde::serialize(cl);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(cl.alias(), "el");
+    EXPECT_EQ(exp->alias(), "el");
+
+    // verify kind
+    cl.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->kind(), cl.kind());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = cl.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<bool>(ctx, valid), true);
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<bool>(ctx, valid), true);
+    EXPECT_EQ(valid, true);
+  }
+
+  // expression with UDF like
+  {
+    std::vector<std::string> values{ "str%", "string" };
+    auto ci = nebula::api::dsl::in(nebula::api::dsl::col("event"), values).as("ei");
+    auto i1ser = nebula::api::dsl::Serde::serialize(ci);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(ci.alias(), "ei");
+    EXPECT_EQ(exp->alias(), "ei");
+
+    // verify kind
+    ci.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->kind(), ci.kind());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = ci.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<bool>(ctx, valid), true);
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<bool>(ctx, valid), true);
+    EXPECT_EQ(valid, true);
+  }
+}
 
 } // namespace test
 } // namespace api

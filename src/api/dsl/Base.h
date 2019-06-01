@@ -32,6 +32,16 @@ namespace nebula {
 namespace api {
 namespace dsl {
 
+// define all supported expression types
+enum ExpressionType {
+  UNKNOWN = 0,
+  CONSTANT,
+  COLUMN,
+  ARTHMETIC,
+  LOGICAL,
+  UDF
+};
+
 // supported arthmetic operations
 enum class ArthmeticOp {
   ADD,
@@ -61,6 +71,39 @@ enum class LogicalOp {
 #define IS_T_LITERAL(T) std::is_same<char*, std::decay_t<T>>::value
 #endif
 
+// a structure to define an expression that can be serialized
+// this is just a property bag - can be replaced by a hash map
+struct ExpressionData {
+  // static constexpr auto ALIAS = "alais";
+  // std::unordered_map<std::string, std::string> properties;
+  ExpressionType type = ExpressionType::UNKNOWN;
+  std::string alias;
+  // saved from typeid(T).name() for each template type
+  // reference type/type.h for our supported data types:
+  std::string c_type;
+  std::string c_value;
+
+  // column name
+  std::string c_name;
+
+  // logical op
+  LogicalOp b_lop;
+
+  // arthmetic op
+  ArthmeticOp b_aop;
+
+  // binary left and right
+  std::unique_ptr<ExpressionData> b_left;
+  std::unique_ptr<ExpressionData> b_right;
+
+  // UDF type
+  nebula::execution::eval::UDFType u_type;
+  std::unique_ptr<ExpressionData> inner;
+
+  // extra customized info
+  std::string custom;
+};
+
 // NOTE:
 // TODO(cao) - we put all these operator definitions in each concrete types
 // IS only because the THIS_TYPE resolusion
@@ -83,6 +126,12 @@ public:
   virtual std::vector<std::string> columnRefs() const {
     return {};
   };
+
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept {
+    auto data = std::make_unique<ExpressionData>();
+    data->alias = alias_;
+    return data;
+  }
 
 public:
   std::string alias() const {

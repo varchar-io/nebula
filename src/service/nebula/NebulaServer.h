@@ -18,7 +18,6 @@
 #include <grpcpp/grpcpp.h>
 #include "QueryHandler.h"
 #include "execution/io/trends/Pins.h"
-#include "execution/io/trends/Trends.h"
 #include "meta/TestTable.h"
 #include "nebula.grpc.pb.h"
 
@@ -43,10 +42,6 @@ private:
 
   // TODO(cao) - designed to serve trends table specifically, remove after having real meta service.
   const nebula::meta::Table& getTable(const std::string& name) const {
-    if (trends_.name() == name) {
-      return trends_;
-    }
-
     if (pins_.name() == name) {
       return pins_;
     }
@@ -58,15 +53,10 @@ private:
     throw NException("Table not found here");
   }
 
-  nebula::execution::io::trends::TrendsTable trends_;
   nebula::execution::io::trends::PinsTable pins_;
   nebula::meta::TestTable test_;
 
 public:
-  void loadTrends() {
-    trends_.load();
-  }
-
   void loadPins() {
     pins_.load();
   }

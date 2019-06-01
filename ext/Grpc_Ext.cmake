@@ -101,6 +101,44 @@ set_target_properties(${ZLIB_LIBRARY} PROPERTIES
     "INTERFACE_INCLUDE_DIRECTORIES" "${ZLIB_INCLUDE_DIRS}")
 add_dependencies(${ZLIB_LIBRARY} zlib)
 
+# build flatbuffers which is used for internal communications between nodes
+# to enable flatc available on the machine, just do "make install" in the build folder
+# NOTE - latest flatbuffers is not in sync with latest grpc.
+# I made a local change to solve the the build break:
+# 1. ~/grpc/src/grpc/include/grpcpp/impl/codegen/byte_buffer.h
+#   move method to public grpc_byte_buffer* c_buffer() { return buffer_; }
+# 2. ~/flatbuffers/src/flatbuffers/include/flatbuffers/grpc.h
+#   use ByteBuffer as parameter type of Deserialize
+#     + static grpc::Status Deserialize(ByteBuffer *bb, flatbuffers::grpc::Message<T> *msg) {
+#     + grpc_byte_buffer* buffer = nullptr;
+#     + if (!bb || !(buffer = bb->c_buffer())) {
+#         return ::grpc::Status(::grpc::StatusCode::INTERNAL, "No payload");
+#       }
+ExternalProject_Add(flatbuffers
+  PREFIX flatbuffers
+  GIT_REPOSITORY https://github.com/google/flatbuffers.git
+  UPDATE_COMMAND ""
+  INSTALL_COMMAND ""
+  LOG_DOWNLOAD ON
+  LOG_CONFIGURE ON
+  LOG_BUILD ON)
+
+# use FB as acron for flatbuffers
+ExternalProject_Get_Property(flatbuffers SOURCE_DIR)
+ExternalProject_Get_Property(flatbuffers BINARY_DIR)
+set(FB_INCLUDE_DIRS ${SOURCE_DIR}/include)
+file(MAKE_DIRECTORY ${FB_INCLUDE_DIRS})
+set(FB_LIBRARY_PATH ${BINARY_DIR}/libflatbuffers.a)
+set(FLATBUFFERS_LIBRARY libflatbuffers)
+add_library(${FLATBUFFERS_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${FLATBUFFERS_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${FB_LIBRARY_PATH}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES" "${FB_INCLUDE_DIRS}")
+add_dependencies(${FLATBUFFERS_LIBRARY} flatbuffers)
+
+# set flatbuffers compiler
+SET(FLATBUFFERS_COMPILER ${BINARY_DIR}/flatc)
 
 # message("zlib include: " ${ZLIB_INCLUDE_DIRS})
 # message("zlib lib: " ${ZLIB_LIBRARY_PATH})
@@ -129,9 +167,12 @@ SET(GRPC_CMAKE_ARGS
   ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
   -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/grpc)
 
+# use specific version since flatbuffers not catching up
+# or submit PR to fix ByteBuffer used in Deserialize method
 ExternalProject_Add(grpc
   PREFIX grpc
   GIT_REPOSITORY https://github.com/grpc/grpc.git
+  GIT_TAG v1.20.0
   CMAKE_CACHE_ARGS ${GRPC_CMAKE_ARGS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""

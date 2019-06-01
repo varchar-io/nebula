@@ -1,0 +1,37 @@
+namespace nebula.service;
+
+table EchoReply {
+  message: string;
+}
+
+table EchoPing {
+  name: string;
+}
+
+table ManyEchoPings {
+  name: string;
+  num_greetings: int;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Define Query Plan Serialization Format
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+// cpp: Query - query serialization and compile in node
+table QueryPlan {
+  uuid: string;
+  tbl: string;
+  filter: string;
+  fields: [string];
+  groups: [uint32];
+  sorts: [uint32];
+  desc: bool;
+  limit: uint64;
+  tstart: uint64;
+  tend: uint64;
+}
+
+rpc_service NodeServer {
+  Echo(EchoPing): EchoReply;
+  Echos(ManyEchoPings): EchoReply(streaming: "server");
+}

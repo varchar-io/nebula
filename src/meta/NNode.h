@@ -28,16 +28,23 @@
  */
 namespace nebula {
 namespace meta {
+enum class NRole {
+  NODE,
+  SERVER
+};
 
 struct NNode {
   // node basics - server and port
+  NRole role;
   std::string server;
   size_t port;
+
   inline std::string toString() const {
     return fmt::format("{0}:{1}", server, port);
   }
+
   static NNode local() {
-    static const NNode LOCAL = NNode{ "localhost", 9190 };
+    static const NNode LOCAL = NNode{ NRole::SERVER, "localhost", 9190 };
     return LOCAL;
   }
 };

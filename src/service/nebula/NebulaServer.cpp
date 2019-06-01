@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
 #include "common/Evidence.h"
+#include "meta/ClusterInfo.h"
 
 #include <folly/init/Init.h>
 #include <grpcpp/grpcpp.h>
@@ -30,9 +32,13 @@
 #include "fmt/format.h"
 #include "memory/Batch.h"
 #include "meta/NBlock.h"
+#include "meta/NNode.h"
 #include "meta/Table.h"
 #include "nebula.grpc.pb.h"
 #include "storage/CsvReader.h"
+
+// use "host.docker.internal" for docker env
+DEFINE_string(HOST_ADDR, "localhost", "Local dev purpose address to connect services");
 
 /**
  * A cursor template that help iterating a container.
@@ -110,9 +116,6 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
     return replyError(error, reply, 0);
   }
 
-  // display query plan in console
-  // plan->display();
-
   RowCursor result = handler_.query(*plan, error);
   auto durationMs = tick.elapsedMs();
   if (error != ErrorCode::NONE) {
@@ -183,15 +186,19 @@ void RunServer() {
   nebula::service::EchoServiceImpl echoService;
   nebula::service::V1ServiceImpl v1Service;
 
-  // loading data into memory
-  LOG(INFO) << "Loading data for table [pin.trends] in single node.";
-  v1Service.loadTrends();
+  // TODO: start a thread to sync up with etcd setup for cluster info.
+  // register cluster info
+  nebula::meta::ClusterInfo::singleton().update({ nebula::meta::NRole::NODE,
+                                                  FLAGS_HOST_ADDR,
+                                                  nebula::service::ServiceProperties::NPORT });
+
+  
 
   // loading some rand generated data for nebula.test category
   v1Service.loadNebulaTest();
 
   // loading pins data into memory
-  v1Service.loadPins();
+  // v1Service.loadPins();
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
