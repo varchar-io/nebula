@@ -95,6 +95,17 @@ if(APPLE)
         "INTERFACE_INCLUDE_DIRECTORIES" "${LE_INCLUDE_DIRS}")
     include_directories(include ${LE_INCLUDE_DIRS})
 
+    # open ssl
+    set(OPENSSL_ROOT /usr/local/Cellar/openssl/1.0.2r)
+    set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT}/include)
+    set(OPENSSL_LIBRARY_PATH ${OPENSSL_ROOT}/lib/libssl.a)
+    set(OPENSSL_LIBRARY openssl)
+    add_library(${OPENSSL_LIBRARY} UNKNOWN IMPORTED)
+    set_target_properties(${OPENSSL_LIBRARY} PROPERTIES
+        "IMPORTED_LOCATION" "${OPENSSL_LIBRARY_PATH}"
+        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+        "INTERFACE_INCLUDE_DIRECTORIES" "${OPENSSL_INCLUDE_DIR}")
+
     # define folly
     set(FollyDir /usr/local/Cellar/folly/2019.03.18.00_2)
     set(FOLLY_INCLUDE_DIRS ${FollyDir}/include)
@@ -110,6 +121,19 @@ if(APPLE)
     target_link_libraries(${FOLLY_LIBRARY} 
         INTERFACE ${DC_LIBRARY} 
         INTERFACE ${LE_LIBRARY})
+
+    # add installed arrow here
+    # NOTE: we don't want conda to pollute our includes
+    # so copy array includes to another one 
+    # cp -r /usr/local/conda/include/arrow /usr/local/arrow/include
+    # set(ARROW_INCLUDE_DIRS /usr/local/arrow/include)
+    # set(ARROW_LIBRARY_PATH /usr/local/conda/lib/libarrow.dylib)
+    # set(ARROW_LIBRARY arrow)
+    # add_library(${ARROW_LIBRARY} UNKNOWN IMPORTED)
+    # set_target_properties(${ARROW_LIBRARY} PROPERTIES
+    #     "IMPORTED_LOCATION" "${ARROW_LIBRARY_PATH}"
+    #     "INTERFACE_INCLUDE_DIRECTORIES" "${ARROW_INCLUDE_DIRS}")
+    # include_directories(include ${ARROW_INCLUDE_DIRS})
 else()
     set(Boost_USE_STATIC_LIBS        ON) # only find static libs
     set(Boost_USE_MULTITHREADED      ON)
@@ -159,14 +183,15 @@ else()
         "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
         "INTERFACE_INCLUDE_DIRECTORIES" "${CRYPTO_INCLUDE_DIRS}")
 
-    set(OPSSL_INCLUDE_DIRS /usr/local/include)
-    set(OPSSL_LIBRARY_PATH /usr/local/lib/libssl.a)
-    set(OPSSL_LIBRARY openssl)
-    add_library(${OPSSL_LIBRARY} UNKNOWN IMPORTED)
-    set_target_properties(${OPSSL_LIBRARY} PROPERTIES
-        "IMPORTED_LOCATION" "${OPSSL_LIBRARY_PATH}"
+    set(OPENSSL_ROOT /usr/local/ssl)
+    set(OPENSSL_INCLUDE_DIR /usr/local/include)
+    set(OPENSSL_LIBRARY_PATH /usr/local/lib/libssl.a)
+    set(OPENSSL_LIBRARY openssl)
+    add_library(${OPENSSL_LIBRARY} UNKNOWN IMPORTED)
+    set_target_properties(${OPENSSL_LIBRARY} PROPERTIES
+        "IMPORTED_LOCATION" "${OPENSSL_LIBRARY_PATH}"
         "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-        "INTERFACE_INCLUDE_DIRECTORIES" "${OPSSL_INCLUDE_DIRS}")
+        "INTERFACE_INCLUDE_DIRECTORIES" "${OPENSSL_INCLUDE_DIR}")
     
     
     set(EVENT_INCLUDE_DIRS /usr/local/include)
@@ -180,9 +205,19 @@ else()
     
     target_link_libraries(${FOLLY_LIBRARY} 
         INTERFACE ${IBERTY_LIBRARY}
-        INTERFACE ${OPSSL_LIBRARY}
+        INTERFACE ${OPENSSL_LIBRARY}
         INTERFACE ${CRYPTO_LIBRARY}
         INTERFACE ${DC_LIBRARY}
         INTERFACE ${EVENT_LIBRARY}
         INTERFACE ${Boost_LIBRARIES})
+
+
+    # installed arrow on linux
+    # set(ARROW_INCLUDE_DIRS /usr/include)
+    # set(ARROW_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/libarrow.a)
+    # set(ARROW_LIBRARY arrow)
+    # add_library(${ARROW_LIBRARY} UNKNOWN IMPORTED)
+    # set_target_properties(${ARROW_LIBRARY} PROPERTIES
+    #     "IMPORTED_LOCATION" "${ARROW_LIBRARY_PATH}"
+    #     "INTERFACE_INCLUDE_DIRECTORIES" "${ARROW_INCLUDE_DIRS}")
 endif()

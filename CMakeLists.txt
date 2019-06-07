@@ -95,6 +95,9 @@ include(ext/Grpc_Ext.cmake)
 # include rapid JSON
 include(ext/Json_Ext.cmake)
 
+# include arrow
+include(ext/Arrow_Ext.cmake)
+
 # "brew install conan" first - it's great after migrating to conan
 # at least for folly - thanks conan, how to solve conflicts with existing lib like gflags?.
 # use conan to install the dependency

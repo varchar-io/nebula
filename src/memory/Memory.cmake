@@ -37,6 +37,7 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 
 # build test binary
 add_executable(MemoryTests 
+    ${NEBULA_SRC}/memory/test/TestArrow.cpp
     ${NEBULA_SRC}/memory/test/TestBatch.cpp
     ${NEBULA_SRC}/memory/test/TestEncoder.cpp
     ${NEBULA_SRC}/memory/test/TestFlatBuffer.cpp)
@@ -47,6 +48,7 @@ target_link_libraries(MemoryTests
     PRIVATE ${GTEST_MAIN_LIBRARY} 
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${ARROW_LIBRARY}
     PRIVATE ${ROARING_LIBRARY})
 
 # discover all gtests in this module
