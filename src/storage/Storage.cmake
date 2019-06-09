@@ -35,12 +35,10 @@ add_executable(StorageTests
 target_link_libraries(StorageTests 
     PRIVATE ${NEBULA_STORAGE}    
     PRIVATE ${GTEST_LIBRARY} 
-    PRIVATE ${GTEST_MAIN_LIBRARY} 
+    PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${ROARING_LIBRARY})
+    PRIVATE ${GFLAGS_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

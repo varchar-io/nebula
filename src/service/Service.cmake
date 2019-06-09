@@ -92,7 +92,9 @@ target_link_libraries(${NEBULA_SERVICE}
     PRIVATE ${FLATBUFFERS_LIBRARY})
 target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unused-parameter)
 if(APPLE)
-    target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unknown-warning-option)
+    target_compile_options(${NEBULA_SERVICE} 
+      PRIVATE -Wno-error=unknown-warning-option
+      PRIVATE -Wno-unused-parameter)
 endif()
 
 # Targets: 

@@ -7,13 +7,44 @@ find_package(Threads REQUIRED)
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html
 SET(AWS_CMAKE_BUILD_OPTIONS
   -DBUILD_SHARED_LIBS:BOOL=OFF
-  -DBUILD_ONLY:STRING=s3)
+  -DBUILD_DEPS:BOOL=OFF
+  -DBUILD_ONLY:STRING=s3
+  -DCMAKE_BUILD_TYPE=Release)
 
 # https://cmake.org/cmake/help/latest/module/ExternalProject.html
 include(ExternalProject)
-ExternalProject_Add(
-  awsproj
+
+# aws common
+ExternalProject_Add(aws-common
+  PREFIX aws-common
+  GIT_REPOSITORY https://github.com/awslabs/aws-c-common.git
+  UPDATE_COMMAND ""
+  INSTALL_COMMAND ""
+  LOG_DOWNLOAD ON
+  LOG_CONFIGURE ON
+  LOG_BUILD ON)
+
+  # set up properties for AWS S3 module 
+ExternalProject_Get_Property(aws-common SOURCE_DIR)
+ExternalProject_Get_Property(aws-common BINARY_DIR)
+
+# add AWS core
+set(AWS_COMMON_INCLUDE_DIRS ${SOURCE_DIR}/include)
+file(MAKE_DIRECTORY ${AWS_COMMON_INCLUDE_DIRS})
+set(AWS_COMMON_LIBRARY_PATH ${BINARY_DIR}/libaws-c-common.a)
+set(AWS_COMMON_LIBRARY awscommon)
+add_library(${AWS_COMMON_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${AWS_COMMON_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${AWS_COMMON_LIBRARY_PATH}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES" "${AWS_COMMON_INCLUDE_DIRS}")
+
+add_dependencies(${AWS_COMMON_LIBRARY} aws-common)
+
+ExternalProject_Add(aws
+  PREFIX aws
   GIT_REPOSITORY https://github.com/aws/aws-sdk-cpp.git
+  GIT_TAG 1.6.53
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   CMAKE_ARGS ${AWS_CMAKE_BUILD_OPTIONS}
@@ -22,8 +53,8 @@ ExternalProject_Add(
   LOG_BUILD ON)
 
 # set up properties for AWS S3 module 
-ExternalProject_Get_Property(awsproj SOURCE_DIR)
-ExternalProject_Get_Property(awsproj BINARY_DIR)
+ExternalProject_Get_Property(aws SOURCE_DIR)
+ExternalProject_Get_Property(aws BINARY_DIR)
 
 # add AWS core
 set(AWS_CORE_INCLUDE_DIRS ${SOURCE_DIR}/aws-cpp-sdk-core/include)
@@ -36,7 +67,7 @@ set_target_properties(${AWS_CORE_LIBRARY} PROPERTIES
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${AWS_CORE_INCLUDE_DIRS}")
 
-add_dependencies(${AWS_CORE_LIBRARY} awsproj)
+add_dependencies(${AWS_CORE_LIBRARY} aws)
 
 # add AWS S3
 set(AWS_S3_INCLUDE_DIRS ${SOURCE_DIR}/aws-cpp-sdk-s3/include)
@@ -49,4 +80,21 @@ set_target_properties(${AWS_S3_LIBRARY} PROPERTIES
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES"  "${AWS_S3_INCLUDE_DIRS}")
   
-add_dependencies(${AWS_S3_LIBRARY} awsproj)
+add_dependencies(${AWS_S3_LIBRARY} aws)
+
+# add curl lib
+if(APPLE)
+  set(CURL_ROOT /usr/local/curl)
+  set(CURL_INCLUDE_DIRS ${CURL_ROOT}/include)
+  set(CURL_LIBRARY_PATH ${CURL_ROOT}/lib/libcurl.dylib)
+else()
+  set(CURL_INCLUDE_DIRS /usr/include)
+  set(CURL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/libcurl.a)
+endif()
+
+set(CURL_LIBRARY curl)
+add_library(${CURL_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${CURL_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${CURL_LIBRARY_PATH}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES"  "${CURL_INCLUDE_DIRS}")

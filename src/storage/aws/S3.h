@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <aws/core/Aws.h>
 #include "common/Errors.h"
 
 /**
@@ -26,7 +27,20 @@ namespace storage {
 namespace aws {
 class S3 {
 public:
-  void read();
+  S3(const std::string& bucket) : bucket_{ bucket } {
+    Aws::InitAPI(options_);
+  }
+  virtual ~S3() {
+    Aws::ShutdownAPI(options_);
+  }
+
+public:
+  std::vector<std::string> list(const std::string&);
+  void read(const std::string&, const std::string&);
+
+private:
+  Aws::SDKOptions options_;
+  std::string bucket_;
 };
 } // namespace aws
 } // namespace storage

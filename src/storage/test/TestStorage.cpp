@@ -52,6 +52,29 @@ TEST(LocalCsvTest, TestLoadingCsv) {
 
   LOG(INFO) << " Total rows loaded: " << count;
 }
+
+TEST(AwsCsvTest, TestLoadingCsv) {
+  // nebula::storage::aws::S3 s3("pinterest-seattle");
+  // auto keys = s3.list("db_snapshot/comments/dt=2019-06-05/");
+  // for (auto& key : keys) {
+  //   LOG(INFO) << "key: " << key;
+  // }
+  // CsvReader reader(file);
+  // int count = 0;
+  // while (reader.hasNext()) {
+  //   auto& row = reader.next();
+  //   auto method = row.readString("methodology");
+  //   if (method == "test_data_limit_100000") {
+  //     count++;
+  //     // LOG(INFO) << fmt::format("{0:10} | {1:10} | {2:10}",
+  //     //                          row.readString("query"),
+  //     //                          row.readString("dt"),
+  //     //                          row.readInt("count"));
+  //   }
+  // }
+
+  // LOG(INFO) << " Total rows loaded: " << count;
+}
 } // namespace test
 } // namespace storage
 } // namespace nebula
