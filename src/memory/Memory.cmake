@@ -17,7 +17,9 @@ target_link_libraries(${NEBULA_MEMORY}
     PRIVATE ${NEBULA_SURFACE}
     PRIVATE ${NEBULA_META}
     PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${FMT_LIBRARY})
+    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${OPENSSL_LIBRARY}
+    PRIVATE ${CRYPTO_LIBRARY})
 
 # include itself for headers in different folders
 # set(NMEMORY_INCLUDE_DIRS ${NEBULA_SRC}/memory)
@@ -49,7 +51,9 @@ target_link_libraries(MemoryTests
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${ARROW_LIBRARY}
-    PRIVATE ${ROARING_LIBRARY})
+    PRIVATE ${ROARING_LIBRARY}
+    PRIVATE ${OPENSSL_LIBRARY}
+    PRIVATE ${CRYPTO_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

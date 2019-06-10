@@ -10,6 +10,7 @@ add_library(${NEBULA_EXEC} STATIC
     ${NEBULA_SRC}/execution/core/ServerExecutor.cpp    
     ${NEBULA_SRC}/execution/eval/EvalContext.cpp    
     ${NEBULA_SRC}/execution/io/BlockLoader.cpp
+    ${NEBULA_SRC}/execution/io/trends/Comments.cpp
     ${NEBULA_SRC}/execution/io/trends/Pins.cpp
     ${NEBULA_SRC}/execution/io/trends/Trends.cpp
     ${NEBULA_SRC}/execution/op/Operator.cpp
@@ -26,7 +27,10 @@ target_link_libraries(${NEBULA_EXEC}
     PRIVATE ${FMT_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${ROARING_LIBRARY})
+    PRIVATE ${ROARING_LIBRARY}
+    PRIVATE ${JSON_LIBRARY}
+    PRIVATE ${OPENSSL_LIBRARY}
+    PRIVATE ${CRYPTO_LIBRARY})
 
 # include its own root directory for searching headers
 # set(NEXEC_INCLUDE_DIRS ${NEBULA_SRC}/execution)

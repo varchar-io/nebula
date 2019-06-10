@@ -18,6 +18,7 @@
 
 #include <mutex>
 #include <unordered_map>
+#include "ExecutionPlan.h"
 #include "io/BlockLoader.h"
 #include "meta/NBlock.h"
 
@@ -52,7 +53,7 @@ public:
 
 public:
   // TODO(cao) - this interface needs predicate push down to filter out blocks
-  const std::vector<nebula::memory::Batch*> query(const nebula::meta::Table&, const std::pair<size_t, size_t>&);
+  const std::vector<nebula::memory::Batch*> query(const nebula::meta::Table&, const ExecutionPlan&);
   bool add(const nebula::meta::NBlock&);
 
   // TODO(cao) - for short-term hack, will be removed

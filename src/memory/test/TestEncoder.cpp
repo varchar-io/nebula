@@ -22,6 +22,7 @@
 #include "memory/Batch.h"
 #include "memory/DataNode.h"
 #include "memory/FlatRow.h"
+#include "meta/Table.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "type/Serde.h"
@@ -30,7 +31,9 @@ namespace nebula {
 namespace memory {
 namespace test {
 TEST(TypeDataTest, TestAddTypedData) {
-  auto b = nebula::memory::serde::TypeDataFactory::createData(nebula::type::Kind::BOOLEAN);
+  nebula::meta::Column column;
+
+  auto b = nebula::memory::serde::TypeDataFactory::createData(nebula::type::Kind::BOOLEAN, column, 16);
   b->add(0, true);
   b->add(1, false);
   b->add(2, false);
@@ -42,7 +45,8 @@ TEST(TypeDataTest, TestAddTypedData) {
 }
 
 TEST(TypeDataTest, TestStringReadWrite) {
-  auto s = nebula::memory::serde::TypeDataFactory::createData(nebula::type::Kind::VARCHAR);
+  nebula::meta::Column column;
+  auto s = nebula::memory::serde::TypeDataFactory::createData(nebula::type::Kind::VARCHAR, column, 16);
   std::string_view s1 = "Nebula";
   std::string_view s2 = "Is";
   std::string_view s3 = "So";

@@ -101,6 +101,7 @@ struct TypeTraits {};
 
 // define all traits for each KIND, we don't have examples for compound types here
 // since they requires runtime composition with child types
+DEFINE_TYPE_TRAITS(INVALID, false, 0, void*)
 DEFINE_TYPE_TRAITS(BOOLEAN, true, 1, bool)
 DEFINE_TYPE_TRAITS(TINYINT, true, 1, int8_t)
 DEFINE_TYPE_TRAITS(SMALLINT, true, 2, int16_t)
@@ -109,9 +110,10 @@ DEFINE_TYPE_TRAITS(BIGINT, true, 8, int64_t)
 DEFINE_TYPE_TRAITS(REAL, true, 4, float)
 DEFINE_TYPE_TRAITS(DOUBLE, true, 8, double)
 DEFINE_TYPE_TRAITS(VARCHAR, true, 0, std::string_view)
-DEFINE_TYPE_TRAITS(ARRAY, false, 0, void)
-DEFINE_TYPE_TRAITS(MAP, false, 0, void)
-DEFINE_TYPE_TRAITS(STRUCT, false, 0, void)
+DEFINE_TYPE_TRAITS(ARRAY, false, 0, void*)
+DEFINE_TYPE_TRAITS(MAP, false, 0, void*)
+DEFINE_TYPE_TRAITS(STRUCT, false, 0, void*)
+
 // DEFINE_TYPE_TRAITS(VARBINARY, true, 0)
 // DEFINE_TYPE_TRAITS(TIMESTAMP, true, 8)
 

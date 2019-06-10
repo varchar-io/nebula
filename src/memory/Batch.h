@@ -19,6 +19,7 @@
 #include <string_view>
 #include <unordered_map>
 #include "DataNode.h"
+#include "meta/Table.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
 
@@ -30,24 +31,16 @@
 namespace nebula {
 namespace memory {
 
-using nebula::memory::DataNode;
-using nebula::memory::DataTree;
-using nebula::surface::ListData;
-using nebula::surface::MapData;
-using nebula::surface::RowData;
-using nebula::type::Schema;
-using nebula::type::TypeBase;
 using DnMap = std::unordered_map<std::string, PDataNode>;
-using nebula::surface::IndexType;
 
 class RowAccessor;
 class Batch {
 public: // read row from and write row to
-  Batch(const Schema&);
+  Batch(const nebula::meta::Table&, size_t capacity);
   virtual ~Batch() = default;
 
   // add a row into current batch
-  size_t add(const RowData& row);
+  size_t add(const nebula::surface::RowData& row);
 
   // random access to a row - may require internal seek
   std::unique_ptr<RowAccessor> makeAccessor() const;
@@ -65,9 +58,15 @@ public: // basic metrics / meta of the batch
   // basic metrics in JSON
   std::string state() const;
 
+  // a bloom filter tester
+  template <typename T>
+  inline bool probably(const std::string& col, const T& value) const {
+    return fields_.at(col)->probably(value);
+  }
+
 private:
-  Schema schema_;
-  DataTree data_;
+  nebula::type::Schema schema_;
+  nebula::memory::DataTree data_;
   size_t rows_;
 
   // A row accessor cursor to read data of given row
@@ -77,7 +76,7 @@ private:
   DnMap fields_;
 };
 
-class RowAccessor : public RowData {
+class RowAccessor : public nebula::surface::RowData {
 public:
   RowAccessor(const Batch& batch) : batch_{ batch }, dnMap_{ batch_.fields_ } {}
   virtual ~RowAccessor() = default;
@@ -94,8 +93,8 @@ public:
   std::string_view readString(const std::string& field) const override;
 
   // compound types
-  std::unique_ptr<ListData> readList(const std::string& field) const override;
-  std::unique_ptr<MapData> readMap(const std::string& field) const override;
+  std::unique_ptr<nebula::surface::ListData> readList(const std::string& field) const override;
+  std::unique_ptr<nebula::surface::MapData> readMap(const std::string& field) const override;
 
 public:
   RowAccessor& seek(size_t);
@@ -106,10 +105,10 @@ private:
   size_t current_;
 };
 
-class ListAccessor : public ListData {
+class ListAccessor : public nebula::surface::ListData {
 public:
   ListAccessor(IndexType offset, IndexType items, PDataNode node)
-    : ListData(items), node_{ node }, offset_{ offset } {}
+    : nebula::surface::ListData(items), node_{ node }, offset_{ offset } {}
   bool isNull(IndexType index) const override;
   bool readBool(IndexType index) const override;
   std::int8_t readByte(IndexType index) const override;
@@ -125,11 +124,11 @@ private:
   IndexType offset_;
 };
 
-class MapAccessor : public MapData {
+class MapAccessor : public nebula::surface::MapData {
 public:
-  MapAccessor(IndexType items) : MapData(items) {}
-  std::unique_ptr<ListData> readKeys() const override;
-  std::unique_ptr<ListData> readValues() const override;
+  MapAccessor(IndexType items) : nebula::surface::MapData(items) {}
+  std::unique_ptr<nebula::surface::ListData> readKeys() const override;
+  std::unique_ptr<nebula::surface::ListData> readValues() const override;
 };
 
 } // namespace memory

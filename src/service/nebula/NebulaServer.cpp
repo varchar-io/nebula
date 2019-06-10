@@ -39,6 +39,7 @@
 
 // use "host.docker.internal" for docker env
 DEFINE_string(HOST_ADDR, "localhost", "Local dev purpose address to connect services");
+DEFINE_string(COMMENTS_FILE, "/home/shawncao/hadoop/sample.txt", "Local dev purpose address to connect services");
 
 /**
  * A cursor template that help iterating a container.
@@ -192,13 +193,12 @@ void RunServer() {
                                                   FLAGS_HOST_ADDR,
                                                   nebula::service::ServiceProperties::NPORT });
 
-  
-
   // loading some rand generated data for nebula.test category
   v1Service.loadNebulaTest();
 
   // loading pins data into memory
   // v1Service.loadPins();
+  v1Service.loadComments(FLAGS_COMMENTS_FILE);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

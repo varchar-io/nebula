@@ -17,6 +17,7 @@
 
 #include <grpcpp/grpcpp.h>
 #include "QueryHandler.h"
+#include "execution/io/trends/Comments.h"
 #include "execution/io/trends/Pins.h"
 #include "meta/TestTable.h"
 #include "nebula.grpc.pb.h"
@@ -50,15 +51,24 @@ private:
       return test_;
     }
 
+    if (comments_.name() == name) {
+      return comments_;
+    }
+
     throw NException("Table not found here");
   }
 
   nebula::execution::io::trends::PinsTable pins_;
+  nebula::execution::io::trends::CommentsTable comments_;
   nebula::meta::TestTable test_;
 
 public:
   void loadPins() {
     pins_.load();
+  }
+
+  void loadComments(const std::string& file) {
+    comments_.load(file);
   }
 
   void loadNebulaTest();

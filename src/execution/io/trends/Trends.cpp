@@ -94,7 +94,7 @@ void TrendsTable::load(size_t max) {
 
   // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
   CsvReader reader(file);
-  // every 100K rows, we split it into a block
+  // every X rows, we split it into a block
   const auto bRows = 50000;
   std::unordered_map<size_t, std::unique_ptr<Batch>> blocksByTime;
   size_t blockId = 0;
@@ -120,7 +120,7 @@ void TrendsTable::load(size_t max) {
     // add a new entry
     if (empty) {
       // emplace basically means
-      blocksByTime[time] = std::make_unique<Batch>(this->schema());
+      blocksByTime[time] = std::make_unique<Batch>(*this, bRows);
     }
 
     // for sure, we have it now

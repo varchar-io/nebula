@@ -16,9 +16,12 @@
 
 #pragma once
 
+#include <cmath>
 #include <glog/logging.h>
+#include "common/BloomFilter.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
+#include "meta/Table.h"
 #include "type/Type.h"
 
 namespace nebula {
@@ -26,6 +29,10 @@ namespace memory {
 namespace serde {
 
 using IndexType = size_t;
+
+// type metadata implementation for each type kind
+template <nebula::type::Kind KIND>
+class TypeDataImpl;
 
 /**
  * A data serde to desribe real data for a given type.
@@ -48,10 +55,6 @@ protected:
   size_t size_;
 };
 
-// type metadata implementation for each type kind
-template <nebula::type::Kind KIND>
-class TypeDataImpl;
-
 // we have empty data because compound type node doesn't really hold data
 // so instead we don't define data for any compound type
 using EmptyData = TypeDataImpl<nebula::type::Kind::INVALID>;
@@ -66,18 +69,32 @@ using StringData = TypeDataImpl<nebula::type::Kind::VARCHAR>;
 
 template <nebula::type::Kind KIND>
 class TypeDataImpl : public TypeData {
+  using NType = typename nebula::type::TypeTraits<KIND>::CppType;
+  static constexpr auto Width = nebula::type::TypeTraits<KIND>::width;
+  static constexpr auto Scalar = nebula::type::TypeBase::isScalar(KIND);
+
 public:
-  TypeDataImpl();
+  TypeDataImpl(const nebula::meta::Column&, size_t);
   virtual ~TypeDataImpl() = default;
 
 public:
-  template <typename T>
-  void add(IndexType, T);
+  void add(IndexType, NType value) {
+    size_ += slice_.write(size_, value);
+    if (UNLIKELY(bf_ != nullptr)) {
+      if (!bf_->add(value)) {
+        bf_ = nullptr;
+        LOG(INFO) << "Failed to add value to bloom filter: " << size() << ", value=" << value << "type=" << nebula::type::TypeTraits<KIND>::name;
+      }
+    }
+  }
 
-  void addVoid(IndexType);
+  void addVoid(IndexType) {
+    size_ += slice_.write(size_, (NType)0);
+  }
 
-  template <typename T>
-  T read(IndexType);
+  NType read(IndexType index) const {
+    return slice_.read<NType>(index * Width);
+  }
 
   inline std::string_view read(IndexType offset, IndexType size) {
     return slice_.read(offset, size);
@@ -87,14 +104,21 @@ public:
     return slice_.capacity();
   }
 
+  inline bool hasBloomFilter() const {
+    return bf_ != nullptr;
+  }
+
+  bool probably(NType) const;
+
 private:
   // memory chunk managed by paged slice
   nebula::common::PagedSlice slice_;
+  std::unique_ptr<nebula::common::BloomFilter<NType>> bf_;
 };
 
 /**
  * A proxy is used to dispatch different methods.
- * Bad part -> these functions can't be inline due to full specification of template. 
+ * Bad part -> these functions can't be inline due to full specification of template.
  */
 
 class TypeDataProxy {
@@ -116,11 +140,14 @@ public:
 
 public:
   template <typename T>
-  T read(IndexType);
+  T read(IndexType) const;
 
-  inline std::string_view read(IndexType offset, IndexType size) {
+  inline std::string_view read(IndexType offset, IndexType size) const {
     return std_->read(offset, size);
   }
+
+  template <typename T>
+  bool probably(T) const;
 
 public:
   inline size_t size() const {
@@ -129,6 +156,10 @@ public:
 
   inline size_t capacity() const {
     return data_->capacity();
+  }
+
+  inline bool hasBloomFilter() const {
+    return hasBf_;
   }
 
 private:
@@ -143,6 +174,7 @@ private:
   DoubleData* dd_;
   StringData* std_;
   std::function<void(IndexType)> void_;
+  bool hasBf_;
 };
 
 } // namespace serde

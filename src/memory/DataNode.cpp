@@ -23,6 +23,7 @@
 namespace nebula {
 namespace memory {
 
+using nebula::meta::Table;
 using nebula::surface::ListData;
 using nebula::surface::MapData;
 using nebula::surface::RowData;
@@ -36,13 +37,14 @@ using nebula::type::TypeNode;
 static constexpr size_t NULL_SIZE = 1;
 
 // static method to build node tree
-DataTree DataNode::buildDataTree(const Schema& schema) {
+DataTree DataNode::buildDataTree(const Table& table, size_t capacity) {
   // traverse the whole schema tree to generate a data tree
+  auto schema = table.schema();
   auto dataTree = schema->treeWalk<TreeNode>(
     [](const auto&) {},
-    [](const auto& v, std::vector<TreeNode>& children) {
+    [&table, capacity](const auto& v, std::vector<TreeNode>& children) {
       const auto& t = dynamic_cast<const TypeBase&>(v);
-      return TreeNode(new DataNode(t, children));
+      return TreeNode(new DataNode(t, table.column(t.name()), capacity, children));
     });
 
   return std::static_pointer_cast<DataNode>(dataTree);

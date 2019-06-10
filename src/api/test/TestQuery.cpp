@@ -272,6 +272,52 @@ TEST(ApiTest, TestStringEqEmpty) {
   }
 }
 
+TEST(ApiTest, TestBlockSkipByBloomfilter) {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  int64_t start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
+  int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    auto begin = start + i * window;
+    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+  }
+
+  // we know we don't have an id larger than this number, so the query should skip all blocks
+  const auto query = table(testTable.name(), testTable.getMs())
+                       .where(col("_time_") > start && col("_time_") < end && col("id") == 8989)
+                       .select(
+                         col("event"),
+                         count(col("value")).as("total"))
+                       .groupby({ 1 })
+                       .sortby({ 2 }, SortType::DESC)
+                       .limit(10);
+
+  // compile the query into an execution plan
+  auto plan = query.compile();
+  plan->setWindow({ start, end });
+
+  // print out the plan through logging
+  plan->display();
+
+  // no block will be picked for this query
+  auto blocks = bm->query(testTable, *plan);
+  EXPECT_EQ(blocks.size(), 1);
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+
+  // query should have results
+  EXPECT_EQ(result->size(), 1);
+}
+
 } // namespace test
 } // namespace api
 } // namespace nebula

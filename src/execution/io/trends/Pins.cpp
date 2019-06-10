@@ -132,7 +132,7 @@ void PinsTable::load(size_t max) {
       // add a new entry
       if (empty) {
         // emplace basically means
-        blocksByDate[date] = std::make_unique<Batch>(this->schema());
+        blocksByDate[date] = std::make_unique<Batch>(*this, bRows);
         timeRangeByDate[date] = { std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
       }
 

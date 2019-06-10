@@ -20,6 +20,7 @@
 #include "common/Errors.h"
 #include "common/Memory.h"
 #include "encode/Encoder.h"
+#include "meta/Table.h"
 #include "serde/TypeData.h"
 #include "serde/TypeDataFactory.h"
 #include "serde/TypeMetadata.h"
@@ -43,24 +44,27 @@ using PDataNode = DataNode*;
 
 class DataNode : public nebula::type::Tree<PDataNode> {
 public:
-  static DataTree buildDataTree(const nebula::type::Schema&);
+  static DataTree buildDataTree(const nebula::meta::Table&, size_t capacity);
 
 public:
-  DataNode(const nebula::type::TypeBase& type)
+  DataNode(const nebula::type::TypeBase& type, const nebula::meta::Column& column, size_t capacity)
     : nebula::type::Tree<PDataNode>(this),
       type_{ type },
       meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k()) },
-      data_{ nebula::memory::serde::TypeDataFactory::createData(type.k()) },
+      data_{ nebula::memory::serde::TypeDataFactory::createData(type.k(), column, capacity) },
       count_{ 0 },
       rawSize_{ 0 } {
     LOG(INFO) << fmt::format("Create data node w/o children [{0}].", type.name());
   }
 
-  DataNode(const nebula::type::TypeBase& type, const std::vector<nebula::type::TreeNode>& children)
+  DataNode(const nebula::type::TypeBase& type,
+           const nebula::meta::Column& column,
+           size_t capacity,
+           const std::vector<nebula::type::TreeNode>& children)
     : nebula::type::Tree<DataNode*>(this, children),
       type_{ type },
       meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k()) },
-      data_{ nebula::memory::serde::TypeDataFactory::createData(type.k()) },
+      data_{ nebula::memory::serde::TypeDataFactory::createData(type.k(), column, capacity) },
       count_{ 0 },
       rawSize_{ 0 } {}
 
@@ -91,6 +95,11 @@ public: // data reading API
 
   template <typename T>
   T read(size_t index);
+
+  template <typename T>
+  inline bool probably(const T& v) const {
+    return data_->probably(v);
+  }
 
 public: // basic metadata exposure
   inline size_t entries() const {

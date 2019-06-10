@@ -58,7 +58,9 @@ target_link_libraries(ApiTests
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
     PRIVATE ${GMOCK_LIBRARY}
-    PRIVATE ${JSON_LIBRARY})
+    PRIVATE ${JSON_LIBRARY}
+    PRIVATE ${OPENSSL_LIBRARY}
+    PRIVATE ${CRYPTO_LIBRARY})
 
 if(APPLE)
     target_compile_options(ApiTests PRIVATE -Wno-error=unknown-warning-option)

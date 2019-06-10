@@ -89,7 +89,9 @@ target_link_libraries(${NEBULA_SERVICE}
     PRIVATE libgrpc++
     PRIVATE ${JSON_LIBRARY}
     PRIVATE ${PROTOBUF_LIBRARY}
-    PRIVATE ${FLATBUFFERS_LIBRARY})
+    PRIVATE ${FLATBUFFERS_LIBRARY}
+    PRIVATE ${OPENSSL_LIBRARY}
+    PRIVATE ${CRYPTO_LIBRARY})
 target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unused-parameter)
 if(APPLE)
     target_compile_options(${NEBULA_SERVICE} 
@@ -129,7 +131,9 @@ foreach(i RANGE ${list_max_index})
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${JSON_LIBRARY}
     PRIVATE ${PROTOBUF_LIBRARY}
-    PRIVATE ${FLATBUFFERS_LIBRARY})
+    PRIVATE ${FLATBUFFERS_LIBRARY}
+    PRIVATE ${OPENSSL_LIBRARY}
+    PRIVATE ${CRYPTO_LIBRARY})
     
     # disalbe warning into errors for due to these generated files
     target_compile_options(${target} PRIVATE -Wno-error=unused-parameter)
@@ -204,7 +208,9 @@ target_link_libraries(ServiceTests
   PRIVATE ${ZLIB_LIBRARY}
   PRIVATE ${JSON_LIBRARY}
   PRIVATE ${PROTOBUF_LIBRARY}
-  PRIVATE ${FLATBUFFERS_LIBRARY})
+  PRIVATE ${FLATBUFFERS_LIBRARY}
+  PRIVATE ${OPENSSL_LIBRARY}
+  PRIVATE ${CRYPTO_LIBRARY})
 target_compile_options(ServiceTests PRIVATE -Wno-error=unused-parameter)
 if(APPLE)
     target_compile_options(ServiceTests PRIVATE -Wno-error=unknown-warning-option)

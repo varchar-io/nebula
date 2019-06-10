@@ -50,6 +50,15 @@ public:
   virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override {
     return std::make_shared<MockMs>();
   }
+
+  virtual Column column(const std::string& col) const noexcept override {
+    if (col == "id") {
+      // enable bloom filter on id column
+      return { true };
+    }
+
+    return Table::column(col);
+  }
 };
 
 } // namespace meta

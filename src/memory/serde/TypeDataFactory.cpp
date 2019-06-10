@@ -15,18 +15,22 @@
  */
 
 #include "TypeDataFactory.h"
+#include "meta/Table.h"
 
 namespace nebula {
 namespace memory {
 namespace serde {
 
+using nebula::meta::Column;
 using nebula::type::Kind;
-#define TYPE_DATA_PROXY(KIND, TYPE)                                                \
-  case Kind::KIND: {                                                               \
-    return std::make_unique<TypeDataProxy>(std::unique_ptr<TypeData>(new TYPE())); \
+
+#define TYPE_DATA_PROXY(KIND, TYPE)                                                    \
+  case Kind::KIND: {                                                                   \
+    return std::make_unique<TypeDataProxy>(std::make_unique<TYPE>(column, batchSize)); \
   }
 
-std::unique_ptr<TypeDataProxy> TypeDataFactory::createData(Kind kind) {
+std::unique_ptr<TypeDataProxy> TypeDataFactory::createData(
+  Kind kind, const Column& column, size_t batchSize) {
   switch (kind) {
     TYPE_DATA_PROXY(BOOLEAN, BoolData)
     TYPE_DATA_PROXY(TINYINT, ByteData)

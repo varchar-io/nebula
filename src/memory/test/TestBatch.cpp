@@ -39,12 +39,12 @@ using nebula::type::ROOT;
 using nebula::type::TypeSerializer;
 
 TEST(BatchTest, TestBatch) {
-  auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
-  Batch batch1(schema);
-  Batch batch2(schema);
-
+  nebula::meta::TestTable test;
   // add 10 rows
   auto rows = 10;
+
+  Batch batch1(test, rows);
+  Batch batch2(test, rows);
 
   // use the specified seed so taht the data can repeat
   auto seed = Evidence::unix_timestamp();
@@ -81,11 +81,10 @@ TEST(BatchTest, TestBatch) {
 
 TEST(BatchTest, TestBatchRead) {
   nebula::meta::TestTable test;
-  // need some stable data set to write out and can be verified
-  Batch batch(test.schema());
+  auto count = 10000;
 
-  // add 10 rows
-  auto count = 1000;
+  // need some stable data set to write out and can be verified
+  Batch batch(test, count);
 
   // use the specified seed so taht the data can repeat
   std::vector<nebula::surface::StaticRow> rows;
@@ -102,7 +101,7 @@ TEST(BatchTest, TestBatchRead) {
   }
 
   // print single row as string.
-  auto line = [](const RowData& r) {
+  auto line = [](const nebula::surface::RowData& r) {
     std::string s;
     if (!r.isNull("items")) {
       const auto list = r.readList("items");
@@ -175,9 +174,43 @@ TEST(RowTest, TestFlatRow) {
 }
 
 TEST(DataTreeTest, TestBuildDataTree) {
-  auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
-  auto dataTree = nebula::memory::DataNode::buildDataTree(schema);
-  EXPECT_EQ(dataTree->size(), 3);
+  nebula::meta::TestTable test;
+  auto dataTree = nebula::memory::DataNode::buildDataTree(test, 10);
+  EXPECT_EQ(dataTree->size(), test.schema()->size());
+}
+
+TEST(BatchTest, TestBloomFilter) {
+  nebula::meta::TestTable test;
+  int32_t count = 1000;
+
+  // need some stable data set to write out and can be verified
+  Batch batch(test, count);
+
+  // use the specified seed so taht the data can repeat
+  std::vector<nebula::surface::StaticRow> rows;
+  // fill rows
+  for (int32_t i = 0; i < count; ++i) {
+    nebula::surface::StaticRow row{ i,
+                                    i,
+                                    "events",
+                                    nullptr,
+                                    false,
+                                    0 };
+    batch.add(row);
+  }
+
+  // check this batch has bloom filter on ID
+  // assuming no false positive on this individual value
+  // if the test becomes unstable, we can change the test
+  auto falsePositives = 0;
+  for (int32_t i = count; i < count * 2; ++i) {
+    if (batch.probably("id", i)) {
+      falsePositives++;
+    }
+  }
+
+  // false positive rate should be less than 0.1%
+  EXPECT_LT(falsePositives * 100.0 / count, 0.1f);
 }
 
 } // namespace test

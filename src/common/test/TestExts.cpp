@@ -15,9 +15,11 @@
  */
 
 #include "gtest/gtest.h"
-#include "common/Errors.h"
-#include "fmt/format.h"
 #include <glog/logging.h>
+#include "common/BloomFilter.h"
+#include "common/Errors.h"
+#include "common/Evidence.h"
+#include "fmt/format.h"
 #include "roaring.hh"
 
 /**
@@ -102,6 +104,63 @@ TEST(RoraringTest, TestRoaringBitmap) {
   Roaring::const_iterator j = rogue.begin();
   j.equalorlarger(4);
   EXPECT_EQ(*j, 4);
+}
+
+TEST(CuckooTest, TestCuckooFilter) {
+  size_t items = 100000;
+
+  // Create a cuckoo filter where each item is of type size_t and
+  // use 12 bits for each item:
+  //    CuckooFilter<size_t, 12> filter(total_items);
+  // To enable semi-sorting, define the storage of cuckoo filter to be
+  // PackedTable, accepting keys of size_t type and making 13 bits
+  // for each key:
+  //   CuckooFilter<size_t, 13, cuckoofilter::PackedTable> filter(total_items);
+  BloomFilter<int64_t> filter(items);
+  BloomFilter<int64_t> filter1(items);
+  BloomFilter<int64_t> filter2(items);
+  auto rand = nebula::common::Evidence::rand<int64_t>(0, std::numeric_limits<int64_t>::max());
+
+  // Insert items to this cuckoo filter
+  int64_t base = 301882118680623300;
+  for (size_t i = 0; i < items; ++i) {
+    if (!filter.add(i)) {
+      LOG(INFO) << "failed to add item at " << i;
+      break;
+    }
+
+    if (!filter1.add(base)) {
+      LOG(INFO) << "failed to add item at " << i;
+      break;
+    }
+
+    if (!filter2.add(base + rand())) {
+      LOG(INFO) << "failed to add item at " << i;
+      break;
+    }
+  }
+
+  // Check if previously inserted items are in the filter, expected
+  // true for all items
+  // for (size_t i = 0; i < num_inserted; i++) {
+  //   EXPECT_TRUE(filter.probably(i));
+  // }
+
+  // Check non-existing items, a few false positives expected
+  size_t total_queries = 0;
+  size_t false_queries = 0;
+  for (size_t i = items; i < 2 * items; i++) {
+    if (filter.probably(i)) {
+      false_queries++;
+    }
+
+    total_queries++;
+  }
+
+  // Output the measured false positive rate
+  LOG(INFO) << "false positive rate is "
+            << 100.0 * false_queries / total_queries
+            << " filter size: " << filter.bytes();
 }
 } // namespace test
 } // namespace common

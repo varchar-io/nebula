@@ -42,6 +42,12 @@ std::unique_ptr<Batch> BlockLoader::load(const NBlock& block) {
 }
 
 class TimeProvidedRow : public MockRowData {
+  static int32_t id() {
+    // TODO(cao) - just an interesting thing, why number 8888 is not out of this static function?
+    static int32_t i = 0;
+    return i++;
+  }
+
 public:
   TimeProvidedRow(size_t seed, size_t start, size_t end)
     : MockRowData(seed), rRand_{ Evidence::rand(start, end, seed) } {}
@@ -54,6 +60,15 @@ public:
     return MockRowData::readLong(field);
   }
 
+  virtual int32_t readInt(const std::string& field) const override {
+    // make all id are sequentially sorted
+    if (field == "id") {
+      return id();
+    }
+
+    return MockRowData::readInt(field);
+  }
+
 private:
   // range [start_, end_]
   std::function<int64_t()> rRand_;
@@ -61,10 +76,9 @@ private:
 
 std::unique_ptr<Batch> BlockLoader::loadTestBlock(const NBlock& nb) {
   TestTable test;
-  auto block = std::make_unique<Batch>(test.schema());
-
   // use 1024 rows for testing
   auto rows = 10000;
+  auto block = std::make_unique<Batch>(test, rows);
 
   // use the specified seed so taht the data can repeat
   auto seed = Evidence::unix_timestamp();

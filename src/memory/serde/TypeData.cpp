@@ -34,9 +34,16 @@ namespace nebula {
 namespace memory {
 namespace serde {
 
-#define TYPE_DATA_CONSTR(TYPE, SLICE_PAGE) \
-  template <>                              \
-  TYPE::TypeDataImpl() : slice_{ (size_t)SLICE_PAGE } {}
+using nebula::meta::Column;
+
+#define TYPE_DATA_CONSTR(TYPE, SLICE_PAGE)                                   \
+  template <>                                                                \
+  TYPE::TypeDataImpl(const Column& column, size_t batchSize)                 \
+    : slice_{ (size_t)SLICE_PAGE }, bf_{ nullptr } {                         \
+    if (column.withBloomFilter && Scalar) {                                  \
+      bf_ = std::make_unique<nebula::common::BloomFilter<NType>>(batchSize); \
+    }                                                                        \
+  }
 
 TYPE_DATA_CONSTR(BoolData, FLAGS_BOOL_PAGE_SIZE)
 TYPE_DATA_CONSTR(ByteData, FLAGS_BYTE_PAGE_SIZE)
@@ -50,132 +57,45 @@ TYPE_DATA_CONSTR(EmptyData, FLAGS_EMPTY_PAGE_SIZE)
 
 #undef TYPE_DATA_CONSTR
 
-// TODO(cao) - avoid is specific to current uncompressed flat layout - it is not needed with encoder
-// which means, encoder should be able to handle position seeking and holes skipping
-
-#define TYPE_ADD_VOID(TYPE, value)       \
-  template <>                            \
-  void TYPE::addVoid(IndexType) {        \
-    size_ += slice_.write(size_, value); \
-  }
-
-TYPE_ADD_VOID(BoolData, false)
-TYPE_ADD_VOID(ByteData, (int8_t)0);
-TYPE_ADD_VOID(ShortData, (int16_t)0);
-TYPE_ADD_VOID(IntData, (int32_t)0);
-TYPE_ADD_VOID(LongData, (int64_t)0);
-TYPE_ADD_VOID(FloatData, (float)0);
-TYPE_ADD_VOID(DoubleData, (double)0);
-
 // string void data
 template <>
 void StringData::addVoid(IndexType) {
   size_ += slice_.write(size_, "", 0);
 }
 
-#undef TYPE_ADD_VOID
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-template <>
-template <>
-void BoolData::add(IndexType, bool value) {
-  // TODO(cao): raw data, need to plug in encoder
-  size_ += slice_.write(size_, value);
-}
-
-template <>
-template <>
-void ByteData::add(IndexType, int8_t value) {
-  size_ += slice_.write(size_, value);
-}
-
-template <>
-template <>
-void ShortData::add(IndexType, int16_t value) {
-  size_ += slice_.write(size_, value);
-}
-
-template <>
-template <>
-void IntData::add(IndexType, int32_t value) {
-  size_ += slice_.write(size_, value);
-}
-
-template <>
-template <>
-void LongData::add(IndexType, int64_t value) {
-  size_ += slice_.write(size_, value);
-}
-
-template <>
-template <>
-void FloatData::add(IndexType, float value) {
-  size_ += slice_.write(size_, value);
-}
-
-template <>
-template <>
-void DoubleData::add(IndexType, double value) {
-  size_ += slice_.write(size_, value);
-}
-
-template <>
 template <>
 void StringData::add(IndexType, std::string_view value) {
   size_ += slice_.write(size_, value.data(), value.size());
+  // TODO(cao) - disable bloom filter string type for now
+  // Due to hash function missing for string_view type
+  // if (UNLIKELY(bf_ != nullptr)) {
+  //   bf_->add(value.);
+  // }
 }
+
+#define TYPE_PROBABLY(DT, VT, BE)    \
+  template <>                        \
+  bool DT::probably(VT item) const { \
+    if (BE(bf_ != nullptr)) {        \
+      return bf_->probably(item);    \
+    }                                \
+    return true;                     \
+  }
+
+TYPE_PROBABLY(BoolData, bool, UNLIKELY)
+TYPE_PROBABLY(ByteData, int8_t, UNLIKELY)
+TYPE_PROBABLY(ShortData, int16_t, LIKELY)
+TYPE_PROBABLY(IntData, int32_t, LIKELY)
+TYPE_PROBABLY(LongData, int64_t, LIKELY)
+TYPE_PROBABLY(FloatData, float, UNLIKELY)
+TYPE_PROBABLY(DoubleData, double, UNLIKELY)
+
+#undef TYPE_PROBABLY
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-template <>
-template <>
-inline bool BoolData::read(IndexType index) {
-  // TODO(cao): raw data, need to plug in encoder
-  // for flat memory block, data read offset = index * (data item width)
-  // for encoders, it has different meta data way to figure out the data offset.
-  return slice_.read<bool>(index);
-}
-
-template <>
-template <>
-inline int8_t ByteData::read(IndexType index) {
-  return slice_.read<int8_t>(index);
-}
-
-template <>
-template <>
-inline int16_t ShortData::read(IndexType index) {
-  return slice_.read<int16_t>(index << 1);
-}
-
-template <>
-template <>
-inline int32_t IntData::read(IndexType index) {
-  return slice_.read<int32_t>(index << 2);
-}
-
-template <>
-template <>
-inline int64_t LongData::read(IndexType index) {
-  return slice_.read<int64_t>(index << 3);
-}
-
-template <>
-template <>
-inline float FloatData::read(IndexType index) {
-  return slice_.read<float>(index << 2);
-}
-
-template <>
-template <>
-inline double DoubleData::read(IndexType index) {
-  return slice_.read<double>(index << 3);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 #define HOOK_CONCRETE(TYPE, obj)          \
   if ((obj = dynamic_cast<TYPE*>(raw))) { \
+    hasBf_ = obj->hasBloomFilter();       \
     void_ = [this](IndexType index) {     \
       obj->addVoid(index);                \
     };                                    \
@@ -205,7 +125,7 @@ TypeDataProxy::TypeDataProxy(PTypeData typeData)
 #define TYPE_ADD_PROXY(TYPE, OBJ)                        \
   template <>                                            \
   void TypeDataProxy::add(IndexType index, TYPE value) { \
-    OBJ->add<TYPE>(index, value);                        \
+    OBJ->add(index, value);                              \
   }
 
 TYPE_ADD_PROXY(bool, bd_)
@@ -216,13 +136,28 @@ TYPE_ADD_PROXY(int64_t, ld_)
 TYPE_ADD_PROXY(float, fd_)
 TYPE_ADD_PROXY(double, dd_)
 TYPE_ADD_PROXY(std::string_view, std_)
+#undef TYPE_ADD_PROXY
 
-#undef TYPE_PROXY
+#define TYPE_PROBABLY_PROXY(TYPE, OBJ)             \
+  template <>                                      \
+  bool TypeDataProxy::probably(TYPE value) const { \
+    return OBJ->probably(value);                   \
+  }
 
-#define TYPE_READ_PROXY(TYPE, OBJ)            \
-  template <>                                 \
-  TYPE TypeDataProxy::read(IndexType index) { \
-    return OBJ->read<TYPE>(index);            \
+TYPE_PROBABLY_PROXY(bool, bd_)
+TYPE_PROBABLY_PROXY(int8_t, btd_)
+TYPE_PROBABLY_PROXY(int16_t, sd_)
+TYPE_PROBABLY_PROXY(int32_t, id_)
+TYPE_PROBABLY_PROXY(int64_t, ld_)
+TYPE_PROBABLY_PROXY(float, fd_)
+TYPE_PROBABLY_PROXY(double, dd_)
+
+#undef TYPE_PROBABLY_PROXY
+
+#define TYPE_READ_PROXY(TYPE, OBJ)                  \
+  template <>                                       \
+  TYPE TypeDataProxy::read(IndexType index) const { \
+    return OBJ->read(index);                        \
   }
 
 TYPE_READ_PROXY(bool, bd_)

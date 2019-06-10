@@ -34,6 +34,13 @@ using nebula::type::Schema;
 
 class MetaService;
 
+/**
+ * Define column properties that fetched from meta data system
+ */
+struct Column {
+  bool withBloomFilter = false;
+};
+
 class Table {
 public:
   Table(const std::string& name) : name_{ name }, schema_{ nullptr } {
@@ -70,6 +77,11 @@ public:
   // this is facility hard code tables for now such as TrendsTable and TestTable
   virtual std::shared_ptr<nebula::meta::MetaService> getMs() const {
     throw NException("Should be removed except test tables");
+  }
+
+  // retrieve all column meta data by its name
+  virtual Column column(const std::string&) const noexcept {
+    return {};
   }
 
 protected:

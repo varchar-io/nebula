@@ -21,6 +21,7 @@ services:
     volumes:
       - /tmp/pins:/tmp/pins:rw
       - /tmp/pinss:/tmp/pinss:rw
+      - /home/shawncao/hadoop/:/home/shawncao/hadoop/:rw
     links:
       - node
   envoy:

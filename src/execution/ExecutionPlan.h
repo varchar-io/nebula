@@ -155,7 +155,7 @@ template <>
 class Phase<PhaseType::COMPUTE> : public ExecutionPhase {
 public:
   Phase(const nebula::type::Schema input, const nebula::type::Schema output)
-    : ExecutionPhase(input), output_{ output } {}
+    : ExecutionPhase(input), input_{ input }, output_{ output } {}
   virtual ~Phase() = default;
 
 public:
@@ -229,12 +229,17 @@ public:
     return hasAgg_;
   }
 
+  inline nebula::type::Schema inputSchema() const {
+    return input_;
+  }
+
 private:
   std::string table_;
   std::vector<std::unique_ptr<eval::ValueEval>> fields_;
   std::unique_ptr<eval::ValueEval> filter_;
   std::vector<size_t> keys_;
   bool hasAgg_;
+  nebula::type::Schema input_;
   nebula::type::Schema output_;
 };
 

@@ -38,7 +38,11 @@ target_link_libraries(CommonTests
     PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${ROARING_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY})
+    PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${BF_LIBRARY}
+    PRIVATE ${CF_LIBRARY}
+    PRIVATE ${OPENSSL_LIBRARY}
+    PRIVATE ${CRYPTO_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

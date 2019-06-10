@@ -20,15 +20,17 @@
 namespace nebula {
 namespace memory {
 
+using nebula::meta::Table;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TreeBase;
+using nebula::type::TypeBase;
 
-Batch::Batch(const Schema& schema)
-  : schema_{ schema },
-    data_{ DataNode::buildDataTree(schema) },
+Batch::Batch(const Table& table, size_t capacity)
+  : schema_{ table.schema() },
+    data_{ DataNode::buildDataTree(table, capacity) },
     rows_{ 0 },
-    fields_{ schema->size() } {
+    fields_{ schema_->size() } {
   // build a field name to data node
   for (size_t i = 0, size = schema_->size(); i < size; ++i) {
     auto f = dynamic_cast<TypeBase*>(schema_->childAt(i).get());

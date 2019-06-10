@@ -73,6 +73,9 @@ include(ext/Glog_Ext.cmake)
 # add a dependency of fmt 
 include(ext/Fmt_Ext.cmake)
 
+# add a dependency of bf
+include(ext/Bloom_Ext.cmake)
+
 # add a dependency of roaring
 include(ext/Roaring_Ext.cmake)
 
@@ -85,6 +88,9 @@ include_directories(include ${GMOCK_INCLUDE_DIRS})
 
 # include pre-installed folly
 include(ext/Folly_Ext.cmake)
+
+# add a dependency of cuckoo filter
+include(ext/Cuckoo_Ext.cmake)
 
 # include AWS external project
 include(ext/Aws_Ext.cmake)

@@ -81,8 +81,8 @@ void RunServer() {
   nebula::service::NodeServerImpl node;
 
   // loading data into memory
-  LOG(INFO) << "Loading data for table [pin.trends] in single node.";
-  node.loadTrends();
+  // LOG(INFO) << "Loading data for table [pin.trends] in single node.";
+  // node.loadTrends();
 
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());

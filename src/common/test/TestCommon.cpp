@@ -16,6 +16,7 @@
 
 #include "gtest/gtest.h"
 #include <glog/logging.h>
+#include <regex>
 #include <valarray>
 #include "common/Errors.h"
 #include "common/Evidence.h"
@@ -241,6 +242,35 @@ TEST(StringViewTest, TestStringView) {
   auto str2 = "ab";
   std::string_view v1(str, 2);
   EXPECT_EQ(v1, str2);
+}
+
+TEST(RegexTest, TestStdRegex) {
+  std::string input = "(((F:_time_>C:1546300800)&&(F:_time_<C:1556668800))&&(F:id==C:1000000))";
+  std::regex phaseSearch("TIME", std::regex_constants::ECMAScript | std::regex_constants::icase);
+  EXPECT_TRUE(std::regex_search(input, phaseSearch));
+
+  // replace any match with bracket
+  std::regex underscore_regex("(_\\w+_)");
+  std::string another = std::regex_replace(input, underscore_regex, "[$&]");
+  EXPECT_EQ(another, "(((F:[_time_]>C:1546300800)&&(F:[_time_]<C:1556668800))&&(F:id==C:1000000))");
+
+  // list all matches
+  std::regex col_regex("&&\\(F:(\\w+)==C:(\\w+)\\)\\)");
+  std::smatch matches;
+  if (std::regex_search(input, matches, col_regex)) {
+    for (size_t i = 0; i < matches.size(); ++i) {
+      LOG(INFO) << matches[i].str();
+    }
+  }
+
+  // use iterater to get all matches
+  auto m_begin = std::sregex_iterator(input.begin(), input.end(), col_regex);
+  auto m_end = std::sregex_iterator();
+  for (auto i = m_begin; i != m_end; ++i) {
+    std::smatch match = *i;
+    std::string match_str = match.str();
+    LOG(INFO) << match_str;
+  }
 }
 
 } // namespace test

@@ -15,7 +15,9 @@
  */
 
 #include "BlockManager.h"
-#include <folly/String.h>
+#include <folly/Conv.h>
+#include <regex>
+#include "type/Tree.h"
 
 /**
  * Nebula execution in block managment.
@@ -26,6 +28,9 @@ namespace execution {
 using nebula::memory::Batch;
 using nebula::meta::NBlock;
 using nebula::meta::Table;
+using nebula::type::Kind;
+using nebula::type::Schema;
+using nebula::type::TypeNode;
 
 // static members definition
 std::mutex BlockManager::smux;
@@ -40,19 +45,78 @@ std::shared_ptr<BlockManager> BlockManager::init() {
   return inst;
 }
 
-const std::vector<Batch*> BlockManager::query(const Table& table, const std::pair<size_t, size_t>& window) {
+/// HACK! - Replace it!
+std::pair<std::string, std::string> hackColEqValue(std::string_view input) {
+  std::regex col_regex("&&\\(F:(\\w+)==C:(\\w+)\\)\\)");
+  std::smatch matches;
+  std::string str(input.data(), input.size());
+  if (std::regex_search(str, matches, col_regex) && matches.size() == 3) {
+    return { matches[1].str(),
+             matches[2].str() };
+  }
+
+  return { "", "" };
+}
+
+const std::vector<Batch*> BlockManager::query(const Table& table, const ExecutionPlan& plan) {
   // 1. a table and a predicate should determined by meta service how many blocks we should query
   // 2. determine how many blocks are not in memory yet, if they are not, load them in
   // 3. fan out the query plan to execute on each block in parallel (not this function but the caller)
   std::vector<Batch*> tableBlocks;
   auto total = 0;
+  const auto& window = plan.getWindow();
+
+  // check if there are some predicates we can evaluate here
+  const auto& compute = plan.fetch<PhaseType::COMPUTE>();
+
+  // TODO(cao) - This is a big hack which is only working for one case
+  // We should have tree walking on the evaluation tree to decide if we can do so
+  // 1. a column in or equal predication
+  // 2. this predication can impact the whole tree
+  // LOG(INFO) << "filter signature: " << filter.signature();
+  auto pair = hackColEqValue(compute.filter().signature());
+  std::function<bool(Batch*)> pass = [](Batch*) { return true; };
+
+  if (pair.first.size() > 0) {
+    const auto& colName = pair.first;
+    Kind kind = Kind::INVALID;
+
+    // TODO(cao) - we should use table.schema() but here we use compute input schema instead
+    // before we have official meta service, all table has its own definition, so this table may be generic
+    compute.inputSchema()->onChild(colName, [&kind](const TypeNode& found) {
+      kind = found->k();
+    });
+
+    N_ENSURE(kind != Kind::INVALID, "column not found");
+#define KIND_CHECK(K, T)                                                                                            \
+  case Kind::K: {                                                                                                   \
+    pass = [&colName, &pair](Batch* batch) -> bool { return batch->probably(colName, folly::to<T>(pair.second)); }; \
+    break;                                                                                                          \
+  }
+
+    switch (kind) {
+      KIND_CHECK(BOOLEAN, bool)
+      KIND_CHECK(TINYINT, int8_t)
+      KIND_CHECK(SMALLINT, int16_t)
+      KIND_CHECK(INTEGER, int32_t)
+      KIND_CHECK(BIGINT, int64_t)
+      KIND_CHECK(REAL, float)
+      KIND_CHECK(DOUBLE, double)
+    default:
+      break;
+    }
+
+#undef KIND_CHECK
+  }
+
   for (auto& b : blocks_) {
     const auto& block = b.first;
     if (block.getTable() == table.name()) {
       ++total;
 
-      if (block.overlap(window)) {
-        tableBlocks.push_back(b.second.get());
+      Batch* ptr = b.second.get();
+      if (block.overlap(window) && pass(ptr)) {
+        tableBlocks.push_back(ptr);
       }
     }
   }
