@@ -456,6 +456,12 @@ window.onhashchange = function () {
 const listReq = new NebulaClient.ListTables();
 listReq.setLimit(5);
 v1Client.tables(listReq, {}, (err, reply) => {
+    const stats = ds('#stats');
+    if (err !== null) {
+        stats.text(`RPC Error: ${err}`);
+        return;
+    }
+
     const list = reply.getTableList();
     const options = ds('#tables').selectAll("option").data(list).enter().append('option');
     options.text(d => d).attr("value", d => d);

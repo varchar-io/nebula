@@ -26,6 +26,8 @@
 #include "storage/CsvReader.h"
 #include "storage/local/File.h"
 
+DEFINE_uint64(COMMENTS_MAX, std::numeric_limits<uint64_t>::max(), "0 means no maximum");
+
 /**
  * This module is to build special case for trends which has some hard coded data.
  * Will be deleted after it's done with pilot run.
@@ -130,7 +132,6 @@ void CommentsTable::load(const std::string& file) {
   CsvReader reader(file, '\t', columns);
 
   // limit at 1b on single host
-  const size_t limit = 350000000;
   const size_t bRows = 100000;
   CommentsRawRow cRow;
   size_t count = 0;
@@ -138,7 +139,7 @@ void CommentsTable::load(const std::string& file) {
   while (reader.hasNext()) {
     if (count++ % 1000000 == 0) {
       LOG(INFO) << fmt::format("Loaded {0} comments.", count);
-      if (count >= limit) {
+      if (count >= FLAGS_COMMENTS_MAX) {
         break;
       }
     }
