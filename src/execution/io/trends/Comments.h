@@ -44,7 +44,7 @@ public:
     // image_signature string,
     // repins bigint
     schema_ = nebula::type::TypeSerializer::from(
-      "ROW<_time_:long, user_id:long, comments:string>");
+      "ROW<_time_:long, user_id:long, pin_id:long, comments:string>");
   }
 
   virtual ~CommentsTable() = default;
@@ -56,7 +56,7 @@ public:
   virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override;
 
   virtual nebula::meta::Column column(const std::string& col) const noexcept override {
-    if (col == "user_id") {
+    if (col == "user_id" || col == "pin_id") {
       // enable bloom filter on id column
       return { true };
     }

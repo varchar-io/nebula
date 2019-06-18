@@ -59,6 +59,7 @@ public:
 
     // fetching data from document
     user_ = document["user_id"].GetInt64();
+    pin_ = document["pin_id"].GetInt64();
     comments_ = document["text"].GetString();
     return true;
   }
@@ -93,6 +94,10 @@ public:
       return user_;
     }
 
+    if (field == "pin_id") {
+      return pin_;
+    }
+
     throw NException("not hit");
   }
 
@@ -109,6 +114,7 @@ public:
 private:
   time_t time_;
   int64_t user_;
+  int64_t pin_;
   std::string comments_;
 };
 
