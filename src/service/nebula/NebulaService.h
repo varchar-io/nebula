@@ -106,5 +106,13 @@ public:
   static std::unique_ptr<nebula::execution::ExecutionPlan> from(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
 };
 
+/**
+ * A batch serde to transmit a batch between nodes in fb format w/ zero-copy.
+ */
+class BatchSerde {
+  static flatbuffers::grpc::Message<RowCursor> serialize(const nebula::api::dsl::Query&, const std::string&, uint64_t, uint64_t);
+  static nebula::api::dsl::Query deserialize(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
+};
+
 } // namespace service
 } // namespace nebula

@@ -138,6 +138,27 @@ TEST(FlatBufferTest, TestRollback) {
   }
 }
 
+TEST(FlatBufferTest, TestSerde) {
+  nebula::meta::TestTable test;
+
+  // initialize a flat row with given schema
+  FlatBuffer fb(test.schema());
+
+  // add 10 rows
+  constexpr auto rows2test = 5;
+  auto seed = Evidence::unix_timestamp();
+  MockRowData row(seed);
+
+  // add 5 rows
+  for (auto i = 0; i < rows2test; ++i) {
+    fb.add(row);
+  }
+
+  EXPECT_EQ(fb.getRows(), rows2test);
+
+  fb.serialize
+}
+
 } // namespace test
 } // namespace memory
 } // namespace nebula
