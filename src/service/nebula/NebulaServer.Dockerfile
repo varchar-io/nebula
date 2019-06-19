@@ -13,4 +13,4 @@ EXPOSE 9190
 COPY ./gen/nebula/NebulaServer /etc/nebula/NebulaServer
 RUN chmod +x /etc/nebula/NebulaServer
 COPY ./gen/nebula/pin.trends.csv /tmp/pin.trends.csv
-CMD ["/etc/nebula/NebulaServer", "--HOST_ADDR", "10.1.51.48", "--COMMENTS_FILE", "/home/shawncao/hadoop/full.txt", "--COMMENTS_MAX", "100000"]
+CMD ["/etc/nebula/NebulaServer", "--HOST_ADDR", "10.1.51.48", "--COMMENTS_FILE", "/home/shawncao/hadoop/full.txt", "--COMMENTS_MAX", "10000000"]

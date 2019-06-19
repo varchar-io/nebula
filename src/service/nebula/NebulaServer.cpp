@@ -198,7 +198,6 @@ void RunServer() {
 
   // loading pins data into memory
   // v1Service.loadPins();
-  v1Service.loadComments(FLAGS_COMMENTS_FILE);
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
@@ -209,6 +208,9 @@ void RunServer() {
   // Finally assemble the server.
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   LOG(INFO) << "Nebula server listening on " << server_address;
+
+  // server is up first and then we load the data
+  v1Service.loadComments(FLAGS_COMMENTS_FILE);
 
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.
