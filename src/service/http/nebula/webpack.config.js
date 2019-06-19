@@ -7,9 +7,9 @@ const resolveConfig = {
         "grpc-web": path.resolve(__dirname, './node_modules/grpc-web/'),
         "grpc": path.resolve(__dirname, './node_modules/grpc/'),
         "fs": path.resolve(__dirname, './node_modules/fs/'),
-        "nebula-pb": path.resolve(__dirname, '../../gen/nebula/node/nebula_pb.js'),
+        "nebula-pb": path.resolve(__dirname, '../../gen/nebula/nodejs/nebula_pb.js'),
         "nebula-web-rpc": path.resolve(__dirname, '../../gen/nebula/nebula_grpc_web_pb.js'),
-        "nebula-node-rpc": path.resolve(__dirname, '../../gen/nebula/node/nebula_grpc_pb.js'),
+        "nebula-node-rpc": path.resolve(__dirname, '../../gen/nebula/nodejs/nebula_grpc_pb.js'),
     },
     extensions: [
         ".ts",

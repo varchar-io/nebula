@@ -22,6 +22,26 @@ const {
     V1Client
 } = require('nebula-node-rpc');
 
+const sstatic = require('serve-static');
+const fh = require('finalhandler');
+const grpc = require('grpc');
+const qc = (service) => {
+    return new V1Client(service, grpc.credentials.createInsecure());
+};
+
+// static handler
+// serving static files from current folder
+const shandler = sstatic(".", {
+    'index': ['index.html'],
+    'dotfiles': 'deny',
+    'fallthrough': false,
+    'immutable': true
+});
+
+const static_res = (req, res) => {
+    shandler(req, res, fh(req, res));
+};
+
 function bytes2utf8(data) {
     const extraByteMap = [1, 1, 1, 1, 2, 2, 3, 0];
     var count = data.length;
@@ -67,5 +87,7 @@ export default {
     Statistics,
     DataType,
     QueryResponse,
-    bytes2utf8
+    bytes2utf8,
+    static_res,
+    qc
 };
