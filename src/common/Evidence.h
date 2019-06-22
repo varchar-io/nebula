@@ -41,9 +41,9 @@ public: /** only static methods */
   }
 
   inline static size_t unix_timestamp() {
-    static constexpr std::chrono::time_point<std::chrono::system_clock> epoch;
-    static constexpr auto x = epoch.time_since_epoch().count();
-    return (ticks() - x) / 1000000;
+    return std::chrono::duration_cast<std::chrono::seconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
   }
 
   // given date time string and parsing pattern, return GMT unix time stamp

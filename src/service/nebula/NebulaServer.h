@@ -55,11 +55,16 @@ private:
       return comments_;
     }
 
+    if (signatures_.name() == name) {
+      return signatures_;
+    }
+
     throw NException("Table not found here");
   }
 
   nebula::execution::io::trends::PinsTable pins_;
   nebula::execution::io::trends::CommentsTable comments_;
+  nebula::execution::io::trends::SignaturesTable signatures_;
   nebula::meta::TestTable test_;
 
 public:
@@ -69,6 +74,10 @@ public:
 
   void loadComments(const std::string& file) {
     comments_.load(file);
+  }
+
+  void loadSignatures(const std::string& file) {
+    signatures_.load(file);
   }
 
   void loadNebulaTest();

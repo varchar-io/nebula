@@ -29,22 +29,38 @@ namespace nebula {
 namespace execution {
 namespace io {
 namespace trends {
-class CommentsTable : public nebula::meta::Table {
-  static constexpr auto NAME = "pin.comments";
-
+class SignaturesTable : public nebula::meta::Table {
 public:
-  CommentsTable() : Table(NAME) {
-    // TODO(cao) - let's make date as a number
-    // id bigint,
-    // board_id bigint,
-    // user_id bigint,
-    // created_at string => map to _time_ in "Y-M-D H:M:S" format,
-    // title string,
-    // details string,
-    // image_signature string,
-    // repins bigint
+  static constexpr auto NAME = "pin.signatures";
+  SignaturesTable() : Table(NAME) {
     schema_ = nebula::type::TypeSerializer::from(
-      "ROW<_time_:long, user_id:long, pin_id:long, comments:string>");
+      "ROW<_time_:long, pin_signature:string, pin_id:long>");
+  }
+
+  virtual ~SignaturesTable() = default;
+
+  // load comments data from a local file
+  // since we failed AWS integration so far
+  void load(const std::string&);
+
+  virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override;
+
+  virtual nebula::meta::Column column(const std::string& col) const noexcept override {
+    if (col == "pin_signature" || col == "pin_id") {
+      // enable bloom filter on id column
+      return { true };
+    }
+
+    return Table::column(col);
+  }
+};
+
+class CommentsTable : public nebula::meta::Table {
+public:
+  static constexpr auto NAME = "pin.comments";
+  CommentsTable() : Table(NAME) {
+    schema_ = nebula::type::TypeSerializer::from(
+      "ROW<_time_:long, user_id:long, pin_signature:string, comments:string>");
   }
 
   virtual ~CommentsTable() = default;
@@ -56,7 +72,7 @@ public:
   virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override;
 
   virtual nebula::meta::Column column(const std::string& col) const noexcept override {
-    if (col == "user_id" || col == "pin_id") {
+    if (col == "user_id" || col == "pin_signature") {
       // enable bloom filter on id column
       return { true };
     }
@@ -67,8 +83,16 @@ public:
 
 class CommentsMetaService : public nebula::meta::MetaService {
 public:
-  virtual std::shared_ptr<nebula::meta::Table> query(const std::string&) override {
-    return std::make_shared<CommentsTable>();
+  virtual std::shared_ptr<nebula::meta::Table> query(const std::string& tb) override {
+    if (tb == CommentsTable::NAME) {
+      return std::make_shared<CommentsTable>();
+    }
+
+    if (tb == SignaturesTable::NAME) {
+      return std::make_shared<SignaturesTable>();
+    }
+
+    throw NException("table not found: " + tb);
   }
 
   virtual std::vector<nebula::meta::NNode> queryNodes(

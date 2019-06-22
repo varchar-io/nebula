@@ -40,6 +40,7 @@
 // use "host.docker.internal" for docker env
 DEFINE_string(HOST_ADDR, "localhost", "Local dev purpose address to connect services");
 DEFINE_string(COMMENTS_FILE, "/home/shawncao/hadoop/sample.txt", "Local dev purpose address to connect services");
+DEFINE_string(SIGNATURES_FILE, "/home/shawncao/hadoop/sign.txt", "signature to pin id file");
 
 /**
  * A cursor template that help iterating a container.
@@ -209,6 +210,8 @@ void RunServer() {
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   LOG(INFO) << "Nebula server listening on " << server_address;
 
+  // load up signatures
+  v1Service.loadSignatures(FLAGS_SIGNATURES_FILE);
   // server is up first and then we load the data
   v1Service.loadComments(FLAGS_COMMENTS_FILE);
 

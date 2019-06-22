@@ -50,17 +50,9 @@ class CommentsRawRow : public nebula::surface::RowData {
 public:
   bool set(const RowData* row) {
     time_ = Evidence::time(row->readString("created_at"), "%Y-%m-%d %H:%M:%S");
-    auto json = row->readString("json");
-    rapidjson::Document document;
-
-    if (document.Parse(json.data()).HasParseError()) {
-      return false;
-    }
-
-    // fetching data from document
-    user_ = document["user_id"].GetInt64();
-    pin_ = document["pin_id"].GetInt64();
-    comments_ = document["text"].GetString();
+    user_ = row->readLong("user_id");
+    comments_ = row->readString("comments");
+    sign_ = row->readString("pin_signature");
     return true;
   }
 
@@ -102,8 +94,12 @@ public:
   }
 
   std::string_view readString(const std::string& field) const override {
-    if (LIKELY(field == "comments")) {
+    if (field == "comments") {
       return comments_;
+    }
+
+    if (field == "pin_signature") {
+      return sign_;
     }
 
     throw NException("not hit");
@@ -116,6 +112,7 @@ private:
   int64_t user_;
   int64_t pin_;
   std::string comments_;
+  std::string sign_;
 };
 
 std::shared_ptr<nebula::meta::MetaService> CommentsTable::getMs() const {
@@ -127,7 +124,7 @@ void CommentsTable::load(const std::string& file) {
   auto bm = BlockManager::init();
 
   // PURE TEST CODE: load data from a file path
-  const std::vector<std::string> columns = { "id", "json", "created_at" };
+  const std::vector<std::string> columns = { "pin_signature", "user_id", "comments", "created_at" };
 
   std::unordered_map<size_t, std::unique_ptr<Batch>> blocksByDate;
   std::unordered_map<size_t, std::pair<size_t, size_t>> timeRangeByDate;
@@ -202,6 +199,121 @@ void CommentsTable::load(const std::string& file) {
 
   auto metrics = bm->getTableMetrics(NAME);
   LOG(INFO) << fmt::format("blocks: {0}, skipped: {1}, total: {2}", std::get<0>(metrics), errors, count);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+class SignautresRawRow : public nebula::surface::RowData {
+public:
+  bool set(const RowData* row) {
+    time_ = Evidence::unix_timestamp();
+    sign_ = row->readString("pin_signature");
+    pin_ = row->readLong("pin_id");
+    return true;
+  }
+
+// raw date to _time_ columm in ingestion time
+#define TRANSFER(TYPE, FUNC)                             \
+  TYPE FUNC(const std::string& field) const override {   \
+    throw NException(fmt::format("{0} not hit", field)); \
+  }
+
+  TRANSFER(bool, readBool)
+  TRANSFER(int8_t, readByte)
+  TRANSFER(int16_t, readShort)
+  TRANSFER(int32_t, readInt)
+  TRANSFER(float, readFloat)
+  TRANSFER(double, readDouble)
+  TRANSFER(std::unique_ptr<nebula::surface::ListData>, readList)
+  TRANSFER(std::unique_ptr<nebula::surface::MapData>, readMap)
+
+  bool isNull(const std::string&) const override {
+    return false;
+  }
+
+  // _time_ is in long type and it's coming from date string
+  int64_t readLong(const std::string& field) const override {
+    if (field == Table::TIME_COLUMN) {
+      // timestamp in string 2016-07-15 14:38:03
+      return time_;
+    }
+
+    if (field == "pin_id") {
+      return pin_;
+    }
+
+    throw NException("not hit");
+  }
+
+  std::string_view readString(const std::string& field) const override {
+    if (field == "pin_signature") {
+      return sign_;
+    }
+
+    throw NException("not hit");
+  }
+
+#undef TRANSFER
+
+private:
+  time_t time_;
+  int64_t pin_;
+  std::string sign_;
+};
+
+std::shared_ptr<nebula::meta::MetaService> SignaturesTable::getMs() const {
+  return std::make_shared<CommentsMetaService>();
+}
+
+void SignaturesTable::load(const std::string& file) {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // PURE TEST CODE: load data from a file path
+  const std::vector<std::string> columns = { "pin_signature", "pin_id" };
+
+  size_t blockId = 0;
+
+  // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
+  LOG(INFO) << "Reading signatures from " << file;
+  CsvReader reader(file, '\t', columns);
+
+  // limit at 1b on single host
+  const size_t bRows = 100000;
+  std::unique_ptr<Batch> batch = std::make_unique<Batch>(*this, bRows);
+  SignautresRawRow sRow;
+  size_t count = 0;
+  while (reader.hasNext()) {
+    if (count++ % 1000000 == 0) {
+      LOG(INFO) << fmt::format("Loaded {0} signatures.", count);
+      if (count >= FLAGS_COMMENTS_MAX) {
+        break;
+      }
+    }
+
+    auto& row = reader.next();
+    sRow.set(&row);
+
+    // get time column value
+    size_t time = common::Evidence::unix_timestamp();
+    // if this is already full
+    if (batch->getRows() >= bRows) {
+      // move it to the manager and erase it from the map
+      bm->add(NBlock(name_, blockId++, time, time), std::move(batch));
+      batch = std::make_unique<Batch>(*this, bRows);
+    }
+
+    // add a new entry
+    batch->add(sRow);
+  }
+
+  // move all blocks in map into block manager
+  if (batch->getRows() > 0) {
+    size_t time = common::Evidence::unix_timestamp();
+    bm->add(NBlock(name_, blockId++, time, time), std::move(batch));
+  }
+
+  auto metrics = bm->getTableMetrics(NAME);
+  LOG(INFO) << fmt::format("blocks: {0}, total: {1}", std::get<0>(metrics), count);
 }
 
 } // namespace trends
