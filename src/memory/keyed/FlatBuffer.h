@@ -48,11 +48,17 @@ namespace keyed {
 using nebula::surface::IndexType;
 
 static constexpr int8_t HIGH6_1 = 1 << 6;
+static constexpr auto SIZET_SIZE = sizeof(size_t);
+static constexpr size_t MAGIC = 0x910928;
 
 class RowAccessor;
 
 struct Buffer {
   Buffer(size_t page) : offset{ 0 }, slice{ page } {}
+
+  // initialize a buffer with given slice
+  Buffer(size_t size, const NByte* buffer) : offset{ size }, slice{ buffer, size } {}
+  // write offset and also current size
   size_t offset;
   nebula::common::PagedSlice slice;
 };
@@ -68,7 +74,8 @@ class FlatBuffer {
   using OL = std::tuple<size_t, size_t>;
 
 public:
-  FlatBuffer(const nebula::type::Schema& schema);
+  FlatBuffer(const nebula::type::Schema&);
+  FlatBuffer(const nebula::type::Schema&, const NByte*);
 
   virtual ~FlatBuffer() = default;
 
@@ -97,6 +104,22 @@ public:
     return rows_.size();
   }
 
+  inline size_t binSize() const {
+    return SIZET_SIZE +                                   // num rows
+           2 * rows_.size() * SIZET_SIZE +                // rows offset and length data
+           SIZET_SIZE +                                   // main block size
+           SIZET_SIZE +                                   // data block size
+           SIZET_SIZE +                                   // list block size
+           SIZET_SIZE +                                   // reserved
+           main_->offset + data_->offset + list_->offset; // all binary size
+  }
+
+  size_t serialize(NByte*) const;
+
+  const nebula::type::Schema& schema() const {
+    return schema_;
+  }
+
 private:
   bool appendNull(bool, nebula::type::Kind, Buffer&);
 
@@ -111,14 +134,18 @@ private:
 
   static size_t widthInMain(nebula::type::Kind);
 
+  void initSchema();
+
 private:
-  // record each row's offset and length
+  // offset of last row used for supporting roll back
   std::tuple<size_t, size_t, size_t> last_;
+
+  // record each row's offset and length
   std::vector<OL> rows_;
   nebula::type::Schema schema_;
-  Buffer main_;
-  Buffer data_;
-  Buffer list_;
+  std::unique_ptr<Buffer> main_;
+  std::unique_ptr<Buffer> data_;
+  std::unique_ptr<Buffer> list_;
 
   // A row accessor cursor to read data of given row
   friend class RowAccessor;

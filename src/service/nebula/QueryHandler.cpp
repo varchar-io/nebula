@@ -18,6 +18,7 @@
 #include <folly/Conv.h>
 #include "execution/core/ServerExecutor.h"
 #include "service/node/NodeClient.h"
+#include "service/node/RemoteNodeConnector.h"
 
 /**
  * Define some basic sharable proerpties for nebula service
@@ -47,7 +48,7 @@ using nebula::execution::ExecutionPlan;
 using nebula::execution::core::ServerExecutor;
 using nebula::meta::Table;
 using nebula::service::Operation;
-using nebula::surface::RowCursor;
+using nebula::surface::RowCursorPtr;
 using nebula::type::Kind;
 using nebula::type::Schema;
 using nebula::type::TypeNode;
@@ -75,14 +76,12 @@ std::unique_ptr<ExecutionPlan> QueryHandler::compile(const Table& tb, const Quer
   }
 }
 
-RowCursor QueryHandler::query(const ExecutionPlan& plan, ErrorCode& err) const noexcept {
+RowCursorPtr QueryHandler::query(const ExecutionPlan& plan, ErrorCode& err) const noexcept {
   // execute the query plan
   try {
-    // talk to node server and make sure it is alive - we need network bounded node client
-    // NodeClient client(FLAGS_HOST_ADDR, nebula::service::ServiceProperties::NPORT);
-    // client.echo("nebula");
-
-    return ServerExecutor(nebula::meta::NNode::local().toString()).execute(plan);
+    // create a node connector for this executor
+    auto connector = std::make_shared<RemoteNodeConnector>();
+    return ServerExecutor(nebula::meta::NNode::local().toString()).execute(plan, connector);
   } catch (const std::exception& exp) {
     LOG(ERROR) << "Error in executing query: " << exp.what();
     err = ErrorCode::FAIL_EXECUTE_QUERY;

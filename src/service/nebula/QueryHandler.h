@@ -32,7 +32,7 @@ namespace service {
 class QueryHandler final {
 public:
   std::unique_ptr<nebula::execution::ExecutionPlan> compile(const nebula::meta::Table&, const QueryRequest&, ErrorCode&) const noexcept;
-  nebula::surface::RowCursor query(const nebula::execution::ExecutionPlan&, ErrorCode&) const noexcept;
+  nebula::surface::RowCursorPtr query(const nebula::execution::ExecutionPlan&, ErrorCode&) const noexcept;
 
 private:
   // build the query object to execute

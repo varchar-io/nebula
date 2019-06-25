@@ -20,6 +20,7 @@
 #include <glog/logging.h>
 #include <sys/mman.h>
 #include "NodeClient.h"
+#include "NodeConnector.h"
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 
@@ -32,15 +33,18 @@ namespace execution {
 namespace core {
 
 class ServerExecutor {
+  static const std::shared_ptr<NodeConnector> inproc() {
+    static const std::shared_ptr<NodeConnector> IN_PROC = std::make_shared<NodeConnector>();
+    return IN_PROC;
+  }
+
 public:
   ServerExecutor(const std::string& server)
     : server_{ server }, threadPool_{ 8 } {
     // this servrer should be myself
   }
 
-  NodeClient connect(const nebula::meta::NNode& node);
-
-  nebula::surface::RowCursor execute(const ExecutionPlan& plan);
+  nebula::surface::RowCursorPtr execute(const ExecutionPlan&, const std::shared_ptr<NodeConnector> = inproc());
 
 private:
   const std::string server_;

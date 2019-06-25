@@ -57,7 +57,7 @@ using nebula::memory::Batch;
 using nebula::meta::NBlock;
 using nebula::meta::Table;
 using nebula::storage::CsvReader;
-using nebula::surface::RowCursor;
+using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Kind;
 using nebula::type::Schema;
@@ -118,7 +118,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
     return replyError(error, reply, 0);
   }
 
-  RowCursor result = handler_.query(*plan, error);
+  RowCursorPtr result = handler_.query(*plan, error);
   auto durationMs = tick.elapsedMs();
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, durationMs);

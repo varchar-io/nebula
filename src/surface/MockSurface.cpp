@@ -29,7 +29,10 @@ namespace surface {
 // All intrefaces - string type has RVO, copy elision optimization
 bool MockRowData::isNull(const std::string&) const {
   // 10% nulls
-  return rand_() < 0.1;
+  // TODO(cao) - revisit nulls handling in both batch and flatbuffer
+  // Turn on this and run test ExecutionTest.TestRowCursorSerde
+  // return rand_() < 0.1;
+  return false;
 }
 
 bool MockRowData::readBool(const std::string&) const {

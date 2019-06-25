@@ -24,22 +24,26 @@ namespace nebula {
 namespace memory {
 namespace keyed {
 
-class FlatRowCursor : public nebula::common::Cursor<nebula::surface::RowData> {
-  using T = nebula::surface::RowData;
-
+class FlatRowCursor : public nebula::surface::RowCursor {
 public:
   explicit FlatRowCursor(std::unique_ptr<HashFlat> flat)
-    : nebula::common::Cursor<T>(flat->getRows()),
+    : nebula::surface::RowCursor(flat->getRows()),
       flat_{ std::move(flat) } {}
 
   virtual ~FlatRowCursor() = default;
 
-  virtual const T& next() override {
+  virtual const nebula::surface::RowData& next() override {
     return flat_->row(index_++);
   }
 
-  virtual std::unique_ptr<T> item(size_t index) const override {
+  virtual std::unique_ptr<nebula::surface::RowData> item(size_t index) const override {
     return flat_->crow(index);
+  }
+
+  inline std::unique_ptr<nebula::memory::keyed::FlatBuffer> takeResult() {
+    auto temp = std::move(flat_);
+    flat_ = nullptr;
+    return temp;
   }
 
 private:

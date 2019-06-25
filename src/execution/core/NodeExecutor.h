@@ -39,9 +39,10 @@ public:
     : blockManager_{ blockManager }, threadPool_{ std::thread::hardware_concurrency() } {}
 
 public:
-  nebula::surface::RowCursor execute(const ExecutionPlan& plan);
+  nebula::surface::RowCursorPtr execute(const ExecutionPlan& plan);
 
-  folly::Future<nebula::surface::RowCursor> compute(const nebula::memory::Batch&, const BlockPhase&);
+private:
+  folly::Future<nebula::surface::RowCursorPtr> compute(const nebula::memory::Batch&, const BlockPhase&);
 
 private:
   const std::shared_ptr<BlockManager> blockManager_;

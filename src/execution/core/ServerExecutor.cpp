@@ -17,6 +17,7 @@
 #include "ServerExecutor.h"
 #include <folly/executors/ThreadedExecutor.h>
 #include <folly/futures/Future.h>
+#include "NodeConnector.h"
 #include "surface/TopRows.h"
 
 // TODO(cao) - COMMENT OUT, lib link issue
@@ -32,21 +33,21 @@ namespace core {
 using nebula::common::CompositeCursor;
 using nebula::common::Cursor;
 using nebula::meta::NNode;
-using nebula::surface::RowCursor;
+using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::surface::TopRows;
 using nebula::type::Kind;
 
 static std::chrono::milliseconds RPC_TIMEOUT = std::chrono::milliseconds(5000);
 
-RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
-  std::vector<folly::Future<RowCursor>> results;
+RowCursorPtr ServerExecutor::execute(const ExecutionPlan& plan, const std::shared_ptr<NodeConnector> connector) {
+  std::vector<folly::Future<RowCursorPtr>> results;
   for (const NNode& node : plan.getNodes()) {
-    auto c = connect(node);
-    auto f = c.execute(plan)
+    auto c = connector->makeClient(node, threadPool_);
+    auto f = c->execute(plan)
                // set time out handling
                // TODO(cao) - add error handling too via thenError
-               .onTimeout(RPC_TIMEOUT, [&]() -> RowCursor { 
+               .onTimeout(RPC_TIMEOUT, [&]() -> RowCursorPtr { 
                  LOG(WARNING) << "Timeout: " << RPC_TIMEOUT.count();
                  return {}; });
 
@@ -118,11 +119,6 @@ RowCursor ServerExecutor::execute(const ExecutionPlan& plan) {
   }
 
   return std::make_shared<TopRows>(composite, phase.top(), less);
-}
-
-NodeClient ServerExecutor::connect(const nebula::meta::NNode& node) {
-  // connect to the specified node and return an inttance of it.
-  return NodeClient(node, threadPool_);
 }
 
 } // namespace core

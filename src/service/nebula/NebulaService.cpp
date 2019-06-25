@@ -18,6 +18,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include "api/dsl/Serde.h"
+#include "type/Serde.h"
 
 /**
  * provide common data operations for service
@@ -29,7 +30,7 @@ using nebula::api::dsl::Expression;
 using nebula::api::dsl::Query;
 using nebula::api::dsl::Serde;
 using nebula::api::dsl::SortType;
-using nebula::surface::RowCursor;
+using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Kind;
 using nebula::type::Schema;
@@ -52,7 +53,7 @@ const std::string ServiceProperties::errorMessage(ErrorCode error) {
 }
 #undef ERROR_MESSSAGE_CASE
 
-const std::string ServiceProperties::jsonify(const RowCursor data, const Schema schema) {
+const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Schema schema) {
   // set up JSON writer to serialize each row
   rapidjson::StringBuffer buffer;
   rapidjson::Writer<rapidjson::StringBuffer> json(buffer);
@@ -227,6 +228,30 @@ std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(
 
   // return this compiled plan
   return plan;
+}
+
+flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(const nebula::memory::keyed::FlatBuffer& fb) {
+  flatbuffers::grpc::MessageBuilder mb;
+  auto schema = mb.CreateString(nebula::type::TypeSerializer::to(fb.schema()));
+  int8_t* buffer;
+  auto bytes = mb.CreateUninitializedVector<int8_t>(fb.binSize(), &buffer);
+  fb.serialize(buffer);
+
+  auto batch = CreateBatchRows(mb, schema, BatchType::BatchType_Flat, bytes);
+  mb.Finish(batch);
+  return mb.ReleaseMessage<BatchRows>();
+}
+
+nebula::memory::keyed::FlatBuffer BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>* batch) {
+  auto ptr = batch->GetRoot();
+
+  const auto schema = nebula::type::TypeSerializer::from(flatbuffers::GetString(ptr->schema()));
+  N_ENSURE(ptr->type() == BatchType::BatchType_Flat, "only support flat for now");
+
+  auto bytes = ptr->data()->data();
+
+  // TODO(cao) - It is not good, we're reference some data from batch but actually not owning it.
+  return nebula::memory::keyed::FlatBuffer(schema, bytes);
 }
 
 } // namespace service

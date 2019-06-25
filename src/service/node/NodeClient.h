@@ -15,25 +15,29 @@
  */
 #pragma once
 
+#include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/init/Init.h>
 #include <grpcpp/grpcpp.h>
 #include <iostream>
 #include <memory>
 #include <string>
+#include "execution/ExecutionPlan.h"
+#include "execution/core/NodeClient.h"
+#include "meta/NNode.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
 #include "service/nebula/NebulaService.h"
-
 /**
  * Define node client which is responsible to talk to a node server for query fan out.
  */
 namespace nebula {
 namespace service {
-class NodeClient {
+class NodeClient : public nebula::execution::core::NodeClient {
 public:
-  NodeClient(const std::string& address, size_t port) {
+  NodeClient(const nebula::meta::NNode& node, folly::ThreadPoolExecutor& pool)
+    : nebula::execution::core::NodeClient(node, pool) {
     // create chanel via TCP connection - localhost? 127.0.0.1? 0.0.0.0?
-    const auto addr = fmt::format("{0}:{1}", address, port);
+    const auto addr = node.toString();
     LOG(INFO) << "Node client connecting: " << addr;
     auto channel = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
 
@@ -48,8 +52,12 @@ public:
 
   virtual ~NodeClient() = default;
 
+  // execute a plan on remote node
+  virtual folly::Future<nebula::surface::RowCursorPtr> execute(const nebula::execution::ExecutionPlan& plan) override;
+
 private:
   std::unique_ptr<nebula::service::NodeServer::Stub> stub_;
 };
+
 } // namespace service
 } // namespace nebula

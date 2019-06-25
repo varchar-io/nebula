@@ -37,7 +37,9 @@ class MapData;
 
 // define a row cursor type, using pointer to allow poly
 using IndexType = size_t;
-using RowCursor = typename std::shared_ptr<nebula::common::Cursor<RowData>>;
+using RowCursor = nebula::common::Cursor<RowData>;
+using CompositeRowCursor = nebula::common::CompositeCursor<RowData>;
+using RowCursorPtr = typename std::shared_ptr<RowCursor>;
 
 // (TODO) CRTP - avoid virtual methods?
 class RowData {

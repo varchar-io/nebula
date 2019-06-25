@@ -99,12 +99,10 @@ private:
 // declare a operator to feed in stream to a csv row
 std::istream& operator>>(std::istream&, CsvRow&);
 
-class CsvReader : public nebula::common::Cursor<nebula::surface::RowData> {
-  using Base = nebula::common::Cursor<nebula::surface::RowData>;
-
+class CsvReader : public nebula::surface::RowCursor {
 public:
   CsvReader(const std::string& file, char delimiter = ',', const std::vector<std::string>& columns = {})
-    : Base(0), fstream_{ file }, row_{ delimiter }, cacheRow_{ delimiter } {
+    : nebula::surface::RowCursor(0), fstream_{ file }, row_{ delimiter }, cacheRow_{ delimiter } {
     LOG(INFO) << "Reading a delimiter separated file: " << file << " by " << delimiter;
     // if the schema is given
     if (columns.size() > 0) {

@@ -156,7 +156,27 @@ TEST(FlatBufferTest, TestSerde) {
 
   EXPECT_EQ(fb.getRows(), rows2test);
 
-  fb.serialize
+  auto size = fb.binSize();
+  auto buffer = new NByte[size];
+
+  // serialize size should equal expected bin size
+  EXPECT_EQ(size, fb.serialize(buffer));
+
+  // deserialize this data into another flat buffer
+  FlatBuffer fb2(test.schema(), buffer);
+
+  // check these two buffers are exactly the same
+  EXPECT_EQ(fb2.getRows(), rows2test);
+
+  // check every single row are the same
+  for (auto i = 0; i < rows2test; ++i) {
+    const auto& r = fb.row(i);
+    const auto& r2 = fb2.row(i);
+    EXPECT_EQ(line(r), line(r2));
+  }
+
+  // release buffer
+  delete[] buffer;
 }
 
 } // namespace test

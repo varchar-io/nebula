@@ -43,9 +43,22 @@ struct NNode {
     return fmt::format("{0}:{1}", server, port);
   }
 
-  static NNode local() {
+  inline bool equals(const NNode& other) const {
+    if (this == &other) {
+      return true;
+    }
+
+    return role == other.role && server == other.server && port == other.port;
+  }
+
+  static const NNode& local() {
     static const NNode LOCAL = NNode{ NRole::SERVER, "localhost", 9190 };
     return LOCAL;
+  }
+
+  static const NNode& inproc() {
+    static const NNode INPROC = NNode{ NRole::NODE, "0", 0 };
+    return INPROC;
   }
 };
 

@@ -58,6 +58,7 @@ add_executable(ExecTests
 
 target_link_libraries(ExecTests 
     PRIVATE ${NEBULA_EXEC}
+    PRIVATE ${OMM_LIBRARY}
     PRIVATE ${GTEST_LIBRARY}
     PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${GMOCK_LIBRARY})

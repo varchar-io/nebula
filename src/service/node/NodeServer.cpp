@@ -15,12 +15,22 @@
  */
 
 #include "NodeServer.h"
+#include <sys/mman.h>
+#include "execution/BlockManager.h"
+#include "execution/core/NodeExecutor.h"
+#include "execution/serde/RowCursorSerde.h"
+#include "surface/DataSurface.h"
 
 /**
  * Define node server that does the work as nebula server asks.
  */
 namespace nebula {
 namespace service {
+
+using nebula::execution::BlockManager;
+using nebula::execution::core::NodeExecutor;
+using nebula::memory::keyed::FlatBuffer;
+using nebula::surface::RowCursorPtr;
 
 // Single echo implementation
 grpc::Status NodeServerImpl::Echo(
@@ -73,10 +83,36 @@ grpc::Status NodeServerImpl::Echos(
   return grpc::Status::OK;
 }
 
+// TODO(cao) - we may want to change this endpoint as streaming
+// So that we don't need to do aggregation here, instead push all block executor results to server for aggregation.
+// Single aggregation - perf?
+grpc::Status NodeServerImpl::Query(
+  grpc::ServerContext* context,
+  const flatbuffers::grpc::Message<QueryPlan>* request_msg,
+  flatbuffers::grpc::Message<BatchRows>* batch) {
+  auto ms = std::make_shared<nebula::meta::MetaService>();
+  auto plan = QuerySerde::from(ms, request_msg);
+
+  // execute this plan and get results
+  NodeExecutor executor(BlockManager::init());
+  auto cursor = executor.execute(*plan);
+  const auto& buffer = nebula::execution::serde::asBuffer(*cursor, plan->getOutputSchema());
+
+  // serialize row cursor back
+  *batch = BatchSerde::serialize(*buffer);
+
+  return grpc::Status::OK;
+}
+
 } // namespace service
 } // namespace nebula
 
 void RunServer() {
+  // We're using AOP lib yomm2 to inject batch serialiation
+  // Since we don't use dynamic library loading, we call this once at starting point.
+  yorel::yomm2::update_methods();
+
+  // launch the server
   std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::ServiceProperties::NPORT));
   nebula::service::NodeServerImpl node;
 

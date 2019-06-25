@@ -30,11 +30,11 @@ using nebula::execution::eval::EvalContext;
 using nebula::execution::eval::UDAF;
 using nebula::execution::eval::ValueEval;
 using nebula::memory::keyed::HashFlat;
+using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Kind;
 
-std::shared_ptr<nebula::common::Cursor<nebula::surface::RowData>>
-  compute(const nebula::memory::Batch& data, const nebula::execution::BlockPhase& plan) {
+RowCursorPtr compute(const nebula::memory::Batch& data, const nebula::execution::BlockPhase& plan) {
   if (plan.hasAggregation()) {
     return std::make_shared<BlockExecutor>(data, plan);
   }

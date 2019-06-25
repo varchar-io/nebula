@@ -20,6 +20,7 @@
 #endif
 
 #include "api/dsl/Query.h"
+#include "memory/keyed/FlatBuffer.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
 #include "surface/DataSurface.h"
@@ -93,7 +94,7 @@ public:
   static const std::string errorMessage(ErrorCode);
 
   // jsonify a row set of data with given schema
-  static const std::string jsonify(const nebula::surface::RowCursor, const nebula::type::Schema);
+  static const std::string jsonify(const nebula::surface::RowCursorPtr, const nebula::type::Schema);
 };
 
 /**
@@ -110,8 +111,9 @@ public:
  * A batch serde to transmit a batch between nodes in fb format w/ zero-copy.
  */
 class BatchSerde {
-  static flatbuffers::grpc::Message<RowCursor> serialize(const nebula::api::dsl::Query&, const std::string&, uint64_t, uint64_t);
-  static nebula::api::dsl::Query deserialize(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
+public:
+  static flatbuffers::grpc::Message<BatchRows> serialize(const nebula::memory::keyed::FlatBuffer&);
+  static nebula::memory::keyed::FlatBuffer deserialize(const flatbuffers::grpc::Message<BatchRows>*);
 };
 
 } // namespace service

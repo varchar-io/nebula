@@ -101,6 +101,9 @@ include(ext/Grpc_Ext.cmake)
 # include rapid JSON
 include(ext/Json_Ext.cmake)
 
+# include open multi-methods
+include(ext/Omm_Ext.cmake)
+
 # include arrow
 include(ext/Arrow_Ext.cmake)
 

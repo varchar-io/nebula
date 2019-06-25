@@ -135,10 +135,23 @@ if(APPLE)
     #     "INTERFACE_INCLUDE_DIRECTORIES" "${ARROW_INCLUDE_DIRS}")
     # include_directories(include ${ARROW_INCLUDE_DIRS})
 else()
+    # Steps to update boost to 1.69 to linux devapp
+    # https://onethinglab.com/2019/01/30/how-to-install-latest-boost-library-on-ubuntu/
+    # 0. tmp folder or build folder
+    # 1. wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.gz
+    # 2. tar -zxvf boost_1_69_0.tar.gz
+    # 3. cd boost_1_69_0/
+    # <install to current folder>
+    # 4. ./bootstrap.sh
+    # 5. ./b2
+    # <install to system>
+    # 4. sudo ./bootstrap.sh --prefix=/usr
+    # 5. sudo ./b2 stage threading=multi -j32
+    # 6. sudo ./b2 install
     set(Boost_USE_STATIC_LIBS        ON) # only find static libs
     set(Boost_USE_MULTITHREADED      ON)
     set(Boost_USE_STATIC_RUNTIME    OFF)
-    find_package(Boost 1.54 COMPONENTS program_options regex system filesystem context REQUIRED)
+    find_package(Boost 1.69 COMPONENTS program_options regex system filesystem context REQUIRED)
     if(Boost_FOUND)
       include_directories(${Boost_INCLUDE_DIRS})
     endif()

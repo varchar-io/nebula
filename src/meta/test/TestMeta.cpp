@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
+#include <fmt/format.h>
 #include <glog/logging.h>
-#include "fmt/format.h"
+#include <gtest/gtest.h>
 #include "meta/NBlock.h"
 #include "meta/Table.h"
 #include "meta/TestTable.h"

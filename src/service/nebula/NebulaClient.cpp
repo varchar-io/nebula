@@ -19,8 +19,10 @@
 #include <memory>
 #include <string>
 
+#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <grpcpp/grpcpp.h>
 #include "NebulaService.h"
+#include "meta/NNode.h"
 #include "nebula.grpc.pb.h"
 #include "service/node/NodeClient.h"
 
@@ -74,13 +76,13 @@ private:
 } // namespace nebula
 
 int main(int argc, char** argv) {
-  constexpr auto address = "localhost";
-  auto serviceAddr = fmt::format("{0}:{1}", address, nebula::service::ServiceProperties::PORT);
-  nebula::service::EchoClient greeter(grpc::CreateChannel(serviceAddr, grpc::InsecureChannelCredentials()));
+  const nebula::meta::NNode node{ nebula::meta::NRole::NODE, "localhost", nebula::service::ServiceProperties::PORT };
+  nebula::service::EchoClient greeter(grpc::CreateChannel(node.toString(), grpc::InsecureChannelCredentials()));
   LOG(INFO) << "Echo received from nebula server: " << greeter.echo("nebula");
 
   // connect to node client
-  nebula::service::NodeClient client(address, nebula::service::ServiceProperties::NPORT);
+  folly::CPUThreadPoolExecutor pool{ 2 };
+  nebula::service::NodeClient client(node, pool);
   client.echo("nebula node");
 
   return 0;

@@ -8,7 +8,6 @@ add_library(${NEBULA_META} STATIC
 target_link_libraries(${NEBULA_META}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_TYPE}
-    PRIVATE ${NEBULA_SURFACE}
     PRIVATE ${FMT_LIBRARY})
 
 # include its own root directory for searching headers

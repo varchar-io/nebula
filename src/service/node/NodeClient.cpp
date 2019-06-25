@@ -21,6 +21,8 @@
  */
 namespace nebula {
 namespace service {
+using nebula::execution::ExecutionPlan;
+using nebula::surface::RowCursorPtr;
 
 void NodeClient::echo(const std::string& name) {
   // build request message through fb builder
@@ -66,6 +68,18 @@ void NodeClient::echos(const std::string& name, size_t count) {
   if (!status.ok()) {
     LOG(ERROR) << "RPC failed: code=" << status.error_code() << ", msg=" << status.error_message();
   }
+}
+
+folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
+  auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
+
+  pool_.add([&plan, p]() {
+    // TODO(cao) - make RPC call to get the data back - return empty cursor for now
+    plan.display();
+    p->setValue(RowCursorPtr(0));
+  });
+
+  return p->getFuture();
 }
 
 } // namespace service

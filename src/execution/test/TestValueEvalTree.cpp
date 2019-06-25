@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 #include "common/Evidence.h"
 #include "execution/eval/ValueEval.h"
-#include "fmt/format.h"
-#include "gmock/gmock.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 

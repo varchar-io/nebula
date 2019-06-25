@@ -27,14 +27,14 @@ namespace nebula {
 namespace execution {
 namespace core {
 
-using nebula::common::CompositeCursor;
 using nebula::common::Cursor;
 using nebula::execution::eval::UDAF;
 using nebula::memory::Batch;
 using nebula::memory::keyed::FlatRowCursor;
 using nebula::memory::keyed::HashFlat;
 using nebula::meta::MetaService;
-using nebula::surface::RowCursor;
+using nebula::surface::CompositeRowCursor;
+using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Kind;
 
@@ -45,7 +45,7 @@ using nebula::type::Kind;
  * This will fanout to multiple blocks in a executor pool before return.
  * So the interfaces will be changed as async interfaces using future and promise.
  */
-RowCursor NodeExecutor::execute(const ExecutionPlan& plan) {
+RowCursorPtr NodeExecutor::execute(const ExecutionPlan& plan) {
   const BlockPhase& blockPhase = plan.fetch<PhaseType::COMPUTE>();
   // query total number of blocks to  executor on and
   // launch block executor on each in parallel
@@ -53,7 +53,7 @@ RowCursor NodeExecutor::execute(const ExecutionPlan& plan) {
   const std::vector<Batch*> blocks = blockManager_->query(*ms.query(blockPhase.table()), plan);
 
   LOG(INFO) << "Processing total blocks: " << blocks.size();
-  std::vector<folly::Future<RowCursor>> results;
+  std::vector<folly::Future<RowCursorPtr>> results;
   results.reserve(blocks.size());
   std::transform(blocks.begin(), blocks.end(), std::back_inserter(results),
                  [&blockPhase, this](const auto block) {
@@ -115,7 +115,7 @@ RowCursor NodeExecutor::execute(const ExecutionPlan& plan) {
 
   LOG(INFO) << "Node executor collect results after aggregation";
   // for query that doesn't need agg - just composite it and return
-  auto c = std::make_shared<CompositeCursor<RowData>>();
+  auto c = std::make_shared<CompositeRowCursor>();
   for (auto it = x.begin(); it < x.end(); ++it) {
     c->combine(it->value());
   }
@@ -123,8 +123,8 @@ RowCursor NodeExecutor::execute(const ExecutionPlan& plan) {
   return c;
 }
 
-folly::Future<RowCursor> NodeExecutor::compute(const Batch& block, const BlockPhase& phase) {
-  auto p = std::make_shared<folly::Promise<RowCursor>>();
+folly::Future<RowCursorPtr> NodeExecutor::compute(const Batch& block, const BlockPhase& phase) {
+  auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
   threadPool_.add([&block, &phase, p]() {
     // compute phase on block and return the result
     p->setValue(nebula::execution::core::compute(block, phase));

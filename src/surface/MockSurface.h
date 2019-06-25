@@ -78,16 +78,17 @@ private:
   std::vector<std::string> strings_;
 };
 
-class MockRowCursor : public nebula::common::Cursor<RowData> {
+class MockRowCursor : public RowCursor {
 public:
-  MockRowCursor() : Cursor<RowData>(8) {
+  MockRowCursor(size_t size = 8) : RowCursor(size) {
   }
 
   virtual const RowData& next() override {
+    index_++;
     return rowData_;
   }
 
-  virtual std::unique_ptr<nebula::surface::RowData> item(size_t) const override {
+  virtual std::unique_ptr<RowData> item(size_t) const override {
     throw NException("not support item");
   }
 

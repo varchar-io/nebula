@@ -32,13 +32,14 @@ namespace execution {
 namespace core {
 /**
  * Block executor defines the smallest compute unit and itself is a row data cursor
+ * TODO(cao): consider merging FlatRowCursor here for module reuse.
+ * Till then, BlockExecutor will return wrapped FlatRowCursor instead of itself as row cursor.
  */
-class BlockExecutor : public nebula::common::Cursor<nebula::surface::RowData> {
-  using Base = nebula::common::Cursor<nebula::surface::RowData>;
+class BlockExecutor : public nebula::surface::RowCursor {
 
 public:
   BlockExecutor(const nebula::memory::Batch& data, const nebula::execution::BlockPhase& plan)
-    : Base(0), data_{ data }, plan_{ plan } {
+    : nebula::surface::RowCursor(0), data_{ data }, plan_{ plan } {
     // compute will finish the compute and fill the data state in
     this->compute();
   }
@@ -52,6 +53,12 @@ public:
     return result_->crow(index);
   }
 
+  inline std::unique_ptr<nebula::memory::keyed::FlatBuffer> takeResult() {
+    auto temp = std::move(result_);
+    result_ = nullptr;
+    return temp;
+  }
+
 private:
   void compute();
 
@@ -61,12 +68,10 @@ private:
   std::unique_ptr<nebula::memory::keyed::HashFlat> result_;
 };
 
-class SamplesExecutor : public nebula::common::Cursor<nebula::surface::RowData> {
-  using Base = nebula::common::Cursor<nebula::surface::RowData>;
-
+class SamplesExecutor : public nebula::surface::RowCursor {
 public:
   SamplesExecutor(const nebula::memory::Batch& data, const nebula::execution::BlockPhase& plan)
-    : Base(0), data_{ data }, plan_{ plan } {
+    : nebula::surface::RowCursor(0), data_{ data }, plan_{ plan } {
     // compute will finish the compute and fill the data state in
     this->compute();
   }
@@ -89,8 +94,7 @@ private:
   std::unique_ptr<ReferenceRows> samples_;
 };
 
-std::shared_ptr<nebula::common::Cursor<nebula::surface::RowData>>
-  compute(const nebula::memory::Batch&, const nebula::execution::BlockPhase&);
+nebula::surface::RowCursorPtr compute(const nebula::memory::Batch&, const nebula::execution::BlockPhase&);
 
 } // namespace core
 } // namespace execution

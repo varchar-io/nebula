@@ -27,12 +27,10 @@ namespace nebula {
 namespace execution {
 namespace core {
 
-class ReferenceRows : public nebula::common::Cursor<nebula::surface::RowData> {
-  using T = nebula::surface::RowData;
-
+class ReferenceRows : public nebula::surface::RowCursor {
 public:
   explicit ReferenceRows(const BlockPhase& plan, const nebula::memory::Batch& data)
-    : nebula::common::Cursor<T>(0),
+    : nebula::surface::RowCursor(0),
       data_{ data },
       accessor_{ data.makeAccessor() },
       ctx_{ plan.cacheEval() },
@@ -56,13 +54,13 @@ public:
     return ++size_;
   }
 
-  virtual const T& next() override {
+  virtual const nebula::surface::RowData& next() override {
     auto row = rows_.at(index_++);
     ctx_.reset(accessor_->seek(row));
     return runtime_;
   }
 
-  virtual std::unique_ptr<T> item(size_t index) const override {
+  virtual std::unique_ptr<nebula::surface::RowData> item(size_t index) const override {
     auto row = data_.makeAccessor();
     row->seek(index);
     return row;

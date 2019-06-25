@@ -25,6 +25,7 @@
 #include "meta/TestTable.h"
 #include "service/nebula/NebulaService.h"
 #include "service/nebula/QueryHandler.h"
+#include "service/node/RemoteNodeConnector.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "type/Serde.h"
@@ -42,7 +43,7 @@ using nebula::execution::io::trends::TrendsTable;
 using nebula::meta::NBlock;
 using nebula::meta::TestTable;
 using nebula::service::ErrorCode;
-using nebula::surface::RowCursor;
+using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
@@ -398,6 +399,57 @@ TEST(ServiceTest, TestQuerySerde) {
 
   // JSON results of two queries are the same
   EXPECT_EQ(str1, str2);
+  LOG(INFO) << "result is " << str1;
+}
+
+TEST(ServiceTest, TestDataSerde) {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  auto start = Evidence::time("2019-01-01", "%Y-%m-%d");
+  auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    auto begin = start + i * window;
+    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+  }
+
+  const auto query = table(testTable.name(), testTable.getMs())
+                       .where(like(col("event"), "NN%"))
+                       .select(
+                         col("event"),
+                         col("flag"),
+                         max(col("id") * 2).as("max_id"),
+                         min(col("id") + 1).as("min_id"),
+                         count(1).as("count"))
+                       .groupby({ 1, 2 })
+                       .sortby({ 5 }, SortType::DESC)
+                       .limit(10);
+  auto plan1 = query.compile();
+  plan1->setWindow({ start, end });
+
+  // pass the query plan to a server to execute - usually it is itself
+
+  // get result with default in proc connector
+  nebula::common::Evidence::Duration tick;
+  auto result1 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan1);
+  LOG(INFO) << "Query time with in-proc connector (ms): " << tick.elapsedMs();
+  auto str1 = ServiceProperties::jsonify(result1, plan1->getOutputSchema());
+
+  // get result with cross-boundary connector
+  // auto connector = std::make_shared<RemoteNodeConnector>();
+  // tick.reset();
+  // auto result2 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan1, connector);
+  // LOG(INFO) << "Query time with remote connector (ms): " << tick.elapsedMs();
+  // auto str2 = ServiceProperties::jsonify(result2, plan1->getOutputSchema());
+
+  // // JSON results of two queries are the same
+  // EXPECT_EQ(str1, str2);
   LOG(INFO) << "result is " << str1;
 }
 

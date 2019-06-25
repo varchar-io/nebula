@@ -19,32 +19,23 @@
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/futures/Future.h>
 #include <glog/logging.h>
-#include <sys/mman.h>
-#include "execution/BlockManager.h"
-#include "execution/ExecutionPlan.h"
+#include "NodeClient.h"
+#include "meta/NNode.h"
 
 /**
- * This node executor accepts one request of an execution plan.
- * And starts to conduct block scan and partial agg operations and return results to the requester.
+ * Node connector provides way to connect a node.
+ * It could be a in-process provider or network-endpoint provider
  */
 namespace nebula {
 namespace execution {
 namespace core {
-
-class NodeClient {
+class NodeConnector {
 public:
-  NodeClient(const nebula::meta::NNode& node, folly::ThreadPoolExecutor& pool)
-    : node_{ node }, pool_{ pool } {}
-  virtual ~NodeClient() = default;
-
-  virtual folly::Future<nebula::surface::RowCursorPtr> execute(const ExecutionPlan& plan);
-
-protected:
-  static nebula::surface::RowCursorPtr invokeNode(const ExecutionPlan& plan);
-
-protected:
-  nebula::meta::NNode node_;
-  folly::ThreadPoolExecutor& pool_;
+  NodeConnector() = default;
+  virtual ~NodeConnector() = default;
+  virtual std::unique_ptr<NodeClient> makeClient(const nebula::meta::NNode& node, folly::ThreadPoolExecutor& pool) {
+    return std::make_unique<NodeClient>(node, pool);
+  }
 };
 } // namespace core
 } // namespace execution

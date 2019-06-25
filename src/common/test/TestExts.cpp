@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
+#include <roaring.hh>
+#include <yorel/yomm2/cute.hpp>
 #include "common/BloomFilter.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
-#include "fmt/format.h"
-#include "roaring.hh"
 
 /**
  * Test namespace for testing external dependency APIs
@@ -161,6 +162,41 @@ TEST(CuckooTest, TestCuckooFilter) {
   LOG(INFO) << "false positive rate is "
             << 100.0 * false_queries / total_queries
             << " filter size: " << filter.bytes();
+}
+
+// Testing yomm2 open multi-methods
+struct A {
+  virtual ~A() {}
+};
+struct B : A {};
+struct C : A {};
+
+register_class(A);
+register_class(B, A);
+register_class(C, A);
+
+declare_method(std::string, foobar, (yorel::yomm2::virtual_<A&>));
+
+define_method(std::string, foobar, (A&)) {
+  return "foobar(A)";
+}
+
+define_method(std::string, foobar, (B&)) {
+  return "foobar(B)";
+}
+
+// define_method(std::string, foobar, (C&)) {
+//   return "foobar(C)";
+// }
+
+TEST(CommonTest, TestOmm) {
+  yorel::yomm2::update_methods();
+
+  // NOTE: multi-inheritence may not work as tested.
+  B b;
+  C c;
+  LOG(INFO) << foobar(b);
+  LOG(INFO) << foobar(c);
 }
 } // namespace test
 } // namespace common

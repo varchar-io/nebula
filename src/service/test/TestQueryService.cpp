@@ -90,7 +90,7 @@ TEST(ServiceTest, TestServiceEndpoint) {
   plan->display();
   EXPECT_EQ(error, ErrorCode::NONE);
 
-  nebula::surface::RowCursor result = handler.query(*plan, error);
+  nebula::surface::RowCursorPtr result = handler.query(*plan, error);
   EXPECT_EQ(error, ErrorCode::NONE);
 
   LOG(INFO) << "JSON BLOB:";
@@ -129,7 +129,7 @@ TEST(ServiceTest, TestPinsData) {
   EXPECT_EQ(error, ErrorCode::NONE);
   plan->display();
 
-  nebula::surface::RowCursor result = handler.query(*plan, error);
+  nebula::surface::RowCursorPtr result = handler.query(*plan, error);
   EXPECT_EQ(error, ErrorCode::NONE);
 
   LOG(INFO) << "JSON BLOB:";

@@ -20,43 +20,31 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include "execution/io/trends/Trends.h"
+#include "NodeClient.h"
+#include "execution/core/NodeClient.h"
+#include "execution/core/NodeConnector.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
 #include "service/nebula/NebulaService.h"
 
 /**
- * Define node server that does the work as nebula server asks.
+ * Define remote node connector
  */
 namespace nebula {
 namespace service {
-
-class NodeServerImpl final : public NodeServer::Service {
-  virtual grpc::Status Echo(
-    grpc::ServerContext*,
-    const flatbuffers::grpc::Message<EchoPing>*,
-    flatbuffers::grpc::Message<EchoReply>*) override;
-
-  virtual grpc::Status Echos(
-    grpc::ServerContext*,
-    const flatbuffers::grpc::Message<ManyEchoPings>*,
-    grpc::ServerWriter<flatbuffers::grpc::Message<EchoReply>>*)
-    override;
-
-  virtual grpc::Status Query(
-    grpc::ServerContext*,
-    const flatbuffers::grpc::Message<QueryPlan>*,
-    flatbuffers::grpc::Message<BatchRows>*)
-    override;
-
-  flatbuffers::grpc::MessageBuilder mb_;
-  nebula::execution::io::trends::TrendsTable trends_;
-
+class RemoteNodeConnector : public nebula::execution::core::NodeConnector {
 public:
-  void loadTrends() {
-    trends_.load();
+  RemoteNodeConnector() = default;
+  virtual ~RemoteNodeConnector() = default;
+
+  virtual std::unique_ptr<nebula::execution::core::NodeClient> makeClient(const nebula::meta::NNode& node, folly::ThreadPoolExecutor& pool) override {
+    //a little optimization here - for in proc node, we can avoid serialization
+    if (node.equals(nebula::meta::NNode::inproc())) {
+      return std::make_unique<nebula::execution::core::NodeClient>(node, pool);
+    }
+
+    return std::make_unique<NodeClient>(node, pool);
   }
 };
-
 } // namespace service
 } // namespace nebula

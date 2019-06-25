@@ -34,6 +34,7 @@ add_executable(CommonTests
 
 target_link_libraries(CommonTests 
     PRIVATE ${NEBULA_COMMON}    
+    PRIVATE ${OMM_LIBRARY}
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${ROARING_LIBRARY}

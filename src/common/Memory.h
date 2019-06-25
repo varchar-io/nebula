@@ -32,6 +32,11 @@
 //   std::free(p);
 // }
 
+// define Nebula byte type
+#ifndef NByte
+#define NByte int8_t
+#endif
+
 namespace nebula {
 namespace common {
 
@@ -74,15 +79,19 @@ private:
 class Slice {
 public:
   virtual ~Slice() {
-    if (!!ptr_) {
-      pool_.free(static_cast<void*>(ptr_));
-    } else {
-      LOG(ERROR) << "A slice should hold a valid pointer";
+    if (ownbuffer_) {
+      if (!!ptr_) {
+        pool_.free(static_cast<void*>(ptr_));
+      } else {
+        LOG(ERROR) << "A slice should hold a valid pointer";
+      }
     }
   }
 
 protected:
-  Slice(size_t bytes) : pool_{ Pool::getDefault() }, size_{ bytes }, ptr_{ static_cast<char*>(pool_.allocate(bytes)) } {}
+  // A read-only slice!! wrapping an external buffer but not owning it
+  Slice(const NByte* buffer, size_t size) : pool_{ Pool::getDefault() }, size_{ size }, ptr_{ const_cast<NByte*>(buffer) }, ownbuffer_{ false } {}
+  Slice(size_t size) : pool_{ Pool::getDefault() }, size_{ size }, ptr_{ static_cast<NByte*>(pool_.allocate(size)) }, ownbuffer_{ true } {}
   Slice(Slice&) = delete;
   Slice(Slice&&) = delete;
   Slice& operator=(Slice&) = delete;
@@ -95,7 +104,10 @@ protected:
   size_t size_;
 
   // memory pointer
-  char* ptr_;
+  NByte* ptr_;
+
+  // own the buffer?
+  bool ownbuffer_;
 };
 
 /**
@@ -104,11 +116,16 @@ protected:
  */
 class PagedSlice : public Slice {
 public:
-  PagedSlice(size_t page) : Slice(page), slices_{ 1 } {}
+  PagedSlice(const NByte* buffer, size_t size) : Slice{ buffer, size }, slices_{ 1 } {}
+  PagedSlice(size_t page) : Slice{ page }, slices_{ 1 } {}
   ~PagedSlice() = default;
 
   // append a bytes array of length bytes to position
-  size_t write(size_t position, const char* data, size_t length);
+  inline size_t write(size_t position, const char* data, size_t length) {
+    return write(position, (NByte*)data, length);
+  }
+
+  size_t write(size_t position, const NByte* data, size_t length);
 
   // append a data object at position using sizeof to determine its size
   template <typename T>
@@ -141,13 +158,16 @@ public:
              fmt::format("invalid position ({0}, {1}) to read data", position, length));
 
     // build data using copy elision
-    return std::string_view(this->ptr_ + position, length);
+    return std::string_view((char*)this->ptr_ + position, length);
   }
 
   // capacity
   size_t capacity() const {
     return size_ * slices_;
   }
+
+  // copy current slice data into a given buffer
+  size_t copy(NByte*, size_t, size_t) const;
 
 private:
   // ensure capacity of memory allocation

@@ -47,18 +47,27 @@ void PagedSlice::ensure(size_t size) {
     }
 
     N_ENSURE_GT(slices, slices_, "required slices should be more than existing capacity");
-    this->ptr_ = static_cast<char*>(this->pool_.extend(this->ptr_, capacity(), slices * size_));
+    this->ptr_ = static_cast<NByte*>(this->pool_.extend(this->ptr_, capacity(), slices * size_));
     std::swap(slices, slices_);
   }
 }
 
 // append a bytes array of length bytes to position
-size_t PagedSlice::write(size_t position, const char* data, size_t length) {
+size_t PagedSlice::write(size_t position, const NByte* data, size_t length) {
   size_t cursor = position + length;
   ensure(cursor);
 
   // copy data into given place
   std::memcpy(this->ptr_ + position, data, length);
+  return length;
+}
+
+size_t PagedSlice::copy(NByte* buffer, size_t offset, size_t length) const {
+  N_ENSURE(length <= capacity(), "requested data is too much.");
+
+  // copy over
+  std::memcpy(buffer + offset, this->ptr_, length);
+
   return length;
 }
 

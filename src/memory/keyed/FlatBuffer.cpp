@@ -24,12 +24,7 @@ using nebula::common::PagedSlice;
 using nebula::surface::ListData;
 using nebula::surface::RowData;
 using nebula::type::Kind;
-
-FlatBuffer::FlatBuffer(const nebula::type::Schema& schema)
-  : schema_{ schema },
-    main_{ 2 * 1024 },
-    data_{ 32 * 1024 },
-    list_{ 4 * 1024 } {
+void FlatBuffer::initSchema() {
   // build name to index look up
   // build a field name to data node
   const auto numCols = schema_->size();
@@ -42,6 +37,59 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema)
 
     widths_[i] = widthInMain(f->k());
   }
+}
+
+FlatBuffer::FlatBuffer(const nebula::type::Schema& schema)
+  : schema_{ schema },
+    main_{ std::make_unique<Buffer>(2 * 1024) },
+    data_{ std::make_unique<Buffer>(32 * 1024) },
+    list_{ std::make_unique<Buffer>(4 * 1024) } {
+  this->initSchema();
+}
+
+// initialize a read-only flat buffer with given serialized data
+// NOTE: This read-only object doesn't own the data buffer neither copy, it only references it.
+//       Hence external buffer holder needs to be live the same scope this object,
+//       We can improve this interface later.
+FlatBuffer::FlatBuffer(const nebula::type::Schema& schema, const NByte* data) : schema_{ schema } {
+  this->initSchema();
+
+  // deserialize data for rows and all data blocks
+  // refer method serialize for reverse logic
+  size_t offset = 0;
+  const auto readSizeT = [&data, &offset]() {
+    auto value = *reinterpret_cast<const size_t*>(data + offset);
+    offset += SIZET_SIZE;
+    return value;
+  };
+
+  auto numRows = readSizeT();
+  if (numRows == 0) {
+    return;
+  }
+
+  // populate all rows OL
+  rows_.reserve(numRows);
+  for (size_t i = 0; i < numRows; ++i) {
+    rows_.push_back({ readSizeT(), readSizeT() });
+  }
+
+  // write main block size
+  auto mainSize = readSizeT();
+  auto dataSize = readSizeT();
+  auto listSize = readSizeT();
+  auto magic = readSizeT();
+  N_ENSURE(magic == MAGIC, "magic mismatch: corrupted flat buffer data");
+
+  // build up each buffer
+  main_ = std::make_unique<Buffer>(mainSize, data + offset);
+  offset += mainSize;
+
+  data_ = std::make_unique<Buffer>(dataSize, data + offset);
+  offset += dataSize;
+
+  list_ = std::make_unique<Buffer>(listSize, data + offset);
+  offset += listSize;
 }
 
 size_t FlatBuffer::widthInMain(Kind kind) {
@@ -97,14 +145,14 @@ size_t FlatBuffer::append(T value, Buffer& dest) {
 template <>
 size_t FlatBuffer::append(std::string_view str, Buffer& dest) {
   // write variable data into dirty buffer and get offset and length
-  auto len = data_.slice.write(data_.offset, str.data(), str.size());
+  auto len = data_->slice.write(data_->offset, (NByte*)str.data(), str.size());
 
   // write offset and length in main chunk
-  append<int32_t>(data_.offset, dest);
+  append<int32_t>(data_->offset, dest);
   append<int32_t>(len, dest);
 
   // move forward data offset for next
-  data_.offset += len;
+  data_->offset += len;
 
   return len;
 }
@@ -114,20 +162,20 @@ size_t FlatBuffer::append(std::string_view str, Buffer& dest) {
 // If we want to support updating list, we should move its data to next level (like string).
 // We can considering using a dynamic chained buffers to allow multiple levels of dirty buffers.
 size_t FlatBuffer::appendList(Kind itemKind, std::unique_ptr<ListData> list) {
-  auto offset = list_.offset;
+  auto offset = list_->offset;
   auto count = list->getItems();
 
   // add every single item here, the function is similar to add method
   // which iterates over columns instead
   for (auto i = 0; i < count; ++i) {
-    if (appendNull(list->isNull(i), itemKind, list_)) {
+    if (appendNull(list->isNull(i), itemKind, *list_)) {
       // add null for this field
       continue;
     }
 
 #define SCALAR_DATA_DISTR(KIND, FUNC) \
   case Kind::KIND: {                  \
-    append(list->FUNC(i), list_);     \
+    append(list->FUNC(i), *list_);    \
     break;                            \
   }
 
@@ -162,9 +210,9 @@ size_t FlatBuffer::rollback() {
     rows_.pop_back();
 
     // every buffer reset offset
-    main_.offset = std::get<0>(last_);
-    data_.offset = std::get<1>(last_);
-    list_.offset = std::get<2>(last_);
+    main_->offset = std::get<0>(last_);
+    data_->offset = std::get<1>(last_);
+    list_->offset = std::get<2>(last_);
   }
 
   return size;
@@ -173,9 +221,9 @@ size_t FlatBuffer::rollback() {
 // add a row into current batch
 size_t FlatBuffer::add(const nebula::surface::RowData& row) {
   // record current state before adding a new row - used for rollback
-  last_ = std::make_tuple(main_.offset, data_.offset, list_.offset);
+  last_ = std::make_tuple(main_->offset, data_->offset, list_->offset);
 
-  const auto rowOffset = main_.offset;
+  const auto rowOffset = main_->offset;
   const auto numColumns = schema_->size();
 
   std::vector<bool> nulls;
@@ -183,12 +231,12 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
   for (size_t i = 0; i < numColumns; ++i) {
     auto type = schema_->childType(i);
     const Kind kind = type->k();
-    nulls.push_back(appendNull(row.isNull(i), kind, main_));
+    nulls.push_back(appendNull(row.isNull(i), kind, *main_));
   }
 
 #define SCALAR_DATA_DISTR(KIND, FUNC) \
   case Kind::KIND: {                  \
-    append(row.FUNC(i), main_);       \
+    append(row.FUNC(i), *main_);      \
     break;                            \
   }
 
@@ -217,11 +265,11 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
       auto list = row.readList(i);
 
       // write 4 bytes of N = number of items
-      append<int32_t>(list->getItems(), main_);
+      append<int32_t>(list->getItems(), *main_);
       auto listType = std::dynamic_pointer_cast<nebula::type::ListType>(type);
       auto childKind = listType->childType(0)->k();
       auto listOffset = appendList(childKind, std::move(list));
-      append<int32_t>(listOffset, main_);
+      append<int32_t>(listOffset, *main_);
 
       break;
     }
@@ -232,10 +280,10 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
 #undef SCALAR_DATA_DISTR
 
   // after processing all columns, we got the row offset and length, record it here
-  rows_.push_back(std::make_tuple(rowOffset, main_.offset - rowOffset));
+  rows_.push_back(std::make_tuple(rowOffset, main_->offset - rowOffset));
 
   return rowOffset;
-} // namespace keyed
+}
 
 // random access to a row - may require internal seek
 const std::unique_ptr<RowData> FlatBuffer::crow(size_t rowId) const {
@@ -263,7 +311,7 @@ FlatColumnProps FlatBuffer::columnProps(size_t offset) const {
   // first numCols bytes store nulls for all columns
   auto colOffset = numCols;
   for (size_t i = 0; i < numCols; ++i) {
-    auto nullByte = main_.slice.read<int8_t>(offset + i);
+    auto nullByte = main_->slice.read<int8_t>(offset + i);
     Kind kind = (Kind)(nullByte & ~HIGH6_1);
     bool nv = (nullByte & HIGH6_1) != 0;
     colProps.emplace_back(nv, colOffset, kind);
@@ -284,10 +332,10 @@ size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
   static constexpr size_t start = 0xC6A4A7935BD1E995UL;
   size_t hvalue = start;
 
-#define TYPE_HASH(KIND, TYPE)                                                   \
-  case Kind::KIND: {                                                            \
-    n8bytes = std::hash<TYPE>()(main_.slice.read<TYPE>(rowOffset + colOffset)); \
-    break;                                                                      \
+#define TYPE_HASH(KIND, TYPE)                                                    \
+  case Kind::KIND: {                                                             \
+    n8bytes = std::hash<TYPE>()(main_->slice.read<TYPE>(rowOffset + colOffset)); \
+    break;                                                                       \
   }
 
   std::for_each(std::begin(cols), std::end(cols),
@@ -313,13 +361,13 @@ size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
                       TYPE_HASH(DOUBLE, int64_t)
                     case Kind::VARCHAR: {
                       // read 4 bytes offset and 4 bytes length
-                      auto offset = main_.slice.read<int32_t>(rowOffset + colOffset);
-                      auto len = main_.slice.read<int32_t>(rowOffset + colOffset + 4);
+                      auto offset = main_->slice.read<int32_t>(rowOffset + colOffset);
+                      auto len = main_->slice.read<int32_t>(rowOffset + colOffset + 4);
 
                       // read the real data from data_
                       // TODO(cao) - we don't need convert strings from bytes for hash
                       // instead, slice should be able to hash the range[offset, len] much cheaper
-                      n8bytes = std::hash<std::string_view>()(data_.slice.read(offset, len));
+                      n8bytes = std::hash<std::string_view>()(data_->slice.read(offset, len));
                       break;
                     }
                     default:
@@ -343,12 +391,12 @@ bool FlatBuffer::equal(size_t row1, size_t row2, const std::vector<size_t>& cols
   FlatColumnProps colProps1 = columnProps(row1Offset);
   FlatColumnProps colProps2 = columnProps(row2Offset);
 
-#define TYPE_COMPARE(KIND, TYPE)                                                                              \
-  case Kind::KIND: {                                                                                          \
-    if (main_.slice.read<TYPE>(row1Offset + colOffset1) != main_.slice.read<TYPE>(row2Offset + colOffset2)) { \
-      return false;                                                                                           \
-    }                                                                                                         \
-    break;                                                                                                    \
+#define TYPE_COMPARE(KIND, TYPE)                                                                                \
+  case Kind::KIND: {                                                                                            \
+    if (main_->slice.read<TYPE>(row1Offset + colOffset1) != main_->slice.read<TYPE>(row2Offset + colOffset2)) { \
+      return false;                                                                                             \
+    }                                                                                                           \
+    break;                                                                                                      \
   }
 
   for (auto index : cols) {
@@ -381,13 +429,13 @@ bool FlatBuffer::equal(size_t row1, size_t row2, const std::vector<size_t>& cols
       // read the real data from data_
       // TODO(cao) - we don't need convert strings from bytes for hash
       // instead, slice should be able to compare two byte range
-      auto s1 = data_.slice.read(
-        main_.slice.read<int32_t>(row1Offset + colOffset1),
-        main_.slice.read<int32_t>(row1Offset + colOffset1 + 4));
+      auto s1 = data_->slice.read(
+        main_->slice.read<int32_t>(row1Offset + colOffset1),
+        main_->slice.read<int32_t>(row1Offset + colOffset1 + 4));
 
-      auto s2 = data_.slice.read(
-        main_.slice.read<int32_t>(row2Offset + colOffset2),
-        main_.slice.read<int32_t>(row2Offset + colOffset2 + 4));
+      auto s2 = data_->slice.read(
+        main_->slice.read<int32_t>(row2Offset + colOffset2),
+        main_->slice.read<int32_t>(row2Offset + colOffset2 + 4));
 
       if (s1 != s2) {
         return false;
@@ -416,12 +464,12 @@ bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, 
 #define UPDATE_COLUMN(COLUMN, KIND, TYPE)                       \
   case Kind::KIND: {                                            \
     auto targetOffset = row2Offset + colOffset2;                \
-    auto nv = main_.slice.read<TYPE>(row1Offset + colOffset1);  \
-    auto ov = main_.slice.read<TYPE>(targetOffset);             \
+    auto nv = main_->slice.read<TYPE>(row1Offset + colOffset1); \
+    auto ov = main_->slice.read<TYPE>(targetOffset);            \
     TYPE x;                                                     \
     auto feedback = callback(COLUMN, Kind::KIND, &ov, &nv, &x); \
     N_ENSURE(feedback, "callback should always return true");   \
-    main_.slice.write<TYPE>(targetOffset, x);                   \
+    main_->slice.write<TYPE>(targetOffset, x);                  \
     break;                                                      \
   }
 
@@ -464,6 +512,54 @@ bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, 
   return true;
 }
 
+size_t FlatBuffer::serialize(NByte* buffer) const {
+  const auto numRows = rows_.size();
+  if (numRows == 0) {
+    return 0;
+  }
+
+  auto offset = 0;
+  // write size_t value
+  const auto writeSizeT = [&buffer, &offset](size_t value) {
+    *reinterpret_cast<size_t*>(buffer + offset) = value;
+    offset += SIZET_SIZE;
+  };
+
+  // write num rows
+  writeSizeT(numRows);
+
+  // write all rows' offset and length
+  for (size_t i = 0; i < numRows; ++i) {
+    auto& rowEntry = rows_.at(i);
+    writeSizeT(std::get<0>(rowEntry));
+    writeSizeT(std::get<1>(rowEntry));
+  }
+
+  // write main block size
+  writeSizeT(main_->offset);
+
+  // write data block size
+  writeSizeT(data_->offset);
+
+  // write list block size
+  writeSizeT(list_->offset);
+
+  // write a reserved value
+  writeSizeT(MAGIC);
+
+  // write all main bits
+  offset += main_->slice.copy(buffer, offset, main_->offset);
+
+  // write all data bits
+  offset += data_->slice.copy(buffer, offset, data_->offset);
+
+  // write all list bits
+  offset += list_->slice.copy(buffer, offset, list_->offset);
+
+  // total size of the serialized data
+  return offset;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 RowAccessor::RowAccessor(const FlatBuffer& fb, size_t offset, FlatColumnProps colProps)
   : fb_{ fb }, offset_{ offset }, colProps_{ std::move(colProps) } {}
@@ -473,10 +569,10 @@ bool RowAccessor::isNull(IndexType index) const {
   return std::get<0>(colProps_[index]);
 }
 
-#define READ_FIELD(TYPE, FUNC)                              \
-  TYPE RowAccessor::FUNC(IndexType index) const {           \
-    auto colOffset = std::get<1>(colProps_[index]);         \
-    return fb_.main_.slice.read<TYPE>(offset_ + colOffset); \
+#define READ_FIELD(TYPE, FUNC)                               \
+  TYPE RowAccessor::FUNC(IndexType index) const {            \
+    auto colOffset = std::get<1>(colProps_[index]);          \
+    return fb_.main_->slice.read<TYPE>(offset_ + colOffset); \
   }
 
 READ_FIELD(bool, readBool)
@@ -492,25 +588,25 @@ READ_FIELD(double, readDouble)
 std::string_view RowAccessor::readString(IndexType index) const {
   auto colOffset = std::get<1>(colProps_[index]);
   // read 4 bytes offset and 4 bytes length
-  auto offset = fb_.main_.slice.read<int32_t>(offset_ + colOffset);
-  auto len = fb_.main_.slice.read<int32_t>(offset_ + colOffset + 4);
+  auto offset = fb_.main_->slice.read<int32_t>(offset_ + colOffset);
+  auto len = fb_.main_->slice.read<int32_t>(offset_ + colOffset + 4);
 
   // read the real data from data_
-  return fb_.data_.slice.read(offset, len);
+  return fb_.data_->slice.read(offset, len);
 }
 
 // compound types
 std::unique_ptr<nebula::surface::ListData> RowAccessor::readList(IndexType index) const {
   auto colOffset = std::get<1>(colProps_[index]);
   // read 4 bytes offset and 4 bytes length
-  auto items = fb_.main_.slice.read<int32_t>(offset_ + colOffset);
-  auto offset = fb_.main_.slice.read<int32_t>(offset_ + colOffset + 4);
+  auto items = fb_.main_->slice.read<int32_t>(offset_ + colOffset);
+  auto offset = fb_.main_->slice.read<int32_t>(offset_ + colOffset + 4);
 
   // can we cache this query or cache listAccessor?
   auto listType = std::dynamic_pointer_cast<nebula::type::ListType>(fb_.schema_->childType(index));
 
   // read the real data from data_
-  return std::make_unique<ListAccessor>(items, offset, fb_.list_, fb_.data_, fb_.widthInMain(listType->childType(0)->k()));
+  return std::make_unique<ListAccessor>(items, offset, *fb_.list_, *fb_.data_, fb_.widthInMain(listType->childType(0)->k()));
 }
 
 std::unique_ptr<nebula::surface::MapData> RowAccessor::readMap(IndexType) const {
