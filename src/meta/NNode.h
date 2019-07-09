@@ -28,6 +28,7 @@
  */
 namespace nebula {
 namespace meta {
+
 enum class NRole {
   NODE,
   SERVER
@@ -51,6 +52,14 @@ struct NNode {
     return role == other.role && server == other.server && port == other.port;
   }
 
+  inline bool isInProc() const {
+    return this->equals(inproc());
+  }
+
+  inline bool isLocal() const {
+    return this->equals(local());
+  }
+
   static const NNode& local() {
     static const NNode LOCAL = NNode{ NRole::SERVER, "localhost", 9190 };
     return LOCAL;
@@ -59,6 +68,26 @@ struct NNode {
   static const NNode& inproc() {
     static const NNode INPROC = NNode{ NRole::NODE, "0", 0 };
     return INPROC;
+  }
+};
+
+struct NodeHash {
+public:
+  size_t operator()(const NNode& node) const {
+    return (std::hash<size_t>()(static_cast<size_t>(node.role)))
+           ^ (std::hash<size_t>()(node.port) * 111)
+           ^ (std::hash<std::string>()(node.server) * 11111);
+  }
+};
+
+struct NodeEqual {
+public:
+  bool operator()(const NNode& node1, const NNode& node2) const {
+    // TODO(cao) - verify if there is duplicate nodes
+    // while one is using IP and the other using DNS
+    return node1.role == node2.role
+           && node1.server == node2.server
+           && node1.port == node2.port;
   }
 };
 

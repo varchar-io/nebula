@@ -29,6 +29,7 @@
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/eval/ValueEval.h"
+#include "execution/meta/TableService.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "meta/NBlock.h"
@@ -46,8 +47,8 @@ using nebula::common::Cursor;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::eval::EvalContext;
-using nebula::meta::MockMs;
-using nebula::meta::NBlock;
+using nebula::execution::meta::TableService;
+using nebula::meta::BlockSignature;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
@@ -55,7 +56,7 @@ using nebula::type::TypeSerializer;
 TEST(ApiTest, TestQueryStructure) {
   auto tbl = "nebula.test";
   // set up table for testing
-  auto ms = std::make_shared<MockMs>();
+  auto ms = std::make_shared<TableService>();
   const auto query = table(tbl, ms)
                        .where(like(col("event"), "NN%"))
                        .select(
@@ -86,7 +87,7 @@ TEST(ApiTest, TestQueryStructure) {
   auto ptable = ms->query(tbl);
 
   // ensure block 0 of the test table (load from storage if not in memory)
-  NBlock block(ptable->name(), 0, 0, 0);
+  BlockSignature block{ ptable->name(), 0, 0, 0 };
   bm->add(block);
 
   // execute a plan on a server: for demo, we run the server on localhost:9190
@@ -114,7 +115,7 @@ TEST(ApiTest, TestQueryStructure) {
 TEST(ApiTest, TestSortingAndTop) {
   auto tbl = "nebula.test";
   // set up table for testing
-  auto ms = std::make_shared<MockMs>();
+  auto ms = std::make_shared<TableService>();
   const auto query = table(tbl, ms)
                        .where(like(col("event"), "N%"))
                        .select(
@@ -132,7 +133,7 @@ TEST(ApiTest, TestSortingAndTop) {
   // load test data to run this query
   auto bm = BlockManager::init();
   auto ptable = ms->query(tbl);
-  NBlock block(ptable->name(), 0, 0, 0);
+  BlockSignature block{ ptable->name(), 0, 0, 0 };
   bm->add(block);
   nebula::common::Evidence::Duration tick;
 
@@ -181,7 +182,7 @@ TEST(ApiTest, TestExprValueEval) {
   auto id2 = mirror.readInt("id");
   auto expected2 = id1 * 2 + 10 - (id2 / 4);
 
-  auto ms = std::make_shared<MockMs>();
+  auto ms = std::make_shared<TableService>();
   auto tbl = ms->query("nebula.test");
   expr.type(*tbl);
   expr2.type(*tbl);

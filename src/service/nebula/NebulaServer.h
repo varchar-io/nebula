@@ -19,6 +19,7 @@
 #include "QueryHandler.h"
 #include "execution/io/trends/Comments.h"
 #include "execution/io/trends/Pins.h"
+#include "execution/meta/TableService.h"
 #include "meta/TestTable.h"
 #include "nebula.grpc.pb.h"
 
@@ -38,49 +39,11 @@ class V1ServiceImpl final : public V1::Service {
   // query handler to handle all the queries
   QueryHandler handler_;
 
+  // table meta service
+  nebula::execution::meta::TableService ts_;
+
 private:
   grpc::Status replyError(ErrorCode, QueryResponse*, size_t) const;
-
-  // TODO(cao) - designed to serve trends table specifically, remove after having real meta service.
-  const nebula::meta::Table& getTable(const std::string& name) const {
-    if (pins_.name() == name) {
-      return pins_;
-    }
-
-    if (test_.name() == name) {
-      return test_;
-    }
-
-    if (comments_.name() == name) {
-      return comments_;
-    }
-
-    if (signatures_.name() == name) {
-      return signatures_;
-    }
-
-    throw NException("Table not found here");
-  }
-
-  nebula::execution::io::trends::PinsTable pins_;
-  nebula::execution::io::trends::CommentsTable comments_;
-  nebula::execution::io::trends::SignaturesTable signatures_;
-  nebula::meta::TestTable test_;
-
-public:
-  void loadPins() {
-    pins_.load();
-  }
-
-  void loadComments(const std::string& file) {
-    comments_.load(file);
-  }
-
-  void loadSignatures(const std::string& file) {
-    signatures_.load(file);
-  }
-
-  void loadNebulaTest();
 };
 
 } // namespace service

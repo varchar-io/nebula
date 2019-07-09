@@ -27,26 +27,6 @@
 namespace nebula {
 namespace meta {
 
-struct NodeHash {
-public:
-  size_t operator()(const NNode& node) const {
-    return (std::hash<size_t>()(static_cast<size_t>(node.role)))
-           ^ (std::hash<size_t>()(node.port) * 111)
-           ^ (std::hash<std::string>()(node.server) * 11111);
-  }
-};
-
-struct NodeEqual {
-public:
-  bool operator()(const NNode& node1, const NNode& node2) const {
-    // TODO(cao) - verify if there is duplicate nodes
-    // while one is using IP and the other using DNS
-    return node1.role == node2.role
-           && node1.server == node2.server
-           && node1.port == node2.port;
-  }
-};
-
 using NNodeSet = std::unordered_set<NNode, NodeHash, NodeEqual>;
 
 class ClusterInfo {

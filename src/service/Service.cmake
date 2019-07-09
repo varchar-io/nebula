@@ -52,8 +52,8 @@ include_directories("${GEN_DIR}")
 # generate a node client for this service
 SET(NODE_GEN "${GEN_DIR}/nodejs")
 file(MAKE_DIRECTORY ${NODE_GEN})
-add_custom_target(nebula_node_client
-      ALL COMMAND ${PROTO_COMPILER}
+add_custom_target(nebula_node_client ALL 
+  COMMAND ${PROTO_COMPILER}
       --grpc_out="${NODE_GEN}"
       --js_out=import_style=commonjs,binary:${NODE_GEN}
       -I "${nproto_path}"
@@ -67,8 +67,8 @@ get_filename_component(nfbs_path "${nfbs}" PATH)
 
 # Generated sources from proto file
 set(NODE_GEN_DIR "${GEN_DIR}/node")
-add_custom_target(compile_fbs
-      ALL COMMAND ${FLATBUFFERS_COMPILER} -b -o "${NODE_GEN_DIR}" --cpp --grpc "${nfbs}"
+add_custom_target(compile_fbs ALL 
+  COMMAND ${FLATBUFFERS_COMPILER} -b -o "${NODE_GEN_DIR}" --cpp --grpc "${nfbs}"
 DEPENDS ${nfbs})
 
 # Include generated *.pb.h files
@@ -154,8 +154,8 @@ configure_file(${NSERVER} ${GEN_DIR}/NebulaServer COPYONLY)
 configure_file(${NNSERVER} ${GEN_DIR}/NodeServer COPYONLY)
 
 # build web client library for nebula
-add_custom_target(nebula_web_client
-      ALL COMMAND ${PROTO_COMPILER} 
+add_custom_target(nebula_web_client ALL 
+  COMMAND ${PROTO_COMPILER} 
         --js_out=import_style=commonjs:"${GEN_DIR}"
         -I "${nproto_path}"
         --grpc-web_out=import_style=commonjs,mode=grpcwebtext:"${GEN_DIR}"

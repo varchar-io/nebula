@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Trends.h"
+#include "execution/meta/TableService.h"
 #include "fmt/format.h"
 #include "meta/NBlock.h"
 #include "meta/TestTable.h"
@@ -40,6 +41,7 @@ using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::TrendsTable;
+using nebula::execution::meta::TableService;
 using nebula::meta::NBlock;
 using nebula::meta::TestTable;
 using nebula::service::ErrorCode;
@@ -159,8 +161,8 @@ TEST(ServiceTest, TestQueryTimeline) {
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    auto begin = start + i * window;
-    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
   }
 
   // load test data to run this query
@@ -213,8 +215,8 @@ TEST(ServiceTest, TestStringFilters) {
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    auto begin = start + i * window;
-    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
   }
 
   // load test data to run this query
@@ -266,8 +268,8 @@ TEST(ServiceTest, TestQuerySamples) {
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    auto begin = start + i * window;
-    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
   }
 
   // load test data to run this query
@@ -356,15 +358,16 @@ TEST(ServiceTest, TestQuerySerde) {
   auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
+  auto ms = std::make_shared<TableService>();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    auto begin = start + i * window;
-    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
   }
 
-  const auto query = table(testTable.name(), testTable.getMs())
+  const auto query = table(testTable.name(), ms)
                        .where(like(col("event"), "NN%"))
                        .select(
                          col("event"),
@@ -385,7 +388,7 @@ TEST(ServiceTest, TestQuerySerde) {
   // serialize this query
   nebula::common::Evidence::Duration tick;
   auto ser = QuerySerde::serialize(query, plan1->id(), start, end);
-  auto plan2 = QuerySerde::from(testTable.getMs(), &ser);
+  auto plan2 = QuerySerde::from(ms, &ser);
 
   LOG(INFO) << "Query serde time (ms): " << tick.elapsedMs();
 
@@ -411,15 +414,16 @@ TEST(ServiceTest, TestDataSerde) {
   auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
+  auto ms = std::make_shared<TableService>();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    auto begin = start + i * window;
-    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
   }
 
-  const auto query = table(testTable.name(), testTable.getMs())
+  const auto query = table(testTable.name(), ms)
                        .where(like(col("event"), "NN%"))
                        .select(
                          col("event"),

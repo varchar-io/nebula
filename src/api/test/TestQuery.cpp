@@ -29,6 +29,7 @@
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Trends.h"
+#include "execution/meta/TableService.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "meta/NBlock.h"
@@ -47,8 +48,8 @@ using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::TrendsTable;
-using nebula::meta::MockMs;
-using nebula::meta::NBlock;
+using nebula::execution::meta::TableService;
+using nebula::meta::BlockSignature;
 using nebula::meta::TestTable;
 using nebula::surface::RowData;
 using nebula::type::Schema;
@@ -56,9 +57,11 @@ using nebula::type::TypeSerializer;
 
 TEST(ApiTest, TestReadSamples) {
   TrendsTable trends;
+  auto ms = std::make_shared<TableService>();
+
   // query this table
   const auto upbound = std::numeric_limits<int64_t>::max();
-  const auto query = table(trends.name(), trends.getMs())
+  const auto query = table(trends.name(), ms)
                        .where(col("_time_") > 0 && col("_time_") < upbound && starts(col("query"), "winter"))
                        .select(
                          col("*"))
@@ -93,9 +96,11 @@ TEST(ApiTest, TestReadSamples) {
 
 TEST(ApiTest, TestDataFromCsv) {
   TrendsTable trends;
+  auto ms = std::make_shared<TableService>();
+
   // query this table
   const auto upbound = std::numeric_limits<int64_t>::max();
-  const auto query = table(trends.name(), trends.getMs())
+  const auto query = table(trends.name(), ms)
                        .where(col("_time_") > 0 && col("_time_") < upbound && starts(col("query"), "winter"))
                        .select(
                          col("query"),
@@ -130,8 +135,10 @@ TEST(ApiTest, TestDataFromCsv) {
 
 TEST(ApiTest, TestMatchedKeys) {
   TrendsTable trends;
+  auto ms = std::make_shared<TableService>();
+
   // query this table
-  const auto query = table(trends.name(), trends.getMs())
+  const auto query = table(trends.name(), ms)
                        .where(like(col("query"), "leg work%"))
                        .select(
                          col("query"),
@@ -175,16 +182,17 @@ TEST(ApiTest, TestMultipleBlocks) {
   int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
+  auto ms = std::make_shared<TableService>();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    auto begin = start + i * window;
-    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
   }
 
   // query this table
-  const auto query = table(testTable.name(), testTable.getMs())
+  const auto query = table(testTable.name(), ms)
                        .where(col("_time_") > start && col("_time_") < end && like(col("event"), "NN%"))
                        .select(
                          col("event"),
@@ -228,16 +236,17 @@ TEST(ApiTest, TestStringEqEmpty) {
   int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
+  auto ms = std::make_shared<TableService>();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    auto begin = start + i * window;
-    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
   }
 
   // query this table
-  const auto query = table(testTable.name(), testTable.getMs())
+  const auto query = table(testTable.name(), ms)
                        .where(col("_time_") > start && col("_time_") < end && col("event") == "")
                        .select(
                          col("event"),
@@ -281,16 +290,17 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
   int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
+  auto ms = std::make_shared<TableService>();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    auto begin = start + i * window;
-    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
   }
 
   // we know we don't have an id larger than this number, so the query should skip all blocks
-  const auto query = table(testTable.name(), testTable.getMs())
+  const auto query = table(testTable.name(), ms)
                        .where(col("_time_") > start && col("_time_") < end && col("id") == 8989)
                        .select(
                          col("event"),

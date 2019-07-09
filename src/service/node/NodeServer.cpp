@@ -29,15 +29,16 @@ namespace service {
 
 using nebula::execution::BlockManager;
 using nebula::execution::core::NodeExecutor;
+using nebula::execution::io::BatchBlock;
 using nebula::memory::keyed::FlatBuffer;
 using nebula::surface::RowCursorPtr;
 
 // Single echo implementation
 grpc::Status NodeServerImpl::Echo(
-  grpc::ServerContext* context,
+  grpc::ServerContext*,
   const flatbuffers::grpc::Message<EchoPing>* request_msg,
   flatbuffers::grpc::Message<EchoReply>* response_msg) {
-  // flatbuffers::grpc::MessageBuilder mb_;
+  flatbuffers::grpc::MessageBuilder mb;
   // We call GetRoot to "parse" the message. Verification is already
   // performed by default. See the notes below for more details.
   const EchoPing* request = request_msg->GetRoot();
@@ -48,14 +49,14 @@ grpc::Status NodeServerImpl::Echo(
   // `flatbuffers::grpc::MessageBuilder` is a `FlatBufferBuilder` with a
   // special allocator for efficient gRPC buffer transfer, but otherwise
   // usage is the same as usual.
-  auto msg_offset = mb_.CreateString("Hello, " + name);
-  auto hello_offset = CreateEchoReply(mb_, msg_offset);
-  mb_.Finish(hello_offset);
+  auto msg_offset = mb.CreateString("Hello, " + name);
+  auto hello_offset = CreateEchoReply(mb, msg_offset);
+  mb.Finish(hello_offset);
 
   // The `ReleaseMessage<T>()` function detaches the message from the
   // builder, so we can transfer the resopnse to gRPC while simultaneously
   // detaching that memory buffer from the builer.
-  *response_msg = mb_.ReleaseMessage<EchoReply>();
+  *response_msg = mb.ReleaseMessage<EchoReply>();
   assert(response_msg->Verify());
 
   // Return an OK status.
@@ -64,9 +65,10 @@ grpc::Status NodeServerImpl::Echo(
 
 // Streaming multiple echos implementation
 grpc::Status NodeServerImpl::Echos(
-  grpc::ServerContext* context,
+  grpc::ServerContext*,
   const flatbuffers::grpc::Message<ManyEchoPings>* request_msg,
   grpc::ServerWriter<flatbuffers::grpc::Message<EchoReply>>* writer) {
+  flatbuffers::grpc::MessageBuilder mb;
   // The streaming usage below is simply a combination of standard gRPC
   // streaming with the FlatBuffers usage shown above.
   const ManyEchoPings* request = request_msg->GetRoot();
@@ -74,10 +76,10 @@ grpc::Status NodeServerImpl::Echos(
   int num_greetings = request->num_greetings();
 
   for (int i = 0; i < num_greetings; i++) {
-    auto msg_offset = mb_.CreateString("Many hellos, " + name);
-    auto hello_offset = CreateEchoReply(mb_, msg_offset);
-    mb_.Finish(hello_offset);
-    writer->Write(mb_.ReleaseMessage<EchoReply>());
+    auto msg_offset = mb.CreateString("Many hellos, " + name);
+    auto hello_offset = CreateEchoReply(mb, msg_offset);
+    mb.Finish(hello_offset);
+    writer->Write(mb.ReleaseMessage<EchoReply>());
   }
 
   return grpc::Status::OK;
@@ -87,11 +89,11 @@ grpc::Status NodeServerImpl::Echos(
 // So that we don't need to do aggregation here, instead push all block executor results to server for aggregation.
 // Single aggregation - perf?
 grpc::Status NodeServerImpl::Query(
-  grpc::ServerContext* context,
-  const flatbuffers::grpc::Message<QueryPlan>* request_msg,
+  grpc::ServerContext*,
+  const flatbuffers::grpc::Message<QueryPlan>* query,
   flatbuffers::grpc::Message<BatchRows>* batch) {
   auto ms = std::make_shared<nebula::meta::MetaService>();
-  auto plan = QuerySerde::from(ms, request_msg);
+  auto plan = QuerySerde::from(ms, query);
 
   // execute this plan and get results
   NodeExecutor executor(BlockManager::init());
@@ -104,27 +106,71 @@ grpc::Status NodeServerImpl::Query(
   return grpc::Status::OK;
 }
 
+// poll block status of a node
+grpc::Status NodeServerImpl::Poll(
+  grpc::ServerContext*,
+  const flatbuffers::grpc::Message<NodeStateRequest>* req,
+  flatbuffers::grpc::Message<NodeStateReply>* rep) {
+
+  // get node state request
+  const NodeStateRequest* request = req->GetRoot();
+
+  // Fields are retrieved as usual with FlatBuffers
+  if (request->type() != 1) {
+    return grpc::Status(grpc::StatusCode::INTERNAL, "wrong request type");
+  }
+
+  // `flatbuffers::grpc::MessageBuilder` is a `FlatBufferBuilder` with a
+  // special allocator for efficient gRPC buffer transfer, but otherwise
+  // usage is the same as usual.
+  const auto bm = BlockManager::init();
+  flatbuffers::grpc::MessageBuilder mb;
+  auto blocks = bm->all();
+  LOG(INFO) << "Current node hosts # blocks: " << blocks.size();
+
+  std::vector<flatbuffers::Offset<DataBlock>> db;
+  db.reserve(blocks.size());
+  std::transform(blocks.cbegin(), blocks.cend(),
+                 std::back_inserter(db), [&mb](const BatchBlock& bb) {
+                   const auto& state = bb.state();
+                   return CreateDataBlockDirect(
+                     mb, bb.getTable().c_str(), bb.getId(), bb.start(), bb.end(),
+                     bb.storage().c_str(), state.numRows, state.rawSize);
+                 });
+
+  mb.Finish(CreateNodeStateReplyDirect(mb, &db));
+
+  // The `ReleaseMessage<T>()` function detaches the message from the
+  // builder, so we can transfer the resopnse to gRPC while simultaneously
+  // detaching that memory buffer from the builer.
+  *rep = mb.ReleaseMessage<NodeStateReply>();
+
+  // Return an OK status.
+  return grpc::Status::OK;
+}
+
 } // namespace service
 } // namespace nebula
 
 void RunServer() {
   // We're using AOP lib yomm2 to inject batch serialiation
   // Since we don't use dynamic library loading, we call this once at starting point.
-  yorel::yomm2::update_methods();
+  // TODO(cao) - crashes node server, need to figure out root cause before executing query
+  // yorel::yomm2::update_methods();
 
   // launch the server
   std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::ServiceProperties::NPORT));
   nebula::service::NodeServerImpl node;
-
-  // loading data into memory
-  // LOG(INFO) << "Loading data for table [pin.trends] in single node.";
-  // node.loadTrends();
 
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(&node);
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   LOG(INFO) << "Nebula node server listening on " << server_address;
+
+  // loading data into memory in async way
+  nebula::execution::io::trends::TrendsTable trends;
+  trends.load();
 
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.

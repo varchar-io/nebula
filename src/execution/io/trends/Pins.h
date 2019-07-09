@@ -53,21 +53,6 @@ public:
   // load pins data in current process
   // load pins data as max
   void load(size_t max = 0);
-
-  virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override;
-};
-
-class PinsMetaService : public nebula::meta::MetaService {
-public:
-  virtual std::shared_ptr<nebula::meta::Table> query(const std::string&) override {
-    return std::make_shared<PinsTable>();
-  }
-
-  virtual std::vector<nebula::meta::NNode> queryNodes(
-    const std::shared_ptr<nebula::meta::Table>,
-    std::function<bool(const nebula::meta::NNode&)>) override {
-    return { nebula::meta::NNode::local() };
-  }
 };
 
 } // namespace trends

@@ -24,17 +24,5 @@
 namespace nebula {
 namespace meta {
 
-using nebula::type::TypeSerializer;
-
-std::shared_ptr<nebula::meta::Table> MockMs::query(const std::string&) {
-  return std::make_shared<TestTable>();
-}
-
-std::vector<nebula::meta::NNode> MockMs::queryNodes(
-  const std::shared_ptr<nebula::meta::Table>,
-  std::function<bool(const nebula::meta::NNode&)>) {
-  return { nebula::meta::NNode::local() };
-}
-
 } // namespace meta
 } // namespace nebula

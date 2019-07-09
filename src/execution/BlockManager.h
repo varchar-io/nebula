@@ -32,18 +32,21 @@ namespace nebula {
 namespace execution {
 
 struct Hash {
-  inline size_t operator()(const nebula::meta::NBlock& b) const noexcept {
+  inline size_t operator()(const io::BatchBlock& b) const noexcept {
     return b.hash();
   }
 };
 
 struct Equal {
-  inline bool operator()(const nebula::meta::NBlock& b1, const nebula::meta::NBlock& b2) const noexcept {
+  inline bool operator()(const io::BatchBlock& b1, const io::BatchBlock& b2) const noexcept {
     return b1 == b2;
   }
 };
 
 class BlockManager {
+  using BlockSet = std::unordered_set<io::BatchBlock, Hash, Equal>;
+  using TableStates = std::unordered_map<std::string, std::tuple<size_t, size_t, size_t, size_t, size_t>>;
+
 public:
   BlockManager(BlockManager&) = delete;
   BlockManager(BlockManager&&) = delete;
@@ -54,11 +57,18 @@ public:
 public:
   // TODO(cao) - this interface needs predicate push down to filter out blocks
   const std::vector<nebula::memory::Batch*> query(const nebula::meta::Table&, const ExecutionPlan&);
-  bool add(const nebula::meta::NBlock&);
 
-  // TODO(cao) - for short-term hack, will be removed
-  bool add(const nebula::meta::NBlock&, std::unique_ptr<nebula::memory::Batch>);
-  bool remove(const nebula::meta::NBlock&);
+  // query all nodes that hold data for given table
+  const std::vector<nebula::meta::NNode> query(const std::string&);
+
+  // add a block into the system - the data may be loaded internal
+  bool add(const nebula::meta::BlockSignature&);
+
+  // add a block already loaded
+  bool add(const io::BatchBlock&);
+
+  // remove a block from managmenet pool
+  bool remove(const io::BatchBlock&);
 
   std::tuple<size_t, size_t, size_t, size_t, size_t> getTableMetrics(const std::string table) const {
     if (tableStates_.find(table) == tableStates_.end()) {
@@ -66,6 +76,15 @@ public:
     }
 
     return tableStates_.at(table);
+  }
+
+  const BlockSet& all(const nebula::meta::NNode& node = nebula::meta::NNode::inproc()) {
+    if (node.isInProc()) {
+      return blocks_;
+    }
+
+    // it may reutrn empty result if the node is not in
+    return remotes_[node];
   }
 
   std::vector<std::string> getTables(const size_t limit) const noexcept {
@@ -81,29 +100,45 @@ public:
     return tables;
   }
 
-private:
-  void collectBlockMetrics(const nebula::meta::NBlock& meta, const nebula::memory::Batch& block) {
-    const auto& table = meta.getTable();
-    if (tableStates_.find(table) == tableStates_.end()) {
-      tableStates_[table] = { 0, 0, 0, std::numeric_limits<size_t>::max(), 0 };
+  void updateTableMetrics() {
+    // remove existing states
+    TableStates states;
+
+    // go through all blocks and do the aggregation again
+    for (auto i = blocks_.begin(); i != blocks_.end(); ++i) {
+      collectBlockMetrics(*i, states);
     }
 
-    auto& tuple = tableStates_.at(table);
-    std::get<0>(tuple) += 1;
-    std::get<1>(tuple) += block.getRows();
-    std::get<2>(tuple) += block.getRawSize();
-    std::get<3>(tuple) = std::min(std::get<3>(tuple), meta.start());
-    std::get<4>(tuple) = std::max(std::get<4>(tuple), meta.end());
+    // go through all nodes's block set
+    for (auto n = remotes_.begin(); n != remotes_.end(); ++n) {
+      const auto& bs = n->second;
+      for (auto i = bs.begin(); i != bs.end(); ++i) {
+        collectBlockMetrics(*i, states);
+      }
+    }
+
+    // TODO(cao) - update table states_ for those entry changes, otherwise, keep it no change.
+    // do atomic swap?
+    std::swap(states, tableStates_);
   }
 
+private:
   // table: <block count, row count, raw size, min time, max time>
-  std::unordered_map<std::string, std::tuple<size_t, size_t, size_t, size_t, size_t>> tableStates_;
-  std::unordered_map<nebula::meta::NBlock, std::unique_ptr<nebula::memory::Batch>, Hash, Equal> blocks_;
+  TableStates tableStates_;
+
+  // in-proc blocks
+  BlockSet blocks_;
+
+  // meta data for remote blocks
+  std::unordered_map<nebula::meta::NNode, BlockSet, nebula::meta::NodeHash, nebula::meta::NodeEqual> remotes_;
 
 private:
   static std::mutex smux;
   static std::shared_ptr<BlockManager> inst;
   BlockManager() {}
+
+  static void collectBlockMetrics(const io::BatchBlock&, TableStates&);
+  static bool tableInBlockSet(const std::string&, const BlockSet&);
 };
 
 } // namespace execution

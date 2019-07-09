@@ -276,7 +276,7 @@ const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
 const execute = () => {
     // get parameters from URL
     const h = hash();
-    if (!h) {
+    if (!h || h.length < 2) {
         return;
     }
 
@@ -467,7 +467,10 @@ v1Client.tables(listReq, {}, (err, reply) => {
     options.text(d => d).attr("value", d => d);
 
     // if user change the table selection, initialize it again
-    ds('#tables').on('change', restore);
+    ds('#tables').on('change', () => {
+        hash('n');
+        restore();
+    });
 
     // restore the selection
     restore();

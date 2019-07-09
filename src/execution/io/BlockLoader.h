@@ -27,14 +27,20 @@
 namespace nebula {
 namespace execution {
 namespace io {
+
+using BatchBlock = nebula::meta::NBlock<nebula::memory::Batch>;
+
 // load a NBlock into memory
 class BlockLoader {
 public:
-  std::unique_ptr<nebula::memory::Batch> load(const nebula::meta::NBlock&);
+  static BatchBlock from(const nebula::meta::BlockSignature&, std::shared_ptr<nebula::memory::Batch>);
+
+public:
+  BatchBlock load(const nebula::meta::BlockSignature&);
 
 private:
   // Test Hook
-  std::unique_ptr<nebula::memory::Batch> loadTestBlock(const nebula::meta::NBlock&);
+  BatchBlock loadTestBlock(const nebula::meta::BlockSignature&);
 };
 
 } // namespace io

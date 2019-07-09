@@ -25,8 +25,12 @@
 namespace nebula {
 namespace execution {
 
+using nebula::execution::io::BatchBlock;
 using nebula::memory::Batch;
+using nebula::meta::BlockSignature;
+using nebula::meta::BlockState;
 using nebula::meta::NBlock;
+using nebula::meta::NNode;
 using nebula::meta::Table;
 using nebula::type::Kind;
 using nebula::type::Schema;
@@ -45,6 +49,21 @@ std::shared_ptr<BlockManager> BlockManager::init() {
   return inst;
 }
 
+void BlockManager::collectBlockMetrics(const io::BatchBlock& meta, TableStates& states) {
+  const auto& table = meta.getTable();
+  if (states.find(table) == states.end()) {
+    states[table] = { 0, 0, 0, std::numeric_limits<size_t>::max(), 0 };
+  }
+
+  auto& tuple = states.at(table);
+  const auto& state = meta.state();
+  std::get<0>(tuple) += 1;
+  std::get<1>(tuple) += state.numRows;
+  std::get<2>(tuple) += state.rawSize;
+  std::get<3>(tuple) = std::min(std::get<3>(tuple), meta.start());
+  std::get<4>(tuple) = std::max(std::get<4>(tuple), meta.end());
+}
+
 /// HACK! - Replace it!
 std::pair<std::string, std::string> hackColEqValue(std::string_view input) {
   std::regex col_regex("&&\\(F:(\\w+)==C:(\\w+)\\)\\)");
@@ -56,6 +75,35 @@ std::pair<std::string, std::string> hackColEqValue(std::string_view input) {
   }
 
   return { "", "" };
+}
+
+bool BlockManager::tableInBlockSet(const std::string& table, const BlockSet& bs) {
+  for (auto& b : bs) {
+    if (table == b.getTable()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// query all nodes that hold data for given table
+const std::vector<NNode> BlockManager::query(const std::string& table) {
+  std::vector<NNode> nodes;
+
+  // all blocks in proc
+  if (tableInBlockSet(table, blocks_)) {
+    nodes.push_back(NNode::inproc());
+  }
+
+  // go through all nodes's block set
+  for (auto n = remotes_.begin(); n != remotes_.end(); ++n) {
+    if (tableInBlockSet(table, n->second)) {
+      nodes.push_back(n->first);
+    }
+  }
+
+  return nodes;
 }
 
 const std::vector<Batch*> BlockManager::query(const Table& table, const ExecutionPlan& plan) {
@@ -110,12 +158,11 @@ const std::vector<Batch*> BlockManager::query(const Table& table, const Executio
   }
 
   for (auto& b : blocks_) {
-    const auto& block = b.first;
-    if (block.getTable() == table.name()) {
+    if (b.getTable() == table.name()) {
       ++total;
 
-      Batch* ptr = b.second.get();
-      if (block.overlap(window) && pass(ptr)) {
+      Batch* ptr = b.data().get();
+      if (b.overlap(window) && pass(ptr)) {
         tableBlocks.push_back(ptr);
       }
     }
@@ -126,30 +173,39 @@ const std::vector<Batch*> BlockManager::query(const Table& table, const Executio
   return tableBlocks;
 }
 
-bool BlockManager::add(const NBlock& block) {
-  // ensure the block is not in memory
+bool BlockManager::add(const BlockSignature& sign) {
+  // load data should happening somehwere elese
   nebula::execution::io::BlockLoader loader;
-  auto batch = loader.load(block);
-
-  return this->add(block, std::move(batch));
+  auto block = loader.load(sign);
+  return this->add(block);
 }
 
-bool BlockManager::add(const nebula::meta::NBlock& block, std::unique_ptr<nebula::memory::Batch> data) {
-  // batch is in memory now
-  N_ENSURE_NOT_NULL(data, "block data can't be null");
+bool BlockManager::add(const BatchBlock& block) {
+  // collect metrics anyways.
+  collectBlockMetrics(block, tableStates_);
 
-  // collect this block metrics
-  collectBlockMetrics(block, *data);
+  const auto& node = block.residence();
+  // ensure the block is not in memory
+  if (node.isInProc()) {
+    blocks_.insert(block);
+  } else {
 
-  // add it to the manage list
-  blocks_[block] = std::move(data);
+    // remote blocks
+    N_ENSURE(block.data() == nullptr, "remote block won't have data pointer.");
 
-  // TODO(cao) - current is simple solution
-  // we need comprehensive fault torellance and hanlding
+    auto itr = remotes_.find(node);
+    if (itr != remotes_.end()) {
+      itr->second.insert(block);
+    } else {
+      remotes_[node] = {};
+      remotes_.at(node).insert(block);
+    }
+  }
+
   return true;
 }
 
-bool BlockManager::remove(const nebula::meta::NBlock&) {
+bool BlockManager::remove(const BatchBlock&) {
   throw NException("Not implemeneted yet");
 }
 

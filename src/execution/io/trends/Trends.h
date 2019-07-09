@@ -45,21 +45,6 @@ public:
 
   // load trends data in current process
   void load(size_t max = 0);
-
-  virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override;
-};
-
-class TrendsMetaService : public nebula::meta::MetaService {
-public:
-  virtual std::shared_ptr<nebula::meta::Table> query(const std::string&) override {
-    return std::make_shared<TrendsTable>();
-  }
-
-  virtual std::vector<nebula::meta::NNode> queryNodes(
-    const std::shared_ptr<nebula::meta::Table>,
-    std::function<bool(const nebula::meta::NNode&)>) override {
-    return { nebula::meta::NNode::local() };
-  }
 };
 
 } // namespace trends

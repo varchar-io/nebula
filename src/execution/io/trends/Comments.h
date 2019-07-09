@@ -43,8 +43,6 @@ public:
   // since we failed AWS integration so far
   void load(const std::string&);
 
-  virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override;
-
   virtual nebula::meta::Column column(const std::string& col) const noexcept override {
     if (col == "pin_signature" || col == "pin_id") {
       // enable bloom filter on id column
@@ -69,8 +67,6 @@ public:
   // since we failed AWS integration so far
   void load(const std::string&);
 
-  virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override;
-
   virtual nebula::meta::Column column(const std::string& col) const noexcept override {
     if (col == "user_id" || col == "pin_signature") {
       // enable bloom filter on id column
@@ -78,27 +74,6 @@ public:
     }
 
     return Table::column(col);
-  }
-};
-
-class CommentsMetaService : public nebula::meta::MetaService {
-public:
-  virtual std::shared_ptr<nebula::meta::Table> query(const std::string& tb) override {
-    if (tb == CommentsTable::NAME) {
-      return std::make_shared<CommentsTable>();
-    }
-
-    if (tb == SignaturesTable::NAME) {
-      return std::make_shared<SignaturesTable>();
-    }
-
-    throw NException("table not found: " + tb);
-  }
-
-  virtual std::vector<nebula::meta::NNode> queryNodes(
-    const std::shared_ptr<nebula::meta::Table>,
-    std::function<bool(const nebula::meta::NNode&)>) override {
-    return { nebula::meta::NNode::local() };
   }
 };
 

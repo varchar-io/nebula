@@ -10,6 +10,7 @@ add_library(${NEBULA_EXEC} STATIC
     ${NEBULA_SRC}/execution/core/ServerExecutor.cpp    
     ${NEBULA_SRC}/execution/eval/EvalContext.cpp    
     ${NEBULA_SRC}/execution/io/BlockLoader.cpp
+    ${NEBULA_SRC}/execution/meta/TableService.cpp
     ${NEBULA_SRC}/execution/io/trends/Comments.cpp
     ${NEBULA_SRC}/execution/io/trends/Pins.cpp
     ${NEBULA_SRC}/execution/io/trends/Trends.cpp

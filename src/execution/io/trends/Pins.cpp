@@ -36,6 +36,7 @@ namespace trends {
 
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
+using nebula::execution::io::BlockLoader;
 using nebula::memory::Batch;
 using nebula::meta::NBlock;
 using nebula::meta::Table;
@@ -83,10 +84,6 @@ private:
   const RowData* row_;
 };
 
-std::shared_ptr<nebula::meta::MetaService> PinsTable::getMs() const {
-  return std::make_shared<PinsMetaService>();
-}
-
 void PinsTable::load(size_t max) {
   // load test data to run this query
   auto bm = BlockManager::init();
@@ -95,7 +92,7 @@ void PinsTable::load(size_t max) {
   auto dir = "/tmp/pinss";
   const std::vector<std::string> columns = { "id", "board_id", "user_id", "created_at", "title", "details", "signature", "repins" };
 
-  std::unordered_map<size_t, std::unique_ptr<Batch>> blocksByDate;
+  std::unordered_map<size_t, std::shared_ptr<Batch>> blocksByDate;
   std::unordered_map<size_t, std::pair<size_t, size_t>> timeRangeByDate;
   size_t blockId = 0;
   auto files = File::list(dir);
@@ -124,7 +121,7 @@ void PinsTable::load(size_t max) {
         if (itr->second->getRows() >= bRows) {
           auto& range = timeRangeByDate.at(itr->first);
           // move it to the manager and erase it from the map
-          bm->add(NBlock(name_, blockId++, range.first, range.second), std::move(itr->second));
+          bm->add(BlockLoader::from({ name_, blockId++, range.first, range.second }, itr->second));
           empty = true;
         }
       }
@@ -132,7 +129,7 @@ void PinsTable::load(size_t max) {
       // add a new entry
       if (empty) {
         // emplace basically means
-        blocksByDate[date] = std::make_unique<Batch>(*this, bRows);
+        blocksByDate[date] = std::make_shared<Batch>(*this, bRows);
         timeRangeByDate[date] = { std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
       }
 
@@ -155,7 +152,7 @@ void PinsTable::load(size_t max) {
   // move all blocks in map into block manager
   for (auto itr = blocksByDate.begin(); itr != blocksByDate.end(); ++itr) {
     auto& range = timeRangeByDate.at(itr->first);
-    bm->add(NBlock(name_, blockId++, range.first, range.second), std::move(itr->second));
+    bm->add(BlockLoader::from({ name_, blockId++, range.first, range.second }, itr->second));
   }
 
   auto metrics = bm->getTableMetrics(NAME);

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <iostream>
@@ -28,6 +29,7 @@
 #include <unordered_map>
 #include "NebulaServer.h"
 #include "NebulaService.h"
+#include "NodeSync.h"
 #include "execution/BlockManager.h"
 #include "fmt/format.h"
 #include "memory/Batch.h"
@@ -53,8 +55,8 @@ using grpc::ServerContext;
 using grpc::Status;
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
+using nebula::execution::io::BlockLoader;
 using nebula::memory::Batch;
-using nebula::meta::NBlock;
 using nebula::meta::Table;
 using nebula::storage::CsvReader;
 using nebula::surface::RowCursorPtr;
@@ -80,10 +82,10 @@ grpc::Status V1ServiceImpl::Tables(grpc::ServerContext*, const ListTables* reque
 }
 
 grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest* request, TableStateResponse* reply) {
-  const Table& table = getTable(request->table());
+  const auto table = ts_.query(request->table());
   auto bm = BlockManager::init();
   // query the table's state
-  auto metrics = bm->getTableMetrics(table.name());
+  auto metrics = bm->getTableMetrics(table->name());
   reply->set_blockcount(std::get<0>(metrics));
   reply->set_rowcount(std::get<1>(metrics));
   reply->set_memsize(std::get<2>(metrics));
@@ -92,7 +94,7 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest*
 
   // TODO(cao) - need meta data system to query table info
 
-  auto schema = table.schema();
+  auto schema = table->schema();
   for (size_t i = 0, size = schema->size(); i < size; ++i) {
     auto column = schema->childType(i);
     if (!column->isScalar(column->k())) {
@@ -113,7 +115,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
   nebula::common::Evidence::Duration tick;
   ErrorCode error = ErrorCode::NONE;
   // compile the query into a plan
-  auto plan = handler_.compile(getTable(request->table()), *request, error);
+  auto plan = handler_.compile(*ts_.query(request->table()), *request, error);
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }
@@ -151,24 +153,6 @@ grpc::Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, siz
   return grpc::Status(grpc::StatusCode::INTERNAL, "error: check stats");
 }
 
-void V1ServiceImpl::loadNebulaTest() {
-  // load test data to run this query
-  auto bm = BlockManager::init();
-
-  // set up a start and end time for the data set in memory
-  auto start = Evidence::time("2019-01-01", "%Y-%m-%d");
-  auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
-
-  // let's plan these many data std::thread::hardware_concurrency()
-  nebula::meta::TestTable testTable;
-  auto numBlocks = std::thread::hardware_concurrency();
-  auto window = (end - start) / numBlocks;
-  for (unsigned i = 0; i < numBlocks; i++) {
-    auto begin = start + i * window;
-    bm->add(NBlock(testTable.name(), i++, begin, begin + window));
-  }
-}
-
 // Logic and data behind the server's behavior.
 class EchoServiceImpl final : public Echo::Service {
   Status EchoBack(ServerContext*, const EchoRequest* request, EchoResponse* reply) override {
@@ -181,6 +165,24 @@ class EchoServiceImpl final : public Echo::Service {
 } // namespace service
 } // namespace nebula
 
+void loadNebulaTest() {
+  // load test data to run this query
+  auto bm = nebula::execution::BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  auto start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
+  auto end = nebula::common::Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
+  }
+}
+
 // NOTE: main function can't be placed inside a namespace
 // Otherwise you may get undefined symbol "_main" error in link
 void RunServer() {
@@ -188,17 +190,11 @@ void RunServer() {
   nebula::service::EchoServiceImpl echoService;
   nebula::service::V1ServiceImpl v1Service;
 
-  // TODO: start a thread to sync up with etcd setup for cluster info.
+  // TODO (cao): start a thread to sync up with etcd setup for cluster info.
   // register cluster info
   nebula::meta::ClusterInfo::singleton().update({ nebula::meta::NRole::NODE,
                                                   FLAGS_HOST_ADDR,
                                                   nebula::service::ServiceProperties::NPORT });
-
-  // loading some rand generated data for nebula.test category
-  v1Service.loadNebulaTest();
-
-  // loading pins data into memory
-  // v1Service.loadPins();
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
@@ -210,14 +206,30 @@ void RunServer() {
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   LOG(INFO) << "Nebula server listening on " << server_address;
 
+  // loading some rand generated data for nebula.test category
+  loadNebulaTest();
+
   // load up signatures
-  v1Service.loadSignatures(FLAGS_SIGNATURES_FILE);
+  nebula::execution::io::trends::SignaturesTable signatures;
+  signatures.load(FLAGS_SIGNATURES_FILE);
+
   // server is up first and then we load the data
-  v1Service.loadComments(FLAGS_COMMENTS_FILE);
+  nebula::execution::io::trends::CommentsTable comments;
+  comments.load(FLAGS_COMMENTS_FILE);
+
+  // load pins data
+  // nebula::execution::io::trends::PinsTable pins;
+
+  // start node sync to sync all node's states
+  folly::CPUThreadPoolExecutor shared{ std::thread::hardware_concurrency() };
+  auto nsync = nebula::service::NodeSync::async(shared);
 
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.
   server->Wait();
+
+  // shut down node sync process
+  nsync->shutdown();
 }
 
 int main(int argc, char** argv) {

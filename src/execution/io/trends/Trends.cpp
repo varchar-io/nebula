@@ -33,8 +33,8 @@ namespace trends {
 
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
+using nebula::execution::io::BlockLoader;
 using nebula::memory::Batch;
-using nebula::meta::NBlock;
 using nebula::storage::CsvReader;
 
 // row wrapper to translate "date" string into reserved "_time_" column
@@ -77,10 +77,6 @@ private:
   const RowData* row_;
 };
 
-std::shared_ptr<nebula::meta::MetaService> TrendsTable::getMs() const {
-  return std::shared_ptr<nebula::meta::MetaService>(new TrendsMetaService());
-}
-
 void TrendsTable::load(size_t max) {
   const auto shouldStop = [max](size_t blockId) -> bool {
     return max > 0 && blockId >= max;
@@ -96,7 +92,7 @@ void TrendsTable::load(size_t max) {
   CsvReader reader(file);
   // every X rows, we split it into a block
   const auto bRows = 50000;
-  std::unordered_map<size_t, std::unique_ptr<Batch>> blocksByTime;
+  std::unordered_map<size_t, std::shared_ptr<Batch>> blocksByTime;
   size_t blockId = 0;
   TrendsRawRow trendsRow;
   while (reader.hasNext()) {
@@ -104,7 +100,7 @@ void TrendsTable::load(size_t max) {
     trendsRow.set(&row);
 
     // get time column value
-    auto time = trendsRow.readLong(Table::TIME_COLUMN);
+    size_t time = trendsRow.readLong(Table::TIME_COLUMN);
     const auto itr = blocksByTime.find(time);
     auto empty = true;
     if (itr != blocksByTime.end()) {
@@ -112,7 +108,7 @@ void TrendsTable::load(size_t max) {
       // if this is already full
       if (itr->second->getRows() >= bRows) {
         // move it to the manager and erase it from the map
-        bm->add(NBlock(name_, blockId++, time, time), std::move(itr->second));
+        bm->add(BlockLoader::from({ name_, blockId++, time, time }, itr->second));
         empty = true;
       }
     }
@@ -120,7 +116,7 @@ void TrendsTable::load(size_t max) {
     // add a new entry
     if (empty) {
       // emplace basically means
-      blocksByTime[time] = std::make_unique<Batch>(*this, bRows);
+      blocksByTime[time] = std::make_shared<Batch>(*this, bRows);
     }
 
     // for sure, we have it now
@@ -136,7 +132,7 @@ void TrendsTable::load(size_t max) {
 
   // move all blocks in map into block manager
   for (auto itr = blocksByTime.begin(); itr != blocksByTime.end() && !shouldStop(blockId); ++itr) {
-    bm->add(NBlock(name_, blockId++, itr->first, itr->first), std::move(itr->second));
+    bm->add(BlockLoader::from({ name_, blockId++, itr->first, itr->first }, itr->second));
   }
 }
 

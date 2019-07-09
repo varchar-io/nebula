@@ -33,11 +33,33 @@ table QueryPlan {
 
 // cpp: Flat Buffer - intermediate memory batch serde
 // define serialized batch type - it can be customized binary format such as flat, json or csv.
-enum BatchType:byte { Flat = 0, Json = 1 }
+enum BatchType: byte {
+  Flat = 0, Json = 1
+}
 table BatchRows {
   schema: string;
   type: BatchType = Flat;
   data: [byte];
+}
+
+// an endpoint to report all blocks along with statistics
+table DataBlock {
+  tbl: string;
+  id: uint64;
+  ts: uint64;
+  te: uint64;
+  storage: string;
+
+  rows: uint64;
+  rsize: uint64;
+}
+
+table NodeStateRequest {
+  type: int;
+}
+
+table NodeStateReply {
+  blocks: [DataBlock];
 }
 
 rpc_service NodeServer {
@@ -46,4 +68,7 @@ rpc_service NodeServer {
 
   // accept a query plan and send back the results
   Query(QueryPlan): BatchRows;
+
+  // poll memory data status
+  Poll(NodeStateRequest): NodeStateReply;
 }

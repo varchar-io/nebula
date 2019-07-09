@@ -49,13 +49,11 @@ class NodeServerImpl final : public NodeServer::Service {
     flatbuffers::grpc::Message<BatchRows>*)
     override;
 
-  flatbuffers::grpc::MessageBuilder mb_;
-  nebula::execution::io::trends::TrendsTable trends_;
-
-public:
-  void loadTrends() {
-    trends_.load();
-  }
+  virtual grpc::Status Poll(
+    grpc::ServerContext*,
+    const flatbuffers::grpc::Message<NodeStateRequest>*,
+    flatbuffers::grpc::Message<NodeStateReply>*)
+    override;
 };
 
 } // namespace service

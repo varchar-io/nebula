@@ -17,6 +17,7 @@
 #pragma once
 
 #include <glog/logging.h>
+#include "NNode.h"
 #include "Table.h"
 
 /**
@@ -25,39 +26,74 @@
 namespace nebula {
 namespace meta {
 
+struct BlockState {
+  size_t numRows;
+  size_t rawSize;
+};
+
+struct BlockSignature {
+  std::string table;
+  size_t id;
+  // start/end timestamp
+  size_t start;
+  size_t end;
+
+  inline std::string toString() const {
+    return fmt::format("{0}_{1}_{2}_{3}", table, id, start, end);
+  }
+
+  friend bool operator==(const BlockSignature& x, const BlockSignature& y) {
+    return x.table == y.table && x.id == y.id;
+  }
+};
+
+template <typename T>
 class NBlock {
 public:
   // define a nblock that has a unique ID and start and end time stamp
-  NBlock(const std::string& tbl, size_t blockId, size_t start, size_t end)
-    : table_{ tbl }, id_{ blockId }, start_{ start }, end_{ end } {
-    sign_ = fmt::format("{0}_{1}_{2}_{3}", table_, id_, start_, end_);
-    hash_ = hash(*this);
-  }
+  NBlock(const BlockSignature& sign, const NNode& node, const BlockState& state)
+    : NBlock(sign, node, nullptr, state) {}
+
+  // define a nblock that has a unique ID and start and end time stamp
+  NBlock(const BlockSignature& sign, std::shared_ptr<T> data, const BlockState& state)
+    : NBlock(sign, NNode::inproc(), data, state) {}
 
   virtual ~NBlock() = default;
 
   friend bool operator==(const NBlock& x, const NBlock& y) {
-    return x.table_ == y.table_ && x.id_ == y.id_;
+    return x.sign_ == y.sign_;
   }
 
   inline const std::string& getTable() const {
-    return table_;
+    return sign_.table;
   }
 
   inline size_t getId() const {
-    return id_;
+    return sign_.id;
   }
 
-  inline std::string signature() const {
+  inline const BlockSignature& signature() const {
     return sign_;
   }
 
+  inline const BlockState& state() const {
+    return state_;
+  }
+
+  inline const NNode& residence() const {
+    return residence_;
+  }
+
+  inline const std::shared_ptr<T>& data() const {
+    return data_;
+  }
+
   inline bool inRange(size_t time) const {
-    return time >= start_ && time <= end_;
+    return time >= sign_.start && time <= sign_.end;
   }
 
   inline bool overlap(const std::pair<size_t, size_t>& window) const noexcept {
-    if ((window.second < start_) || (end_ < window.first)) {
+    if ((window.second < sign_.start) || (sign_.end < window.first)) {
       return false;
     }
 
@@ -65,15 +101,25 @@ public:
   }
 
   inline size_t start() const {
-    return start_;
+    return sign_.start;
   }
 
   inline size_t end() const {
-    return end_;
+    return sign_.end;
   }
 
   size_t hash() const {
     return hash_;
+  }
+
+  inline const std::string& storage() const {
+    return storage_;
+  }
+
+private:
+  NBlock(const BlockSignature& sign, const NNode& node, std::shared_ptr<T> data, const BlockState& state)
+    : sign_{ sign }, data_{ data }, residence_{ std::move(node) }, state_{ state } {
+    hash_ = hash(*this);
   }
 
   // An hash algo example
@@ -82,22 +128,25 @@ public:
   // h2 = ((h2 * k) >> 47) * k;
   // return (h1 ^ h2) * k;
   static size_t hash(const NBlock& b) {
-    LOG(INFO) << "compute hash of nblock: " << b.sign_;
-    return std::hash<std::string>()(b.sign_);
+    auto strSign = b.signature().toString();
+    return std::hash<std::string>()(strSign);
   }
 
 private:
-  std::string table_;
-  // sequence ID
-  size_t id_;
+  BlockSignature sign_;
 
-  // this should be time_t, it defines time range of data for this block
-  size_t start_;
-  size_t end_;
+  // data pointer to memory block if resident inproc.
+  // otherwise nullptr
+  std::shared_ptr<T> data_;
+
+  // residence node to locate this block
+  NNode residence_;
+
+  // metrics of current block: number of rows, data raw size
+  BlockState state_;
 
   // a signature of current block - use 64bit GUID?
   size_t hash_;
-  std::string sign_;
 
   // a uniuqe identifier to find this block data in storage.
   std::string storage_;

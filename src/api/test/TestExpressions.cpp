@@ -25,6 +25,7 @@
 #include "common/Memory.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/eval/ValueEval.h"
+#include "execution/meta/TableService.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "meta/TestTable.h"
@@ -35,6 +36,8 @@
 namespace nebula {
 namespace api {
 namespace test {
+
+using nebula::execution::meta::TableService;
 
 struct X {
   X(int id) : id_{ id } {}
@@ -93,7 +96,7 @@ TEST(ExpressionsTest, TypeDetection) {
 TEST(ExpressionsTest, TestExpressionType) {
   // all the expressions are working as non-const and non-reference
   // to favor the expresssion chain
-  nebula::meta::MockMs ms;
+  TableService ms;
   auto tbl = ms.query("nebula.test");
 
   // constant type
@@ -143,7 +146,7 @@ TEST(ExpressionsTest, TestExpressionType) {
 }
 
 TEST(ExpressionsTest, TestExpressionEval) {
-  nebula::meta::MockMs ms;
+  TableService ms;
   auto tbl = ms.query("nebula.test");
   {
     auto idvalue = (nebula::api::dsl::col("id") * 0) != 0;
@@ -225,7 +228,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
   EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
-  nebula::meta::MockMs ms;
+  TableService ms;
   auto tbl = ms.query("nebula.test");
 
   // verify the mocked data has expected result
@@ -290,7 +293,7 @@ public:
 
 // Test serde of expressions
 TEST(ExpressionsTest, TestSerde) {
-  nebula::meta::MockMs ms;
+  TableService ms;
   auto tbl = ms.query("nebula.test");
   nebula::execution::eval::EvalContext ctx;
   MockRow3 rowData;

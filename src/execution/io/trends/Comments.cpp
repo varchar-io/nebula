@@ -39,8 +39,8 @@ namespace trends {
 
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
+using nebula::execution::io::BatchBlock;
 using nebula::memory::Batch;
-using nebula::meta::NBlock;
 using nebula::meta::Table;
 using nebula::storage::CsvReader;
 using nebula::storage::local::File;
@@ -115,10 +115,6 @@ private:
   std::string sign_;
 };
 
-std::shared_ptr<nebula::meta::MetaService> CommentsTable::getMs() const {
-  return std::make_shared<CommentsMetaService>();
-}
-
 void CommentsTable::load(const std::string& file) {
   // load test data to run this query
   auto bm = BlockManager::init();
@@ -126,7 +122,7 @@ void CommentsTable::load(const std::string& file) {
   // PURE TEST CODE: load data from a file path
   const std::vector<std::string> columns = { "pin_signature", "user_id", "comments", "created_at" };
 
-  std::unordered_map<size_t, std::unique_ptr<Batch>> blocksByDate;
+  std::unordered_map<size_t, std::shared_ptr<Batch>> blocksByDate;
   std::unordered_map<size_t, std::pair<size_t, size_t>> timeRangeByDate;
   size_t blockId = 0;
 
@@ -164,7 +160,7 @@ void CommentsTable::load(const std::string& file) {
       if (itr->second->getRows() >= bRows) {
         auto& range = timeRangeByDate.at(itr->first);
         // move it to the manager and erase it from the map
-        bm->add(NBlock(name_, blockId++, range.first, range.second), std::move(itr->second));
+        bm->add(BlockLoader::from({ name_, blockId++, range.first, range.second }, itr->second));
         empty = true;
       }
     }
@@ -172,7 +168,7 @@ void CommentsTable::load(const std::string& file) {
     // add a new entry
     if (empty) {
       // emplace basically means
-      blocksByDate[date] = std::make_unique<Batch>(*this, bRows);
+      blocksByDate[date] = std::make_shared<Batch>(*this, bRows);
       timeRangeByDate[date] = { std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
     }
 
@@ -194,7 +190,7 @@ void CommentsTable::load(const std::string& file) {
   // move all blocks in map into block manager
   for (auto itr = blocksByDate.begin(); itr != blocksByDate.end(); ++itr) {
     auto& range = timeRangeByDate.at(itr->first);
-    bm->add(NBlock(name_, blockId++, range.first, range.second), std::move(itr->second));
+    bm->add(BlockLoader::from({ name_, blockId++, range.first, range.second }, itr->second));
   }
 
   auto metrics = bm->getTableMetrics(NAME);
@@ -260,10 +256,6 @@ private:
   std::string sign_;
 };
 
-std::shared_ptr<nebula::meta::MetaService> SignaturesTable::getMs() const {
-  return std::make_shared<CommentsMetaService>();
-}
-
 void SignaturesTable::load(const std::string& file) {
   // load test data to run this query
   auto bm = BlockManager::init();
@@ -279,7 +271,7 @@ void SignaturesTable::load(const std::string& file) {
 
   // limit at 1b on single host
   const size_t bRows = 100000;
-  std::unique_ptr<Batch> batch = std::make_unique<Batch>(*this, bRows);
+  auto batch = std::make_shared<Batch>(*this, bRows);
   SignautresRawRow sRow;
   size_t count = 0;
   while (reader.hasNext()) {
@@ -298,8 +290,8 @@ void SignaturesTable::load(const std::string& file) {
     // if this is already full
     if (batch->getRows() >= bRows) {
       // move it to the manager and erase it from the map
-      bm->add(NBlock(name_, blockId++, time, time), std::move(batch));
-      batch = std::make_unique<Batch>(*this, bRows);
+      bm->add(BlockLoader::from({ name_, blockId++, time, time }, batch));
+      batch = std::make_shared<Batch>(*this, bRows);
     }
 
     // add a new entry
@@ -309,7 +301,7 @@ void SignaturesTable::load(const std::string& file) {
   // move all blocks in map into block manager
   if (batch->getRows() > 0) {
     size_t time = common::Evidence::unix_timestamp();
-    bm->add(NBlock(name_, blockId++, time, time), std::move(batch));
+    bm->add(BlockLoader::from({ name_, blockId++, time, time }, batch));
   }
 
   auto metrics = bm->getTableMetrics(NAME);

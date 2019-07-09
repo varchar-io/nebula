@@ -28,15 +28,6 @@
 namespace nebula {
 namespace meta {
 
-class MockMs : public MetaService {
-public:
-  virtual std::shared_ptr<nebula::meta::Table> query(const std::string& name) override;
-
-  virtual std::vector<nebula::meta::NNode> queryNodes(
-    const std::shared_ptr<nebula::meta::Table>,
-    std::function<bool(const nebula::meta::NNode&)>) override;
-};
-
 class TestTable : public Table {
   static constexpr auto NAME = "nebula.test";
 
@@ -45,10 +36,6 @@ public:
     // TODO(cao) - let's make date as a number
     schema_ = nebula::type::TypeSerializer::from(
       "ROW<_time_: bigint, id:int, event:string, items:list<string>, flag:bool, value:tinyint>");
-  }
-
-  virtual std::shared_ptr<nebula::meta::MetaService> getMs() const override {
-    return std::make_shared<MockMs>();
   }
 
   virtual Column column(const std::string& col) const noexcept override {

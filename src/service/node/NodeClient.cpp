@@ -15,13 +15,17 @@
  */
 
 #include "NodeClient.h"
+#include "execution/BlockManager.h"
 
 /**
  * Define node server that does the work as nebula server asks.
  */
 namespace nebula {
 namespace service {
+
+using nebula::execution::BlockManager;
 using nebula::execution::ExecutionPlan;
+using nebula::execution::io::BatchBlock;
 using nebula::surface::RowCursorPtr;
 
 void NodeClient::echo(const std::string& name) {
@@ -80,6 +84,39 @@ folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
   });
 
   return p->getFuture();
+}
+
+void NodeClient::state() {
+  // build request message through fb builder
+  flatbuffers::grpc::MessageBuilder mb;
+  mb.Finish(nebula::service::CreateNodeStateRequest(mb, 1));
+  auto nsRequest = mb.ReleaseMessage<NodeStateRequest>();
+
+  // a response message placeholder
+  flatbuffers::grpc::Message<NodeStateReply> nsReply;
+
+  grpc::ClientContext context;
+  auto status = stub_->Poll(&context, nsRequest, &nsReply);
+  if (status.ok()) {
+    const NodeStateReply* response = nsReply.GetRoot();
+    auto blocks = response->blocks();
+    size_t size = blocks->size();
+    LOG(INFO) << "blocks in node: " << size;
+
+    // update into current server block management
+    auto bm = BlockManager::init();
+    for (size_t i = 0; i < size; ++i) {
+      const DataBlock* db = blocks->Get(i);
+      bm->add(BatchBlock(
+        { db->tbl()->str(), db->id(), db->ts(), db->te() },
+        node_,
+        { db->rows(), db->rsize() }));
+    }
+
+    return;
+  }
+
+  LOG(ERROR) << "RPC failed: code=" << status.error_code() << ", msg=" << status.error_message();
 }
 
 } // namespace service

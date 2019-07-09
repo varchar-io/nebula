@@ -17,6 +17,7 @@
 #include "QueryHandler.h"
 #include <folly/Conv.h>
 #include "execution/core/ServerExecutor.h"
+#include "execution/meta/TableService.h"
 #include "service/node/NodeClient.h"
 #include "service/node/RemoteNodeConnector.h"
 
@@ -46,6 +47,7 @@ using nebula::api::dsl::starts;
 using nebula::api::dsl::table;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::core::ServerExecutor;
+using nebula::execution::meta::TableService;
 using nebula::meta::Table;
 using nebula::service::Operation;
 using nebula::surface::RowCursorPtr;
@@ -98,7 +100,8 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
   // build filter
   // TODO(cao) - currently, we're using trends table to demo
   // will remove with generic meta service
-  auto q = table(req.table(), tb.getMs());
+  auto ms = std::make_shared<TableService>();
+  auto q = table(req.table(), ms);
 
   std::shared_ptr<Expression> expr = nullptr;
 #define BUILD_EXPR(PREDS, LOP)                                    \

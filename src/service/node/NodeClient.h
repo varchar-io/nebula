@@ -44,16 +44,20 @@ public:
     this->stub_ = nebula::service::NodeServer::NewStub(channel);
   }
 
+  virtual ~NodeClient() = default;
+
+public:
   // echo a name back from node server
   void echo(const std::string&);
 
   // stream multiple responses based on count
   void echos(const std::string&, size_t);
 
-  virtual ~NodeClient() = default;
-
   // execute a plan on remote node
   virtual folly::Future<nebula::surface::RowCursorPtr> execute(const nebula::execution::ExecutionPlan& plan) override;
+
+  // pull node state
+  void state();
 
 private:
   std::unique_ptr<nebula::service::NodeServer::Stub> stub_;

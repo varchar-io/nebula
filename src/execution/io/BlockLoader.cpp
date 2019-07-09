@@ -27,14 +27,23 @@ namespace execution {
 namespace io {
 
 using nebula::common::Evidence;
+using nebula::execution::io::BatchBlock;
 using nebula::memory::Batch;
+using nebula::meta::BlockSignature;
+using nebula::meta::BlockState;
 using nebula::meta::NBlock;
 using nebula::meta::TestTable;
 using nebula::surface::MockRowData;
 
-std::unique_ptr<Batch> BlockLoader::load(const NBlock& block) {
+BatchBlock BlockLoader::from(const BlockSignature& sign, std::shared_ptr<nebula::memory::Batch> b) {
+  N_ENSURE_NOT_NULL(b, "requires a solid batch");
+  BlockState state{ b->getRows(), b->getRawSize() };
+  return BatchBlock(sign, std::move(b), state);
+}
+
+BatchBlock BlockLoader::load(const BlockSignature& block) {
   TestTable test;
-  if (block.getTable() == test.name()) {
+  if (block.table == test.name()) {
     return loadTestBlock(block);
   }
 
@@ -74,11 +83,11 @@ private:
   std::function<int64_t()> rRand_;
 };
 
-std::unique_ptr<Batch> BlockLoader::loadTestBlock(const NBlock& nb) {
+BatchBlock BlockLoader::loadTestBlock(const BlockSignature& b) {
   TestTable test;
   // use 1024 rows for testing
   auto rows = 10000;
-  auto block = std::make_unique<Batch>(test, rows);
+  auto block = std::make_shared<Batch>(test, rows);
 
   // use the specified seed so taht the data can repeat
   auto seed = Evidence::unix_timestamp();
@@ -86,7 +95,7 @@ std::unique_ptr<Batch> BlockLoader::loadTestBlock(const NBlock& nb) {
   // a seed that triggers a bug
   // seed = 1556824936;
 
-  TimeProvidedRow row(seed, nb.start(), nb.end());
+  TimeProvidedRow row(seed, b.start, b.end);
   for (auto i = 0; i < rows; ++i) {
     block->add(row);
   }
@@ -94,7 +103,7 @@ std::unique_ptr<Batch> BlockLoader::loadTestBlock(const NBlock& nb) {
   // print out the block state
   LOG(INFO) << "Loaded test block: seed=" << seed << ", state=" << block->state();
 
-  return block;
+  return BatchBlock(b, block, { block->getRows(), block->getRawSize() });
 }
 
 } // namespace io
