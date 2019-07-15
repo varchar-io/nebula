@@ -303,7 +303,13 @@ public:
   virtual ~Phase() = default;
 
 public:
-  Phase& agg() {
+  Phase& agg(size_t numAggColumns, const std::vector<bool>& aggColumns) {
+    // processing the partial plan based on block plan
+    const auto& bp = static_cast<const NodePhase&>(*upstream_);
+    numAgg_ = numAggColumns;
+    aggCols_ = aggColumns;
+    keys_ = bp.keys();
+    // cross check if the keys is expected based on aggCols - changed plan?
     return *this;
   }
 
@@ -332,10 +338,26 @@ public:
     return desc_;
   }
 
+  inline bool hasAgg() const {
+    return numAgg_ > 0;
+  }
+
+  inline const std::vector<size_t>& keys() const {
+    return keys_;
+  }
+
+  inline const std::vector<std::unique_ptr<eval::ValueEval>>& fields() const {
+    return static_cast<const NodePhase&>(*upstream_).fields();
+  }
+
 private:
   std::vector<size_t> sorts_;
   // TODO(cao) - every sort column may have different order, single direction now
   bool desc_;
+
+  size_t numAgg_;
+  std::vector<bool> aggCols_;
+  std::vector<size_t> keys_;
 };
 
 template <>

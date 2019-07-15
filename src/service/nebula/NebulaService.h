@@ -122,5 +122,8 @@ public:
   static nebula::surface::RowCursorPtr deserialize(const flatbuffers::grpc::Message<BatchRows>*);
 };
 
+// load nebula test data set into currnet process
+void loadNebulaTestData();
+
 } // namespace service
 } // namespace nebula

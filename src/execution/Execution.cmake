@@ -3,6 +3,7 @@ set(NEBULA_EXEC NExec)
 # build nebula.exec library
 # target_include_directories(${NEBULA_EXEC} INTERFACE src/execution)
 add_library(${NEBULA_EXEC} STATIC 
+    ${NEBULA_SRC}/execution/core/AggregationMerge.cpp    
     ${NEBULA_SRC}/execution/core/BlockExecutor.cpp    
     ${NEBULA_SRC}/execution/core/ComputedRow.cpp    
     ${NEBULA_SRC}/execution/core/NodeClient.cpp    

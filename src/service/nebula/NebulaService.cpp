@@ -18,8 +18,11 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include "api/dsl/Serde.h"
+#include "common/Evidence.h"
+#include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 #include "memory/keyed/FlatRowCursor.h"
+#include "meta/TestTable.h"
 #include "type/Serde.h"
 
 /**
@@ -262,6 +265,25 @@ RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>
   // TODO(cao) - It is not good, we're reference some data from batch but actually not owning it.
   auto fb = std::make_unique<FlatBuffer>(schema, bytes);
   return std::make_shared<FlatRowCursor>(std::move(fb));
+}
+
+// load some nebula test data into current process
+void loadNebulaTestData() {
+  // load test data to run this query
+  auto bm = nebula::execution::BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  auto start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
+  auto end = nebula::common::Evidence::time("2019-05-01", "%Y-%m-%d");
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  nebula::meta::TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
+  }
 }
 
 } // namespace service

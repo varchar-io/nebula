@@ -15,6 +15,7 @@
  */
 
 #include "NodeExecutor.h"
+#include "AggregationMerge.h"
 #include "BlockExecutor.h"
 #include "execution/eval/UDF.h"
 #include "execution/meta/TableService.h"
@@ -73,55 +74,7 @@ RowCursorPtr NodeExecutor::execute(const ExecutionPlan& plan) {
   // the results set from different block exeuction can be simply composite together
   // but the query needs to aggregate on keys, then we have to merge the results based on partial aggregatin plan
   const NodePhase& nodePhase = plan.fetch<PhaseType::PARTIAL>();
-
-  if (nodePhase.hasAgg()) {
-    LOG(INFO) << " execute partial aggregation";
-#define P_FIELD_UPDATE(KIND, TYPE)                                                                                  \
-  case Kind::KIND: {                                                                                                \
-    auto p = static_cast<TYPE*>(value);                                                                             \
-    *p = static_cast<UDAF<Kind::KIND>&>(*fields[column]).partial(*static_cast<TYPE*>(ov), *static_cast<TYPE*>(nv)); \
-    return true;                                                                                                    \
-  }
-    // build the runtime data set
-    auto hf = std::make_unique<HashFlat>(nodePhase.outputSchema(), nodePhase.keys());
-    const auto& fields = nodePhase.fields();
-
-    for (auto it = x.begin(); it < x.end(); ++it) {
-      auto blockResult = it->value();
-
-      // iterate the block result and partial aggregate it in hash flat
-      while (blockResult->hasNext()) {
-        const auto& row = blockResult->next();
-        hf->update(row, [&fields](size_t column, Kind kind, void* ov, void* nv, void* value) {
-          // others are aggregation fields - aka, they are UDAF
-          switch (kind) {
-            P_FIELD_UPDATE(BOOLEAN, bool)
-            P_FIELD_UPDATE(TINYINT, int8_t)
-            P_FIELD_UPDATE(SMALLINT, int16_t)
-            P_FIELD_UPDATE(INTEGER, int32_t)
-            P_FIELD_UPDATE(REAL, float)
-            P_FIELD_UPDATE(BIGINT, int64_t)
-            P_FIELD_UPDATE(DOUBLE, double)
-          default:
-            throw NException("Aggregation not supporting non-primitive types");
-          }
-        });
-      }
-    }
-
-    // wrap the hash flat into a row cursor
-    return std::make_shared<FlatRowCursor>(std::move(hf));
-#undef P_FIELD_UPDATE
-  }
-
-  LOG(INFO) << "Node executor collect results after aggregation";
-  // for query that doesn't need agg - just composite it and return
-  auto c = std::make_shared<CompositeRowCursor>();
-  for (auto it = x.begin(); it < x.end(); ++it) {
-    c->combine(it->value());
-  }
-
-  return c;
+  return merge(nodePhase.outputSchema(), nodePhase.keys(), nodePhase.fields(), nodePhase.hasAgg(), x);
 }
 
 folly::Future<RowCursorPtr> NodeExecutor::compute(const Batch& block, const BlockPhase& phase) {

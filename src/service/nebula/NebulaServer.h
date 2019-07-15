@@ -16,6 +16,7 @@
 #pragma once
 
 #include <grpcpp/grpcpp.h>
+#include <sys/mman.h>
 #include "QueryHandler.h"
 #include "execution/io/trends/Comments.h"
 #include "execution/io/trends/Pins.h"

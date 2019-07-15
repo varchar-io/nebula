@@ -68,9 +68,6 @@ public:
   virtual int32_t run(EvalContext&, bool&) const override {
     return 1;
   }
-
-  virtual void global(const nebula::surface::RowData&) override {
-  }
 };
 
 TEST(ExecutionTest, TestRowCursorSerde) {

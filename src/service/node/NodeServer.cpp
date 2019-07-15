@@ -168,6 +168,9 @@ void RunServer() {
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   LOG(INFO) << "Nebula node server listening on " << server_address;
 
+  // loading some rand generated data for nebula.test category
+  nebula::service::loadNebulaTestData();
+
   // loading data into memory in async way
   nebula::execution::io::trends::TrendsTable trends;
   trends.load();

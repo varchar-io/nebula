@@ -44,7 +44,11 @@ public:
     // this servrer should be myself
   }
 
+  // execute the query plan to get a data set
   nebula::surface::RowCursorPtr execute(const ExecutionPlan&, const std::shared_ptr<NodeConnector> = inproc());
+
+  // sort the data set and return top results if specified
+  static nebula::surface::RowCursorPtr topSort(nebula::surface::RowCursorPtr, const ExecutionPlan&);
 
 private:
   const std::string server_;

@@ -17,7 +17,11 @@
 #include "ServerExecutor.h"
 #include <folly/executors/ThreadedExecutor.h>
 #include <folly/futures/Future.h>
+#include "AggregationMerge.h"
 #include "NodeConnector.h"
+#include "execution/eval/UDF.h"
+#include "memory/keyed/FlatRowCursor.h"
+#include "memory/keyed/HashFlat.h"
 #include "surface/TopRows.h"
 
 // TODO(cao) - COMMENT OUT, lib link issue
@@ -32,6 +36,9 @@ namespace core {
 
 using nebula::common::CompositeCursor;
 using nebula::common::Cursor;
+using nebula::execution::eval::UDAF;
+using nebula::memory::keyed::FlatRowCursor;
+using nebula::memory::keyed::HashFlat;
 using nebula::meta::NNode;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
@@ -56,24 +63,21 @@ RowCursorPtr ServerExecutor::execute(const ExecutionPlan& plan, const std::share
 
   // collect all returns and turn it into a future
   auto x = folly::collectAll(results).get();
-  auto composite = std::make_shared<CompositeCursor<RowData>>();
-  auto failures = 0;
-  for (auto it = x.begin(); it < x.end(); ++it) {
-    if (it->hasValue()) {
-      auto& cursor = it->value();
-      if (cursor) {
-        composite->combine(cursor);
-        continue;
-      }
-    }
 
-    ++failures;
+  // only one result - don't need any aggregation or composite
+  if (x.size() == 1) {
+    return topSort(x.at(0).value(), plan);
   }
 
-  if (failures > 0) {
-    LOG(INFO) << "Error or timeout nodes: " << failures;
-  }
+  // multiple results
+  const auto& phase = plan.fetch<PhaseType::GLOBAL>();
+  auto result = merge(phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAgg(), x);
 
+  // apply sorting and limit if available
+  return topSort(result, plan);
+}
+
+RowCursorPtr ServerExecutor::topSort(RowCursorPtr input, const ExecutionPlan& plan) {
   // do the aggregation from all different nodes
   // sort and top of results
   auto schema = plan.getOutputSchema();
@@ -118,7 +122,7 @@ RowCursorPtr ServerExecutor::execute(const ExecutionPlan& plan, const std::share
 #undef LESS_KIND_CASE
   }
 
-  return std::make_shared<TopRows>(composite, phase.top(), less);
+  return std::make_shared<TopRows>(input, phase.top(), less);
 }
 
 } // namespace core

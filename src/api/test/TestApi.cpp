@@ -232,13 +232,13 @@ TEST(ApiTest, TestExprValueEval) {
     bool valid = true;
     auto r1 = v4->eval(ctx, valid);
     auto r2 = v4->eval(ctx, valid);
-    r2 = v4->agg(r1, r2);
+    r2 = v4->compute(r1, r2);
     EXPECT_GE(r2, r1);
     auto r3 = v4->eval(ctx, valid);
-    r3 = v4->agg(r2, r3);
+    r3 = v4->compute(r2, r3);
     EXPECT_GE(r3, r2);
     auto r4 = v4->eval(ctx, valid);
-    r4 = v4->agg(r3, r4);
+    r4 = v4->compute(r3, r4);
     EXPECT_GE(r4, r3);
     LOG(INFO) << " 4 values: " << r1 << ", " << r2 << ", " << r3 << ", " << r4;
   }

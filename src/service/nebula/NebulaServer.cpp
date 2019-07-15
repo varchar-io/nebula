@@ -20,6 +20,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <sys/mman.h>
 #include <thread>
 #include "common/Evidence.h"
 #include "meta/ClusterInfo.h"
@@ -179,24 +180,6 @@ class EchoServiceImpl final : public Echo::Service {
 } // namespace service
 } // namespace nebula
 
-void loadNebulaTest() {
-  // load test data to run this query
-  auto bm = nebula::execution::BlockManager::init();
-
-  // set up a start and end time for the data set in memory
-  auto start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
-  auto end = nebula::common::Evidence::time("2019-05-01", "%Y-%m-%d");
-
-  // let's plan these many data std::thread::hardware_concurrency()
-  nebula::meta::TestTable testTable;
-  auto numBlocks = std::thread::hardware_concurrency();
-  auto window = (end - start) / numBlocks;
-  for (unsigned i = 0; i < numBlocks; i++) {
-    size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
-  }
-}
-
 // NOTE: main function can't be placed inside a namespace
 // Otherwise you may get undefined symbol "_main" error in link
 void RunServer() {
@@ -221,7 +204,7 @@ void RunServer() {
   LOG(INFO) << "Nebula server listening on " << server_address;
 
   // loading some rand generated data for nebula.test category
-  loadNebulaTest();
+  nebula::service::loadNebulaTestData();
 
   // load up signatures
   nebula::execution::io::trends::SignaturesTable signatures;

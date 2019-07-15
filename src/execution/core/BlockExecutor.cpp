@@ -51,10 +51,10 @@ void BlockExecutor::compute() {
   const auto& fields = plan_.fields();
   const auto& filter = plan_.filter();
 
-#define AGG_FIELD_UPDATE(KIND, TYPE)                                                                                                    \
-  case Kind::KIND: {                                                                                                                    \
-    *static_cast<TYPE*>(value) = static_cast<UDAF<Kind::KIND>&>(*fields[column]).agg(*static_cast<TYPE*>(ov), *static_cast<TYPE*>(nv)); \
-    return true;                                                                                                                        \
+#define AGG_FIELD_UPDATE(KIND, TYPE)                                                                                                        \
+  case Kind::KIND: {                                                                                                                        \
+    *static_cast<TYPE*>(value) = static_cast<UDAF<Kind::KIND>&>(*fields[column]).compute(*static_cast<TYPE*>(ov), *static_cast<TYPE*>(nv)); \
+    return true;                                                                                                                            \
   }
 
   // build context and computed row associated with this context

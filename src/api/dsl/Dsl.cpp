@@ -155,7 +155,7 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // global aggregation, keys and agg methods
   auto controller = std::make_unique<FinalPhase>(std::move(node));
   (*controller)
-    .agg()
+    .agg(numAggColumns, aggColumns)
     .sort(zbSorts, sortType_ == SortType::DESC)
     .limit(limit_);
 
