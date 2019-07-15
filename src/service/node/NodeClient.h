@@ -17,16 +17,17 @@
 
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/init/Init.h>
-#include <grpcpp/grpcpp.h>
 #include <iostream>
 #include <memory>
 #include <string>
+#include "ConnectionPool.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/core/NodeClient.h"
 #include "meta/NNode.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
 #include "service/nebula/NebulaService.h"
+
 /**
  * Define node client which is responsible to talk to a node server for query fan out.
  */
@@ -34,14 +35,16 @@ namespace nebula {
 namespace service {
 class NodeClient : public nebula::execution::core::NodeClient {
 public:
-  NodeClient(const nebula::meta::NNode& node, folly::ThreadPoolExecutor& pool)
-    : nebula::execution::core::NodeClient(node, pool) {
-    // create chanel via TCP connection - localhost? 127.0.0.1? 0.0.0.0?
-    const auto addr = node.toString();
-    LOG(INFO) << "Node client connecting: " << addr;
-    auto channel = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
+  NodeClient(
+    const nebula::meta::NNode& node,
+    folly::ThreadPoolExecutor& pool,
+    std::shared_ptr<nebula::api::dsl::Query> query)
+    : nebula::execution::core::NodeClient(node, pool), query_{ query } {
 
-    this->stub_ = nebula::service::NodeServer::NewStub(channel);
+    // create a reusable stub
+    auto channel = ConnectionPool::init()->connection(node.toString());
+    N_ENSURE(channel != nullptr, "requires a valid channel");
+    stub_ = nebula::service::NodeServer::NewStub(channel);
   }
 
   virtual ~NodeClient() = default;
@@ -60,7 +63,8 @@ public:
   void state();
 
 private:
-  std::unique_ptr<nebula::service::NodeServer::Stub> stub_;
+  std::shared_ptr<nebula::api::dsl::Query> query_;
+  std::unique_ptr<NodeServer::Stub> stub_;
 };
 
 } // namespace service

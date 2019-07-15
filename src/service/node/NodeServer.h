@@ -20,7 +20,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
-#include "execution/io/trends/Trends.h"
+#include "execution/meta/TableService.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
 #include "service/nebula/NebulaService.h"
@@ -54,6 +54,12 @@ class NodeServerImpl final : public NodeServer::Service {
     const flatbuffers::grpc::Message<NodeStateRequest>*,
     flatbuffers::grpc::Message<NodeStateReply>*)
     override;
+
+public:
+  NodeServerImpl() : tableService_{ std::make_shared<nebula::execution::meta::TableService>() } {}
+
+private:
+  std::shared_ptr<nebula::execution::meta::TableService> tableService_;
 };
 
 } // namespace service

@@ -15,9 +15,12 @@
  */
 #pragma once
 
+#include <sys/mman.h>
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "execution/ExecutionPlan.h"
+#include "execution/core/NodeConnector.h"
+#include "execution/meta/TableService.h"
 #include "meta/Table.h"
 #include "nebula.grpc.pb.h"
 #include "service/nebula/NebulaService.h"
@@ -31,12 +34,28 @@ namespace service {
 
 class QueryHandler final {
 public:
-  std::unique_ptr<nebula::execution::ExecutionPlan> compile(const nebula::meta::Table&, const QueryRequest&, ErrorCode&) const noexcept;
-  nebula::surface::RowCursorPtr query(const nebula::execution::ExecutionPlan&, ErrorCode&) const noexcept;
+  QueryHandler() : ms_{ std::make_shared<nebula::execution::meta::TableService>() } {}
+  // build the query object to execute
+  std::shared_ptr<nebula::api::dsl::Query> build(
+    const nebula::meta::Table&,
+    const QueryRequest&,
+    ErrorCode& err) const noexcept;
+
+  std::unique_ptr<nebula::execution::ExecutionPlan> compile(
+    const std::shared_ptr<nebula::api::dsl::Query>,
+    const nebula::execution::QueryWindow&,
+    ErrorCode&) const noexcept;
+
+  nebula::surface::RowCursorPtr query(
+    const nebula::execution::ExecutionPlan&,
+    const std::shared_ptr<nebula::execution::core::NodeConnector> connector,
+    ErrorCode&) const noexcept;
 
 private:
-  // build the query object to execute
-  nebula::api::dsl::Query build(const nebula::meta::Table&, const QueryRequest&) const;
+  //  build query internally which can throw
+  std::shared_ptr<nebula::api::dsl::Query> buildQuery(
+    const nebula::meta::Table& tb,
+    const QueryRequest& req) const;
 
   // build predicate into the query
   std::shared_ptr<nebula::api::dsl::Expression> buildPredicate(
@@ -50,6 +69,9 @@ private:
 
   // validate the query request
   ErrorCode validate(const QueryRequest&) const noexcept;
+
+private:
+  std::shared_ptr<nebula::meta::MetaService> ms_;
 };
 
 } // namespace service

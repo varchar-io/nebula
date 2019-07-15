@@ -39,8 +39,9 @@ enum ErrorCode {
   MISSING_TABLE = 1,
   MISSING_TIME_RANGE = 2,
   MISSING_OUTPUT_FIELDS = 3,
-  FAIL_BUILD_QUERY_PLAN = 4,
-  FAIL_EXECUTE_QUERY = 5
+  FAIL_BUILD_QUERY = 4,
+  FAIL_COMPILE_QUERY = 5,
+  FAIL_EXECUTE_QUERY = 6
 };
 
 template <ErrorCode E>
@@ -67,8 +68,13 @@ struct ErrorTraits<ErrorCode::MISSING_OUTPUT_FIELDS> {
 };
 
 template <>
-struct ErrorTraits<ErrorCode::FAIL_BUILD_QUERY_PLAN> {
-  static constexpr auto MESSAGE = "Fail To Build Query Plan";
+struct ErrorTraits<ErrorCode::FAIL_BUILD_QUERY> {
+  static constexpr auto MESSAGE = "Fail To Build Query";
+};
+
+template <>
+struct ErrorTraits<ErrorCode::FAIL_COMPILE_QUERY> {
+  static constexpr auto MESSAGE = "Fail To Compile Query Plan";
 };
 
 template <>
@@ -102,7 +108,7 @@ public:
  */
 class QuerySerde {
 public:
-  static flatbuffers::grpc::Message<QueryPlan> serialize(const nebula::api::dsl::Query&, const std::string&, uint64_t, uint64_t);
+  static flatbuffers::grpc::Message<QueryPlan> serialize(const nebula::api::dsl::Query&, const std::string&, const nebula::execution::QueryWindow&);
   static nebula::api::dsl::Query deserialize(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
   static std::unique_ptr<nebula::execution::ExecutionPlan> from(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
 };
@@ -113,7 +119,7 @@ public:
 class BatchSerde {
 public:
   static flatbuffers::grpc::Message<BatchRows> serialize(const nebula::memory::keyed::FlatBuffer&);
-  static nebula::memory::keyed::FlatBuffer deserialize(const flatbuffers::grpc::Message<BatchRows>*);
+  static nebula::surface::RowCursorPtr deserialize(const flatbuffers::grpc::Message<BatchRows>*);
 };
 
 } // namespace service

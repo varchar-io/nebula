@@ -19,6 +19,7 @@
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/futures/Future.h>
 #include <glog/logging.h>
+#include <sys/mman.h>
 #include "NodeClient.h"
 #include "meta/NNode.h"
 

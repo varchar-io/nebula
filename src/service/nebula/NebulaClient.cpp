@@ -82,7 +82,7 @@ int main(int argc, char** argv) {
 
   // connect to node client
   folly::CPUThreadPoolExecutor pool{ 2 };
-  nebula::service::NodeClient client(node, pool);
+  nebula::service::NodeClient client(node, pool, nullptr);
   client.echo("nebula node");
 
   return 0;

@@ -34,6 +34,9 @@ namespace nebula {
 namespace execution {
 namespace serde {
 
+using FlatBufferPtr = std::unique_ptr<nebula::memory::keyed::FlatBuffer>;
+
+#ifdef USE_YOMM2_MD
 // register class chain to handle this aspect (AOP)
 // A single SamplesCursor may be returned for single block node or Composite cursor returned to chain multiple cursors
 register_class(nebula::surface::RowCursor);
@@ -55,7 +58,6 @@ register_class(nebula::surface::MockRowCursor, nebula::surface::RowCursor);
 
 // after a row cursor converted to a flat buffer, its data is moved out
 // we can't not use it any more, this is especially true for block executorƒ
-using FlatBufferPtr = std::unique_ptr<nebula::memory::keyed::FlatBuffer>;
 declare_method(FlatBufferPtr, asBuffer,
                (yorel::yomm2::virtual_<nebula::surface::RowCursor&>, nebula::type::Schema));
 
@@ -80,6 +82,36 @@ define_method(FlatBufferPtr, asBuffer, (nebula::execution::core::BlockExecutor &
 define_method(FlatBufferPtr, asBuffer, (nebula::memory::keyed::FlatRowCursor & f, nebula::type::Schema)) {
   return f.takeResult();
 }
+
+// client module entry point required to call this before using above multi-dispatch methods
+void init() {
+  yorel::yomm2::update_methods();
+}
+
+#else
+
+// by default, if yomm2 is not available or buggy, go with this dynamic cast version as fallback
+FlatBufferPtr asBuffer(nebula::surface::RowCursor& cursor, nebula::type::Schema schema) {
+  if (auto b = dynamic_cast<nebula::execution::core::BlockExecutor*>(&cursor)) {
+    return b->takeResult();
+  } else if (auto f = dynamic_cast<nebula::memory::keyed::FlatRowCursor*>(&cursor)) {
+    return f->takeResult();
+  } else {
+    auto buffer = std::make_unique<nebula::memory::keyed::FlatBuffer>(schema);
+    while (cursor.hasNext()) {
+      buffer->add(cursor.next());
+    }
+
+    // move this buffer out
+    LOG(INFO) << "Serialized a normal cursor as a flat buffer";
+    return buffer;
+  }
+}
+
+void init() {
+}
+
+#endif
 
 } // namespace serde
 } // namespace execution

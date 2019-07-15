@@ -52,6 +52,13 @@ TEST(MetaTest, TestNBlock) {
   ASSERT_FALSE(b1.overlap({ 12, 18 }));
 }
 
+TEST(MetaTest, TestNNode) {
+  NNode n1{ NRole::NODE, "1.0.0.1", 90 };
+  NNode n2{ n1 };
+  ASSERT_TRUE(n1.equals(n2));
+  LOG(INFO) << "N2=" << n2.toString();
+}
+
 } // namespace test
 } // namespace meta
 } // namespace nebula

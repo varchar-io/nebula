@@ -18,6 +18,8 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include "api/dsl/Serde.h"
+#include "execution/ExecutionPlan.h"
+#include "memory/keyed/FlatRowCursor.h"
 #include "type/Serde.h"
 
 /**
@@ -30,6 +32,9 @@ using nebula::api::dsl::Expression;
 using nebula::api::dsl::Query;
 using nebula::api::dsl::Serde;
 using nebula::api::dsl::SortType;
+using nebula::execution::QueryWindow;
+using nebula::memory::keyed::FlatBuffer;
+using nebula::memory::keyed::FlatRowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Kind;
@@ -46,7 +51,8 @@ const std::string ServiceProperties::errorMessage(ErrorCode error) {
     ERROR_MESSSAGE_CASE(MISSING_TABLE)
     ERROR_MESSSAGE_CASE(MISSING_TIME_RANGE)
     ERROR_MESSSAGE_CASE(MISSING_OUTPUT_FIELDS)
-    ERROR_MESSSAGE_CASE(FAIL_BUILD_QUERY_PLAN)
+    ERROR_MESSSAGE_CASE(FAIL_BUILD_QUERY)
+    ERROR_MESSSAGE_CASE(FAIL_COMPILE_QUERY)
     ERROR_MESSSAGE_CASE(FAIL_EXECUTE_QUERY)
   default: throw NException("Error Code Not Covered");
   }
@@ -129,7 +135,7 @@ const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Sche
 }
 
 // serialize a query and meta data
-flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, const std::string& id, uint64_t start, uint64_t end) {
+flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, const std::string& id, const QueryWindow& window) {
   flatbuffers::grpc::MessageBuilder mb;
   auto tbl = q.table_->name();
   auto filter = Serde::serialize(*q.filter_);
@@ -152,7 +158,8 @@ flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, cons
   }
 
   auto request_offset = CreateQueryPlanDirect(
-    mb, id.c_str(), tbl.c_str(), filter.c_str(), &fields, &groups, &sorts, q.sortType_ == SortType::DESC, q.limit_, start, end);
+    mb, id.c_str(), tbl.c_str(), filter.c_str(), &fields, &groups, &sorts,
+    q.sortType_ == SortType::DESC, q.limit_, window.first, window.second);
   mb.Finish(request_offset);
   return mb.ReleaseMessage<QueryPlan>();
 }
@@ -220,6 +227,8 @@ std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(
   const std::shared_ptr<nebula::meta::MetaService> ms,
   const flatbuffers::grpc::Message<QueryPlan>* msg) {
   auto query = QuerySerde::deserialize(ms, msg);
+
+  LOG(INFO) << "compile query";
   auto plan = query.compile();
 
   // set a few other properties associated with execution plan
@@ -230,7 +239,7 @@ std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(
   return plan;
 }
 
-flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(const nebula::memory::keyed::FlatBuffer& fb) {
+flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(const FlatBuffer& fb) {
   flatbuffers::grpc::MessageBuilder mb;
   auto schema = mb.CreateString(nebula::type::TypeSerializer::to(fb.schema()));
   int8_t* buffer;
@@ -242,7 +251,7 @@ flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(const nebula::memory
   return mb.ReleaseMessage<BatchRows>();
 }
 
-nebula::memory::keyed::FlatBuffer BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>* batch) {
+RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>* batch) {
   auto ptr = batch->GetRoot();
 
   const auto schema = nebula::type::TypeSerializer::from(flatbuffers::GetString(ptr->schema()));
@@ -251,7 +260,8 @@ nebula::memory::keyed::FlatBuffer BatchSerde::deserialize(const flatbuffers::grp
   auto bytes = ptr->data()->data();
 
   // TODO(cao) - It is not good, we're reference some data from batch but actually not owning it.
-  return nebula::memory::keyed::FlatBuffer(schema, bytes);
+  auto fb = std::make_unique<FlatBuffer>(schema, bytes);
+  return std::make_shared<FlatRowCursor>(std::move(fb));
 }
 
 } // namespace service

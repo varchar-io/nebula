@@ -22,7 +22,7 @@
 #include "api/udf/MyUdf.h"
 #include "common/Cursor.h"
 #include "execution/ExecutionPlan.h"
-#include "meta/MetaService.h"
+#include "execution/meta/TableService.h"
 #include "meta/Table.h"
 #include "surface/DataSurface.h"
 
@@ -44,7 +44,7 @@ __attribute__((unused)) static Query table(const std::string& name, const std::s
   auto ms = metaservice;
   if (ms == nullptr) {
     // default one
-    ms = std::make_shared<nebula::meta::MetaService>();
+    ms = std::make_shared<nebula::execution::meta::TableService>();
   }
 
   // before we use copy-elision by calling constructor directly

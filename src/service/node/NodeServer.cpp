@@ -18,6 +18,7 @@
 #include <sys/mman.h>
 #include "execution/BlockManager.h"
 #include "execution/core/NodeExecutor.h"
+#include "execution/io/trends/Trends.h"
 #include "execution/serde/RowCursorSerde.h"
 #include "surface/DataSurface.h"
 
@@ -92,16 +93,20 @@ grpc::Status NodeServerImpl::Query(
   grpc::ServerContext*,
   const flatbuffers::grpc::Message<QueryPlan>* query,
   flatbuffers::grpc::Message<BatchRows>* batch) {
-  auto ms = std::make_shared<nebula::meta::MetaService>();
-  auto plan = QuerySerde::from(ms, query);
+  try {
+    auto plan = QuerySerde::from(tableService_, query);
 
-  // execute this plan and get results
-  NodeExecutor executor(BlockManager::init());
-  auto cursor = executor.execute(*plan);
-  const auto& buffer = nebula::execution::serde::asBuffer(*cursor, plan->getOutputSchema());
+    // execute this plan and get results
+    NodeExecutor executor(BlockManager::init());
+    auto cursor = executor.execute(*plan);
 
-  // serialize row cursor back
-  *batch = BatchSerde::serialize(*buffer);
+    const auto& buffer = nebula::execution::serde::asBuffer(*cursor, plan->getOutputSchema());
+
+    // serialize row cursor back
+    *batch = BatchSerde::serialize(*buffer);
+  } catch (const std::exception& exp) {
+    return grpc::Status(grpc::StatusCode::INTERNAL, exp.what());
+  }
 
   return grpc::Status::OK;
 }
@@ -126,7 +131,7 @@ grpc::Status NodeServerImpl::Poll(
   const auto bm = BlockManager::init();
   flatbuffers::grpc::MessageBuilder mb;
   auto blocks = bm->all();
-  LOG(INFO) << "Current node hosts # blocks: " << blocks.size();
+  // LOG(INFO) << "Current node hosts # blocks: " << blocks.size();
 
   std::vector<flatbuffers::Offset<DataBlock>> db;
   db.reserve(blocks.size());
@@ -153,11 +158,6 @@ grpc::Status NodeServerImpl::Poll(
 } // namespace nebula
 
 void RunServer() {
-  // We're using AOP lib yomm2 to inject batch serialiation
-  // Since we don't use dynamic library loading, we call this once at starting point.
-  // TODO(cao) - crashes node server, need to figure out root cause before executing query
-  // yorel::yomm2::update_methods();
-
   // launch the server
   std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::ServiceProperties::NPORT));
   nebula::service::NodeServerImpl node;
@@ -178,6 +178,10 @@ void RunServer() {
 }
 
 int main(int argc, char** argv) {
+  // executuin serde init
+  nebula::execution::serde::init();
+
+  // init folly
   folly::init(&argc, &argv);
   FLAGS_logtostderr = 1;
 

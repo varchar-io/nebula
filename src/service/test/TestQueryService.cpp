@@ -18,6 +18,7 @@
 #include <folly/init/Init.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "execution/core/NodeConnector.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Pins.h"
 #include "execution/io/trends/Trends.h"
@@ -35,6 +36,7 @@ using namespace nebula::api::dsl;
 using nebula::common::Cursor;
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
+using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::PinsTable;
 using nebula::execution::io::trends::TrendsTable;
@@ -84,13 +86,15 @@ TEST(ServiceTest, TestServiceEndpoint) {
   QueryHandler handler;
   ErrorCode error = ErrorCode::NONE;
   // compile the query into a plan
-  auto plan = handler.compile(trends, request, error);
+  auto query = handler.build(trends, request, error);
+  auto plan = handler.compile(query, { request.start(), request.end() }, error);
 
   // set time range constraints in execution plan directly since it should always present
   plan->display();
   EXPECT_EQ(error, ErrorCode::NONE);
 
-  nebula::surface::RowCursorPtr result = handler.query(*plan, error);
+  auto connector = std::make_shared<NodeConnector>();
+  nebula::surface::RowCursorPtr result = handler.query(*plan, connector, error);
   EXPECT_EQ(error, ErrorCode::NONE);
 
   LOG(INFO) << "JSON BLOB:";
@@ -123,13 +127,15 @@ TEST(ServiceTest, TestPinsData) {
   QueryHandler handler;
   ErrorCode error = ErrorCode::NONE;
   // compile the query into a plan
-  auto plan = handler.compile(pins, request, error);
+  auto query = handler.build(pins, request, error);
+  auto plan = handler.compile(query, { request.start(), request.end() }, error);
 
   // set time range constraints in execution plan directly since it should always present
   EXPECT_EQ(error, ErrorCode::NONE);
   plan->display();
 
-  nebula::surface::RowCursorPtr result = handler.query(*plan, error);
+  auto connector = std::make_shared<NodeConnector>();
+  nebula::surface::RowCursorPtr result = handler.query(*plan, connector, error);
   EXPECT_EQ(error, ErrorCode::NONE);
 
   LOG(INFO) << "JSON BLOB:";

@@ -17,7 +17,6 @@
 #pragma once
 
 #include <string>
-#include "MetaService.h"
 #include "Table.h"
 #include "type/Serde.h"
 

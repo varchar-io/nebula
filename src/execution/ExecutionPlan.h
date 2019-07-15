@@ -60,6 +60,8 @@ class ExecutionPhase;
 template <PhaseType PT>
 class Phase {};
 
+// define query window type
+using QueryWindow = std::pair<size_t, size_t>;
 using BlockPhase = Phase<PhaseType::COMPUTE>;
 using NodePhase = Phase<PhaseType::PARTIAL>;
 using FinalPhase = Phase<PhaseType::GLOBAL>;
@@ -92,11 +94,11 @@ public:
   }
 
   // set time range as [start, end] alias window
-  inline void setWindow(const std::pair<size_t, size_t>& window) noexcept {
+  inline void setWindow(const QueryWindow& window) noexcept {
     window_ = window;
   }
 
-  inline const std::pair<size_t, size_t>& getWindow() const noexcept {
+  inline const QueryWindow& getWindow() const noexcept {
     return window_;
   }
 
@@ -108,7 +110,7 @@ private:
   std::unique_ptr<ExecutionPhase> plan_;
   std::vector<nebula::meta::NNode> nodes_;
   nebula::type::Schema output_;
-  std::pair<size_t, size_t> window_;
+  QueryWindow window_;
 };
 
 // base execution phase definition - templated lambda - looking for C++ 20?

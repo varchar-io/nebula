@@ -26,7 +26,7 @@ namespace keyed {
 
 class FlatRowCursor : public nebula::surface::RowCursor {
 public:
-  explicit FlatRowCursor(std::unique_ptr<HashFlat> flat)
+  explicit FlatRowCursor(std::unique_ptr<FlatBuffer> flat)
     : nebula::surface::RowCursor(flat->getRows()),
       flat_{ std::move(flat) } {}
 
@@ -41,13 +41,14 @@ public:
   }
 
   inline std::unique_ptr<nebula::memory::keyed::FlatBuffer> takeResult() {
-    auto temp = std::move(flat_);
-    flat_ = nullptr;
+    std::unique_ptr<FlatBuffer> temp = nullptr;
+    std::swap(temp, flat_);
+    N_ENSURE_NOT_NULL(temp, "should have swapped a solid buffer.");
     return temp;
   }
 
 private:
-  std::unique_ptr<HashFlat> flat_;
+  std::unique_ptr<FlatBuffer> flat_;
 };
 
 } // namespace keyed

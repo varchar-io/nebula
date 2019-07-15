@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "meta/MetaService.h"
 #include "meta/NNode.h"
 #include "meta/Table.h"
 #include "type/Serde.h"

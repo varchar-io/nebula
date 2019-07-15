@@ -17,8 +17,8 @@
 #include "NodeExecutor.h"
 #include "BlockExecutor.h"
 #include "execution/eval/UDF.h"
+#include "execution/meta/TableService.h"
 #include "memory/keyed/FlatRowCursor.h"
-#include "meta/MetaService.h"
 
 /**
  * Nebula runtime / online meta data.
@@ -29,10 +29,10 @@ namespace core {
 
 using nebula::common::Cursor;
 using nebula::execution::eval::UDAF;
+using nebula::execution::meta::TableService;
 using nebula::memory::Batch;
 using nebula::memory::keyed::FlatRowCursor;
 using nebula::memory::keyed::HashFlat;
-using nebula::meta::MetaService;
 using nebula::surface::CompositeRowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
@@ -49,8 +49,9 @@ RowCursorPtr NodeExecutor::execute(const ExecutionPlan& plan) {
   const BlockPhase& blockPhase = plan.fetch<PhaseType::COMPUTE>();
   // query total number of blocks to  executor on and
   // launch block executor on each in parallel
-  MetaService ms;
-  const std::vector<Batch*> blocks = blockManager_->query(*ms.query(blockPhase.table()), plan);
+  // TODO(cao): this table service instance potentially can be carried by a query context on each node
+  TableService ts;
+  const std::vector<Batch*> blocks = blockManager_->query(*ts.query(blockPhase.table()), plan);
 
   LOG(INFO) << "Processing total blocks: " << blocks.size();
   std::vector<folly::Future<RowCursorPtr>> results;

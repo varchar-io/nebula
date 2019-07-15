@@ -37,6 +37,7 @@
 #include "meta/NNode.h"
 #include "meta/Table.h"
 #include "nebula.grpc.pb.h"
+#include "service/node/RemoteNodeConnector.h"
 #include "storage/CsvReader.h"
 
 // use "host.docker.internal" for docker env
@@ -114,13 +115,26 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
   // validate the query request and build the call
   nebula::common::Evidence::Duration tick;
   ErrorCode error = ErrorCode::NONE;
-  // compile the query into a plan
-  auto plan = handler_.compile(*ts_.query(request->table()), *request, error);
+
+  // get the table
+  auto table = ts_.query(request->table());
+
+  // build the query
+  auto query = handler_.build(*table, *request, error);
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }
 
-  RowCursorPtr result = handler_.query(*plan, error);
+  // compile the query into a plan
+  auto plan = handler_.compile(query, { request->start(), request->end() }, error);
+  if (error != ErrorCode::NONE) {
+    return replyError(error, reply, 0);
+  }
+
+  // create a remote connector and execute the query plan
+  LOG(INFO) << "create a remote node connector ";
+  auto connector = std::make_shared<RemoteNodeConnector>(query);
+  RowCursorPtr result = handler_.query(*plan, connector, error);
   auto durationMs = tick.elapsedMs();
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, durationMs);

@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 #include "NodeClient.h"
+#include "api/dsl/Query.h"
 #include "execution/core/NodeClient.h"
 #include "execution/core/NodeConnector.h"
 #include "node/node.grpc.fb.h"
@@ -34,17 +35,22 @@ namespace nebula {
 namespace service {
 class RemoteNodeConnector : public nebula::execution::core::NodeConnector {
 public:
-  RemoteNodeConnector() = default;
+  RemoteNodeConnector(std::shared_ptr<nebula::api::dsl::Query> query) : query_{ query } {}
   virtual ~RemoteNodeConnector() = default;
 
-  virtual std::unique_ptr<nebula::execution::core::NodeClient> makeClient(const nebula::meta::NNode& node, folly::ThreadPoolExecutor& pool) override {
+  virtual std::unique_ptr<nebula::execution::core::NodeClient> makeClient(
+    const nebula::meta::NNode& node,
+    folly::ThreadPoolExecutor& pool) override {
     //a little optimization here - for in proc node, we can avoid serialization
     if (node.equals(nebula::meta::NNode::inproc())) {
       return std::make_unique<nebula::execution::core::NodeClient>(node, pool);
     }
 
-    return std::make_unique<NodeClient>(node, pool);
+    return std::make_unique<NodeClient>(node, pool, this->query_);
   }
+
+private:
+  std::shared_ptr<nebula::api::dsl::Query> query_;
 };
 } // namespace service
 } // namespace nebula

@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include "execution/core/NodeConnector.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Trends.h"
 #include "execution/meta/TableService.h"
@@ -39,6 +40,7 @@ using namespace nebula::api::dsl;
 using nebula::common::Cursor;
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
+using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::TrendsTable;
 using nebula::execution::meta::TableService;
@@ -79,11 +81,13 @@ TEST(ServiceTest, TestQueryHandler) {
   ErrorCode err = ErrorCode::NONE;
 
   // No error in compiling the query
-  auto plan = handler.compile(trends, request, err);
+  auto query = handler.build(trends, request, err);
+  auto plan = handler.compile(query, { request.start(), request.end() }, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
-  auto result = handler.query(*plan, err);
+  auto connector = std::make_shared<NodeConnector>();
+  auto result = handler.query(*plan, connector, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // print out result;
@@ -137,11 +141,13 @@ TEST(ServiceTest, TestJsonifyResults) {
   ErrorCode err = ErrorCode::NONE;
 
   // No error in compiling the query
-  auto plan = handler.compile(trends, request, err);
+  auto query = handler.build(trends, request, err);
+  auto plan = handler.compile(query, { request.start(), request.end() }, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
-  auto result = handler.query(*plan, err);
+  auto connector = std::make_shared<NodeConnector>();
+  auto result = handler.query(*plan, connector, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
@@ -191,11 +197,13 @@ TEST(ServiceTest, TestQueryTimeline) {
   ErrorCode err = ErrorCode::NONE;
 
   // No error in compiling the query
-  auto plan = handler.compile(testTable, request, err);
+  auto query = handler.build(testTable, request, err);
+  auto plan = handler.compile(query, { request.start(), request.end() }, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
-  auto result = handler.query(*plan, err);
+  auto connector = std::make_shared<NodeConnector>();
+  auto result = handler.query(*plan, connector, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
@@ -244,11 +252,15 @@ TEST(ServiceTest, TestStringFilters) {
   ErrorCode err = ErrorCode::NONE;
 
   // No error in compiling the query
-  auto plan = handler.compile(testTable, request, err);
+  auto query = handler.build(testTable, request, err);
+  auto plan = handler.compile(query, { request.start(), request.end() }, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
-  auto result = handler.query(*plan, err);
+  auto connector = std::make_shared<NodeConnector>();
+  auto result = handler.query(*plan, connector, err);
+
+  // No error in exeucting the query
   EXPECT_EQ(err, ErrorCode::NONE);
 
   LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
@@ -299,12 +311,14 @@ TEST(ServiceTest, TestQuerySamples) {
   ErrorCode err = ErrorCode::NONE;
 
   // No error in compiling the query
-  auto plan = handler.compile(testTable, request, err);
+  auto query = handler.build(testTable, request, err);
+  auto plan = handler.compile(query, { request.start(), request.end() }, err);
   plan->display();
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
-  auto result = handler.query(*plan, err);
+  auto connector = std::make_shared<NodeConnector>();
+  auto result = handler.query(*plan, connector, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
@@ -387,7 +401,7 @@ TEST(ServiceTest, TestQuerySerde) {
 
   // serialize this query
   nebula::common::Evidence::Duration tick;
-  auto ser = QuerySerde::serialize(query, plan1->id(), start, end);
+  auto ser = QuerySerde::serialize(query, plan1->id(), { start, end });
   auto plan2 = QuerySerde::from(ms, &ser);
 
   LOG(INFO) << "Query serde time (ms): " << tick.elapsedMs();

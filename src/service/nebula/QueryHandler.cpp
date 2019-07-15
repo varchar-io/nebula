@@ -17,7 +17,6 @@
 #include "QueryHandler.h"
 #include <folly/Conv.h>
 #include "execution/core/ServerExecutor.h"
-#include "execution/meta/TableService.h"
 #include "service/node/NodeClient.h"
 #include "service/node/RemoteNodeConnector.h"
 
@@ -46,8 +45,9 @@ using nebula::api::dsl::SortType;
 using nebula::api::dsl::starts;
 using nebula::api::dsl::table;
 using nebula::execution::ExecutionPlan;
+using nebula::execution::QueryWindow;
+using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
-using nebula::execution::meta::TableService;
 using nebula::meta::Table;
 using nebula::service::Operation;
 using nebula::surface::RowCursorPtr;
@@ -56,33 +56,32 @@ using nebula::type::Schema;
 using nebula::type::TypeNode;
 using nebula::type::TypeTraits;
 
-std::unique_ptr<ExecutionPlan> QueryHandler::compile(const Table& tb, const QueryRequest& request, ErrorCode& err) const noexcept {
-  // 1. validate the query request, if failed, we can return right away
-  if ((err = validate(request)) != 0) {
-    return {};
-  }
+std::unique_ptr<ExecutionPlan> QueryHandler::compile(
+  const std::shared_ptr<Query> query, const QueryWindow& window, ErrorCode& err) const noexcept {
 
   // 2. build query out of the request
   std::unique_ptr<ExecutionPlan> plan = nullptr;
   try {
-    auto plan = build(tb, request).compile();
+    auto plan = query->compile();
 
     // set time window in query plan
-    plan->setWindow(std::make_pair(request.start(), request.end()));
+    plan->setWindow(window);
 
     return plan;
   } catch (const std::exception& exp) {
     LOG(ERROR) << "Error in building query: " << exp.what();
-    err = ErrorCode::FAIL_BUILD_QUERY_PLAN;
+    err = ErrorCode::FAIL_COMPILE_QUERY;
     return {};
   }
 }
 
-RowCursorPtr QueryHandler::query(const ExecutionPlan& plan, ErrorCode& err) const noexcept {
+RowCursorPtr QueryHandler::query(
+  const ExecutionPlan& plan,
+  const std::shared_ptr<NodeConnector> connector,
+  ErrorCode& err) const noexcept {
   // execute the query plan
   try {
     // create a node connector for this executor
-    auto connector = std::make_shared<RemoteNodeConnector>();
     return ServerExecutor(nebula::meta::NNode::local().toString()).execute(plan, connector);
   } catch (const std::exception& exp) {
     LOG(ERROR) << "Error in executing query: " << exp.what();
@@ -96,12 +95,25 @@ inline SortType orderTypeConvert(OrderType type) {
 }
 
 // build the query object to execute
-Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
+std::shared_ptr<Query> QueryHandler::build(const Table& tb, const QueryRequest& req, ErrorCode& err) const noexcept {
+  // 1. validate the query request, if failed, we can return right away
+  if ((err = validate(req)) != 0) {
+    return {};
+  }
+
+  try {
+    // create a node connector for this executor
+    return buildQuery(tb, req);
+  } catch (const std::exception& exp) {
+    LOG(ERROR) << "Error in building query: " << exp.what();
+    err = ErrorCode::FAIL_BUILD_QUERY;
+    return {};
+  }
+}
+
+std::shared_ptr<nebula::api::dsl::Query> QueryHandler::buildQuery(const Table& tb, const QueryRequest& req) const {
   // build filter
-  // TODO(cao) - currently, we're using trends table to demo
-  // will remove with generic meta service
-  auto ms = std::make_shared<TableService>();
-  auto q = table(req.table(), ms);
+  auto q = std::make_shared<Query>(req.table(), ms_);
 
   std::shared_ptr<Expression> expr = nullptr;
 #define BUILD_EXPR(PREDS, LOP)                                    \
@@ -131,9 +143,9 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
   using LT = TypeTraits<Kind::BIGINT>::CppType;
   auto timeFilter = (col(nebula::meta::Table::TIME_COLUMN) >= (LT)req.start()) && (col(nebula::meta::Table::TIME_COLUMN) <= (LT)req.end());
   if (expr == nullptr) {
-    q.where(timeFilter);
+    q->where(timeFilter);
   } else {
-    q.where(timeFilter && expr);
+    q->where(timeFilter && expr);
   }
 
   // build all columns to be selected
@@ -170,7 +182,7 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
     fields.push_back(windowExpr);
 
     // timeline doesn't follow limit settings
-    q.limit(buckets);
+    q->limit(buckets);
 
     keys.push_back(1);
   } else {
@@ -191,18 +203,18 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
     fields.push_back(buildMetric(m));
   }
 
-  q.select(fields).groupby(keys);
+  q->select(fields).groupby(keys);
 
   // build sorting and limit/top property
   if (isTimeline) {
     // timeline always sort by time window as first column
-    q.sortby({ 1 });
+    q->sortby({ 1 });
   } else if (req.has_order()) {
     auto order = req.order();
     // search column index
     for (size_t i = 0, size = columns.size(); i < size; ++i) {
       if (columns.at(i) == order.column()) {
-        q.sortby({ i + 1 }, orderTypeConvert(order.type()));
+        q->sortby({ i + 1 }, orderTypeConvert(order.type()));
         break;
       }
     }
@@ -214,7 +226,7 @@ Query QueryHandler::build(const Table& tb, const QueryRequest& req) const {
     if (limit == 0) {
       limit = ServiceProperties::DEFAULT_TOP_SIZE;
     }
-    q.limit(limit);
+    q->limit(limit);
   }
 
   return q;

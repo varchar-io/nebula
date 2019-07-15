@@ -29,6 +29,7 @@
  */
 namespace nebula {
 namespace service {
+
 class NodeSync {
 public:
   static std::shared_ptr<folly::FunctionScheduler> async(folly::ThreadPoolExecutor& pool) noexcept {
@@ -38,7 +39,6 @@ public:
     auto fs = std::make_shared<folly::FunctionScheduler>();
     fs->addFunction(
       [&pool]() {
-        LOG(INFO) << "Node Sync scheduled.";
         // fetch all nodes in the cluster
         nebula::meta::NNode local{
           nebula::meta::NRole::NODE,
@@ -48,7 +48,7 @@ public:
 
         // TODO(cao) - expensive to recaculate metrics over and over again.
         // For every update - consider update with delta only
-        NodeClient client(local, pool);
+        NodeClient client(local, pool, nullptr);
         client.state();
 
         // after state update

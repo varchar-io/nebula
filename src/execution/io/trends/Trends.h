@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "meta/MetaService.h"
 #include "meta/NNode.h"
 #include "meta/Table.h"
 #include "type/Serde.h"
@@ -29,8 +28,6 @@ namespace nebula {
 namespace execution {
 namespace io {
 namespace trends {
-
-class TrendsMetaService;
 
 class TrendsTable : public nebula::meta::Table {
   static constexpr auto NAME = "pin.trends";

@@ -31,6 +31,9 @@
 namespace nebula {
 namespace meta {
 class MetaService {
+protected:
+  MetaService() = default;
+
 public:
   virtual ~MetaService() = default;
 

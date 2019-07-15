@@ -76,10 +76,31 @@ void NodeClient::echos(const std::string& name, size_t count) {
 
 folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
   auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
+  auto addr = node_.toString();
 
-  pool_.add([&plan, p]() {
-    // TODO(cao) - make RPC call to get the data back - return empty cursor for now
-    plan.display();
+  // pass values since we reutrn the whole lambda - don't reference temporary things
+  // such as local stack allocated variables, including "this" the client itself.
+  pool_.add([p, addr, q = query_, id = plan.id(), w = plan.getWindow()]() {
+    // a response message placeholder
+    flatbuffers::grpc::Message<BatchRows> qr;
+
+    auto qp = QuerySerde::serialize(*q, id, w);
+    grpc::ClientContext context;
+    auto channel = ConnectionPool::init()->connection(addr);
+    N_ENSURE(channel != nullptr, "requires a valid channel");
+    auto stub = nebula::service::NodeServer::NewStub(channel);
+    auto status = stub->Query(&context, qp, &qr);
+    if (status.ok()) {
+      auto fb = BatchSerde::deserialize(&qr);
+      LOG(INFO) << "Received batch as number of rows: " << fb->size();
+
+      // update into current server block management
+      p->setValue(fb);
+      return;
+    }
+
+    LOG(ERROR) << "Node failure: " << status.error_message();
+    // else return empty result set
     p->setValue(RowCursorPtr(0));
   });
 
@@ -96,12 +117,12 @@ void NodeClient::state() {
   flatbuffers::grpc::Message<NodeStateReply> nsReply;
 
   grpc::ClientContext context;
+
   auto status = stub_->Poll(&context, nsRequest, &nsReply);
   if (status.ok()) {
     const NodeStateReply* response = nsReply.GetRoot();
     auto blocks = response->blocks();
     size_t size = blocks->size();
-    LOG(INFO) << "blocks in node: " << size;
 
     // update into current server block management
     auto bm = BlockManager::init();
