@@ -16,7 +16,6 @@
 
 #include "BlockLoader.h"
 #include "common/Evidence.h"
-#include "meta/TestTable.h"
 #include "surface/MockSurface.h"
 
 /**
@@ -42,8 +41,7 @@ BatchBlock BlockLoader::from(const BlockSignature& sign, std::shared_ptr<nebula:
 }
 
 BatchBlock BlockLoader::load(const BlockSignature& block) {
-  TestTable test;
-  if (block.table == test.name()) {
+  if (block.table == test_.name()) {
     return loadTestBlock(block);
   }
 
@@ -84,10 +82,9 @@ private:
 };
 
 BatchBlock BlockLoader::loadTestBlock(const BlockSignature& b) {
-  TestTable test;
   // use 1024 rows for testing
   auto rows = 10000;
-  auto block = std::make_shared<Batch>(test, rows);
+  auto block = std::make_shared<Batch>(test_, rows);
 
   // use the specified seed so taht the data can repeat
   auto seed = Evidence::unix_timestamp();

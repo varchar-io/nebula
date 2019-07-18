@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 
+#ifndef USE_YOMM2_MD
+#define USE_YOMM2_MD
+#endif
+
 #include "NodeServer.h"
 #include <sys/mman.h>
 #include "execution/BlockManager.h"

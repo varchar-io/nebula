@@ -40,6 +40,7 @@ using nebula::execution::eval::UDAF;
 using nebula::memory::keyed::FlatRowCursor;
 using nebula::memory::keyed::HashFlat;
 using nebula::meta::NNode;
+using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::surface::TopRows;
@@ -56,7 +57,7 @@ RowCursorPtr ServerExecutor::execute(const ExecutionPlan& plan, const std::share
                // TODO(cao) - add error handling too via thenError
                .onTimeout(RPC_TIMEOUT, [&]() -> RowCursorPtr { 
                  LOG(WARNING) << "Timeout: " << RPC_TIMEOUT.count();
-                 return {}; });
+                 return std::make_shared<EmptyRowCursor>(); });
 
     results.push_back(std::move(f));
   }

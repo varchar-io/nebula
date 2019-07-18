@@ -69,7 +69,7 @@ define_method(FlatBufferPtr, asBuffer, (nebula::surface::RowCursor & cursor, neb
   }
 
   // move this buffer out
-  LOG(INFO) << "Serialized a normal cursor as a flat buffer";
+  LOG(INFO) << "Serialized a cursor as flat buffer via yomm2";
   return buffer;
 }
 
@@ -103,7 +103,7 @@ FlatBufferPtr asBuffer(nebula::surface::RowCursor& cursor, nebula::type::Schema 
     }
 
     // move this buffer out
-    LOG(INFO) << "Serialized a normal cursor as a flat buffer";
+    LOG(INFO) << "Serialized a cursor as flat buffer";
     return buffer;
   }
 }

@@ -41,6 +41,22 @@ using RowCursor = nebula::common::Cursor<RowData>;
 using CompositeRowCursor = nebula::common::CompositeCursor<RowData>;
 using RowCursorPtr = typename std::shared_ptr<RowCursor>;
 
+class EmptyRowCursor : public RowCursor {
+public:
+  EmptyRowCursor() : RowCursor(0) {}
+  virtual ~EmptyRowCursor() = default;
+
+  // TODO(cao) - might be too expensive if there are many items/rows to iterate on
+  virtual const RowData& next() override {
+    throw NException("Empty cursor");
+  }
+
+  // a const interface return an unique ptr for secure randome access
+  virtual std::unique_ptr<RowData> item(size_t) const override {
+    throw NException("Empty cursor");
+  }
+};
+
 // (TODO) CRTP - avoid virtual methods?
 class RowData {
 public:

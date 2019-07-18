@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 #include "memory/Batch.h"
 #include "meta/NBlock.h"
+#include "meta/TestTable.h"
 
 /**
  * This node executor accepts one request of an execution plan.
@@ -41,6 +42,7 @@ public:
 private:
   // Test Hook
   BatchBlock loadTestBlock(const nebula::meta::BlockSignature&);
+  nebula::meta::TestTable test_;
 };
 
 } // namespace io
