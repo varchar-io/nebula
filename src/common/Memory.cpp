@@ -41,7 +41,8 @@ void PagedSlice::ensure(size_t size) {
 
         // over error bound - fail it
         if (UNLIKELY(detects > errors[1])) {
-          LOG(FATAL) << "Slices increased too fast: it is a code bug or page size is too small";
+          LOG(FATAL) << fmt::format(
+            "Slices grows too fast: page size ({0}) too small or allocation leak towards {1}", size_, size);
         }
       }
     }

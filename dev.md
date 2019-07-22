@@ -27,6 +27,9 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 - "brew install folly" should just work for MacOS
 - If you don't have brew on your mac, install it from here https://brew.sh/
 
+On linux - which makes folly dependency consistent
+- Now we have linuxbrew - https://docs.brew.sh/Homebrew-on-Linux
+
 ### Use clang-format
 
 - VS Code is the default IDE which has extension for clang-format to format our code
@@ -44,6 +47,17 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 -- "~/nebula/build/glogp-prefix/src/glogp-build/glog/logging.h:512:10: fatal error: 'glog/log_severity.h' file not found"
 -- build> cp ./glogp-prefix/src/glogp/src/glog/log_severity.h glogp-prefix/src/glogp-build/glog/
 - (tip - apply to others too, failed to download *.git file? delete invisible special character in URL)
+
+
+### GRPC + Flatbuffers
+- There are some incompatible interface between GRPC + flattbuffers on byte buffers and deserialize method
+- Apply these two changes respectively before it's fixed or submitted to both grpc/flatbuffers repo
+- GRPC: 
+(include/grpcpp/impl/codegen/byte_buffer.h)
+https://gist.github.com/shawncao/abc91b05ce6167ace226ead2383f2302
+- FB: 
+(include/flatbuffers/grpc.h)
+https://gist.github.com/shawncao/7f3d6bb26feb2e0f48888a5ea4ab0f53
 
 
 ### Code Convention

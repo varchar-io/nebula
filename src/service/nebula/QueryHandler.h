@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <sys/mman.h>
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "execution/ExecutionPlan.h"

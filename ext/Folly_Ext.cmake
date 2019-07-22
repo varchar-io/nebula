@@ -56,7 +56,7 @@
 
 if(APPLE)
     # define boost
-    set(boostDir /usr/local/Cellar/boost/1.69.0_2)
+    set(boostDir /usr/local/Cellar/boost/1.70.0)
     set(BOOST_INCLUDE_DIRS ${boostDir}/include)
     # boost_system
     set(BOOST_SYSTEM_PATH ${boostDir}/lib/libboost_system.a)
@@ -68,7 +68,7 @@ if(APPLE)
     include_directories(include ${BOOST_INCLUDE_DIRS})
 
     # folly depends on double-conversion
-    set(dcdir /usr/local/Cellar/double-conversion/3.1.4)
+    set(dcdir /usr/local/Cellar/double-conversion/3.1.5)
     set(DC_INCLUDE_DIRS ${dcdir}/include)
     set(DC_LIBRARY_PATH ${dcdir}/lib/libdouble-conversion.a)
     set(DC_LIBRARY DC)
@@ -79,7 +79,7 @@ if(APPLE)
     include_directories(include ${DC_INCLUDE_DIRS})
 
     # define libevent
-    set(ledir /usr/local/Cellar/libevent/2.1.8)
+    set(ledir /usr/local/Cellar/libevent/2.1.10)
     set(LE_INCLUDE_DIRS ${ledir}/include)
     set(LE_LIBRARY_PATH ${ledir}/lib/libevent.a)
     set(LE_CORE_PATH ${ledir}/lib/libevent_core.a)
@@ -96,7 +96,7 @@ if(APPLE)
     include_directories(include ${LE_INCLUDE_DIRS})
 
     # open ssl
-    set(OPENSSL_ROOT /usr/local/Cellar/openssl/1.0.2r)
+    set(OPENSSL_ROOT /usr/local/Cellar/openssl/1.0.2s)
     set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT}/include)
     set(OPENSSL_LIBRARY_PATH ${OPENSSL_ROOT}/lib/libssl.a)
     set(OPENSSL_LIBRARY openssl)
@@ -107,7 +107,7 @@ if(APPLE)
         "INTERFACE_INCLUDE_DIRECTORIES" "${OPENSSL_INCLUDE_DIR}")
 
     # define folly
-    set(FollyDir /usr/local/Cellar/folly/2019.03.18.00_2)
+    set(FollyDir /usr/local/Cellar/folly/2019.06.17.00)
     set(FOLLY_INCLUDE_DIRS ${FollyDir}/include)
     set(FOLLY_LIBRARY_PATH ${FollyDir}/lib/libfolly.a)
     set(FOLLY_LIBRARY folly)

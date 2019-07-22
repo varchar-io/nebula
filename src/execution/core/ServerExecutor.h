@@ -16,11 +16,10 @@
 
 #pragma once
 
-#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <glog/logging.h>
-#include <sys/mman.h>
 #include "NodeClient.h"
 #include "NodeConnector.h"
+#include "common/Folly.h"
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 

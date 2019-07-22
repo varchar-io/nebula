@@ -14,26 +14,24 @@
  * limitations under the License.
  */
 
-#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+#include <grpcpp/grpcpp.h>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <sys/mman.h>
 #include <thread>
-#include "common/Evidence.h"
-#include "meta/ClusterInfo.h"
-
-#include <folly/init/Init.h>
-#include <grpcpp/grpcpp.h>
 #include <unordered_map>
+
 #include "NebulaServer.h"
 #include "NebulaService.h"
 #include "NodeSync.h"
+#include "common/Evidence.h"
+#include "common/Folly.h"
 #include "execution/BlockManager.h"
 #include "fmt/format.h"
 #include "memory/Batch.h"
+#include "meta/ClusterInfo.h"
 #include "meta/NBlock.h"
 #include "meta/NNode.h"
 #include "meta/Table.h"

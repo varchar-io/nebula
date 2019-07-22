@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/init/Init.h>
 #include <glog/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "common/Folly.h"
 #include "execution/core/NodeConnector.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Trends.h"

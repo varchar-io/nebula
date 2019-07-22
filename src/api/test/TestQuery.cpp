@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
-#include <folly/init/Init.h>
 #include <glog/logging.h>
-#include <sys/mman.h>
+#include <gtest/gtest.h>
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "common/Cursor.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
+#include "common/Folly.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
 #include "execution/BlockManager.h"

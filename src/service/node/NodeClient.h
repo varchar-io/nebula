@@ -15,12 +15,12 @@
  */
 #pragma once
 
-#include <folly/executors/ThreadPoolExecutor.h>
-#include <folly/init/Init.h>
 #include <iostream>
 #include <memory>
 #include <string>
+
 #include "ConnectionPool.h"
+#include "common/Folly.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/core/NodeClient.h"
 #include "meta/NNode.h"

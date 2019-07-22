@@ -15,7 +15,6 @@
  */
 
 #include <fmt/format.h>
-#include <folly/init/Init.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "execution/core/NodeConnector.h"

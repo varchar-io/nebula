@@ -15,10 +15,9 @@
  */
 
 #include "ServerExecutor.h"
-#include <folly/executors/ThreadedExecutor.h>
-#include <folly/futures/Future.h>
 #include "AggregationMerge.h"
 #include "NodeConnector.h"
+#include "common/Folly.h"
 #include "execution/eval/UDF.h"
 #include "memory/keyed/FlatRowCursor.h"
 #include "memory/keyed/HashFlat.h"

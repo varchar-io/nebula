@@ -7,6 +7,8 @@ add_library(${NEBULA_MEMORY} STATIC
     ${NEBULA_SRC}/memory/DataNode.cpp
     ${NEBULA_SRC}/memory/Batch.cpp
     ${NEBULA_SRC}/memory/Accessor.cpp
+    ${NEBULA_SRC}/memory/encode/RleEncoder.cpp
+    ${NEBULA_SRC}/memory/encode/RleDecoder.cpp
     ${NEBULA_SRC}/memory/keyed/FlatBuffer.cpp
     ${NEBULA_SRC}/memory/keyed/HashFlat.cpp
     ${NEBULA_SRC}/memory/serde/TypeData.cpp

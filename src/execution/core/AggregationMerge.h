@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/futures/Future.h>
+#include "common/Folly.h"
 #include "execution/eval/ValueEval.h"
 #include "memory/keyed/HashFlat.h"
 #include "surface/DataSurface.h"

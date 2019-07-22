@@ -16,12 +16,12 @@
 
 #include <fmt/format.h>
 #include <glog/logging.h>
+#include <grpcpp/grpcpp.h>
 #include <memory>
 #include <string>
 
-#include <folly/executors/CPUThreadPoolExecutor.h>
-#include <grpcpp/grpcpp.h>
 #include "NebulaService.h"
+#include "common/Folly.h"
 #include "meta/NNode.h"
 #include "nebula.grpc.pb.h"
 #include "service/node/NodeClient.h"

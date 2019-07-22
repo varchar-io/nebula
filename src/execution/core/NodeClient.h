@@ -16,10 +16,8 @@
 
 #pragma once
 
-#include <folly/executors/ThreadPoolExecutor.h>
-#include <folly/futures/Future.h>
 #include <glog/logging.h>
-#include <sys/mman.h>
+#include "common/Folly.h"
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 

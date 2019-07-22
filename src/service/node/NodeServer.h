@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <folly/init/Init.h>
 #include <grpcpp/grpcpp.h>
 #include <iostream>
 #include <memory>

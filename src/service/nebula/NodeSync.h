@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <folly/experimental/FunctionScheduler.h>
 #include <glog/logging.h>
 #include "execution/BlockManager.h"
 #include "meta/NNode.h"
