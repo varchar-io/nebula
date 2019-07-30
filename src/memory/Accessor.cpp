@@ -68,10 +68,10 @@ std::unique_ptr<ListData> RowAccessor::readList(const std::string& field) const 
 
   // list node has only one child - can be saved if list accessor is created once
   auto child = listNode->childAt<PDataNode>(0).value();
-  auto offsetSize = listNode->offsetSize(current_);
+  auto os = listNode->offsetSize(current_);
 
   // calculate the offset in terms of number of items
-  return std::make_unique<ListAccessor>(std::get<0>(offsetSize), std::get<1>(offsetSize), child);
+  return std::make_unique<ListAccessor>(os.first, os.second, child);
 }
 
 std::unique_ptr<MapData> RowAccessor::readMap(const std::string&) const {

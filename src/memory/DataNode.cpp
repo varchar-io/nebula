@@ -23,6 +23,7 @@
 namespace nebula {
 namespace memory {
 
+using nebula::memory::serde::TypeMetadata;
 using nebula::meta::Table;
 using nebula::surface::ListData;
 using nebula::surface::MapData;
@@ -142,12 +143,32 @@ size_t DataNode::append(double d) {
 template <>
 size_t DataNode::append(std::string_view str) {
   N_ENSURE(type_.k() == nebula::type::StringType::kind, "string type expected");
-
+  // if current data node is enabled with dictionary.
+  // we check the dictionary to see if the same value already present
+  // if yes, we save the mapping.
   const size_t size = str.size();
   const auto index = cursorAndAdvance();
+  const auto withDict = meta_->hasDict();
+  const auto hash = svHasher_(str);
+  if (withDict) {
+    auto target = meta_->find(hash, str, *data_);
+    // found the same value
+    if (target != TypeMetadata::INVALID_INDEX) {
+      meta_->link(index, target);
 
+      INCREMENT_RAW_SIZE_AND_RETURN()
+    }
+  }
+
+  // this new value will be appended at the data chunk
+  // and we record its offset and size
   data_->add(index, str);
   meta_->setOffsetSize(index, size);
+
+  // but if working with dict, we need to record this unique value
+  if (withDict) {
+    meta_->record(hash, index);
+  }
 
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
@@ -293,8 +314,11 @@ TYPE_READ_DELEGATE(double)
 
 template <>
 std::string_view DataNode::read(size_t index) {
+  // if with dictionary, we need to check
+  // whether this points to another index so using offsetSize
+  // instead of offsetSizeDirect
   auto os = meta_->offsetSize(index);
-  return data_->read(std::get<0>(os), std::get<1>(os));
+  return data_->read(os.first, os.second);
 }
 
 #undef TYPE_READ_DELEGATE

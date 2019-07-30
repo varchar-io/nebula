@@ -30,7 +30,8 @@ Batch::Batch(const Table& table, size_t capacity)
   : schema_{ table.schema() },
     data_{ DataNode::buildDataTree(table, capacity) },
     rows_{ 0 },
-    fields_{ schema_->size() } {
+    fields_{ schema_->size() },
+    sealed_{ false } {
   // build a field name to data node
   for (size_t i = 0, size = schema_->size(); i < size; ++i) {
     auto f = dynamic_cast<TypeBase*>(schema_->childAt(i).get());
@@ -42,6 +43,7 @@ Batch::Batch(const Table& table, size_t capacity)
 // and return row ID of this row in current batch
 // thread-safe on sync guarded - exclusive lock?
 size_t Batch::add(const RowData& row) {
+  N_ENSURE(!sealed_, "can not add rows into sealed batch");
   // read data from row data and save it to batch
   auto result = data_->append<const RowData&>(row);
 
@@ -78,6 +80,13 @@ std::string Batch::state() const {
   // TODO(cao): output a JSON string
   return fmt::format("[raw: {0}, size: {1}, allocation: {2}, rows: {3}]",
                      data_->rawSize(), std::get<1>(s), std::get<0>(s), rows_);
+}
+
+void Batch::seal() {
+  sealed_ = true;
+
+  // seal every node
+  data_->seal();
 }
 
 } // namespace memory

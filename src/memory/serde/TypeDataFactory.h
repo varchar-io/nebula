@@ -28,7 +28,7 @@ namespace serde {
  */
 class TypeDataFactory {
 public:
-  static std::unique_ptr<TypeMetadata> createMeta(nebula::type::Kind);
+  static std::unique_ptr<TypeMetadata> createMeta(nebula::type::Kind, const nebula::meta::Column&);
   static std::unique_ptr<TypeDataProxy> createData(nebula::type::Kind, const nebula::meta::Column&, size_t);
 
 private:

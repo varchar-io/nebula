@@ -16,39 +16,21 @@
 
 #pragma once
 
-#include "type/Type.h"
+#include "common/Memory.h"
 
 namespace nebula {
 namespace memory {
 namespace encode {
 /**
- * A base class to encode data streams into another data.
+ * Dictionary encoding for text values.
+ * It works like this:
+ * 1. Reading tokens from the text value separated by <space>
+ * 2. It applies only first 255 characters for using one byte store position info.
+ * 3. It only works for token which length is longer than 2.
+ * 4. An encoded string are stored like this 
+ *      [number dict items(0~255)][p0(0-255)][c0(0-65536)][p1(0-255)]...[pN(0-255)]
  */
-class Encoder {
-};
-
-/**
- * Bool encoder - bool value usually ends in a bit map
- */
-class BoolEncoder : public Encoder {
-};
-
-/**
- * Integer numbers encoder - int width of 1, 2, 4, 8 bytes
- */
-class IntEncoder : public Encoder {
-};
-
-/**
- * Float number encoder - 4 bytes float or 8 bytes double
- */
-class FloatEncoder : public Encoder {
-};
-
-/**
- * Byte sequence encoder captures bytes serialized data like strings
- */
-class BytesEncoder : public Encoder {
+class DictEncoder {
 };
 } // namespace encode
 } // namespace memory

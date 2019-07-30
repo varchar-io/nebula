@@ -58,6 +58,10 @@ public: // basic metrics / meta of the batch
   // basic metrics in JSON
   std::string state() const;
 
+  // Place seal on current batch when building
+  // This helps release some necessary memory used in batch building
+  void seal();
+
   // a bloom filter tester
   template <typename T>
   inline bool probably(const std::string& col, const T& value) const {
@@ -74,6 +78,8 @@ private:
 
   // fast lookup from column name to column index
   DnMap fields_;
+
+  bool sealed_;
 };
 
 class RowAccessor : public nebula::surface::RowData {

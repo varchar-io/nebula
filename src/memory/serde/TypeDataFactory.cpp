@@ -51,8 +51,8 @@ std::unique_ptr<TypeDataProxy> TypeDataFactory::createData(
 
 #undef TYPE_DATA_PROXY
 
-std::unique_ptr<TypeMetadata> TypeDataFactory::createMeta(Kind kind) {
-  return std::make_unique<TypeMetadata>(kind);
+std::unique_ptr<TypeMetadata> TypeDataFactory::createMeta(Kind kind, const Column& column) {
+  return std::make_unique<TypeMetadata>(kind, column);
 }
 
 } // namespace serde

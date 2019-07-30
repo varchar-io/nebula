@@ -15,8 +15,11 @@
  */
 
 #pragma once
+
+#include <roaring.hh>
+#include <unordered_map>
+
 #include "common/Likely.h"
-#include "roaring.hh"
 #include "type/Type.h"
 
 namespace nebula {
@@ -31,18 +34,29 @@ namespace serde {
  */
 class TypeMetadata {
   using CompoundItems = std::vector<IndexType>;
+  using HashItems = std::unordered_multimap<size_t, IndexType>;
+  // Note we're using uint32 to represent index in a batch to save 8 bytes
+  // with assumption it is big enough for number of rows a batch is allowed.
+  using Dictionary = std::unordered_map<uint32_t, uint32_t>;
   static constexpr size_t N_ITEMS = 1024;
 
 public:
-  TypeMetadata(nebula::type::Kind kind)
-    : offsetSize_{ nebula::type::TypeBase::isScalar(kind) ?
-                     nullptr :
-                     std::make_unique<CompoundItems>() } {
+  static constexpr IndexType INVALID_INDEX = std::numeric_limits<IndexType>::max();
+  TypeMetadata(nebula::type::Kind kind, const nebula::meta::Column& column)
+    : offsetSize_{
+        nebula::type::TypeBase::isScalar(kind) ?
+          nullptr :
+          std::make_unique<CompoundItems>()
+      },
+      hashItems_{ column.withDict ? std::make_unique<HashItems>() : nullptr },
+      dict_{ column.withDict ? std::make_unique<Dictionary>() : nullptr } {
     if (offsetSize_ != nullptr) {
       // first item always equals 0
       offsetSize_->reserve(N_ITEMS);
       offsetSize_->push_back(0);
     }
+
+    LOG(INFO) << "Current node is with dictionary: " << column.withDict;
   };
   virtual ~TypeMetadata() = default;
 
@@ -70,10 +84,57 @@ public:
     offsetSize_->push_back(last + items);
   }
 
-  inline std::tuple<IndexType, IndexType> offsetSize(size_t index) const {
+  inline std::pair<IndexType, IndexType> offsetSize(size_t index) const {
+    if (UNLIKELY(dict_ != nullptr)) {
+      auto it = dict_->find(index);
+      if (it != dict_->end()) {
+        return offsetSizeDirect(it->second);
+      }
+    }
+
+    return offsetSizeDirect(index);
+  }
+
+  // no index link check, direct fetch offset and size
+  inline std::pair<IndexType, IndexType> offsetSizeDirect(size_t index) const {
     auto offset = offsetSize_->at(index);
     auto length = offsetSize_->at(index + 1) - offset;
-    return std::make_tuple(offset, length);
+    return { offset, length };
+  }
+
+  inline bool hasDict() const {
+    return dict_ != nullptr;
+  }
+
+  IndexType find(size_t hash, const std::string_view& val, const TypeDataProxy& data) const {
+    auto range = hashItems_->equal_range(hash);
+    for (auto it = range.first; it != range.second; ++it) {
+      // get offset and length of given index
+      const auto index = it->second;
+      const auto os = offsetSizeDirect(index);
+      const auto str = data.read(os.first, os.second);
+
+      // string view equals
+      if (val == str) {
+        return index;
+      }
+    }
+
+    // not found the same value
+    return INVALID_INDEX;
+  }
+
+  inline void link(IndexType index, IndexType target) {
+    dict_->emplace((uint32_t)index, (uint32_t)target);
+  }
+
+  inline void record(size_t hash, IndexType index) {
+    hashItems_->emplace(hash, index);
+  }
+
+  inline void seal() {
+    // release hash items for lookup
+    hashItems_ = nullptr;
   }
 
 private:
@@ -92,7 +153,15 @@ private:
   // call shrink_to_fit to compress the vector when finalizing
   // this can be futher compressed to storage efficiency.
   // uint32_t should be big enough for number of items in each object
-  std::unique_ptr<std::vector<IndexType>> offsetSize_;
+  std::unique_ptr<CompoundItems> offsetSize_;
+
+  // build a hash map from value hash to value index serving as dictionary purpose.
+  // insert order is preserved
+  // hence we can expect the first index will have correct offset/size to fetch value
+  std::unique_ptr<HashItems> hashItems_;
+
+  // dictionary link one index to another index which has the value
+  std::unique_ptr<Dictionary> dict_;
 };
 
 } // namespace serde

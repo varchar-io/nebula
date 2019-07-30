@@ -16,10 +16,11 @@
 
 #pragma once
 
+#include <functional>
 #include <glog/logging.h>
+
 #include "common/Errors.h"
 #include "common/Memory.h"
-#include "encode/Encoder.h"
 #include "meta/Table.h"
 #include "serde/TypeData.h"
 #include "serde/TypeDataFactory.h"
@@ -50,7 +51,7 @@ public:
   DataNode(const nebula::type::TypeBase& type, const nebula::meta::Column& column, size_t capacity)
     : nebula::type::Tree<PDataNode>(this),
       type_{ type },
-      meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k()) },
+      meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k(), column) },
       data_{ nebula::memory::serde::TypeDataFactory::createData(type.k(), column, capacity) },
       count_{ 0 },
       rawSize_{ 0 } {
@@ -63,7 +64,7 @@ public:
            const std::vector<nebula::type::TreeNode>& children)
     : nebula::type::Tree<DataNode*>(this, children),
       type_{ type },
-      meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k()) },
+      meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k(), column) },
       data_{ nebula::memory::serde::TypeDataFactory::createData(type.k(), column, capacity) },
       count_{ 0 },
       rawSize_{ 0 } {}
@@ -121,8 +122,12 @@ public: // basic metadata exposure
   }
 
   // list/map retrieve child's offset and length at some position
-  inline std::tuple<IndexType, IndexType> offsetSize(IndexType index) {
-    return meta_->offsetSize(index);
+  inline std::pair<IndexType, IndexType> offsetSize(IndexType index) {
+    return meta_->offsetSizeDirect(index);
+  }
+
+  inline void seal() {
+    meta_->seal();
   }
 
 private:
@@ -147,6 +152,9 @@ private:
 
   // raw size of data accumulation
   size_t rawSize_;
+
+  // string_view hasher
+  std::hash<std::string_view> svHasher_;
 };
 } // namespace memory
 } // namespace nebula

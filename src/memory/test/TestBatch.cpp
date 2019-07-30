@@ -213,6 +213,41 @@ TEST(BatchTest, TestBloomFilter) {
   EXPECT_LT(falsePositives * 100.0 / count, 0.1f);
 }
 
+TEST(BatchTest, TestStringDictionary) {
+  nebula::meta::TestTable test;
+  int32_t count = 100000;
+
+  // need some stable data set to write out and can be verified
+  Batch batch(test, count);
+
+  // use the specified seed so taht the data can repeat
+  std::vector<nebula::surface::StaticRow> rows;
+  rows.reserve(count);
+
+  // fill rows
+  for (int32_t i = 0; i < count; ++i) {
+    nebula::surface::StaticRow row{ i,
+                                    i,
+                                    "nebula",
+                                    nullptr,
+                                    false,
+                                    0 };
+    batch.add(row);
+    rows.push_back(row);
+  }
+
+  batch.seal();
+  LOG(INFO) << "Batch State: " << batch.state();
+  auto accessor = batch.makeAccessor();
+  for (auto i = 0; i < count; ++i) {
+    const auto& r1 = rows[i];
+    const auto& r2 = accessor->seek(i);
+    EXPECT_EQ(r1.readString("event"), r2.readString("event"));
+  }
+
+  LOG(INFO) << "Verified total rows: " << count;
+}
+
 } // namespace test
 } // namespace memory
 } // namespace nebula

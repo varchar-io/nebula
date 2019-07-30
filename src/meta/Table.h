@@ -36,7 +36,11 @@ using nebula::type::Schema;
  * Define column properties that fetched from meta data system
  */
 struct Column {
+  // by default, we don't build bloom filter
   bool withBloomFilter = false;
+
+  // by default, we turn on dictionay for strings
+  bool withDict = false;
 };
 
 class Table {
