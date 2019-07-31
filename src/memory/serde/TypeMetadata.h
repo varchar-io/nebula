@@ -55,8 +55,6 @@ public:
       offsetSize_->reserve(N_ITEMS);
       offsetSize_->push_back(0);
     }
-
-    LOG(INFO) << "Current node is with dictionary: " << column.withDict;
   };
   virtual ~TypeMetadata() = default;
 
