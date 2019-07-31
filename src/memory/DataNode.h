@@ -152,9 +152,6 @@ private:
 
   // raw size of data accumulation
   size_t rawSize_;
-
-  // string_view hasher
-  std::hash<std::string_view> svHasher_;
 };
 } // namespace memory
 } // namespace nebula

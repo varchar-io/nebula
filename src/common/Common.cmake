@@ -6,7 +6,8 @@ add_library(${NEBULA_COMMON} STATIC
     ${NEBULA_SRC}/common/Errors.cpp 
     ${NEBULA_SRC}/common/Memory.cpp)
 target_link_libraries(${NEBULA_COMMON}
-    PRIVATE ${FMT_LIBRARY})
+    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${XXH_LIBRARY})
 
 # include itself for headers in different folders
 # set(NCOMMON_INCLUDE_DIRS ${NEBULA_SRC}/common)
@@ -37,6 +38,7 @@ target_link_libraries(CommonTests
     PRIVATE ${OMM_LIBRARY}
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY}
+    PRIVATE ${XXH_LIBRARY}
     PRIVATE ${ROARING_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}

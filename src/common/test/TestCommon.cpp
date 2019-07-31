@@ -14,15 +14,18 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <regex>
 #include <valarray>
+#include <xxh3.h>
+
 #include "common/Errors.h"
 #include "common/Evidence.h"
+#include "common/Hash.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
-#include "fmt/format.h"
 
 namespace nebula {
 namespace common {
@@ -271,6 +274,35 @@ TEST(RegexTest, TestStdRegex) {
     std::string match_str = match.str();
     LOG(INFO) << match_str;
   }
+}
+
+TEST(XXHashTest, TestXxhSpeed) {
+  // comapre to std::hash, let's understand the perf gap
+  const std::string str = "what is the hash value of nebula";
+  const size_t iterations = 1000000;
+  std::hash<std::string> hasher;
+  nebula::common::Evidence::Duration duration;
+  using nebula::common::Hasher;
+  for (size_t i = 0; i < iterations; ++i) {
+    hasher(str);
+  }
+  LOG(INFO) << "std::hash<string> hash " << iterations << " times using ms: " << duration.elapsedMs() << " hash:" << hasher(str);
+  duration.reset();
+  const void* p = str.data();
+  const auto len = str.size();
+  for (size_t i = 0; i < iterations; ++i) {
+    XXH3_64bits(p, len);
+  }
+  LOG(INFO) << "xxh3<string> hash " << iterations << " times using ms: " << duration.elapsedMs() << " hash: " << XXH3_64bits(p, len);
+
+  // using our own wrapper
+  duration.reset();
+  for (size_t i = 0; i < iterations; ++i) {
+    Hasher::hashString(str);
+  }
+  LOG(INFO) << "nebula-hahser<string> hash " << iterations << " times using ms: " << duration.elapsedMs() << " hash: " << Hasher::hashString(str);
+
+  LOG(INFO) << " XXH VECTOR: " << XXH_VECTOR;
 }
 
 } // namespace test

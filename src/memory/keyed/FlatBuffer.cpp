@@ -332,10 +332,12 @@ size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
   static constexpr size_t start = 0xC6A4A7935BD1E995UL;
   size_t hvalue = start;
 
-#define TYPE_HASH(KIND, TYPE)                                                    \
-  case Kind::KIND: {                                                             \
-    n8bytes = std::hash<TYPE>()(main_->slice.read<TYPE>(rowOffset + colOffset)); \
-    break;                                                                       \
+// TODO(why do we hash these bytes instead using its own value?)
+// n8bytes = std::hash<TYPE>()();
+#define TYPE_HASH(KIND, TYPE)                                 \
+  case Kind::KIND: {                                          \
+    n8bytes = main_->slice.read<TYPE>(rowOffset + colOffset); \
+    break;                                                    \
   }
 
   std::for_each(std::begin(cols), std::end(cols),
@@ -367,7 +369,7 @@ size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
                       // read the real data from data_
                       // TODO(cao) - we don't need convert strings from bytes for hash
                       // instead, slice should be able to hash the range[offset, len] much cheaper
-                      n8bytes = std::hash<std::string_view>()(data_->slice.read(offset, len));
+                      n8bytes = data_->slice.hash(offset, len);
                       break;
                     }
                     default:

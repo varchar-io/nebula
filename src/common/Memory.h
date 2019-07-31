@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 #include <iostream>
 #include "Errors.h"
+#include "Hash.h"
 #include "Likely.h"
 
 // TODO(cao): import jemalloc for global new/delete allocation
@@ -159,6 +160,11 @@ public:
 
     // build data using copy elision
     return std::string_view((char*)this->ptr_ + position, length);
+  }
+
+  // compute hash of bytes range
+  size_t hash(size_t position, size_t length) const {
+    return Hasher::hash64(this->ptr_ + position, length);
   }
 
   // capacity

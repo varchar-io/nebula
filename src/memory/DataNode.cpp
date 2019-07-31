@@ -15,6 +15,7 @@
  */
 
 #include "DataNode.h"
+#include "common/Hash.h"
 
 /**
  * A data node holds real memory data for each node in the schema tree
@@ -23,6 +24,7 @@
 namespace nebula {
 namespace memory {
 
+using nebula::common::Hasher;
 using nebula::memory::serde::TypeMetadata;
 using nebula::meta::Table;
 using nebula::surface::ListData;
@@ -149,7 +151,7 @@ size_t DataNode::append(std::string_view str) {
   const size_t size = str.size();
   const auto index = cursorAndAdvance();
   const auto withDict = meta_->hasDict();
-  const auto hash = svHasher_(str);
+  const auto hash = Hasher::hash64(str.data(), str.size());
   if (withDict) {
     auto target = meta_->find(hash, str, *data_);
     // found the same value
