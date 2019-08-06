@@ -28,6 +28,7 @@ namespace aws {
 class S3 {
 public:
   S3(const std::string& bucket) : bucket_{ bucket } {
+    options_.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Info;
     Aws::InitAPI(options_);
   }
   virtual ~S3() {
@@ -35,7 +36,11 @@ public:
   }
 
 public:
-  std::vector<std::string> list(const std::string&);
+  // list prefix or objects under the given prefix
+  // if obj is true, it will return all objects (max 1K) under given prefix at any level
+  // otherwise it will only return sub-prefixes one level down under current prefix
+  // TODO(cao): not supporting pagination yet, current one time fetch max keys at 1K
+  std::vector<std::string> list(const std::string&, bool obj = true);
   void read(const std::string&, const std::string&);
 
 private:

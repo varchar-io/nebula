@@ -4,10 +4,11 @@ find_package(Threads REQUIRED)
 # "sudo apt-get install libcurl4-openssl-dev"
 
 # AWS SDK build options 
+# https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/setup.html
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html
 SET(AWS_CMAKE_BUILD_OPTIONS
   -DBUILD_SHARED_LIBS:BOOL=OFF
-  -DBUILD_DEPS:BOOL=OFF
+  -DBUILD_DEPS:BOOL=ON
   -DBUILD_ONLY:STRING=s3
   -DCMAKE_BUILD_TYPE=Release)
 
@@ -60,6 +61,7 @@ ExternalProject_Get_Property(aws BINARY_DIR)
 set(AWS_CORE_INCLUDE_DIRS ${SOURCE_DIR}/aws-cpp-sdk-core/include)
 file(MAKE_DIRECTORY ${AWS_CORE_INCLUDE_DIRS})
 set(AWS_CORE_LIBRARY_PATH ${BINARY_DIR}/aws-cpp-sdk-core/libaws-cpp-sdk-core.a)
+
 set(AWS_CORE_LIBRARY awscore)
 add_library(${AWS_CORE_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${AWS_CORE_LIBRARY} PROPERTIES
@@ -89,6 +91,8 @@ if(APPLE)
   set(CURL_LIBRARY_PATH ${CURL_ROOT}/lib/libcurl.dylib)
 else()
   set(CURL_INCLUDE_DIRS /usr/include)
+  # to link curl lib statically, use curl-config to see what is needed
+  # /usr/bin/curl-config --cflags --static-libs
   set(CURL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/libcurl.a)
 endif()
 
@@ -98,3 +102,21 @@ set_target_properties(${CURL_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${CURL_LIBRARY_PATH}"
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES"  "${CURL_INCLUDE_DIRS}")
+
+# NOTE: libcurl4-openssl version has problem to build on my dev server
+# I end up using "sudo apt-get install libcurl4-gnutls-dev" instead. 
+# Also removed openssl version by "sudo apt-get remove libcurl4-openssl-dev"
+# libcurl depends on lots of other libraries, here is link flags requires
+# -lgnutls -lgcrypt -lz -lidn -lgssapi_krb5 -lldap -llber -lcom_err -lrtmp
+if(NOT APPLE)
+  target_link_libraries(${CURL_LIBRARY} 
+    INTERFACE gnutls 
+    INTERFACE gcrypt 
+    INTERFACE z 
+    INTERFACE idn 
+    INTERFACE gssapi_krb5 
+    INTERFACE ldap 
+    INTERFACE lber 
+    INTERFACE com_err 
+    INTERFACE rtmp)
+endif()

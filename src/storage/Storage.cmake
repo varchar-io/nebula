@@ -8,10 +8,11 @@ add_library(${NEBULA_STORAGE} STATIC
 target_link_libraries(${NEBULA_STORAGE}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${AWS_CORE_LIBRARY}
+    PRIVATE ${AWS_COMMON_LIBRARY}
     PRIVATE ${AWS_S3_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${FMT_LIBRARY})
+    PRIVATE ${AWS_CORE_LIBRARY}
+    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${CURL_LIBRARY})
 
 # ask for gflags
 include_directories(include ${GFLAGS_INCLUDE_DIRS})
@@ -32,13 +33,21 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 add_executable(StorageTests
     ${NEBULA_SRC}/storage/test/TestStorage.cpp)
 
-target_link_libraries(StorageTests 
+# Why we choose PRIVATE rather than PUBLIC
+# The main reason is deal with link order, each dependency may need adjust position
+# to allow each other find correct reference
+# GCC looks symbols from a lib after itself?? That's why we need to place aws-core after aws-s3
+# CLANG doesn't have this issue
+target_link_libraries(StorageTests  
     PRIVATE ${NEBULA_STORAGE}    
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
+    PRIVATE ${FOLLY_LIBRARY}   
     PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY})
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${AWS_COMMON_LIBRARY}
+    PRIVATE ${AWS_S3_LIBRARY}
+    PRIVATE ${AWS_CORE_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)
