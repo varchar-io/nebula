@@ -33,7 +33,7 @@ endif()
 if(APPLE)
   set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wno-error=nullability-completeness")
 else()
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -ldl -I/usr/local/include -L/usr/local/lib")
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -ldl -lunwind -I/usr/local/include -L/usr/local/lib")
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
@@ -41,6 +41,15 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
 
 # we use static link always
 set(BUILD_SHARED_LIBS OFF)
+
+# set cellar path for libries installed by brew
+if(APPLE)
+  set(DL_EXT "dylib")
+  set(CELLAR_ROOT /usr/local/Cellar)
+else()
+  set(DL_EXT "so")
+  set(CELLAR_ROOT /home/linuxbrew/.linuxbrew/Cellar)
+endif()
 
 # by default using clang, turn this line on to use gcc
 # link g++-8 on linux to default g++ / gcc 
@@ -64,6 +73,9 @@ set(CMAKE_C_COMPILER /usr/bin/gcc)
 #   # depenency as ${Boost_LIBRARIES}
 # endif()
 
+# add dependency of compression
+include(ext/Compression_Ext.cmake)
+
 # add a dependency of glog
 include(ext/Gflags_Ext.cmake)
 
@@ -85,6 +97,15 @@ include(ext/Gtest_Ext.cmake)
 # set up directory to search for headers
 include_directories(include ${GTEST_INCLUDE_DIRS})
 include_directories(include ${GMOCK_INCLUDE_DIRS})
+
+# add boost modules definition
+include(ext/Boost_Ext.cmake)
+
+# add open ssl definition
+include(ext/Openssl_Ext.cmake)
+
+# add thrift module
+include(ext/Thrift_Ext.cmake)
 
 # include pre-installed folly
 include(ext/Folly_Ext.cmake)

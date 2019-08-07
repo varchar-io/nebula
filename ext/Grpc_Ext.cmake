@@ -78,29 +78,6 @@ SET(PROTO_COMPILER ${BINARY_DIR}/protoc)
 # message("protobuf include: " ${PROTOBUF_INCLUDE_DIRS})
 # message("protobuf lib: " ${PROTOBUF_LIBRARY_PATH})
 
-# build zlib
-ExternalProject_Add(zlib
-  PREFIX zlib
-  GIT_REPOSITORY https://github.com/madler/zlib.git
-  UPDATE_COMMAND ""
-  INSTALL_COMMAND ""
-  LOG_DOWNLOAD ON
-  LOG_CONFIGURE ON
-  LOG_BUILD ON)
-
-ExternalProject_Get_Property(zlib SOURCE_DIR)
-ExternalProject_Get_Property(zlib BINARY_DIR)
-set(ZLIB_INCLUDE_DIRS ${SOURCE_DIR})
-file(MAKE_DIRECTORY ${ZLIB_INCLUDE_DIRS})
-set(ZLIB_LIBRARY_PATH ${BINARY_DIR}/libz.a)
-set(ZLIB_LIBRARY libzlib)
-add_library(${ZLIB_LIBRARY} UNKNOWN IMPORTED)
-set_target_properties(${ZLIB_LIBRARY} PROPERTIES
-    "IMPORTED_LOCATION" "${ZLIB_LIBRARY_PATH}"
-    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-    "INTERFACE_INCLUDE_DIRECTORIES" "${ZLIB_INCLUDE_DIRS}")
-add_dependencies(${ZLIB_LIBRARY} zlib)
-
 # build flatbuffers which is used for internal communications between nodes
 # to enable flatc available on the machine, just do "make install" in the build folder
 # NOTE - latest flatbuffers is not in sync with latest grpc.

@@ -31,6 +31,7 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 
 #build test binary
 add_executable(StorageTests
+    ${NEBULA_SRC}/storage/test/TestParquet.cpp
     ${NEBULA_SRC}/storage/test/TestStorage.cpp)
 
 # Why we choose PRIVATE rather than PUBLIC
@@ -45,6 +46,12 @@ target_link_libraries(StorageTests
     PRIVATE ${FOLLY_LIBRARY}   
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${PARQUET_LIBRARY}
+    PRIVATE ${ARROW_LIBRARY}
+    PRIVATE ${BOOST_REGEX_LIBRARY}
+    PRIVATE ${THRIFT_LIBRARY}
+    PRIVATE ${ZLIB_LIBRARY}
+    PRIVATE ${SNAPPY_LIBRARY}
     PRIVATE ${AWS_COMMON_LIBRARY}
     PRIVATE ${AWS_S3_LIBRARY}
     PRIVATE ${AWS_CORE_LIBRARY})

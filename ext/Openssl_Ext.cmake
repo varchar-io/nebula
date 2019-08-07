@@ -1,0 +1,24 @@
+if(APPLE)
+    # open ssl
+    set(OPENSSL_ROOT ${CELLAR_ROOT}/openssl/1.0.2s)
+    set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT}/include)
+    set(OPENSSL_LIBRARY_PATH ${OPENSSL_ROOT}/lib/libssl.a)
+    set(OPENSSL_LIBRARY openssl)
+    add_library(${OPENSSL_LIBRARY} UNKNOWN IMPORTED)
+    set_target_properties(${OPENSSL_LIBRARY} PROPERTIES
+        "IMPORTED_LOCATION" "${OPENSSL_LIBRARY_PATH}"
+        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+        "INTERFACE_INCLUDE_DIRECTORIES" "${OPENSSL_INCLUDE_DIR}")
+
+else()
+    set(OPENSSL_ROOT /usr/local/ssl)
+    set(OPENSSL_INCLUDE_DIR /usr/local/include)
+    set(OPENSSL_LIBRARY_PATH /usr/local/lib/libssl.a)
+    set(OPENSSL_LIBRARY openssl)
+    add_library(${OPENSSL_LIBRARY} UNKNOWN IMPORTED)
+    set_target_properties(${OPENSSL_LIBRARY} PROPERTIES
+        "IMPORTED_LOCATION" "${OPENSSL_LIBRARY_PATH}"
+        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+        "INTERFACE_INCLUDE_DIRECTORIES" "${OPENSSL_INCLUDE_DIR}")
+
+endif()
