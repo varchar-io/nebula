@@ -1,6 +1,16 @@
 # tool version minimum requirement
 cmake_minimum_required(VERSION 3.14)
 
+# install latest cmake on linux
+# check the version/build to use
+# wget https://github.com/Kitware/CMake/releases/download/v3.15.2/cmake-3.15.2.tar.gz
+# tar -xzvf cmake-3.15.2.tar.gz
+# cd cmake-3.15.2/
+# ./bootstrap
+# make -j36
+# sudo make install
+# cmake --version (check version after installation)
+
 # define project meta
 project(nebula)
 set(NEBULA_ROOT ${PROJECT_SOURCE_DIR})
@@ -27,17 +37,27 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_VERBOSE_MAKEFILE on)
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug)
+  if(APPLE)
+    set(CMAKE_BUILD_TYPE Debug)
+  else()
+    set(CMAKE_BUILD_TYPE Release)
+  endif()
 endif()
 
 if(APPLE)
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wno-error=nullability-completeness")
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wno-error=nullability-completeness -Wno-error=sign-compare -Wno-error=unknown-warning-option")
 else()
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -ldl -lunwind -I/usr/local/include -L/usr/local/lib")
+  # set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -stdlib=libc++ -pedantic")
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -no-pie -ldl -lunwind -I /usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+if(APPLE)
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+else()
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+  # set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
+endif()
 
 # we use static link always
 set(BUILD_SHARED_LIBS OFF)
@@ -54,8 +74,27 @@ endif()
 # by default using clang, turn this line on to use gcc
 # link g++-8 on linux to default g++ / gcc 
 # sudo apt-get update
-# sudo apt-get install gcc-8 g++-8
-# sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 800 --slave /usr/bin/g++ g++ /usr/bin/g++-8
+# sudo apt-get install gcc-9 g++-9
+# sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 800 --slave /usr/bin/g++ g++ /usr/bin/g++-9
+# install new version clang on ubuntu
+# # Install/configure the compiler to use for Envoy.
+# > sudo su
+# > wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+# > apt-add-repository "deb https://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main" && \
+# > apt-get -q -y update && \
+# > apt-get -q -y --no-install-recommends install \
+# >   clang-8 \
+# >   clang-format-8 \
+# >   clang-tidy-8 \
+# >   lld-8 \
+# >   lldb-8 \
+# >   libc++-8-dev \
+# >   libc++abi-8-dev
+# (links)
+# update-alternatives --install /usr/bin/cc cc /usr/bin/clang-8 100
+# update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-8 100
+# update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 800 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-8
+# test clang 8
 set(CMAKE_CXX_COMPILER /usr/bin/g++)
 set(CMAKE_CC_COMPILER /usr/bin/g++)
 set(CMAKE_C_COMPILER /usr/bin/gcc)
@@ -81,6 +120,12 @@ include(ext/Gflags_Ext.cmake)
 
 # add a dependency of glog
 include(ext/Glog_Ext.cmake)
+
+# double conversion
+include(ext/Doubleconversion_Ext.cmake)
+
+# lib event
+include(ext/Libevent_Ext.cmake)
 
 # add a dependency of fmt 
 include(ext/Fmt_Ext.cmake)
@@ -115,6 +160,9 @@ include(ext/Cuckoo_Ext.cmake)
 
 # include AWS external project
 include(ext/Aws_Ext.cmake)
+
+# include protobuf
+include(ext/Protobuf_Ext.cmake)
 
 # include GRPC external project
 include(ext/Grpc_Ext.cmake)

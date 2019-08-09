@@ -41,7 +41,7 @@ public:
         // fetch all nodes in the cluster
         nebula::meta::NNode local{
           nebula::meta::NRole::NODE,
-          "10.1.51.48",
+          "10.1.179.237",
           9199
         };
 

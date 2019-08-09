@@ -33,51 +33,6 @@ set_target_properties(${CARES_LIBRARY} PROPERTIES
     "INTERFACE_INCLUDE_DIRECTORIES" "${CARES_INCLUDE_DIRS}")
 add_dependencies(${CARES_LIBRARY} c-ares)
 
-# message("c-ares include: " ${CARES_INCLUDE_DIRS})
-# message("c-ares lib: " ${CARES_LIBRARY_PATH})
-
-# build protobuf
-SET(PROTOBUF_OPTS
-  -Dprotobuf_BUILD_TESTS:BOOL=OFF)
-
-ExternalProject_Add(protobuf
-  PREFIX protobuf
-  GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-  SOURCE_SUBDIR cmake
-  CMAKE_ARGS ${PROTOBUF_OPTS}
-  UPDATE_COMMAND ""
-  INSTALL_COMMAND ""
-  LOG_DOWNLOAD ON
-  LOG_CONFIGURE ON
-  LOG_BUILD ON)
-
-ExternalProject_Get_Property(protobuf SOURCE_DIR)
-ExternalProject_Get_Property(protobuf BINARY_DIR)
-set(PROTOBUF_INCLUDE_DIRS ${SOURCE_DIR}/src)
-file(MAKE_DIRECTORY ${PROTOBUF_INCLUDE_DIRS})
-set(PROTOBUF_LIBRARY_PATH ${BINARY_DIR}/libprotobuf.a)
-set(PROTOBUF_LIBRARY libpb)
-add_library(${PROTOBUF_LIBRARY} UNKNOWN IMPORTED)
-set_target_properties(${PROTOBUF_LIBRARY} PROPERTIES
-    "IMPORTED_LOCATION" "${PROTOBUF_LIBRARY_PATH}"
-    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-    "INTERFACE_INCLUDE_DIRECTORIES" "${PROTOBUF_INCLUDE_DIRS}")
-add_dependencies(${PROTOBUF_LIBRARY} protobuf)
-
-# instlal protobuf, please go to the protobuf build folder
-# and manually run the install there with sudo. 
-# since it requires access, let's not turn it on in build script
-# add_custom_target(install_protobuf
-#       ALL COMMAND make install
-#       WORKING_DIRECTORY ${BINARY_DIR}
-#       DEPENDS ${PROTOBUF_LIBRARY})
-
-# set PROTO compiler
-SET(PROTO_COMPILER ${BINARY_DIR}/protoc)
-
-# message("protobuf include: " ${PROTOBUF_INCLUDE_DIRS})
-# message("protobuf lib: " ${PROTOBUF_LIBRARY_PATH})
-
 # build flatbuffers which is used for internal communications between nodes
 # to enable flatc available on the machine, just do "make install" in the build folder
 # NOTE - latest flatbuffers is not in sync with latest grpc.
@@ -116,12 +71,6 @@ add_dependencies(${FLATBUFFERS_LIBRARY} flatbuffers)
 
 # set flatbuffers compiler
 SET(FLATBUFFERS_COMPILER ${BINARY_DIR}/flatc)
-
-# message("zlib include: " ${ZLIB_INCLUDE_DIRS})
-# message("zlib lib: " ${ZLIB_LIBRARY_PATH})
-
-# message("cmake current bin: " ${CMAKE_CURRENT_BINARY_DIR})
-
 
 # -DgRPC_PROTOBUF_PROVIDER:STRING=package
 # -DgRPC_PROTOBUF_PACKAGE_TYPE:STRING=CONFIG

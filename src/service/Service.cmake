@@ -59,7 +59,7 @@ add_custom_target(nebula_node_client ALL
       -I "${nproto_path}"
       --plugin=protoc-gen-grpc="${GRPC_NODE_PLUGIN}"
       "${nproto}"
-DEPENDS ${nproto})
+DEPENDS ${build_grpcweb_plugin} ${nproto})
 
 # build flatbuffers schema
 get_filename_component(nfbs "${SERVICE_DIR}/fbs/node.fbs" ABSOLUTE)
@@ -74,7 +74,6 @@ DEPENDS ${nfbs})
 
 # Include generated *.pb.h files
 set(nodegrpc_srcs "${NODE_GEN_DIR}/node.grpc.fb.cc")
-file(TOUCH ${nodegrpc_srcs})
 
 # build everything else as library except executable of NebulaServer and NebulaClient
 add_library(${NEBULA_SERVICE} STATIC 
@@ -96,11 +95,14 @@ target_link_libraries(${NEBULA_SERVICE}
     PRIVATE ${FLATBUFFERS_LIBRARY}
     PRIVATE ${OPENSSL_LIBRARY}
     PRIVATE ${CRYPTO_LIBRARY})
-target_compile_options(${NEBULA_SERVICE} PRIVATE -Wno-error=unused-parameter)
 if(APPLE)
     target_compile_options(${NEBULA_SERVICE} 
       PRIVATE -Wno-error=unknown-warning-option
       PRIVATE -Wno-unused-parameter)
+else()
+    target_compile_options(${NEBULA_SERVICE} 
+      PRIVATE -Wno-error=unused-parameter 
+      PRIVATE -Wno-error=array-bounds)
 endif()
 
 # Targets: 

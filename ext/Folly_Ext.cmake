@@ -55,34 +55,6 @@
 # 6. TODO(cao) - should we automate this? otherwise every new DEV will go through the installation steps for folly.
 
 if(APPLE)
-    # folly depends on double-conversion
-    set(dcdir /usr/local/Cellar/double-conversion/3.1.5)
-    set(DC_INCLUDE_DIRS ${dcdir}/include)
-    set(DC_LIBRARY_PATH ${dcdir}/lib/libdouble-conversion.a)
-    set(DC_LIBRARY DC)
-    add_library(${DC_LIBRARY} UNKNOWN IMPORTED)
-    set_target_properties(${DC_LIBRARY} PROPERTIES
-        "IMPORTED_LOCATION" "${DC_LIBRARY_PATH}"
-        "INTERFACE_INCLUDE_DIRECTORIES" "${DC_INCLUDE_DIRS}")
-    include_directories(include ${DC_INCLUDE_DIRS})
-
-    # define libevent
-    set(ledir /usr/local/Cellar/libevent/2.1.11)
-    set(LE_INCLUDE_DIRS ${ledir}/include)
-    set(LE_LIBRARY_PATH ${ledir}/lib/libevent.a)
-    set(LE_CORE_PATH ${ledir}/lib/libevent_core.a)
-    set(LE_LIBRARY LE)
-    set(LE_CORE LECORE)
-    add_library(${LE_LIBRARY} UNKNOWN IMPORTED)
-    set_target_properties(${LE_LIBRARY} PROPERTIES
-        "IMPORTED_LOCATION" "${LE_LIBRARY_PATH}"
-        "INTERFACE_INCLUDE_DIRECTORIES" "${LE_INCLUDE_DIRS}")
-    add_library(${LE_CORE} UNKNOWN IMPORTED)
-    set_target_properties(${LE_CORE} PROPERTIES
-        "IMPORTED_LOCATION" "${LE_CORE_PATH}"
-        "INTERFACE_INCLUDE_DIRECTORIES" "${LE_INCLUDE_DIRS}")
-    include_directories(include ${LE_INCLUDE_DIRS})
-
     # define folly
     set(FollyDir /usr/local/Cellar/folly/2019.08.05.00)
     set(FOLLY_INCLUDE_DIRS ${FollyDir}/include)
@@ -97,20 +69,7 @@ if(APPLE)
     # folly depends on dc
     target_link_libraries(${FOLLY_LIBRARY} 
         INTERFACE ${DC_LIBRARY} 
-        INTERFACE ${LE_LIBRARY})
-
-    # add installed arrow here
-    # NOTE: we don't want conda to pollute our includes
-    # so copy array includes to another one 
-    # cp -r /usr/local/conda/include/arrow /usr/local/arrow/include
-    # set(ARROW_INCLUDE_DIRS /usr/local/arrow/include)
-    # set(ARROW_LIBRARY_PATH /usr/local/conda/lib/libarrow.dylib)
-    # set(ARROW_LIBRARY arrow)
-    # add_library(${ARROW_LIBRARY} UNKNOWN IMPORTED)
-    # set_target_properties(${ARROW_LIBRARY} PROPERTIES
-    #     "IMPORTED_LOCATION" "${ARROW_LIBRARY_PATH}"
-    #     "INTERFACE_INCLUDE_DIRECTORIES" "${ARROW_INCLUDE_DIRS}")
-    # include_directories(include ${ARROW_INCLUDE_DIRS})
+        INTERFACE ${EVENT_LIBRARY})
 else()
     # define folly - we may not need this since it's installed in system path already
     set(FOLLY_INCLUDE_DIRS /usr/local/include)
@@ -121,16 +80,6 @@ else()
         "IMPORTED_LOCATION" "${FOLLY_LIBRARY_PATH}"
         "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
         "INTERFACE_INCLUDE_DIRECTORIES" "${FOLLY_INCLUDE_DIRS}")
-    
-    # define double-conversion
-    set(DC_INCLUDE_DIRS /usr/local/include)
-    set(DC_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/libdouble-conversion.a)
-    set(DC_LIBRARY doublec)
-    add_library(${DC_LIBRARY} UNKNOWN IMPORTED)
-    set_target_properties(${DC_LIBRARY} PROPERTIES
-        "IMPORTED_LOCATION" "${DC_LIBRARY_PATH}"
-        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-        "INTERFACE_INCLUDE_DIRECTORIES" "${DC_INCLUDE_DIRS}")
         
     # define libiberty
     set(IBERTY_INCLUDE_DIRS /usr/local/include)
@@ -143,6 +92,7 @@ else()
         "INTERFACE_INCLUDE_DIRECTORIES" "${IBERTY_INCLUDE_DIRS}")
     
     # define openssl - libssl and libcrypto
+    # os provided "sudo locate libcrypto.a"
     set(CRYPTO_INCLUDE_DIRS /usr/local/include)
     set(CRYPTO_LIBRARY_PATH /usr/local/lib/libcrypto.a)
     set(CRYPTO_LIBRARY crypto)
@@ -152,15 +102,6 @@ else()
         "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
         "INTERFACE_INCLUDE_DIRECTORIES" "${CRYPTO_INCLUDE_DIRS}")
     
-    
-    set(EVENT_INCLUDE_DIRS /usr/local/include)
-    set(EVENT_LIBRARY_PATH /usr/local/lib/libevent.a)
-    set(EVENT_LIBRARY libevent)
-    add_library(${EVENT_LIBRARY} UNKNOWN IMPORTED)
-    set_target_properties(${EVENT_LIBRARY} PROPERTIES
-        "IMPORTED_LOCATION" "${EVENT_LIBRARY_PATH}"
-        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-        "INTERFACE_INCLUDE_DIRECTORIES" "${EVENT_INCLUDE_DIRS}")
     
     target_link_libraries(${FOLLY_LIBRARY} 
         INTERFACE ${IBERTY_LIBRARY}

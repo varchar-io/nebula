@@ -37,8 +37,8 @@ target_link_libraries(MetaTests
     PRIVATE ${NEBULA_META}
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
-    PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY})
+    PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${GFLAGS_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

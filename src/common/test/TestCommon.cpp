@@ -304,6 +304,65 @@ TEST(XXHashTest, TestXxhSpeed) {
 
   LOG(INFO) << " XXH VECTOR: " << XXH_VECTOR;
 }
+inline bool f1ni(int i) {
+  return i % 2 == 0;
+}
+TEST(OptionalTest, TestOptionalPerf) {
+  // use -1 indicating null
+  // auto f1n = [](int i) -> bool {
+  //   return i % 2 == 0;
+  // };
+  // TEST REPORT:
+  // Mac (2.6 GHz Intel Core i7)
+  // Compiler: Apple LLVM version 10.0.1 (clang-1001.0.46.4)s
+  // In Debug mode, std::optional is always 10x slower than direct method
+  // in Release mode, std::optional is 2 times slower
+  // I0809 13:10:01.154446 209200576 TestCommon.cpp:340] optional approach: sum=2500000050000000, time=32
+  // I0809 13:10:01.170831 209200576 TestCommon.cpp:349] special value approach: sum=2500000050000000, time=15
+
+  // Linux (Intel(R) Xeon(R) Platinum 8124M CPU @ 3.00GHz)
+  // Compiler: linux: g++ (Ubuntu 8.1.0-5ubuntu1~14.04) 8.1.0
+  // However in release mode on linux (-o3), std::optional version is always faster (59ms vs 81ms)
+  // no matter how we write the for loop, using f1n, f1ni or direct condition
+  // Given our target platform is linux release mode, using std::optional in our row interface seems reasonable
+
+  // I would like to try latest clang on linux to see if there is differences
+  // follow this to get clang 8.0 
+  // https://solarianprogrammer.com/2017/12/13/linux-wsl-install-clang-libcpp-compile-cpp-17-programs/
+
+  auto f1 = [](int i) -> int {
+    return i + 1;
+  };
+
+  auto f2 = [](int i) -> std::optional<int> {
+    if (i % 2 == 0) {
+      return {};
+    }
+    return i + 1;
+  };
+
+  // run 1M cycles
+  constexpr auto cycles = 100000000;
+  nebula::common::Evidence::Duration duration;
+  long sum2 = 0;
+  for (int i = 0; i < cycles; ++i) {
+    auto x = f2(i);
+    if (x) {
+      sum2 += x.value();
+    }
+  }
+  LOG(INFO) << fmt::format("optional approach: sum={0}, time={1}", sum2, duration.elapsedMs());
+
+  duration.reset();
+  long sum1 = 0;
+  for (int i = 0; i < cycles; ++i) {
+    if (i % 2 != 0) {
+      sum1 += f1(i);
+    }
+  }
+  LOG(INFO) << fmt::format("special value approach: sum={0}, time={1}", sum1, duration.elapsedMs());
+  EXPECT_EQ(sum1, sum2);
+}
 
 } // namespace test
 } // namespace common

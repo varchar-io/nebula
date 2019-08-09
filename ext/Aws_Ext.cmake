@@ -113,10 +113,13 @@ if(NOT APPLE)
     INTERFACE gnutls 
     INTERFACE gcrypt 
     INTERFACE z 
-    INTERFACE idn 
+    INTERFACE idn2 
     INTERFACE gssapi_krb5 
     INTERFACE ldap 
     INTERFACE lber 
     INTERFACE com_err 
-    INTERFACE rtmp)
+    INTERFACE rtmp
+    INTERFACE nettle
+    INTERFACE nghttp2 
+    INTERFACE psl)
 endif()

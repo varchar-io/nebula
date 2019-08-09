@@ -16,7 +16,7 @@ else()
     # 5. ./b2
     # <install to system>
     # 4. sudo ./bootstrap.sh --prefix=/usr/local
-    # 5. sudo ./b2 stage threading=multi -j32
+    # 5. sudo ./b2 stage threading=multi -j36
     # 6. sudo ./b2 install
     # set(Boost_USE_STATIC_LIBS        ON) # only find static libs
     # set(Boost_USE_MULTITHREADED      ON)

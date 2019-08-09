@@ -91,3 +91,35 @@ https://gist.github.com/shawncao/7f3d6bb26feb2e0f48888a5ea4ab0f53
     report > perf report -i /tmp/perf.data
 7. To have readable report, make sure the binary has symbols in it.
     build with symbols > -g?
+
+### new fresh setup on ubuntu 18.04 recordings
+Source build usually are "cmake .. -DCMAKE_BUILD_TYPE=Release && make -j36 && sudo make install" except those tar.gz with bootstrap such as cmake, boost
+We will automate these steps one day.
+1.  install cmake (source build, tar, bootstrap)
+2.  install autoconf (apt-get)
+3.  install brew (sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)")
+4.  install gcc-9 and clang-8
+5.  install gflags (source build, github, cmake)
+6.  install glog (source build, github, cmake)
+7.  install double-conversion (source build, github, cmake)
+8.  install jemalloc (source build, github, autoconf, make)
+9.  install lz4 (source build, github, make)
+10. install zstd (source build, github, make)
+11. install snappy (source build, github, cmake)
+11. install libevent (source build, github, cmake)
+12. install libunwind (apt-get libunwind-dev)
+13. install libelf (apt-get libelf-dev)
+13. install libdwarf (source build, https://github.com/tomhughes/libdwarf, configure/make)
+14. "cp /usr/include/libdwarf/dwarf.h /usr/include/dwarf.h"
+15. install folly (source build, github, cmake)
+16. install boost 1.69.0 (check boost_ext.cmake)
+17. install flex (apt-get)
+18. install bison (apt-get)
+19. install openssl (source build, github, config, make install)
+20. install gtest (source build, github, cmake)
+21. install golang (apt-get install will not place go in /usr/local expected by grpc)
+22. install golang (tar unpack to /usr/local "tar -C /usr/local -xzf go$VERSION.$OS-$ARCH.tar.gz", export to path)
+23. install protobuf (source build, github, follow instructions strictly including "sudo ldconfig")
+24. install libcurl (apt-get, libcurl4-gnutls-dev and dependencies: libkrb5-dev, libgnutls28-dev, libgcrypt-dev, libldap-dev, librtmp-dev, libidn11-dev, libnghttp2-dev, libpsl-dev)
+25. install rapidjson (nebula build, rapidjson/buid, sudo make install)
+26. install libiberty (apt-get libiberty-dev)

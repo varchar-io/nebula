@@ -44,8 +44,8 @@ target_link_libraries(TypeTests
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
     PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY})
+    PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${GFLAGS_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)
