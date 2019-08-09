@@ -91,6 +91,7 @@ https://gist.github.com/shawncao/7f3d6bb26feb2e0f48888a5ea4ab0f53
     report > perf report -i /tmp/perf.data
 7. To have readable report, make sure the binary has symbols in it.
     build with symbols > -g?
+8. more tools can be found here http://euccas.github.io/blog/20170827/cpu-profiling-tools-on-linux.html
 
 ### new fresh setup on ubuntu 18.04 recordings
 Source build usually are "cmake .. -DCMAKE_BUILD_TYPE=Release && make -j36 && sudo make install" except those tar.gz with bootstrap such as cmake, boost

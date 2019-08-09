@@ -17,25 +17,34 @@
 #include <arrow/io/file.h>
 #include <arrow/util/logging.h>
 #include <fmt/format.h>
+#include <folly/Conv.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <parquet/api/reader.h>
 #include <parquet/api/writer.h>
 #include <parquet/types.h>
-#include "storage/CsvReader.h"
+
+#include "common/Evidence.h"
+#include "storage/ParquetReader.h"
 #include "storage/aws/S3.h"
 #include "storage/local/File.h"
+#include "type/Serde.h"
 
 namespace nebula {
 namespace storage {
 namespace test {
 
 using ConvertedType = parquet::LogicalType::type;
+using nebula::surface::RowData;
+using nebula::type::TypeSerializer;
 using parquet::Repetition;
 using parquet::Type;
 using parquet::schema::GroupNode;
 using parquet::schema::PrimitiveNode;
+
 constexpr int FIXED_LENGTH = 10;
+// this is for testing only since it's small, RG size is better to be 32M +
+constexpr int64_t ROW_GROUP_SIZE = 8 * 1024 * 1024;
 
 static std::shared_ptr<GroupNode> SetupSchema() {
   parquet::schema::NodeVector fields;
@@ -78,26 +87,12 @@ static std::shared_ptr<GroupNode> SetupSchema() {
     GroupNode::Make("schema", Repetition::REQUIRED, fields));
 }
 
-constexpr int NUM_ROWS = 2500000;
-constexpr int64_t ROW_GROUP_SIZE = 16 * 1024 * 1024; // 16 MB
-const char PARQUET_FILENAME[] = "parquet_cpp_example2.parquet";
-// Parquet file reader and writer are included in arrow
-// Test here is to demonstrate API availability
-// This is copied from below address for internal integration purpose
-// https://github.com/apache/arrow/blob/master/cpp/examples/parquet/low-level-api/reader-writer2.cc
-// use this example for arrow format adatped read/write api
-TEST(ParquetTest, TestParquetReadWrite) {
-  /**********************************************************************************
-                             PARQUET WRITER EXAMPLE
-  **********************************************************************************/
-  // parquet::REQUIRED fields do not need definition and repetition level values
-  // parquet::OPTIONAL fields require only definition level values
-  // parquet::REPEATED fields require both definition and repetition level values
+bool writeParquetFile(const std::string& file, size_t rows) {
   try {
     // Create a local file output stream instance.
     using FileClass = ::arrow::io::FileOutputStream;
     std::shared_ptr<FileClass> out_file;
-    PARQUET_THROW_NOT_OK(FileClass::Open(PARQUET_FILENAME, &out_file));
+    PARQUET_THROW_NOT_OK(FileClass::Open(file, &out_file));
 
     // Setup the parquet schema
     std::shared_ptr<GroupNode> schema = SetupSchema();
@@ -115,7 +110,7 @@ TEST(ParquetTest, TestParquetReadWrite) {
 
     int num_columns = file_writer->num_columns();
     std::vector<int64_t> buffered_values_estimate(num_columns, 0);
-    for (int i = 0; i < NUM_ROWS; i++) {
+    for (size_t i = 0; i < rows; i++) {
       int64_t estimated_bytes = 0;
       // Get the estimated size of the values that are not written to a page yet
       for (int n = 0; n < num_columns; n++) {
@@ -218,10 +213,31 @@ TEST(ParquetTest, TestParquetReadWrite) {
 
     // Write the bytes to file
     DCHECK(out_file->Close().ok());
+    return true;
   } catch (const std::exception& e) {
     LOG(ERROR) << "Parquet write error: " << e.what();
-    return;
+    return false;
   }
+}
+
+// Parquet file reader and writer are included in arrow
+// Test here is to demonstrate API availability
+// This is copied from below address for internal integration purpose
+// https://github.com/apache/arrow/blob/master/cpp/examples/parquet/low-level-api/reader-writer2.cc
+// use this example for arrow format adatped read/write api
+TEST(ParquetTest, TestParquetReadWrite) {
+  /**********************************************************************************
+                             PARQUET WRITER EXAMPLE
+  **********************************************************************************/
+  // parquet::REQUIRED fields do not need definition and repetition level values
+  // parquet::OPTIONAL fields require only definition level values
+  // parquet::REPEATED fields require both definition and repetition level values
+  nebula::common::Evidence::Duration duration;
+  const char readWriteSample[] = "parquet_cpp_example2.parquet";
+  constexpr auto numRows = 25000;
+  writeParquetFile(readWriteSample, numRows);
+  LOG(INFO) << fmt::format("Writing {0} rows taking {1} ms", numRows, duration.elapsedMs());
+  duration.reset();
 
   /**********************************************************************************
                              PARQUET READER EXAMPLE
@@ -229,7 +245,7 @@ TEST(ParquetTest, TestParquetReadWrite) {
 
   try {
     // Create a ParquetReader instance
-    std::unique_ptr<parquet::ParquetFileReader> parquet_reader = parquet::ParquetFileReader::OpenFile(PARQUET_FILENAME, false);
+    std::unique_ptr<parquet::ParquetFileReader> parquet_reader = parquet::ParquetFileReader::OpenFile(readWriteSample, false);
 
     // Get the File MetaData
     std::shared_ptr<parquet::FileMetaData> file_metadata = parquet_reader->metadata();
@@ -443,7 +459,42 @@ TEST(ParquetTest, TestParquetReadWrite) {
     return;
   }
 
-  LOG(INFO) << "Parquet Writing and Reading Complete";
+  LOG(INFO) << fmt::format("Reading {0} rows and verify taking {1} ms",
+                           numRows, duration.elapsedMs());
+}
+
+TEST(ParquetTest, TestReadThroughFlatRow) {
+  const char readWriteSample[] = "parquet_sample_file_read_through_flatrow";
+  constexpr auto numRows = 259999;
+  EXPECT_TRUE(writeParquetFile(readWriteSample, numRows));
+
+  // read this file through ParquetReader
+  auto schema = TypeSerializer::from(
+    "ROW<boolean_field:bool, int32_field:int, int64_field:long,"
+    "float_field:float, double_field:double, ba_field:string>");
+
+  // read some of the columns from the parquet file
+  auto toString = [](const RowData& row) -> std::string {
+    return fmt::format(
+      "b={0}, i={1}, l={2}, f={3}, d={4}, s={5}",
+      row.isNull("boolean_field") ? "NULL" : folly::to<std::string>(row.readBool("boolean_field")),
+      row.isNull("int32_field") ? "NULL" : folly::to<std::string>(row.readInt("int32_field")),
+      row.isNull("int64_field") ? "NULL" : folly::to<std::string>(row.readLong("int64_field")),
+      row.isNull("float_field") ? "NULL" : folly::to<std::string>(row.readFloat("float_field")),
+      row.isNull("double_field") ? "NULL" : folly::to<std::string>(row.readDouble("double_field")),
+      row.isNull("ba_field") ? "NULL" : row.readString("ba_field"));
+  };
+  ParquetReader reader(readWriteSample, schema);
+  auto rows = 0;
+  while (reader.hasNext()) {
+    auto& line = reader.next();
+    rows++;
+    if (rows > numRows - 10) {
+      LOG(INFO) << toString(line);
+    }
+  }
+
+  EXPECT_EQ(rows, numRows);
 }
 } // namespace test
 } // namespace storage

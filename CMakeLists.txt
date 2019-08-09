@@ -55,7 +55,7 @@ else()
     set(NCXX /usr/bin/g++)
     set(NCC /usr/bin/gcc)
     set(NCFLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -no-pie -ldl -lunwind -I/usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
-    set(NCFLAGS_RELEASE "-O3 -s")
+    set(NCFLAGS_RELEASE "-O3 -march=native -s")
   endif()
 endif()
 
@@ -208,9 +208,6 @@ include(ext/Xxh_Ext.cmake)
 # build common library
 include(src/common/Common.cmake)
 
-# build data storage - clound providers
-include(src/storage/Storage.cmake)
-
 # build data surface - interfaces
 include(src/surface/Surface.cmake)
 
@@ -222,6 +219,9 @@ include(src/meta/Meta.cmake)
 
 # build memory library
 include(src/memory/Memory.cmake)
+
+# build data storage - clound providers
+include(src/storage/Storage.cmake)
 
 # build meta module
 include(src/execution/Execution.cmake)

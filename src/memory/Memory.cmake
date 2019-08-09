@@ -45,7 +45,8 @@ add_executable(MemoryTests
     ${NEBULA_SRC}/memory/test/TestArrow.cpp
     ${NEBULA_SRC}/memory/test/TestBatch.cpp
     ${NEBULA_SRC}/memory/test/TestEncoder.cpp
-    ${NEBULA_SRC}/memory/test/TestFlatBuffer.cpp)
+    ${NEBULA_SRC}/memory/test/TestFlatBuffer.cpp
+    ${NEBULA_SRC}/memory/test/TestFlatRow.cpp)
 
 target_link_libraries(MemoryTests
     PRIVATE ${NEBULA_MEMORY}

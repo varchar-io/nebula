@@ -4,10 +4,14 @@ set(NEBULA_STORAGE NStorage)
 # target_include_directories(${NEBULA_META} INTERFACE src/meta)
 add_library(${NEBULA_STORAGE} STATIC 
     ${NEBULA_SRC}/storage/CsvReader.cpp
+    ${NEBULA_SRC}/storage/ParquetReader.cpp
     ${NEBULA_SRC}/storage/aws/S3.cpp)
 target_link_libraries(${NEBULA_STORAGE}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_SURFACE}
+    PRIVATE ${PARQUET_LIBRARY}
+    PRIVATE ${ARROW_LIBRARY}
+    PRIVATE ${XXH_LIBRARY}
     PRIVATE ${AWS_COMMON_LIBRARY}
     PRIVATE ${AWS_S3_LIBRARY}
     PRIVATE ${AWS_CORE_LIBRARY}
@@ -40,7 +44,9 @@ add_executable(StorageTests
 # GCC looks symbols from a lib after itself?? That's why we need to place aws-core after aws-s3
 # CLANG doesn't have this issue
 target_link_libraries(StorageTests  
-    PRIVATE ${NEBULA_STORAGE}    
+    PRIVATE ${NEBULA_STORAGE}
+    PRIVATE ${NEBULA_TYPE}    
+    PRIVATE ${NEBULA_MEMORY}    
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${FOLLY_LIBRARY}   
@@ -52,6 +58,7 @@ target_link_libraries(StorageTests
     PRIVATE ${THRIFT_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${SNAPPY_LIBRARY}
+    PRIVATE ${XXH_LIBRARY}
     PRIVATE ${AWS_COMMON_LIBRARY}
     PRIVATE ${AWS_S3_LIBRARY}
     PRIVATE ${AWS_CORE_LIBRARY})

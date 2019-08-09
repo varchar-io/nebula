@@ -26,7 +26,7 @@
 #include "surface/DataSurface.h"
 
 /**
- * A wrapper for interacting with AWS / S3
+ * A CSV file reader, with or without header for schema 
  */
 namespace nebula {
 namespace storage {

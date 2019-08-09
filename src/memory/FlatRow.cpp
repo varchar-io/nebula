@@ -19,44 +19,85 @@
 namespace nebula {
 namespace memory {
 
-using nebula::type::TypeBase;
+using nebula::surface::ListData;
+using nebula::surface::MapData;
 
-// can be called multiple times to reuse the same flat row
-void FlatRow::init() {
-  cursor_ = 0;
-
-  // clear stack
-  while (!stack_.empty()) {
-    stack_.pop();
-  }
+bool FlatRow::isNull(const std::string& field) const {
+  auto offset = meta_.at(field);
+  // it is null if value at current offset is 0
+  return slice_.read<int8_t>(offset) == 0;
 }
 
-void FlatRow::begin(const TypeNode& node, size_t items) {
-  // push the the node KIND
-  LOG(INFO) << "begin writing NODE: " << node->name() << " for items: " << items;
-  stack_.push(std::make_unique<DataMeta>(node));
-}
-
-// return total size
-size_t FlatRow::end(const TypeNode& node) {
-  // ensure poping the same node as pushed
-  N_ENSURE(node.get() == (stack_.top()->node.get()), "same node");
-  stack_.pop();
-
-  LOG(INFO) << " end writing NDOE: " << node->name();
-  return cursor_;
-}
-
-// locate a node by given name (only top level?)
-TypeNode FlatRow::locate(const std::string& name) {
-  for (size_t i = 0, size = schema_->size(); i < size; ++i) {
-    auto node = schema_->childType(i);
-    if (name == node->name()) {
-      return node;
-    }
+#define READ_SCALAR(RT, NAME)                        \
+  RT FlatRow::NAME(const std::string& field) const { \
+    auto offset = meta_.at(field);                   \
+    return slice_.read<RT>(offset + 1);              \
   }
 
-  return {};
+READ_SCALAR(bool, readBool)
+READ_SCALAR(int8_t, readByte)
+READ_SCALAR(int16_t, readShort)
+READ_SCALAR(int32_t, readInt)
+READ_SCALAR(int64_t, readLong)
+READ_SCALAR(float, readFloat)
+READ_SCALAR(double, readDouble)
+
+#undef READ_SCALAR
+
+std::string_view FlatRow::readString(const std::string& field) const {
+  auto offset = meta_.at(field);
+
+  // type check: we can check first byte is string flag
+  return slice_.read(offset + 5, slice_.read<int32_t>(offset + 1));
+}
+
+std::unique_ptr<ListData> FlatRow::readList(const std::string& field) const {
+  auto offset = meta_.at(field);
+  auto header = slice_.read<int16_t>(offset);
+  auto size = slice_.read<int32_t>(offset + 2);
+
+  // the base offset passed in is data offset without header.
+  return std::make_unique<FlatList>(size, header, offset + 6, slice_);
+}
+
+std::unique_ptr<MapData> FlatRow::readMap(const std::string&) const {
+  throw NException("Map not supported in flat row");
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
+bool FlatList::isNull(size_t) const {
+  // TODO(cao): Currently not supporting nulls in list/vector. Empty string is supported.
+  return false;
+}
+
+#define READ_SCALAR(RT, NAME)                     \
+  RT FlatList::NAME(size_t index) const {         \
+    constexpr auto width = sizeof(RT);            \
+    N_ENSURE_EQ(type_, width, "not list of #RT"); \
+    auto offset = base_ + index * type_;          \
+    return slice_.read<RT>(offset);               \
+  }
+
+READ_SCALAR(bool, readBool)
+READ_SCALAR(int8_t, readByte)
+READ_SCALAR(int16_t, readShort)
+READ_SCALAR(int32_t, readInt)
+READ_SCALAR(int64_t, readLong)
+READ_SCALAR(float, readFloat)
+READ_SCALAR(double, readDouble)
+
+#undef READ_SCALAR
+
+std::string_view FlatList::readString(size_t index) const {
+  N_ENSURE_EQ(type_, FlatRow::STRING_FLAG, "expect string list");
+
+  // offset to read length of this string
+  auto pos = base_ + index * 4;
+  auto offset = slice_.read<int32_t>(pos);
+  auto len = slice_.read<int32_t>(pos + 4) - offset;
+  N_ENSURE(len >= 0, "offset should be incremental.");
+
+  return slice_.read(offset, len);
 }
 
 } // namespace memory

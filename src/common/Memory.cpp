@@ -55,6 +55,10 @@ void PagedSlice::ensure(size_t size) {
 
 // append a bytes array of length bytes to position
 size_t PagedSlice::write(size_t position, const NByte* data, size_t length) {
+  if (UNLIKELY(length == 0)) {
+    return 0;
+  }
+
   size_t cursor = position + length;
   ensure(cursor);
 

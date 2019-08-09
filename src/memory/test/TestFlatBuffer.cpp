@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <valarray>
+
 #include "common/Memory.h"
 #include "fmt/format.h"
 #include "memory/keyed/FlatBuffer.h"

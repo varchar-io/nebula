@@ -141,38 +141,6 @@ TEST(BatchTest, TestBatchRead) {
   }
 }
 
-TEST(RowTest, TestFlatRow) {
-  // should be a covariant of TypeNode shared_ptr<RowType> -> shared_ptr<TypeBase>
-  auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
-
-  // initialize a flat row with given schema
-  FlatRow row(schema);
-
-  // to achieve flexible writing APIs
-  // here is a contract for each type
-  // 1. list - begin and write
-  // 2. struct - all field writing need specifying name
-  // 3. map - treat it like struct but with two special field name [KEY], [VALUE]
-  // Before write(value) is called, the expected node should be placed in the stack
-
-  // write id as value 2
-  row.write("id", 2);
-  auto fItems = row.locate("items");
-  // start 3 items
-  row.begin(fItems, 3);
-  row.write("x");
-  row.write("y");
-  row.write("z");
-  row.end(fItems);
-  // write flag as false
-  row.write("flag", false);
-
-  // end root for reading/serailization
-  row.seal();
-
-  // row is ready to read now
-}
-
 TEST(DataTreeTest, TestBuildDataTree) {
   nebula::meta::TestTable test;
   auto dataTree = nebula::memory::DataNode::buildDataTree(test, 10);
