@@ -4,13 +4,18 @@ find_package(Threads REQUIRED)
 # by default, roaring is providng dynamic lib for linking
 # however I changed it to build static here - we may want to adjust in final deployment
 include(ExternalProject)
+SET(JSON_OPTS
+  -DRAPIDJSON_BUILD_DOC=OFF
+  -DRAPIDJSON_BUILD_TESTS=OFF
+  -DRAPIDJSON_BUILD_CXX11=OFF
+  -DRAPIDJSON_HAS_STDSTRING=ON)
 ExternalProject_Add(
   rapidjson
   GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   BUILD_COMMAND ""
-  CMAKE_ARGS "-DRAPIDJSON_BUILD_DOC=OFF -DRAPIDJSON_BUILD_TESTS=OFF -DRAPIDJSON_BUILD_CXX11=OFF -DRAPIDJSON_HAS_STDSTRING=ON"
+  CMAKE_ARGS ${JSON_OPTS}
   LOG_DOWNLOAD ON
   LOG_CONFIGURE ON
   LOG_BUILD ON)
