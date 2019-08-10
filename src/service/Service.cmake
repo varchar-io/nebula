@@ -67,6 +67,7 @@ get_filename_component(nfbs_path "${nfbs}" PATH)
 
 # Generated sources from proto file
 set(NODE_GEN_DIR "${GEN_DIR}/node")
+file(MAKE_DIRECTORY ${NODE_GEN_DIR})
 add_custom_target(compile_fbs ALL 
   COMMAND ${FLATBUFFERS_COMPILER} -b -o "${NODE_GEN_DIR}" --cpp --grpc "${nfbs}"
 DEPENDS ${nfbs})
