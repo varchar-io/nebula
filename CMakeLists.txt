@@ -36,39 +36,27 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-if(NOT CMAKE_BUILD_TYPE)
-  if(APPLE)
-    set(CMAKE_BUILD_TYPE Debug)
+# a switch to use clang or g++
+# clang or g++
+# this switch only works on linux
+set(NC gcc)
+if(APPLE)
+  set(NCXX /usr/bin/g++)
+  set(NCC /usr/bin/gcc)
+  set(NCFLAGS "-Wall -Wextra -Werror -Wno-error=nullability-completeness -Wno-error=sign-compare -Wno-error=unknown-warning-option")
+  set(NCFLAGS_RELEASE "-O3")
+else()
+  if(${NC} STREQUAL "clang")
+    set(NCXX /usr/bin/clang++)
+    set(NCC /usr/bin/clang)
+    set(NCFLAGS "-Wall -Wextra -Werror -I/usr/include/ -I/usr/local/include")
+    set(NCFLAGS_RELEASE "-O3")
   else()
-    set(CMAKE_BUILD_TYPE Release)
+    set(NCXX /usr/bin/g++)
+    set(NCC /usr/bin/gcc)
+    set(NCFLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -no-pie -ldl -lunwind -I/usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
+    set(NCFLAGS_RELEASE "-O3 -s")
   endif()
-endif()
-
-if(APPLE)
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -Wno-error=nullability-completeness -Wno-error=sign-compare -Wno-error=unknown-warning-option")
-else()
-  # set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -stdlib=libc++ -pedantic")
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -no-pie -ldl -lunwind -I /usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
-endif()
-
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-if(APPLE)
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-else()
-  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-  # set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
-endif()
-
-# we use static link always
-set(BUILD_SHARED_LIBS OFF)
-
-# set cellar path for libries installed by brew
-if(APPLE)
-  set(DL_EXT "dylib")
-  set(CELLAR_ROOT /usr/local/Cellar)
-else()
-  set(DL_EXT "so")
-  set(CELLAR_ROOT /home/linuxbrew/.linuxbrew/Cellar)
 endif()
 
 # by default using clang, turn this line on to use gcc
@@ -95,9 +83,33 @@ endif()
 # update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-8 100
 # update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 800 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-8
 # test clang 8
-set(CMAKE_CXX_COMPILER /usr/bin/g++)
-set(CMAKE_CC_COMPILER /usr/bin/g++)
-set(CMAKE_C_COMPILER /usr/bin/gcc)
+set(CMAKE_CXX_COMPILER ${NCXX})
+set(CMAKE_CC_COMPILER ${NCXX})
+set(CMAKE_C_COMPILER ${NCC})
+
+if(NOT CMAKE_BUILD_TYPE)
+  if(APPLE)
+    set(CMAKE_BUILD_TYPE Debug)
+  else()
+    set(CMAKE_BUILD_TYPE Release)
+  endif()
+endif()
+
+set(CMAKE_CXX_FLAGS ${NCFLAGS})
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE ${NCFLAGS_RELEASE})
+
+# we use static link always
+set(BUILD_SHARED_LIBS OFF)
+
+# set cellar path for libries installed by brew
+if(APPLE)
+  set(DL_EXT "dylib")
+  set(CELLAR_ROOT /usr/local/Cellar)
+else()
+  set(DL_EXT "so")
+  set(CELLAR_ROOT /home/linuxbrew/.linuxbrew/Cellar)
+endif()
 
 # TODO(cao) - move to jemalloc
 # ref https://www.facebook.com/notes/facebook-engineering/scalable-memory-allocation-using-jemalloc/480222803919/

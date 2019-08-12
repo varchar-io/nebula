@@ -23,7 +23,7 @@ set_source_files_properties(${CF_SRC} PROPERTIES GENERATED TRUE)
 add_library(${CF_LIBRARY} STATIC ${CF_SRC})
 target_link_libraries(${CF_LIBRARY} PRIVATE ${OPENSSL_LIBRARY})
 if(NOT APPLE)
-    target_compile_options(${CF_LIBRARY} PRIVATE -Wno-error=implicit-fallthrough=)
+    target_compile_options(${CF_LIBRARY} PRIVATE -Wno-error=implicit-fallthrough)
 endif()
 
 add_dependencies(${CF_LIBRARY} cuckoofilter)

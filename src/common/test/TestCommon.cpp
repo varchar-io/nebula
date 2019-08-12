@@ -327,7 +327,7 @@ TEST(OptionalTest, TestOptionalPerf) {
   // Given our target platform is linux release mode, using std::optional in our row interface seems reasonable
 
   // I would like to try latest clang on linux to see if there is differences
-  // follow this to get clang 8.0 
+  // follow this to get clang 8.0
   // https://solarianprogrammer.com/2017/12/13/linux-wsl-install-clang-libcpp-compile-cpp-17-programs/
 
   auto f1 = [](int i) -> int {
@@ -342,7 +342,7 @@ TEST(OptionalTest, TestOptionalPerf) {
   };
 
   // run 1M cycles
-  constexpr auto cycles = 100000000;
+  constexpr auto cycles = 100'000'000;
   nebula::common::Evidence::Duration duration;
   long sum2 = 0;
   for (int i = 0; i < cycles; ++i) {
