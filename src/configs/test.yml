@@ -1,0 +1,8 @@
+version: 99
+root:
+  - name: nebula
+  - rank: 1
+  - attributions:
+      - awesome
+      - cool
+      - fast

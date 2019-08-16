@@ -45,7 +45,8 @@ target_link_libraries(CommonTests
     PRIVATE ${BF_LIBRARY}
     PRIVATE ${CF_LIBRARY}
     PRIVATE ${OPENSSL_LIBRARY}
-    PRIVATE ${CRYPTO_LIBRARY})
+    PRIVATE ${CRYPTO_LIBRARY}
+    PRIVATE ${YAML_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

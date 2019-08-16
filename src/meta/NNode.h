@@ -40,6 +40,9 @@ struct NNode {
   std::string server;
   size_t port;
 
+  NNode(NRole r, std::string h, size_t p)
+    : role{ r }, server{ std::move(h) }, port{ p } {}
+
   inline std::string toString() const {
     return fmt::format("{0}:{1}", server, port);
   }
@@ -69,7 +72,7 @@ struct NNode {
     static const NNode INPROC = NNode{ NRole::NODE, "0", 0 };
     return INPROC;
   }
-};
+}; // namespace meta
 
 struct NodeHash {
 public:

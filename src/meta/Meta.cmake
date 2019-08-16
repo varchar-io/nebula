@@ -4,11 +4,14 @@ set(NEBULA_META NMeta)
 # target_include_directories(${NEBULA_META} INTERFACE src/meta)
 add_library(${NEBULA_META} STATIC 
     ${NEBULA_SRC}/meta/Table.cpp
-    ${NEBULA_SRC}/meta/TestTable.cpp)
+    ${NEBULA_SRC}/meta/TestTable.cpp
+    ${NEBULA_SRC}/meta/ClusterInfo.cpp)
 target_link_libraries(${NEBULA_META}
     PRIVATE ${NEBULA_COMMON}
     PRIVATE ${NEBULA_TYPE}
-    PRIVATE ${FMT_LIBRARY})
+    PRIVATE ${FMT_LIBRARY}
+    PRIVATE ${YAML_LIBRARY}
+    PRIVATE ${XXH_LIBRARY})
 
 # include its own root directory for searching headers
 # set(NMETA_INCLUDE_DIRS ${NEBULA_SRC}/meta)
@@ -38,7 +41,8 @@ target_link_libraries(MetaTests
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY} 
     PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY})
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${XXH_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

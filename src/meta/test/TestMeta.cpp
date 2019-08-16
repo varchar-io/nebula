@@ -17,6 +17,8 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
+#include "meta/ClusterInfo.h"
 #include "meta/NBlock.h"
 #include "meta/Table.h"
 #include "meta/TestTable.h"
@@ -57,6 +59,25 @@ TEST(MetaTest, TestNNode) {
   NNode n2{ n1 };
   ASSERT_TRUE(n1.equals(n2));
   LOG(INFO) << "N2=" << n2.toString();
+}
+
+TEST(MetaTest, TestClusterConfigLoad) {
+  auto yamlFile = "configs/cluster.yml";
+  auto& clusterInfo = nebula::meta::ClusterInfo::singleton();
+  clusterInfo.load(yamlFile);
+
+  // verify data against config file
+  const auto& nodes = clusterInfo.nodes();
+  EXPECT_EQ(nodes.size(), 2);
+  for (auto itr = nodes.cbegin(); itr != nodes.cend(); ++itr) {
+    LOG(INFO) << "NODE: " << itr->toString();
+  }
+
+  const auto& tables = clusterInfo.tables();
+  EXPECT_EQ(tables.size(), 4);
+  for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
+    LOG(INFO) << "TABLE: " << itr->toString();
+  }
 }
 
 } // namespace test

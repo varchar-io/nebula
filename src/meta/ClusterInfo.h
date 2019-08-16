@@ -18,7 +18,9 @@
 
 #include <mutex>
 #include <unordered_set>
+
 #include "NNode.h"
+#include "TableSpec.h"
 
 /**
  * We will sync etcd configs for cluster info into this memory object
@@ -28,6 +30,7 @@ namespace nebula {
 namespace meta {
 
 using NNodeSet = std::unordered_set<NNode, NodeHash, NodeEqual>;
+using TableSpecSet = std::unordered_set<TableSpec, TableSpecHash, TableSpecEqual>;
 
 class ClusterInfo {
 private:
@@ -45,34 +48,26 @@ public:
   }
 
 public:
-  void update(const NNode& node) {
-    if (nodes_.find(node) != nodes_.end()) {
-      return;
-    }
+  void load(const std::string& file);
 
-    std::lock_guard<std::mutex> guard(set_);
-    nodes_.insert(node);
-  }
+  std::vector<NNode> copy();
 
-  std::vector<NNode> copy() {
-    // get a copy of all nodes
-    std::lock_guard<std::mutex> guard(set_);
-    std::vector<NNode> nodes;
-    nodes.reserve(nodes_.size());
-    for (auto itr = nodes_.cbegin(); itr != nodes_.cend(); ++itr) {
-      nodes.push_back(*itr);
-    }
-
-    return nodes;
-  }
-
-  const NNodeSet& nodes() const {
+  inline const NNodeSet& nodes() const {
     return nodes_;
   }
+
+  inline const TableSpecSet& tables() const {
+    return tables_;
+  }
+
+private:
+  void
+    update(const NNode& node);
 
 private:
   std::mutex set_;
   NNodeSet nodes_;
+  TableSpecSet tables_;
 };
 } // namespace meta
 } // namespace nebula

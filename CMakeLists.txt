@@ -191,6 +191,9 @@ include(ext/Arrow_Ext.cmake)
 # include xxhash
 include(ext/Xxh_Ext.cmake)
 
+#include yaml
+include(ext/Yaml_Ext.cmake)
+
 # "brew install conan" first - it's great after migrating to conan
 # at least for folly - thanks conan, how to solve conflicts with existing lib like gflags?.
 # use conan to install the dependency
@@ -253,3 +256,12 @@ gtest_discover_tests(tests TEST_LIST ALL)
 
 # a command to install clang-format - not related to build
 # execute_process(COMMAND npm install clang-format)
+
+# ensure all resources copied to build folder
+# all resources are relative to nebula/src folder only
+set(NRES 
+  configs/test.yml 
+  configs/cluster.yml)
+foreach(i ${NRES})
+  configure_file(${NEBULA_SRC}/${i} ${CMAKE_CURRENT_BINARY_DIR}/${i} COPYONLY)
+endforeach()

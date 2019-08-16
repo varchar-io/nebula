@@ -1,0 +1,68 @@
+verion: 1.0
+
+# will be provided by enviroment
+nodes:
+  - node:
+     host: 10.3.193.152
+     port: 9199
+  - node:
+      host: 10.1.179.237
+      port: 9199
+
+tables:
+  nebula.test:
+    # max 10G RAM assigment
+    max-mb: 10000    
+    # max 10 days assignment
+    max-hr: 240
+    schema: "ROW<_time_:bigint, id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    data: custom
+    loader: NebulaTestData
+    source: ""
+    backup: s3://nebula/n100/
+    format: none
+    time: 
+      type: static
+      # get it from linux by "date +%s"
+      value: 1565994194
+      
+  pin.comments:
+    max-mb: 40000
+    max-hr: 0
+    schema: "ROW<_time_:long, user_id:long, pin_signature:string, comments:string>"
+    data: s3
+    loader: Swap
+    source: s3://nebula/pin_comments/ 
+    backup: s3://nebula/n101/
+    format: csv
+    time: 
+      type: column
+      column: created_at
+      pattern: "%Y-%m-%d %H:%M:%S"
+  
+  pin.signatures:
+    max-mb: 40000
+    max-hr: 0
+    schema: "ROW<_time_:long, pin_signature:string, pin_id:long>"
+    data: s3
+    loader: Swap
+    source: s3://nebula/pin_signatures/ 
+    backup: s3://nebula/n102/
+    format: csv
+    time: 
+      type: current
+  
+  pin.pins:
+    max-mb: 200000
+    max-hr: 720
+    schema: "ROW<_time_:long, id:long, board_id:long, user_id:long, title:string, details:string, signature:string, repins:long>"
+    data: s3
+    loader: Roll
+    source: s3://nebula/pin_pins/cd=<date>
+    backup: s3://nebula/n103/
+    format: parquet
+    time: 
+      type: column
+      column: created_at
+      pattern: "%Y-%m-%d %H:%M:%S"
+

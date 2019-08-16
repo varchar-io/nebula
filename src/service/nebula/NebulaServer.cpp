@@ -187,9 +187,9 @@ void RunServer() {
 
   // TODO (cao): start a thread to sync up with etcd setup for cluster info.
   // register cluster info
-  nebula::meta::ClusterInfo::singleton().update({ nebula::meta::NRole::NODE,
-                                                  FLAGS_HOST_ADDR,
-                                                  nebula::service::ServiceProperties::NPORT });
+  // nebula::meta::ClusterInfo::singleton().update({ nebula::meta::NRole::NODE,
+  //                                                 FLAGS_HOST_ADDR,
+  //                                                 nebula::service::ServiceProperties::NPORT });
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.

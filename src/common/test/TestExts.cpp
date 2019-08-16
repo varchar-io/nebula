@@ -18,11 +18,12 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <roaring.hh>
+#include <yaml-cpp/yaml.h>
 #include <yorel/yomm2/cute.hpp>
+
 #include "common/BloomFilter.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
-
 /**
  * Test namespace for testing external dependency APIs
  */
@@ -198,6 +199,48 @@ TEST(CommonTest, TestOmm) {
   LOG(INFO) << foobar(b);
   LOG(INFO) << foobar(c);
 }
+
+#define TYPE_PRINT(T)       \
+  case YAML::NodeType::T: { \
+    LOG(INFO) << #T;        \
+    break;                  \
+  }
+
+void printType(const YAML::Node& n) {
+  switch (n.Type()) {
+    TYPE_PRINT(Undefined)
+    TYPE_PRINT(Null)
+    TYPE_PRINT(Scalar)
+    TYPE_PRINT(Sequence)
+    TYPE_PRINT(Map)
+  default:
+    throw NException("unknown type");
+  }
+}
+#undef TYPE_PRINT
+
+TEST(CommonTest, TestYamlParser) {
+  YAML::Node config = YAML::LoadFile("configs/test.yml");
+
+  printType(config);
+  LOG(INFO) << "Version=" << config["version"].as<int>();
+
+  const auto& list = config["root"];
+  LOG(INFO) << "Root=" << list.size();
+  printType(list);
+  for (size_t i = 0; i < list.size(); ++i) {
+    printType(list[i]);
+  }
+
+  LOG(INFO) << "Name=" << list[0]["name"].as<std::string>();
+  LOG(INFO) << "Rank=" << list[1]["rank"].as<int>();
+  auto& props = list[2]["attributions"];
+  printType(props);
+  for (size_t i = 0; i < props.size(); ++i) {
+    LOG(INFO) << props[i].as<std::string>();
+  }
+}
+
 } // namespace test
 } // namespace common
 } // namespace nebula
