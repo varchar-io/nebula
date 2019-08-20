@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <chrono>
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -24,6 +25,8 @@
 #include "common/BloomFilter.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
+#include "common/TaskScheduler.h"
+
 /**
  * Test namespace for testing external dependency APIs
  */
@@ -239,6 +242,18 @@ TEST(CommonTest, TestYamlParser) {
   for (size_t i = 0; i < props.size(); ++i) {
     LOG(INFO) << props[i].as<std::string>();
   }
+}
+
+TEST(CommonTest, TestTimer) {
+  nebula::common::TaskScheduler scheduler;
+  scheduler.setInterval(1000, [] { LOG(INFO) << "Did Interval"; });
+  scheduler.setTimeout(2000, [] { LOG(INFO) << "Did Timeout"; });
+
+  // run scheduler
+  scheduler.run();
+
+  // after done
+  LOG(INFO) << "scheduler exits";
 }
 
 } // namespace test

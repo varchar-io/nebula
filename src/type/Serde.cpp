@@ -225,7 +225,7 @@ std::shared_ptr<Node> Parser::parse() {
 
 std::shared_ptr<RowType> TypeSerializer::from(const std::string& text) {
   Parser parser(text);
-  LOG(INFO) << "Parsing schema: " << text;
+  VLOG(1) << "Parsing schema: " << text;
   auto root = parser.parse();
 
   // walk this node tree before transforming it to a RowType

@@ -32,6 +32,11 @@ namespace meta {
 using NNodeSet = std::unordered_set<NNode, NodeHash, NodeEqual>;
 using TableSpecSet = std::unordered_set<TableSpec, TableSpecHash, TableSpecEqual>;
 
+// server options mapping in cluster.yml for server
+struct ServerOptions {
+  bool anode;
+};
+
 class ClusterInfo {
 private:
   ClusterInfo() = default;
@@ -60,14 +65,23 @@ public:
     return tables_;
   }
 
+  inline const std::string& version() const {
+    return version_;
+  }
+
+  inline const ServerOptions& server() const {
+    return server_;
+  }
+
 private:
-  void
-    update(const NNode& node);
+  void update(const NNode& node);
 
 private:
   std::mutex set_;
   NNodeSet nodes_;
   TableSpecSet tables_;
+  std::string version_;
+  ServerOptions server_;
 };
 } // namespace meta
 } // namespace nebula

@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 #include <iostream>
+
 #include "Errors.h"
 #include "Hash.h"
 #include "Likely.h"

@@ -16,35 +16,44 @@
 
 #pragma once
 
-#include <dirent.h>
-#include <string>
-#include <vector>
 #include "common/Errors.h"
-#include "storage/NFileSystem.h"
 
 /**
- * A wrapper for interacting with AWS / S3
+ * Define a file system interface to provide common data access.
  */
 namespace nebula {
 namespace storage {
-namespace local {
-class File : public NFileSystem {
+
+// layout
+struct FileInfo {
+  explicit FileInfo(bool isd, size_t ts, size_t sz, std::string n)
+    : isDir{ isd }, timestamp{ ts }, size{ sz }, name{ std::move(n) } {
+  }
+  bool isDir;
+  size_t timestamp;
+  size_t size;
+  std::string name;
+
+  inline std::string signature() const {
+    return fmt::format("{0}_{1}_{2}", name, size, timestamp);
+  }
+};
+
+class NFileSystem {
 public:
-  virtual std::vector<FileInfo> list(const std::string& dir) override;
+  NFileSystem() = default;
+  virtual ~NFileSystem() = default;
+
+  // list a folder or a path to get all file info
+  virtual std::vector<FileInfo> list(const std::string&) = 0;
 
   // read a file/object at given offset and length into buffer address provided
-  virtual size_t read(const std::string&, const size_t, const size_t, char*) override {
-    throw NException("Not implemented");
-  }
+  virtual size_t read(const std::string&, const size_t, const size_t, char*) = 0;
 
   // read a file/object fully into a memory buffer
-  virtual size_t read(const std::string&, char*) override {
-    throw NException("Not implemented");
-  }
+  virtual size_t read(const std::string&, char*) = 0;
 
-  // return file info of given file path
-  virtual FileInfo info(const std::string&) override;
+  virtual FileInfo info(const std::string&) = 0;
 };
-} // namespace local
 } // namespace storage
 } // namespace nebula

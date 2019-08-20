@@ -48,7 +48,6 @@ using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::TrendsTable;
 using nebula::execution::meta::TableService;
-using nebula::meta::BlockSignature;
 using nebula::meta::TestTable;
 using nebula::surface::RowData;
 using nebula::type::Schema;

@@ -32,18 +32,23 @@ struct BlockState {
 };
 
 struct BlockSignature {
+  BlockSignature(const std::string& t, size_t i, size_t s, size_t e, const std::string& sp = "")
+    : table{ t }, id{ i }, start{ s }, end{ e }, spec{ sp } {}
+  // table name
   std::string table;
   size_t id;
+
   // start/end timestamp
   size_t start;
   size_t end;
+  std::string spec;
 
   inline std::string toString() const {
-    return fmt::format("{0}_{1}_{2}_{3}", table, id, start, end);
+    return fmt::format("{0}_{1}_{2}_{3}_{4}", table, spec, id, start, end);
   }
 
   friend bool operator==(const BlockSignature& x, const BlockSignature& y) {
-    return x.table == y.table && x.id == y.id;
+    return x.toString() == y.toString();
   }
 };
 

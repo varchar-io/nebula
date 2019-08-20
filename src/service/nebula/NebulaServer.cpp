@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <grpcpp/grpcpp.h>
@@ -28,8 +29,9 @@
 #include "NodeSync.h"
 #include "common/Evidence.h"
 #include "common/Folly.h"
+#include "common/TaskScheduler.h"
 #include "execution/BlockManager.h"
-#include "fmt/format.h"
+#include "ingest/SpecRepo.h"
 #include "memory/Batch.h"
 #include "meta/ClusterInfo.h"
 #include "meta/NBlock.h"
@@ -38,11 +40,13 @@
 #include "nebula.grpc.pb.h"
 #include "service/node/RemoteNodeConnector.h"
 #include "storage/CsvReader.h"
+#include "storage/NFS.h"
 
 // use "host.docker.internal" for docker env
+DEFINE_string(CLS_CONF, "configs/cluster.yml", "cluster config file");
+DEFINE_uint64(CLS_CONF_UPDATE_INTERVAL, 5000, "interval in milliseconds to update cluster config");
+DEFINE_uint64(NODE_SYNC_INTERVAL, 5000, "interval in ms to conduct node sync");
 DEFINE_string(HOST_ADDR, "localhost", "Local dev purpose address to connect services");
-DEFINE_string(COMMENTS_FILE, "/home/shawncao/hadoop/sample.txt", "Local dev purpose address to connect services");
-DEFINE_string(SIGNATURES_FILE, "/home/shawncao/hadoop/sign.txt", "signature to pin id file");
 
 /**
  * A cursor template that help iterating a container.
@@ -185,12 +189,6 @@ void RunServer() {
   nebula::service::EchoServiceImpl echoService;
   nebula::service::V1ServiceImpl v1Service;
 
-  // TODO (cao): start a thread to sync up with etcd setup for cluster info.
-  // register cluster info
-  // nebula::meta::ClusterInfo::singleton().update({ nebula::meta::NRole::NODE,
-  //                                                 FLAGS_HOST_ADDR,
-  //                                                 nebula::service::ServiceProperties::NPORT });
-
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
@@ -201,23 +199,53 @@ void RunServer() {
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   LOG(INFO) << "Nebula server listening on " << server_address;
 
-  // loading some rand generated data for nebula.test category
-  nebula::service::loadNebulaTestData();
+  // a unique spec repo per server
+  nebula::ingest::SpecRepo specRepo;
 
-  // load up signatures
-  nebula::execution::io::trends::SignaturesTable signatures;
-  signatures.load(FLAGS_SIGNATURES_FILE);
-
-  // server is up first and then we load the data
-  nebula::execution::io::trends::CommentsTable comments;
-  comments.load(FLAGS_COMMENTS_FILE);
-
-  // load pins data
-  // nebula::execution::io::trends::PinsTable pins;
-
-  // start node sync to sync all node's states
+  // start node sync to sync all node's states and tasks
   folly::CPUThreadPoolExecutor shared{ std::thread::hardware_concurrency() };
-  auto nsync = nebula::service::NodeSync::async(shared);
+  auto nsync = nebula::service::NodeSync::async(shared, specRepo, FLAGS_NODE_SYNC_INTERVAL);
+
+  // TODO (cao): start a thread to sync up with etcd setup for cluster info.
+  // register cluster info, we're using two different time based scheduelr currently
+  // one is NodeSync uses folly::FunctionScheduler and TaskScheduler is built on top of EventBase
+  // We're using task scheduler to pull all config changes and spec generation, assignment
+  // NodeSync will be responsible to pull all state info from each Node and update them in server
+  nebula::common::TaskScheduler taskScheduler;
+
+  // having a local file system to detect change of cluster config
+  std::string confSignature;
+  taskScheduler.setInterval(
+    FLAGS_CLS_CONF_UPDATE_INTERVAL,
+    [&specRepo, &confSignature] {
+      // create a local file system cheaply
+      auto fs = nebula::storage::makeFS("local");
+
+      // load config into cluster info
+      auto fi = fs->info(FLAGS_CLS_CONF);
+      auto sign = fi.signature();
+      if (sign != confSignature) {
+        // update the sign
+        confSignature = sign;
+
+        // load the new conf
+        auto& ci = nebula::meta::ClusterInfo::singleton();
+        ci.load(FLAGS_CLS_CONF);
+
+        // refresh data specs
+        specRepo.refresh(ci);
+
+        // do the spec assignment
+        specRepo.assign(ci);
+      }
+
+      // TODO(cao) - we should at the same time run GC to recycle stale data
+    });
+
+  // NOTE that, this is blocking main thread to wait for server down
+  // this may prevent system to exit properly, will revisit and revise.
+  // run the loop.
+  taskScheduler.run();
 
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.

@@ -6,8 +6,8 @@ find_package(Threads REQUIRED)
 # https://cmake.org/cmake/help/latest/module/ExternalProject.html
 include(ExternalProject)
 
-ExternalProject_Add(
-  xxhash
+ExternalProject_Add(xxhash
+  PREFIX xxhash
   GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
@@ -35,4 +35,4 @@ set_target_properties(${XXH_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${XXH_LIBRARY_PATH}"
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${XXH_INCLUDE_DIRS}")
-add_dependencies(${XXH_LIBRARY} makexxh)
+add_dependencies(${XXH_LIBRARY} xxhash makexxh)

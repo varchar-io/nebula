@@ -23,6 +23,7 @@
 #include "memory/Batch.h"
 #include "meta/NBlock.h"
 #include "storage/CsvReader.h"
+#include "storage/NFS.h"
 #include "storage/local/File.h"
 
 /**
@@ -95,14 +96,15 @@ void PinsTable::load(size_t max) {
   std::unordered_map<size_t, std::shared_ptr<Batch>> blocksByDate;
   std::unordered_map<size_t, std::pair<size_t, size_t>> timeRangeByDate;
   size_t blockId = 0;
-  auto files = File::list(dir);
+  auto fs = nebula::storage::makeFS("local");
+  auto files = fs->list(dir);
   auto filesLimit = max == 0 ? files.size() : std::min(max, files.size());
   for (size_t i = 0; i < filesLimit; ++i) {
     // do not load more than max blocks max==0: load all
     auto& file = files.at(i);
 
     // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
-    CsvReader reader(fmt::format("{0}/{1}", dir, file), '\t', columns);
+    CsvReader reader(fmt::format("{0}/{1}", dir, file.name), '\t', columns);
     const size_t bRows = 50000;
     PinsRawRow pinsRow;
     while (reader.hasNext()) {

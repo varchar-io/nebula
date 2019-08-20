@@ -20,39 +20,18 @@ add_library(${NEBULA_EXEC} STATIC
     ${NEBULA_SRC}/execution/ExecutionPlan.cpp)
 
 target_link_libraries(${NEBULA_EXEC}
-    PRIVATE ${NEBULA_COMMON}
-    PRIVATE ${NEBULA_META}
-    PRIVATE ${NEBULA_MEMORY}
-    PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${NEBULA_STORAGE}
-    PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${XXH_LIBRARY}
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${ROARING_LIBRARY}
-    PRIVATE ${JSON_LIBRARY}
-    PRIVATE ${OPENSSL_LIBRARY}
-    PRIVATE ${CRYPTO_LIBRARY})
-
-# include its own root directory for searching headers
-# set(NEXEC_INCLUDE_DIRS ${NEBULA_SRC}/execution)
-# include_directories(include ${NEXEC_INCLUDE_DIRS})
-
-# ask for gflags
-include_directories(include ${GFLAGS_INCLUDE_DIRS})
-
-# ask for glog
-include_directories(include ${GLOG_INCLUDE_DIRS})
-
-# it depends on fmt
-include_directories(include ${FMT_INCLUDE_DIRS})
-
-# it depends on roaring
-include_directories(include ${ROARING_INCLUDE_DIRS})
-
-# set up directory to search for headers
-include_directories(include ${GTEST_INCLUDE_DIRS})
+    PUBLIC ${NEBULA_COMMON}
+    PUBLIC ${NEBULA_META}
+    PUBLIC ${NEBULA_MEMORY}
+    PUBLIC ${NEBULA_SURFACE}
+    PUBLIC ${NEBULA_STORAGE}
+    PUBLIC ${FOLLY_LIBRARY}
+    PUBLIC ${XXH_LIBRARY}
+    PUBLIC ${FMT_LIBRARY}
+    PUBLIC ${GLOG_LIBRARY}
+    PUBLIC ${GFLAGS_LIBRARY}
+    PUBLIC ${ROARING_LIBRARY}
+    PUBLIC ${JSON_LIBRARY})
 
 # build test binary
 add_executable(ExecTests

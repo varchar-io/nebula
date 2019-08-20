@@ -4,34 +4,18 @@ set(NEBULA_STORAGE NStorage)
 # target_include_directories(${NEBULA_META} INTERFACE src/meta)
 add_library(${NEBULA_STORAGE} STATIC 
     ${NEBULA_SRC}/storage/CsvReader.cpp
+    ${NEBULA_SRC}/storage/NFS.cpp
     ${NEBULA_SRC}/storage/ParquetReader.cpp
-    ${NEBULA_SRC}/storage/aws/S3.cpp)
+    ${NEBULA_SRC}/storage/aws/S3.cpp
+    ${NEBULA_SRC}/storage/local/File.cpp)
 target_link_libraries(${NEBULA_STORAGE}
-    PRIVATE ${NEBULA_COMMON}
-    PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${PARQUET_LIBRARY}
-    PRIVATE ${ARROW_LIBRARY}
-    PRIVATE ${XXH_LIBRARY}
-    PRIVATE ${AWS_COMMON_LIBRARY}
-    PRIVATE ${AWS_S3_LIBRARY}
-    PRIVATE ${AWS_CORE_LIBRARY}
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${CURL_LIBRARY})
-
-# ask for gflags
-include_directories(include ${GFLAGS_INCLUDE_DIRS})
-
-# ask for glog
-include_directories(include ${GLOG_INCLUDE_DIRS})
-
-# it depends on fmt
-include_directories(include ${FMT_INCLUDE_DIRS})
-
-# it depends on roaring
-include_directories(include ${ROARING_INCLUDE_DIRS})
-
-# set up directory to search for headers
-include_directories(include ${GTEST_INCLUDE_DIRS})
+    PUBLIC ${NEBULA_COMMON}
+    PUBLIC ${NEBULA_SURFACE}
+    PUBLIC ${URIP_LIBRARY}
+    PUBLIC ${PARQUET_LIBRARY}
+    PUBLIC ${ARROW_LIBRARY}
+    PUBLIC ${AWS_LIBRARY}
+    PUBLIC ${CURL_LIBRARY})
 
 #build test binary
 add_executable(StorageTests
@@ -49,6 +33,7 @@ target_link_libraries(StorageTests
     PRIVATE ${NEBULA_MEMORY}    
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY}
+    PRIVATE ${URIP_LIBRARY}
     PRIVATE ${FOLLY_LIBRARY}   
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}

@@ -14,31 +14,10 @@ add_library(${NEBULA_MEMORY} STATIC
     ${NEBULA_SRC}/memory/serde/TypeData.cpp
     ${NEBULA_SRC}/memory/serde/TypeDataFactory.cpp)
 target_link_libraries(${NEBULA_MEMORY}
-    PRIVATE ${NEBULA_COMMON}
-    PRIVATE ${NEBULA_TYPE}
-    PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${NEBULA_META}
-    PRIVATE ${XXH_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${OPENSSL_LIBRARY}
-    PRIVATE ${CRYPTO_LIBRARY})
-
-# include itself for headers in different folders
-# set(NMEMORY_INCLUDE_DIRS ${NEBULA_SRC}/memory)
-# include_directories(include ${NMEMORY_INCLUDE_DIRS})
-
-# ask for gflags
-include_directories(include ${GFLAGS_INCLUDE_DIRS})
-
-# ask for glog
-include_directories(include ${GLOG_INCLUDE_DIRS})
-
-# it depends on fmt
-include_directories(include ${FMT_INCLUDE_DIRS})
-
-# set up directory to search for headers
-include_directories(include ${GTEST_INCLUDE_DIRS})
+    PUBLIC ${NEBULA_COMMON}
+    PUBLIC ${NEBULA_TYPE}
+    PUBLIC ${NEBULA_SURFACE}
+    PUBLIC ${NEBULA_META}   )
 
 # build test binary
 add_executable(MemoryTests 

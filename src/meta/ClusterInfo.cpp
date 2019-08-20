@@ -19,6 +19,26 @@
 #include "ClusterInfo.h"
 #include "type/Serde.h"
 
+namespace YAML {
+template <>
+struct convert<nebula::meta::ServerOptions> {
+  static Node encode(const nebula::meta::ServerOptions& so) {
+    Node node;
+    node.push_back(so.anode);
+    return node;
+  }
+
+  static bool decode(const Node& node, nebula::meta::ServerOptions& so) {
+    if (!node.IsMap()) {
+      return false;
+    }
+
+    so.anode = node["anode"].as<bool>();
+    return true;
+  }
+};
+} // namespace YAML
+
 /**
  * We will sync etcd configs for cluster info into this memory object
  * To understand cluster status - total nodes.
@@ -60,34 +80,53 @@ TimeSpec asTimeSpec(const YAML::Node& node) {
 }
 
 void ClusterInfo::load(const std::string& file) {
+  
   YAML::Node config = YAML::LoadFile(file);
+
+  // set the version from the config
+  version_ = config["version"].as<std::string>();
+
+  // load server info
+  server_ = config["server"].as<ServerOptions>();
 
   // load all nodes configured for the cluster
   const auto& nodes = config["nodes"];
-  nodes_.clear();
+  NNodeSet nodeSet;
   for (size_t i = 0, size = nodes.size(); i < size; ++i) {
     const auto& node = nodes[i]["node"];
-    nodes_.emplace(NRole::NODE, node["host"].as<std::string>(), node["port"].as<size_t>());
+    nodeSet.emplace(NRole::NODE, node["host"].as<std::string>(), node["port"].as<size_t>());
   }
+
+  // add current server as a node if option says so
+  if (server_.anode) {
+    nodeSet.emplace(NNode::inproc());
+  }
+
+  // swap with new node set
+  std::swap(nodes_, nodeSet);
 
   // load all table specs
   const auto& tables = config["tables"];
+  TableSpecSet tableSet;
   for (YAML::const_iterator it = tables.begin(); it != tables.end(); ++it) {
     std::string name = it->first.as<std::string>();
 
     // table definition
     const auto& td = it->second;
-    tables_.emplace(name,
-                    td["max-mb"].as<size_t>(),
-                    td["max-hr"].as<size_t>(),
-                    TypeSerializer::from(td["schema"].as<std::string>()),
-                    asDataSource(td["data"].as<std::string>()),
-                    td["loader"].as<std::string>(),
-                    td["source"].as<std::string>(),
-                    td["backup"].as<std::string>(),
-                    td["format"].as<std::string>(),
-                    asTimeSpec(td["time"]));
+    tableSet.emplace(name,
+                     td["max-mb"].as<size_t>(),
+                     td["max-hr"].as<size_t>(),
+                     TypeSerializer::from(td["schema"].as<std::string>()),
+                     asDataSource(td["data"].as<std::string>()),
+                     td["loader"].as<std::string>(),
+                     td["source"].as<std::string>(),
+                     td["backup"].as<std::string>(),
+                     td["format"].as<std::string>(),
+                     asTimeSpec(td["time"]));
   }
+
+  // swap with new table set
+  std::swap(tables_, tableSet);
 }
 
 void ClusterInfo::update(const NNode& node) {

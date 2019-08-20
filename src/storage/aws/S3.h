@@ -18,6 +18,7 @@
 
 #include <aws/core/Aws.h>
 #include "common/Errors.h"
+#include "storage/NFileSystem.h"
 
 /**
  * A wrapper for interacting with AWS / S3
@@ -25,7 +26,7 @@
 namespace nebula {
 namespace storage {
 namespace aws {
-class S3 {
+class S3 : public NFileSystem {
 public:
   S3(const std::string& bucket) : bucket_{ bucket } {
     options_.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Info;
@@ -40,8 +41,21 @@ public:
   // if obj is true, it will return all objects (max 1K) under given prefix at any level
   // otherwise it will only return sub-prefixes one level down under current prefix
   // TODO(cao): not supporting pagination yet, current one time fetch max keys at 1K
-  std::vector<std::string> list(const std::string&, bool obj = true);
+  virtual std::vector<FileInfo> list(const std::string&) override;
   void read(const std::string&, const std::string&);
+  // read a file/object at given offset and length into buffer address provided
+  virtual size_t read(const std::string&, const size_t, const size_t, char*) override {
+    throw NException("Not implemented");
+  }
+
+  // read a file/object fully into a memory buffer
+  virtual size_t read(const std::string&, char*) override {
+    throw NException("Not implemented");
+  }
+
+  virtual FileInfo info(const std::string&) override {
+    throw NException("Not implemented");
+  }
 
 private:
   Aws::SDKOptions options_;

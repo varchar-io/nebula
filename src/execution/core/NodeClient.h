@@ -37,6 +37,9 @@ public:
 
   virtual folly::Future<nebula::surface::RowCursorPtr> execute(const ExecutionPlan& plan);
 
+  // state is used to pull state of a node - do nothing for inproc node client
+  virtual void state(){};
+
 protected:
   static nebula::surface::RowCursorPtr invokeNode(const ExecutionPlan& plan);
 

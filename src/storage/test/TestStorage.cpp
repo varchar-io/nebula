@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include "storage/CsvReader.h"
+#include "storage/NFS.h"
 #include "storage/aws/S3.h"
 #include "storage/local/File.h"
 
@@ -27,15 +28,16 @@ namespace test {
 
 TEST(StorageTest, TestLocalFiles) {
   LOG(INFO) << "Run storage test here";
-  auto files = nebula::storage::local::File::list(".");
+  auto fs = nebula::storage::makeFS("local");
+  auto files = fs->list(".");
   for (auto& f : files) {
-    LOG(INFO) << "File: " << f;
+    LOG(INFO) << "File: " << f.name;
   }
 
   EXPECT_TRUE(files.size() > 0);
 }
 
-TEST(LocalCsvTest, TestLoadingCsv) {
+TEST(StorageTest, TestLoadingCsv) {
   auto file = "/Users/shawncao/trends.draft.csv";
   CsvReader reader(file);
   int count = 0;
@@ -54,25 +56,63 @@ TEST(LocalCsvTest, TestLoadingCsv) {
   LOG(INFO) << " Total rows loaded: " << count;
 }
 
-TEST(AwsCsvTest, DISABLED_TestLoadingCsv) {
-  nebula::storage::aws::S3 s3("pinlogs");
-  auto keys = s3.list("nebula/pin_signatures/", false);
+TEST(StorageTest, DISABLED_TestS3Api) {
+  auto fs = nebula::storage::makeFS("s3", "pinlogs");
+  auto keys = fs->list("nebula/pin_signatures/");
   for (auto& key : keys) {
-    LOG(INFO) << "key: " << key;
+    LOG(INFO) << "key: " << key.name;
   }
 
   // display content of one key
   if (keys.size() > 0) {
-    auto objs = s3.list(keys.front());
+    auto objs = fs->list(keys.front().name);
     int count = 0;
     for (auto& key : objs) {
-      LOG(INFO) << "key: " << key;
+      LOG(INFO) << "key: " << key.name;
       if (count++ > 10) {
         break;
       }
     }
   }
 }
+
+TEST(StorageTest, TestUriParse) {
+  {
+    auto uriInfo = nebula::storage::parse("http://who/is/nebula/");
+    EXPECT_EQ(uriInfo.schema, "http");
+    EXPECT_EQ(uriInfo.host, "who");
+    EXPECT_EQ(uriInfo.path, "is/nebula");
+  }
+  {
+    auto uriInfo = nebula::storage::parse("s3://pitfall/prefix/nebula/a.txt");
+    EXPECT_EQ(uriInfo.schema, "s3");
+    EXPECT_EQ(uriInfo.host, "pitfall");
+    EXPECT_EQ(uriInfo.path, "prefix/nebula/a.txt");
+  }
+  {
+    auto uriInfo = nebula::storage::parse("file:///var/log/log.txt");
+    EXPECT_EQ(uriInfo.schema, "file");
+    EXPECT_EQ(uriInfo.host, "");
+    EXPECT_EQ(uriInfo.path, "var/log/log.txt");
+  }
+  {
+    // testing macro replacement using <date> not supported by uri parser
+    // use $date as macro name will be supported
+    auto uriInfo = nebula::storage::parse("s3://x/y/cd=$date$");
+    EXPECT_EQ(uriInfo.schema, "s3");
+    EXPECT_EQ(uriInfo.host, "x");
+    EXPECT_EQ(uriInfo.path, "y/cd=$date$");
+  }
+
+  {
+    // try to support libfmt formatting placeholder
+    auto uriInfo = nebula::storage::parse("s3://x/y/cd=%7Bdate%7D");
+    EXPECT_EQ(uriInfo.schema, "s3");
+    EXPECT_EQ(uriInfo.host, "x");
+    EXPECT_EQ(uriInfo.path, "y/cd={date}");
+  }
+}
+
 } // namespace test
 } // namespace storage
 } // namespace nebula

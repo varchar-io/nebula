@@ -12,39 +12,17 @@ add_library(${NEBULA_API} STATIC
     ${NEBULA_SRC}/api/udf/Sum.cpp
     ${NEBULA_SRC}/api/udf/UDFFactory.cpp)
 target_link_libraries(${NEBULA_API}
-    PRIVATE ${NEBULA_TYPE}
-    PRIVATE ${NEBULA_COMMON}
-    PRIVATE ${NEBULA_SURFACE}
-    PRIVATE ${NEBULA_META}
-    PRIVATE ${NEBULA_EXEC}
-    PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${XXH_LIBRARY}
-    PRIVATE ${JSON_LIBRARY}
-    PRIVATE ${FMT_LIBRARY}
-    PRIVATE ${GFLAGS_LIBRARY}
-    PRIVATE ${ROARING_LIBRARY})
-
-# include its own root directory for searching headers
-# set(NAPI_INCLUDE_DIRS ${NEBULA_SRC}/api)
-# include_directories(include ${NAPI_INCLUDE_DIRS})
-
-# ask for gflags
-include_directories(include ${GFLAGS_INCLUDE_DIRS})
-
-# ask for glog
-include_directories(include ${GLOG_INCLUDE_DIRS})
-
-# it depends on fmt
-include_directories(include ${FMT_INCLUDE_DIRS})
-
-# it depends on roaring
-include_directories(include ${ROARING_INCLUDE_DIRS})
-
-# set up directory to search for headers
-include_directories(include ${GTEST_INCLUDE_DIRS})
-
-# include gmock headers
-include_directories(include ${GMOCK_INCLUDE_DIRS})
+    PUBLIC ${NEBULA_TYPE}
+    PUBLIC ${NEBULA_COMMON}
+    PUBLIC ${NEBULA_SURFACE}
+    PUBLIC ${NEBULA_META}
+    PUBLIC ${NEBULA_EXEC}
+    PUBLIC ${FOLLY_LIBRARY}
+    PUBLIC ${XXH_LIBRARY}
+    PUBLIC ${JSON_LIBRARY}
+    PUBLIC ${FMT_LIBRARY}
+    PUBLIC ${GFLAGS_LIBRARY}
+    PUBLIC ${ROARING_LIBRARY})
 
 # build test binary
 add_executable(ApiTests 

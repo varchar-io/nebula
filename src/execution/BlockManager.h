@@ -70,7 +70,7 @@ public:
   // remove a block from managmenet pool
   bool remove(const io::BatchBlock&);
 
-  std::tuple<size_t, size_t, size_t, size_t, size_t> getTableMetrics(const std::string table) const {
+  std::tuple<size_t, size_t, size_t, size_t, size_t> getTableMetrics(const std::string& table) const {
     if (tableStates_.find(table) == tableStates_.end()) {
       return { 0, 0, 0, 0, 0 };
     }

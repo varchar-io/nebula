@@ -12,6 +12,7 @@ RUN apt-get dist-upgrade
 
 EXPOSE 9190
 COPY ./gen/nebula/NebulaServer /etc/nebula/NebulaServer
+COPY ./gen/nebula/configs/cluster.yml /etc/nebula/configs/cluster.yml
 RUN chmod +x /etc/nebula/NebulaServer
-COPY ./gen/nebula/pin.trends.csv /tmp/pin.trends.csv
-CMD ["/etc/nebula/NebulaServer", "--HOST_ADDR", "10.1.179.237", "--COMMENTS_FILE", "/home/shawncao/hadoop/comments.txt", "--COMMENTS_MAX", "100000", "--SIGNATURES_FILE", "/home/shawncao/hadoop/signatures.txt"]
+
+CMD ["/etc/nebula/NebulaServer", "--HOST_ADDR", "10.1.179.237", "--CLS_CONF", "/etc/nebula/configs/cluster.yml", "--CLS_CONF_UPDATE_INTERVAL", "30000"]

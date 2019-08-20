@@ -27,7 +27,7 @@ namespace nebula {
 namespace storage {
 namespace aws {
 
-std::vector<std::string> S3::list(const std::string& prefix, bool obj) {
+std::vector<FileInfo> S3::list(const std::string& prefix) {
   Aws::S3::S3Client client;
   Aws::S3::Model::ListObjectsV2Request listReq;
 
@@ -35,7 +35,7 @@ std::vector<std::string> S3::list(const std::string& prefix, bool obj) {
   // Otherwise the call will return all objects at any level with maximum 1K keys
   listReq.SetBucket(this->bucket_);
   listReq.SetPrefix(prefix);
-  auto outcome = client.ListObjectsV2(obj ? listReq : listReq.WithDelimiter("/"));
+  auto outcome = client.ListObjectsV2(listReq);
   if (!outcome.IsSuccess()) {
     LOG(ERROR) << fmt::format("Error listing prefix {0}: {1}", prefix, outcome.GetError().GetMessage());
     return {};
@@ -43,24 +43,25 @@ std::vector<std::string> S3::list(const std::string& prefix, bool obj) {
 
   // translate into lists
   auto result = std::move(outcome.GetResultWithOwnership());
+  std::vector<FileInfo> objects;
 
-// content object list
-#define EXTRACT_LIST(FETCH, KEY)                     \
-  const auto& list = result.FETCH();                 \
-  std::vector<std::string> objects;                  \
-  objects.reserve(list.size());                      \
-  std::transform(list.begin(), list.end(),           \
-                 std::back_insert_iterator(objects), \
-                 [](auto& o) { return o.KEY(); });   \
-  return objects;
-
-  if (obj) {
-    EXTRACT_LIST(GetContents, GetKey)
+#define EXTRACT_LIST(FETCH, KEY, ISD)                           \
+  {                                                             \
+    const auto& list = result.FETCH();                          \
+    for (auto itr = list.cbegin(); itr != list.cend(); ++itr) { \
+      objects.emplace_back(ISD, 0, 0, itr->KEY());              \
+    }                                                           \
   }
 
-  EXTRACT_LIST(GetCommonPrefixes, GetPrefix)
+  // list all prefix first - folder operation
+  EXTRACT_LIST(GetCommonPrefixes, GetPrefix, true)
+
+  // list all objects now - objects
+  EXTRACT_LIST(GetContents, GetKey, false)
 
 #undef EXTRACT_LIST
+
+  return objects;
 }
 
 void S3::read(const std::string& prefix, const std::string& key) {

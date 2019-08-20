@@ -63,6 +63,10 @@ struct NNode {
     return this->equals(local());
   }
 
+  inline bool isInvalid() const {
+    return this->equals(invalid());
+  }
+
   static const NNode& local() {
     static const NNode LOCAL = NNode{ NRole::SERVER, "localhost", 9190 };
     return LOCAL;
@@ -71,6 +75,11 @@ struct NNode {
   static const NNode& inproc() {
     static const NNode INPROC = NNode{ NRole::NODE, "0", 0 };
     return INPROC;
+  }
+
+  static const NNode& invalid() {
+    static const NNode INVALID = NNode{ NRole::NODE, "invalid", 0 };
+    return INVALID;
   }
 }; // namespace meta
 

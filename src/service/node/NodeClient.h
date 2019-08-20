@@ -60,7 +60,7 @@ public:
   virtual folly::Future<nebula::surface::RowCursorPtr> execute(const nebula::execution::ExecutionPlan& plan) override;
 
   // pull node state
-  void state();
+  virtual void state() override;
 
 private:
   std::shared_ptr<nebula::api::dsl::Query> query_;

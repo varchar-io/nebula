@@ -31,7 +31,7 @@ namespace nebula {
 namespace common {
 namespace test {
 
-TEST(ErrorTests, Ensures) {
+TEST(CommonTest, TestEnsures) {
   // test generic ensure
   N_ENSURE(3 > 2, "true");
   try {
@@ -75,7 +75,7 @@ TEST(ErrorTests, Ensures) {
   }
 }
 
-TEST(VectorComputing, TestValArray) {
+TEST(CommonTest, TestValArray) {
   std::valarray<double> a(1, 8);
   std::valarray<double> b{ 1, 2, 3, 4, 5, 6, 7, 8 };
   std::valarray<double> c = -b;
@@ -116,7 +116,7 @@ struct OptPadding2 {
   bool is_cached_{};
 };
 
-TEST(MemoryTest, TestNewDeleteOps) {
+TEST(CommonTest, TestNewDeleteOps) {
   auto* p = new char{ 'a' };
   *p = 10;
   delete p;
@@ -144,7 +144,7 @@ TEST(MemoryTest, TestNewDeleteOps) {
   EXPECT_EQ(size4, 16);
 }
 
-TEST(MemoryTest, TestSliceAndPagedSlice) {
+TEST(CommonTest, TestSliceAndPagedSlice) {
   nebula::common::PagedSlice slice(1024);
   EXPECT_EQ(slice.capacity(), 1024);
 
@@ -189,7 +189,7 @@ TEST(MemoryTest, TestSliceAndPagedSlice) {
   EXPECT_EQ(slice.capacity(), 2048);
 }
 
-TEST(SliceTest, TestSliceWrite) {
+TEST(CommonTest, TestSliceWrite) {
   nebula::common::PagedSlice slice(1024);
 
   auto value = 1699213050;
@@ -197,7 +197,7 @@ TEST(SliceTest, TestSliceWrite) {
   EXPECT_EQ(slice.read<int>(0), value);
 }
 
-TEST(EvidenceTest, TestTimeParsing) {
+TEST(CommonTest, TestTimeParsing) {
   LOG(INFO) << "2019-04-01 = " << Evidence::time("2019-04-01", "%Y-%m-%d");
 
   {
@@ -215,7 +215,21 @@ TEST(EvidenceTest, TestTimeParsing) {
   }
 }
 
-TEST(EvidenceTest, TestRand) {
+TEST(CommonTest, TestTimeFormatting) {
+  auto time = std::time(nullptr);
+  LOG(INFO) << Evidence::fmt_extra(time);
+  LOG(INFO) << Evidence::fmt_mdy_dash(time);
+  LOG(INFO) << Evidence::fmt_mdy_slash(time);
+  LOG(INFO) << Evidence::fmt_normal(time);
+  LOG(INFO) << Evidence::fmt_ymd_dash(time);
+  LOG(INFO) << Evidence::fmt_ymd_slash(time);
+
+  // shortcuts are resulting in the same
+  EXPECT_EQ(Evidence::fmt_ymd_dash(time), Evidence::format(time, "%F"));
+  EXPECT_EQ(Evidence::fmt_mdy2_slash(time), Evidence::format(time, "%D"));
+}
+
+TEST(CommonTest, TestRand) {
   LOG(INFO) << "unix time now: " << Evidence::unix_timestamp();
 
   // a range of [0,100]
@@ -240,14 +254,14 @@ TEST(EvidenceTest, TestRand) {
   }
 }
 
-TEST(StringViewTest, TestStringView) {
+TEST(CommonTest, TestStringView) {
   auto str = "abcdefg";
   auto str2 = "ab";
   std::string_view v1(str, 2);
   EXPECT_EQ(v1, str2);
 }
 
-TEST(RegexTest, TestStdRegex) {
+TEST(CommonTest, TestStdRegex) {
   std::string input = "(((F:_time_>C:1546300800)&&(F:_time_<C:1556668800))&&(F:id==C:1000000))";
   std::regex phaseSearch("TIME", std::regex_constants::ECMAScript | std::regex_constants::icase);
   EXPECT_TRUE(std::regex_search(input, phaseSearch));
@@ -276,7 +290,7 @@ TEST(RegexTest, TestStdRegex) {
   }
 }
 
-TEST(XXHashTest, TestXxhSpeed) {
+TEST(CommonTest, TestXxhSpeed) {
   // comapre to std::hash, let's understand the perf gap
   const std::string str = "what is the hash value of nebula";
   const size_t iterations = 1000000;
@@ -307,7 +321,8 @@ TEST(XXHashTest, TestXxhSpeed) {
 inline bool f1ni(int i) {
   return i % 2 == 0;
 }
-TEST(OptionalTest, TestOptionalPerf) {
+
+TEST(CommonTest, TestOptionalPerf) {
   // use -1 indicating null
   // auto f1n = [](int i) -> bool {
   //   return i % 2 == 0;
@@ -362,6 +377,17 @@ TEST(OptionalTest, TestOptionalPerf) {
   }
   LOG(INFO) << fmt::format("special value approach: sum={0}, time={1}", sum1, duration.elapsedMs());
   EXPECT_EQ(sum1, sum2);
+}
+
+TEST(CommonTest, TestNamedFormat) {
+  {
+    auto str = fmt::format("Hello, {name}! Goodbye, {name}.", fmt::arg("name", "World"));
+    EXPECT_EQ(str, "Hello, World! Goodbye, World.");
+  }
+  {
+    auto str = fmt::format("Hello, {name}!", fmt::arg("notfit", "World"), fmt::arg("name", "Nebula"));
+    EXPECT_EQ(str, "Hello, Nebula!");
+  }
 }
 
 } // namespace test

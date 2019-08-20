@@ -54,7 +54,7 @@ else()
   else()
     set(NCXX /usr/bin/g++)
     set(NCC /usr/bin/gcc)
-    set(NCFLAGS "-Wall -Wextra -Werror -lstdc++ -Wl,--no-as-needed -no-pie -ldl -lunwind -I/usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
+    set(NCFLAGS "-Wall -Wextra -Werror -lstdc++ -lstdc++fs -Wl,--no-as-needed -no-pie -ldl -lunwind -I/usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
     set(NCFLAGS_RELEASE "-O3 -march=native -s")
   endif()
 endif()
@@ -194,6 +194,9 @@ include(ext/Xxh_Ext.cmake)
 #include yaml
 include(ext/Yaml_Ext.cmake)
 
+#include uri parser
+include(ext/Uri_Ext.cmake)
+
 # "brew install conan" first - it's great after migrating to conan
 # at least for folly - thanks conan, how to solve conflicts with existing lib like gflags?.
 # use conan to install the dependency
@@ -225,6 +228,9 @@ include(src/memory/Memory.cmake)
 
 # build data storage - clound providers
 include(src/storage/Storage.cmake)
+
+# build data ingestion
+include(src/ingest/Ingest.cmake)
 
 # build meta module
 include(src/execution/Execution.cmake)

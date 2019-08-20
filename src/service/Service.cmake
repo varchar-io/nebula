@@ -1,17 +1,5 @@
 set(NEBULA_SERVICE NService)
 
-# ask for gflags
-include_directories(include ${GFLAGS_INCLUDE_DIRS})
-
-# ask for glog
-include_directories(include ${GLOG_INCLUDE_DIRS})
-
-# it depends on fmt
-include_directories(include ${FMT_INCLUDE_DIRS})
-
-# set up directory to search for headers
-include_directories(include ${GTEST_INCLUDE_DIRS})
-
 # build hello world examples
 # locate helloworld service proto file
 SET(SERVICE_DIR "${NEBULA_SRC}/service")
@@ -85,16 +73,14 @@ add_library(${NEBULA_SERVICE} STATIC
     ${ngrpc_srcs}
     ${nodegrpc_srcs})
 target_link_libraries(${NEBULA_SERVICE}
-    PRIVATE ${NEBULA_API}
-    PRIVATE libgrpc++
-    PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${GLOG_LIBRARY}
-    PRIVATE ${XXH_LIBRARY}
-    PRIVATE ${JSON_LIBRARY}
-    PRIVATE ${PROTOBUF_LIBRARY}
-    PRIVATE ${FLATBUFFERS_LIBRARY}
-    PRIVATE ${OPENSSL_LIBRARY}
-    PRIVATE ${CRYPTO_LIBRARY})
+    PUBLIC ${NEBULA_API}
+    PUBLIC ${NEBULA_INGEST}
+    PUBLIC libgrpc++
+    PUBLIC ${GLOG_LIBRARY}
+    PUBLIC ${XXH_LIBRARY}
+    PUBLIC ${JSON_LIBRARY}
+    PUBLIC ${PROTOBUF_LIBRARY}
+    PUBLIC ${FLATBUFFERS_LIBRARY})
 if(APPLE)
     target_compile_options(${NEBULA_SERVICE} 
       PRIVATE -Wno-error=unknown-warning-option
@@ -133,17 +119,17 @@ foreach(i RANGE ${list_max_index})
     PRIVATE libgrpc
     PRIVATE libgpr
     PRIVATE libaddress_sorting
-    PRIVATE ${FOLLY_LIBRARY}
+    PRIVATE ${OMM_LIBRARY}
+    PRIVATE ${URIP_LIBRARY}
+    PRIVATE ${FOLLY_LIBRARY}   
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${CARES_LIBRARY}
+    PRIVATE ${PARQUET_LIBRARY}
+    PRIVATE ${ARROW_LIBRARY}
+    PRIVATE ${BOOST_REGEX_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${XXH_LIBRARY}
-    PRIVATE ${JSON_LIBRARY}
-    PRIVATE ${OMM_LIBRARY}
-    PRIVATE ${PROTOBUF_LIBRARY}
-    PRIVATE ${FLATBUFFERS_LIBRARY}
-    PRIVATE ${OPENSSL_LIBRARY}
-    PRIVATE ${CRYPTO_LIBRARY})
+    PRIVATE ${AWS_LIBRARY})
     
     # disalbe warning into errors for due to these generated files
     target_compile_options(${target} PRIVATE -Wno-error=unused-parameter)
@@ -156,8 +142,22 @@ foreach(i RANGE ${list_max_index})
 endforeach()
 
 # configure_file is good as it is senstive on the input, when input changes, output will be updated
-configure_file(${NSERVER} ${GEN_DIR}/NebulaServer COPYONLY)
-configure_file(${NNSERVER} ${GEN_DIR}/NodeServer COPYONLY)
+# ensure all resources copied to build folder
+# all resources are relative to nebula/src folder only
+set(NRES 
+  configs/test.yml 
+  configs/cluster.yml)
+foreach(i ${NRES})
+  configure_file(${NEBULA_SRC}/${i} ${GEN_DIR}/${i} COPYONLY)
+endforeach()
+
+# ensure all needed binaries are copied to deployment
+set(NBIN
+  NebulaServer
+  NodeServer)
+foreach(i ${NBIN})
+  configure_file(${CMAKE_CURRENT_BINARY_DIR}/${i} ${GEN_DIR}/${i} COPYONLY)
+endforeach()
 
 # build web client library for nebula
 add_custom_target(nebula_web_client ALL 
@@ -220,8 +220,7 @@ target_link_libraries(ServiceTests
   PRIVATE ${JSON_LIBRARY}
   PRIVATE ${PROTOBUF_LIBRARY}
   PRIVATE ${FLATBUFFERS_LIBRARY}
-  PRIVATE ${OPENSSL_LIBRARY}
-  PRIVATE ${CRYPTO_LIBRARY})
+  PRIVATE ${AWS_LIBRARY})
 target_compile_options(ServiceTests PRIVATE -Wno-error=unused-parameter)
 if(APPLE)
     target_compile_options(ServiceTests PRIVATE -Wno-error=unknown-warning-option)

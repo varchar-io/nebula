@@ -17,6 +17,7 @@
 #pragma once
 
 #include <chrono>
+#include <ctime>
 #include <functional>
 #include <glog/logging.h>
 #include <iomanip>
@@ -24,6 +25,8 @@
 #include <sstream>
 #include <string_view>
 #include <thread>
+
+#include "Likely.h"
 
 /**
  * Evidence is library to provide evidences like time and random sequence generators.
@@ -62,6 +65,10 @@ public: /** only static methods */
     return timegm(&t);
   }
 
+  inline static std::time_t now() {
+    return std::time(nullptr);
+  }
+
   // given a date time value, stripe time out to date granularity
   // such as value of (2019-05-15 23:01:34) => value of (2019-05-15 00:00:00)
   static std::time_t date(std::time_t time) {
@@ -69,6 +76,55 @@ public: /** only static methods */
     // caculate how much seconds to stripe
     auto delta = tm->tm_hour * 3600 + tm->tm_min * 60 + tm->tm_sec;
     return time - delta;
+  }
+
+  static std::string format(const std::time_t& time, const std::string& fmt, bool gmt = true) {
+    constexpr auto MAX = 64;
+    std::string output(MAX, '\0');
+    // fmt spec: https://en.cppreference.com/w/cpp/chrono/c/strftime
+    auto size = std::strftime(output.data(),
+                              output.size(),
+                              fmt.c_str(),
+                              gmt ? std::gmtime(&time) : std::localtime(&time));
+
+    if (LIKELY(size < MAX)) {
+      output.resize(size);
+    }
+
+    return output;
+  }
+
+  inline static std::string fmt_normal(const std::time_t& time, bool gmt = true) {
+    // normal display as date and time
+    return format(time, "%c", gmt);
+  }
+
+  inline static std::string fmt_extra(const std::time_t& time, bool gmt = true) {
+    // normal display with extra info like weekday name and timezone
+    return format(time, "%A %c %Z", gmt);
+  }
+
+  inline static std::string fmt_ymd_dash(const std::time_t& time, bool gmt = true) {
+    // equivalent to %F
+    return format(time, "%Y-%m-%d", gmt);
+  }
+
+  inline static std::string fmt_ymd_slash(const std::time_t& time, bool gmt = true) {
+    return format(time, "%Y/%m/%d", gmt);
+  }
+
+  inline static std::string fmt_mdy_slash(const std::time_t& time, bool gmt = true) {
+    // equivalent to %D
+    return format(time, "%m/%d/%Y", gmt);
+  }
+
+  inline static std::string fmt_mdy2_slash(const std::time_t& time, bool gmt = true) {
+    // equivalent to %D
+    return format(time, "%m/%d/%y", gmt);
+  }
+
+  inline static std::string fmt_mdy_dash(const std::time_t& time, bool gmt = true) {
+    return format(time, "%m-%d-%Y", gmt);
   }
 
   // rand in a range [min, max] inclusively
