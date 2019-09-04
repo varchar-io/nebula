@@ -25,7 +25,6 @@
 #include <unordered_map>
 
 #include "NebulaServer.h"
-#include "NebulaService.h"
 #include "NodeSync.h"
 #include "common/Evidence.h"
 #include "common/Folly.h"
@@ -38,6 +37,7 @@
 #include "meta/NNode.h"
 #include "meta/Table.h"
 #include "nebula.grpc.pb.h"
+#include "service/base/NebulaService.h"
 #include "service/node/RemoteNodeConnector.h"
 #include "storage/CsvReader.h"
 #include "storage/NFS.h"
@@ -54,6 +54,7 @@ DEFINE_string(HOST_ADDR, "localhost", "Local dev purpose address to connect serv
  */
 namespace nebula {
 namespace service {
+namespace server {
 
 using grpc::ServerContext;
 using grpc::Status;
@@ -62,6 +63,9 @@ using nebula::execution::BlockManager;
 using nebula::execution::io::BlockLoader;
 using nebula::memory::Batch;
 using nebula::meta::Table;
+using nebula::service::base::ErrorCode;
+using nebula::service::base::ServiceProperties;
+using nebula::service::node::RemoteNodeConnector;
 using nebula::storage::CsvReader;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
@@ -179,15 +183,16 @@ class EchoServiceImpl final : public Echo::Service {
   }
 };
 
+} // namespace server
 } // namespace service
 } // namespace nebula
 
 // NOTE: main function can't be placed inside a namespace
 // Otherwise you may get undefined symbol "_main" error in link
 void RunServer() {
-  std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::ServiceProperties::PORT));
-  nebula::service::EchoServiceImpl echoService;
-  nebula::service::V1ServiceImpl v1Service;
+  std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::base::ServiceProperties::PORT));
+  nebula::service::server::EchoServiceImpl echoService;
+  nebula::service::server::V1ServiceImpl v1Service;
 
   grpc::ServerBuilder builder;
   // Listen on the given address without any authentication mechanism.
@@ -204,7 +209,7 @@ void RunServer() {
 
   // start node sync to sync all node's states and tasks
   folly::CPUThreadPoolExecutor shared{ std::thread::hardware_concurrency() };
-  auto nsync = nebula::service::NodeSync::async(shared, specRepo, FLAGS_NODE_SYNC_INTERVAL);
+  auto nsync = nebula::service::server::NodeSync::async(shared, specRepo, FLAGS_NODE_SYNC_INTERVAL);
 
   // TODO (cao): start a thread to sync up with etcd setup for cluster info.
   // register cluster info, we're using two different time based scheduelr currently

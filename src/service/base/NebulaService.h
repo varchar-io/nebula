@@ -20,6 +20,8 @@
 #endif
 
 #include "api/dsl/Query.h"
+#include "common/Task.h"
+#include "ingest/IngestSpec.h"
 #include "memory/keyed/FlatBuffer.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
@@ -31,6 +33,7 @@
  */
 namespace nebula {
 namespace service {
+namespace base {
 
 // define all service ERROR code = 0 reserved for NO_ERROR
 // And this error code table can be look up
@@ -122,8 +125,19 @@ public:
   static nebula::surface::RowCursorPtr deserialize(const flatbuffers::grpc::Message<BatchRows>*);
 };
 
+/**
+ * A task serde to transmit a task between server and node through flatbuffers
+ */
+class TaskSerde {
+public:
+  // we have pair of methods for each task type
+  static flatbuffers::grpc::Message<TaskSpec> serialize(const nebula::common::Task&);
+  static nebula::common::Task deserialize(const flatbuffers::grpc::Message<TaskSpec>*);
+};
+
 // load nebula test data set into currnet process
 void loadNebulaTestData();
 
+} // namespace base
 } // namespace service
 } // namespace nebula

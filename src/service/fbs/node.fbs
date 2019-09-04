@@ -62,6 +62,32 @@ table NodeStateReply {
   blocks: [DataBlock];
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+// Define Task Spec Serialization Format
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+// this is serde format mapping to IngestSpec
+table IngestTask {
+  version: string;
+  id: string;
+  size: uint64;
+  state: byte;
+}
+
+table TaskSpec {
+
+  // this is directly mapping to nebula::common::TaskType
+  type: byte;
+  
+  // present super set fields here for each type to choose
+  ingest: IngestTask;
+}
+
+table TaskReply {
+  // this is directly mapping to nebula::common::TaskState
+  state: byte;
+}
+
 rpc_service NodeServer {
   Echo(EchoPing): EchoReply;
   Echos(ManyEchoPings): EchoReply(streaming: "server");
@@ -71,4 +97,7 @@ rpc_service NodeServer {
 
   // poll memory data status
   Poll(NodeStateRequest): NodeStateReply;
+
+  // assign a task to a node - could be duplicate
+  Task(TaskSpec): TaskReply;
 }

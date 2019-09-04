@@ -20,10 +20,10 @@
 #include <memory>
 #include <string>
 
-#include "NebulaService.h"
 #include "common/Folly.h"
 #include "meta/NNode.h"
 #include "nebula.grpc.pb.h"
+#include "service/base/NebulaService.h"
 #include "service/node/NodeClient.h"
 
 /**
@@ -32,6 +32,7 @@
  */
 namespace nebula {
 namespace service {
+namespace server {
 
 using grpc::Channel;
 using grpc::ClientContext;
@@ -72,17 +73,18 @@ private:
   std::unique_ptr<Echo::Stub> stub_;
 };
 
+} // namespace server
 } // namespace service
 } // namespace nebula
 
 int main(int argc, char** argv) {
-  const nebula::meta::NNode node{ nebula::meta::NRole::NODE, "localhost", nebula::service::ServiceProperties::PORT };
-  nebula::service::EchoClient greeter(grpc::CreateChannel(node.toString(), grpc::InsecureChannelCredentials()));
+  const nebula::meta::NNode node{ nebula::meta::NRole::NODE, "localhost", nebula::service::base::ServiceProperties::PORT };
+  nebula::service::server::EchoClient greeter(grpc::CreateChannel(node.toString(), grpc::InsecureChannelCredentials()));
   LOG(INFO) << "Echo received from nebula server: " << greeter.echo("nebula");
 
   // connect to node client
   folly::CPUThreadPoolExecutor pool{ 2 };
-  nebula::service::NodeClient client(node, pool, nullptr);
+  nebula::service::node::NodeClient client(node, pool, nullptr);
   client.echo("nebula node");
 
   return 0;

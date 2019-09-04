@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 #include "common/Folly.h"
+#include "common/Task.h"
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 
@@ -38,7 +39,13 @@ public:
   virtual folly::Future<nebula::surface::RowCursorPtr> execute(const ExecutionPlan& plan);
 
   // state is used to pull state of a node - do nothing for inproc node client
-  virtual void state(){};
+  virtual void state() {}
+
+  // task is used to send task to node and get state of the assignment
+  virtual nebula::common::TaskState task(const nebula::common::Task&) {
+    // this result can be viewed as failure since it doesn't get echo from target
+    return nebula::common::TaskState::UNKNOWN;
+  }
 
 protected:
   static nebula::surface::RowCursorPtr invokeNode(const ExecutionPlan& plan);

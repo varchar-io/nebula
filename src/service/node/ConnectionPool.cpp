@@ -19,6 +19,7 @@
 
 namespace nebula {
 namespace service {
+namespace node {
 
 std::shared_ptr<ConnectionPool> ConnectionPool::init() noexcept {
   static const auto inst = std::shared_ptr<ConnectionPool>(new ConnectionPool());
@@ -41,5 +42,6 @@ std::shared_ptr<grpc::Channel> ConnectionPool::connection(const std::string& add
   return located->second;
 }
 
+} // namespace node
 } // namespace service
 } // namespace nebula

@@ -26,13 +26,14 @@
 #include "meta/NNode.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
-#include "service/nebula/NebulaService.h"
+#include "service/base/NebulaService.h"
 
 /**
  * Define node client which is responsible to talk to a node server for query fan out.
  */
 namespace nebula {
 namespace service {
+namespace node {
 class NodeClient : public nebula::execution::core::NodeClient {
 public:
   NodeClient(
@@ -62,10 +63,14 @@ public:
   // pull node state
   virtual void state() override;
 
+  // send a task to a node
+  virtual nebula::common::TaskState task(const nebula::common::Task&) override;
+
 private:
   std::shared_ptr<nebula::api::dsl::Query> query_;
   std::unique_ptr<NodeServer::Stub> stub_;
 };
 
+} // namespace node
 } // namespace service
 } // namespace nebula

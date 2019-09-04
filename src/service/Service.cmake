@@ -65,10 +65,12 @@ set(nodegrpc_srcs "${NODE_GEN_DIR}/node.grpc.fb.cc")
 
 # build everything else as library except executable of NebulaServer and NebulaClient
 add_library(${NEBULA_SERVICE} STATIC 
+    ${NEBULA_SRC}/service/base/NebulaService.cpp
     ${NEBULA_SRC}/service/node/ConnectionPool.cpp
     ${NEBULA_SRC}/service/node/NodeClient.cpp
-    ${NEBULA_SRC}/service/nebula/QueryHandler.cpp
-    ${NEBULA_SRC}/service/nebula/NebulaService.cpp
+    ${NEBULA_SRC}/service/node/TaskExecutor.cpp
+    ${NEBULA_SRC}/service/server/NodeSync.cpp
+    ${NEBULA_SRC}/service/server/QueryHandler.cpp
     ${nproto_srcs}
     ${ngrpc_srcs}
     ${nodegrpc_srcs})
@@ -92,11 +94,11 @@ else()
 endif()
 
 # Targets: 
-#   nebula/NebulaClient
-#   nebula/NebulaServer
+#   server/NebulaClient
+#   server/NebulaServer
 #   node/NodeServer
-list(APPEND dirs "nebula")
-list(APPEND dirs "nebula")
+list(APPEND dirs "server")
+list(APPEND dirs "server")
 list(APPEND dirs "node")
 list(APPEND targets "NebulaClient")
 list(APPEND targets "NebulaServer")

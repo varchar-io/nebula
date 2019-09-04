@@ -30,12 +30,18 @@
  */
 namespace nebula {
 namespace service {
+namespace base {
 
 using nebula::api::dsl::Expression;
 using nebula::api::dsl::Query;
 using nebula::api::dsl::Serde;
 using nebula::api::dsl::SortType;
+using nebula::common::Task;
+using nebula::common::TaskState;
+using nebula::common::TaskType;
 using nebula::execution::QueryWindow;
+using nebula::ingest::IngestSpec;
+using nebula::ingest::SpecState;
 using nebula::memory::keyed::FlatBuffer;
 using nebula::memory::keyed::FlatRowCursor;
 using nebula::surface::RowCursorPtr;
@@ -267,6 +273,49 @@ RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>
   return std::make_shared<FlatRowCursor>(std::move(fb));
 }
 
+// serialize a ingest spec into a task spec to be sent over
+flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
+  flatbuffers::grpc::MessageBuilder mb;
+
+  // this is an ingestion type
+  const auto tt = task.type();
+  if (tt == TaskType::INGESTION) {
+    auto spec = task.spec<IngestSpec>();
+
+    // create ingest task
+    auto version = mb.CreateString(spec->version());
+    auto id = mb.CreateString(spec->id());
+    auto it = CreateIngestTask(mb, version, id, spec->size(), (int8_t)spec->state());
+
+    // create task spec
+    auto ts = CreateTaskSpec(mb, tt, it);
+    mb.Finish(ts);
+    return mb.ReleaseMessage<TaskSpec>();
+  }
+
+  throw NException(fmt::format("Unhandled task type: {0}", tt));
+}
+
+// parse a task spec into an ingest spec
+Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
+  auto ptr = ts->GetRoot();
+
+  const auto tst = ptr->type();
+  auto tt = static_cast<TaskType>(tst);
+  if (tt == TaskType::INGESTION) {
+    auto it = ptr->ingest();
+
+    // NOTE: here incurs string copy in IngestSpec constructor, better to avoid it
+    auto is = std::make_shared<IngestSpec>(it->version()->str(), it->id()->str());
+    is->setSize(it->size());
+    is->setState((SpecState)it->state());
+
+    return Task(tt, is);
+  }
+
+  throw NException(fmt::format("Unhandled task type: {0}", tst));
+}
+
 // load some nebula test data into current process
 void loadNebulaTestData() {
   // load test data to run this query
@@ -286,5 +335,6 @@ void loadNebulaTestData() {
   }
 }
 
+} // namespace base
 } // namespace service
 } // namespace nebula

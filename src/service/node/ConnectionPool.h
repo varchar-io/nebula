@@ -20,6 +20,8 @@
 
 namespace nebula {
 namespace service {
+namespace node {
+
 /**
  * Create a connection pool to maintain connections with nodes in cluster
  */
@@ -41,5 +43,7 @@ private:
   ConnectionPool() = default;
   std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> connections_;
 };
+
+} // namespace node
 } // namespace service
 } // namespace nebula

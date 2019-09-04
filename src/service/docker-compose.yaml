@@ -10,7 +10,7 @@ services:
   server:
     build:
       context: ./
-      dockerfile: ./nebula/NebulaServer.Dockerfile
+      dockerfile: ./server/NebulaServer.Dockerfile
     image: nebula/server
     ports:
       - "9190:9190"

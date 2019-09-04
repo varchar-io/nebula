@@ -19,6 +19,8 @@
 // #endif
 
 #include "NodeServer.h"
+#include "TaskExecutor.h"
+#include "common/TaskScheduler.h"
 #include "execution/BlockManager.h"
 #include "execution/core/NodeExecutor.h"
 #include "execution/io/trends/Trends.h"
@@ -30,11 +32,17 @@
  */
 namespace nebula {
 namespace service {
+namespace node {
 
+using nebula::common::TaskState;
+using nebula::common::TaskType;
 using nebula::execution::BlockManager;
 using nebula::execution::core::NodeExecutor;
 using nebula::execution::io::BatchBlock;
 using nebula::memory::keyed::FlatBuffer;
+using nebula::service::base::BatchSerde;
+using nebula::service::base::QuerySerde;
+using nebula::service::base::TaskSerde;
 using nebula::surface::RowCursorPtr;
 
 // Single echo implementation
@@ -157,13 +165,31 @@ grpc::Status NodeServerImpl::Poll(
   return grpc::Status::OK;
 }
 
+// poll block status of a node
+grpc::Status NodeServerImpl::Task(
+  grpc::ServerContext*,
+  const flatbuffers::grpc::Message<TaskSpec>* req,
+  flatbuffers::grpc::Message<TaskReply>* rep) {
+  // deserialze a task
+  TaskState result = TaskExecutor::singleton().enqueue(
+    TaskSerde::deserialize(req));
+
+  flatbuffers::grpc::MessageBuilder mb;
+  mb.Finish(CreateTaskReply(mb, result));
+  *rep = mb.ReleaseMessage<TaskReply>();
+
+  // Return an OK status.
+  return grpc::Status::OK;
+}
+
+} // namespace node
 } // namespace service
 } // namespace nebula
 
 void RunServer() {
   // launch the server
-  std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::ServiceProperties::NPORT));
-  nebula::service::NodeServerImpl node;
+  std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::base::ServiceProperties::NPORT));
+  nebula::service::node::NodeServerImpl node;
 
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
@@ -171,12 +197,21 @@ void RunServer() {
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   LOG(INFO) << "Nebula node server listening on " << server_address;
 
-  // loading some rand generated data for nebula.test category
-  nebula::service::loadNebulaTestData();
+  // run a task executor to
+  // NOTE that, this is blocking main thread to wait for server down
+  // this may prevent system to exit properly, will revisit and revise.
+  // run the loop.
+  nebula::common::TaskScheduler taskScheduler;
+  taskScheduler.setInterval(
+    1000,
+    [] {
+      nebula::service::node::TaskExecutor::singleton().process();
+    });
 
-  // loading data into memory in async way
-  nebula::execution::io::trends::TrendsTable trends;
-  trends.load();
+  // NOTE that, this is blocking main thread to wait for server down
+  // this may prevent system to exit properly, will revisit and revise.
+  // run the loop.
+  taskScheduler.run();
 
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.

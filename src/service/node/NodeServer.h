@@ -22,13 +22,14 @@
 #include "execution/meta/TableService.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
-#include "service/nebula/NebulaService.h"
+#include "service/base/NebulaService.h"
 
 /**
  * Define node server that does the work as nebula server asks.
  */
 namespace nebula {
 namespace service {
+namespace node {
 
 class NodeServerImpl final : public NodeServer::Service {
   virtual grpc::Status Echo(
@@ -54,6 +55,12 @@ class NodeServerImpl final : public NodeServer::Service {
     flatbuffers::grpc::Message<NodeStateReply>*)
     override;
 
+  virtual grpc::Status Task(
+    grpc::ServerContext*,
+    const flatbuffers::grpc::Message<TaskSpec>*,
+    flatbuffers::grpc::Message<TaskReply>*)
+    override;
+
 public:
   NodeServerImpl() : tableService_{ std::make_shared<nebula::execution::meta::TableService>() } {}
 
@@ -61,5 +68,6 @@ private:
   std::shared_ptr<nebula::execution::meta::TableService> tableService_;
 };
 
+} // namespace node
 } // namespace service
 } // namespace nebula

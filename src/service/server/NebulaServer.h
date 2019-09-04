@@ -29,6 +29,7 @@
  */
 namespace nebula {
 namespace service {
+namespace server {
 
 // build for specific product such as trends
 class V1ServiceImpl final : public V1::Service {
@@ -43,8 +44,9 @@ class V1ServiceImpl final : public V1::Service {
   nebula::execution::meta::TableService ts_;
 
 private:
-  grpc::Status replyError(ErrorCode, QueryResponse*, size_t) const;
+  grpc::Status replyError(nebula::service::base::ErrorCode, QueryResponse*, size_t) const;
 };
 
+} // namespace server
 } // namespace service
 } // namespace nebula

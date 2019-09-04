@@ -25,6 +25,7 @@
  */
 namespace nebula {
 namespace service {
+namespace server {
 
 using nebula::api::dsl::col;
 using nebula::api::dsl::count;
@@ -50,6 +51,8 @@ using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
 using nebula::meta::Table;
 using nebula::service::Operation;
+using nebula::service::base::ErrorCode;
+using nebula::service::base::ServiceProperties;
 using nebula::surface::RowCursorPtr;
 using nebula::type::Kind;
 using nebula::type::Schema;
@@ -434,5 +437,6 @@ ErrorCode QueryHandler::validate(const QueryRequest& req) const noexcept {
   return ErrorCode::NONE;
 }
 
+} // namespace server
 } // namespace service
 } // namespace nebula

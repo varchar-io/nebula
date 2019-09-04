@@ -25,13 +25,14 @@
 #include "execution/core/NodeConnector.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
-#include "service/nebula/NebulaService.h"
+#include "service/base/NebulaService.h"
 
 /**
  * Define remote node connector
  */
 namespace nebula {
 namespace service {
+namespace node {
 class RemoteNodeConnector : public nebula::execution::core::NodeConnector {
 public:
   RemoteNodeConnector(std::shared_ptr<nebula::api::dsl::Query> query) : query_{ query } {}
@@ -51,5 +52,6 @@ public:
 private:
   std::shared_ptr<nebula::api::dsl::Query> query_;
 };
+} // namespace node
 } // namespace service
 } // namespace nebula

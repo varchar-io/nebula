@@ -26,9 +26,9 @@
 #include "fmt/format.h"
 #include "meta/NBlock.h"
 #include "meta/TestTable.h"
-#include "service/nebula/NebulaService.h"
-#include "service/nebula/QueryHandler.h"
+#include "service/base/NebulaService.h"
 #include "service/node/RemoteNodeConnector.h"
+#include "service/server/QueryHandler.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "type/Serde.h"
@@ -47,7 +47,10 @@ using nebula::execution::io::trends::TrendsTable;
 using nebula::execution::meta::TableService;
 using nebula::meta::NBlock;
 using nebula::meta::TestTable;
-using nebula::service::ErrorCode;
+using nebula::service::base::ErrorCode;
+using nebula::service::base::QuerySerde;
+using nebula::service::base::ServiceProperties;
+using nebula::service::server::QueryHandler;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Schema;

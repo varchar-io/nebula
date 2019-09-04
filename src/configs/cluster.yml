@@ -4,7 +4,9 @@ version: 1.0
 server:
   # as node will treat server to run as a node
   # if false, server will not load any data in itself.
-  anode: true
+  # NOTE that, there are maybe missing functions to fully compatible for server as node.
+  # such as task execution may not be implemented.
+  anode: false
 
 # will be provided by enviroment
 nodes:

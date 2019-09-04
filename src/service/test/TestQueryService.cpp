@@ -21,8 +21,8 @@
 #include "execution/core/ServerExecutor.h"
 #include "execution/io/trends/Pins.h"
 #include "execution/io/trends/Trends.h"
-#include "service/nebula/NebulaService.h"
-#include "service/nebula/QueryHandler.h"
+#include "service/base/NebulaService.h"
+#include "service/server/QueryHandler.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "type/Serde.h"
@@ -39,7 +39,9 @@ using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::io::trends::PinsTable;
 using nebula::execution::io::trends::TrendsTable;
-using nebula::service::ErrorCode;
+using nebula::service::base::ErrorCode;
+using nebula::service::base::ServiceProperties;
+using nebula::service::server::QueryHandler;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;

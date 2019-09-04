@@ -13,14 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
-#include "IngestSpec.h"
+#include "common/Folly.h"
+#include "ingest/SpecRepo.h"
 
 /**
- * We will sync etcd configs for cluster info into this memory object
- * To understand cluster status - total nodes.
+ * TODO(cao) - major node states will be sync through cluster management system 
+ * such as etcd, shard manager, kubenetes or zookeeper
+ * 
+ * At this momment, we're sync through rpc, and it's possible we'll continue maintain this.
  */
 namespace nebula {
-namespace ingest {
-} // namespace ingest
+namespace service {
+namespace server {
+
+class NodeSync {
+public:
+  static std::shared_ptr<folly::FunctionScheduler> async(
+    folly::ThreadPoolExecutor&, const nebula::ingest::SpecRepo&, size_t) noexcept;
+};
+
+} // namespace server
+} // namespace service
 } // namespace nebula

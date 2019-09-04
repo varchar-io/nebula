@@ -19,6 +19,7 @@
 #include <fmt/format.h>
 #include <mutex>
 
+#include "common/Task.h"
 #include "meta/NNode.h"
 
 /**
@@ -52,7 +53,7 @@ enum class SpecState : char {
 };
 
 // a ingest spec defines a task specification to ingest some data
-class IngestSpec {
+class IngestSpec : public nebula::common::Signable {
 public:
   IngestSpec(const std::string& version, const std::string& id)
     : version_{ version },
@@ -66,6 +67,11 @@ public:
     return fmt::format("[IS {0} - {1}]", version_, id_);
   }
 
+  virtual std::string signature() const override {
+    // TODO(cao) - use file+size as unique signature?
+    return fmt::format("{0}@{1}", id_, size_);
+  }
+
   inline void setSize(size_t size) {
     size_ = size;
   }
@@ -77,6 +83,10 @@ public:
   inline void setAffinity(const nebula::meta::NNode& node) {
     // copy the node as my node
     node_ = node;
+  }
+
+  inline const std::string& version() const {
+    return version_;
   }
 
   inline const std::string& id() const {

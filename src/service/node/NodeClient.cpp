@@ -22,10 +22,16 @@
  */
 namespace nebula {
 namespace service {
+namespace node {
 
+using nebula::common::Task;
+using nebula::common::TaskState;
 using nebula::execution::BlockManager;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::io::BatchBlock;
+using nebula::service::base::BatchSerde;
+using nebula::service::base::QuerySerde;
+using nebula::service::base::TaskSerde;
 using nebula::surface::RowCursorPtr;
 
 void NodeClient::echo(const std::string& name) {
@@ -140,5 +146,19 @@ void NodeClient::state() {
   LOG(ERROR) << "RPC failed: code=" << status.error_code() << ", msg=" << status.error_message();
 }
 
+TaskState NodeClient::task(const Task& task) {
+  grpc::ClientContext context;
+  auto message = TaskSerde::serialize(task);
+  flatbuffers::grpc::Message<TaskReply> reply;
+  auto status = stub_->Task(&context, message, &reply);
+  if (status.ok()) {
+    auto r = reply.GetRoot();
+    return static_cast<TaskState>(r->state());
+  }
+
+  return TaskState::UNKNOWN;
+}
+
+} // namespace node
 } // namespace service
 } // namespace nebula

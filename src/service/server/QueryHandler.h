@@ -22,7 +22,7 @@
 #include "execution/meta/TableService.h"
 #include "meta/Table.h"
 #include "nebula.grpc.pb.h"
-#include "service/nebula/NebulaService.h"
+#include "service/base/NebulaService.h"
 #include "surface/DataSurface.h"
 
 /**
@@ -30,6 +30,7 @@
  */
 namespace nebula {
 namespace service {
+namespace server {
 
 class QueryHandler final {
 public:
@@ -38,17 +39,17 @@ public:
   std::shared_ptr<nebula::api::dsl::Query> build(
     const nebula::meta::Table&,
     const QueryRequest&,
-    ErrorCode& err) const noexcept;
+    nebula::service::base::ErrorCode& err) const noexcept;
 
   std::unique_ptr<nebula::execution::ExecutionPlan> compile(
     const std::shared_ptr<nebula::api::dsl::Query>,
     const nebula::execution::QueryWindow&,
-    ErrorCode&) const noexcept;
+    nebula::service::base::ErrorCode&) const noexcept;
 
   nebula::surface::RowCursorPtr query(
     const nebula::execution::ExecutionPlan&,
     const std::shared_ptr<nebula::execution::core::NodeConnector> connector,
-    ErrorCode&) const noexcept;
+    nebula::service::base::ErrorCode&) const noexcept;
 
 private:
   //  build query internally which can throw
@@ -67,11 +68,12 @@ private:
   std::shared_ptr<nebula::api::dsl::Expression> buildMetric(const Metric&) const;
 
   // validate the query request
-  ErrorCode validate(const QueryRequest&) const noexcept;
+  nebula::service::base::ErrorCode validate(const QueryRequest&) const noexcept;
 
 private:
   std::shared_ptr<nebula::meta::MetaService> ms_;
 };
 
+} // namespace server
 } // namespace service
 } // namespace nebula
