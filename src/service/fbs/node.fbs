@@ -67,9 +67,37 @@ table NodeStateReply {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 // this is serde format mapping to IngestSpec
+// we also flatten other info into the single task spec.
 table IngestTask {
+  // ref: TableSpec.loader 
+  loader: string;
+
+  // ref: TableSpec.DataSource
+  source: byte;
+
+  // ref: TableSpec.format 
+  format: string;
+
+  // ref: TableSpec.schema 
+  schema: string;
+
+  // ref: TimeType
+  time_type: byte;
+
+  // ref: TimeSpec.unixtimeValue
+  time_value: uint64;
+
+  // ref: TimeSpec.colName
+  time_column: string;
+
+  // ref: TimeSpec.pattern
+  time_format: string;
+
+
+  // ingest spec itself
   version: string;
   id: string;
+  domain: string;
   size: uint64;
   state: byte;
 }

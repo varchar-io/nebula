@@ -45,19 +45,19 @@ std::vector<FileInfo> S3::list(const std::string& prefix) {
   auto result = std::move(outcome.GetResultWithOwnership());
   std::vector<FileInfo> objects;
 
-#define EXTRACT_LIST(FETCH, KEY, ISD)                           \
+#define EXTRACT_LIST(FETCH, KEY, SIZE, ISD)                     \
   {                                                             \
     const auto& list = result.FETCH();                          \
     for (auto itr = list.cbegin(); itr != list.cend(); ++itr) { \
-      objects.emplace_back(ISD, 0, 0, itr->KEY());              \
+      objects.emplace_back(ISD, 0, SIZE, itr->KEY(), bucket_);  \
     }                                                           \
   }
 
   // list all prefix first - folder operation
-  EXTRACT_LIST(GetCommonPrefixes, GetPrefix, true)
+  EXTRACT_LIST(GetCommonPrefixes, GetPrefix, 0, true)
 
   // list all objects now - objects
-  EXTRACT_LIST(GetContents, GetKey, false)
+  EXTRACT_LIST(GetContents, GetKey, itr->GetSize(), false)
 
 #undef EXTRACT_LIST
 

@@ -16,11 +16,53 @@
 
 #include "IngestSpec.h"
 
+#include <gflags/gflags.h>
+
+#include "common/Evidence.h"
+#include "execution/BlockManager.h"
+#include "meta/TestTable.h"
+
+DEFINE_string(NTEST_LOADER, "NebulaTest", "define the loader name for loading nebula test data");
 /**
  * We will sync etcd configs for cluster info into this memory object
  * To understand cluster status - total nodes.
  */
 namespace nebula {
 namespace ingest {
+
+using nebula::common::Evidence;
+using nebula::execution::BlockManager;
+using nebula::meta::TableSpecPtr;
+using nebula::meta::TestTable;
+
+// load some nebula test data into current process
+void loadNebulaTestData(const TableSpecPtr& table) {
+  // load test data to run this query
+  auto bm = BlockManager::init();
+
+  // set up a start and end time for the data set in memory
+  auto start = table->timeSpec.unixTimeValue;
+  auto end = start + Evidence::HOUR_SECONDS * table->max_hr;
+
+  // let's plan these many data std::thread::hardware_concurrency()
+  TestTable testTable;
+  auto numBlocks = std::thread::hardware_concurrency();
+  auto window = (end - start) / numBlocks;
+  for (unsigned i = 0; i < numBlocks; i++) {
+    size_t begin = start + i * window;
+    bm->add({ testTable.name(), i++, begin, begin + window });
+  }
+}
+
+bool IngestSpec::work() noexcept {
+  // TODO(cao) - refator this to have better hirachy for different ingest types.
+  if (table_->loader == FLAGS_NTEST_LOADER) {
+    loadNebulaTestData(table_);
+    return true;
+  }
+
+  return false;
+}
+
 } // namespace ingest
 } // namespace nebula

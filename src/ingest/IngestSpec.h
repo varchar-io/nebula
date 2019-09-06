@@ -21,6 +21,7 @@
 
 #include "common/Task.h"
 #include "meta/NNode.h"
+#include "meta/TableSpec.h"
 
 /**
  * A ingest spec is generated from table setting based on its ingestion type.
@@ -55,11 +56,19 @@ enum class SpecState : char {
 // a ingest spec defines a task specification to ingest some data
 class IngestSpec : public nebula::common::Signable {
 public:
-  IngestSpec(const std::string& version, const std::string& id)
-    : version_{ version },
+  IngestSpec(
+    nebula::meta::TableSpecPtr table,
+    const std::string& version,
+    const std::string& id,
+    const std::string& domain,
+    size_t size,
+    SpecState state)
+    : table_{ table },
+      version_{ version },
       id_{ id },
-      size_{ 0 },
-      state_{ SpecState::NEW },
+      domain_{ domain },
+      size_{ size },
+      state_{ state },
       node_{ nebula::meta::NNode::invalid() } {}
   virtual ~IngestSpec() = default;
 
@@ -70,10 +79,6 @@ public:
   virtual std::string signature() const override {
     // TODO(cao) - use file+size as unique signature?
     return fmt::format("{0}@{1}", id_, size_);
-  }
-
-  inline void setSize(size_t size) {
-    size_ = size;
   }
 
   inline void setState(SpecState state) {
@@ -113,9 +118,24 @@ public:
     return state_;
   }
 
+  inline nebula::meta::TableSpecPtr table() const {
+    return table_;
+  }
+
+  inline const std::string& domain() const {
+    return domain_;
+  }
+
+  // do the work based on current spec
+  // it may have missing field since most likely data is after deserialized
+  bool work() noexcept;
+
 private:
+  nebula::meta::TableSpecPtr table_;
   std::string version_;
   std::string id_;
+  // could be s3 bucket or other protocol
+  std::string domain_;
   size_t size_;
   SpecState state_;
 

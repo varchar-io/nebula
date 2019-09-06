@@ -26,13 +26,14 @@ namespace storage {
 
 // layout
 struct FileInfo {
-  explicit FileInfo(bool isd, size_t ts, size_t sz, std::string n)
-    : isDir{ isd }, timestamp{ ts }, size{ sz }, name{ std::move(n) } {
-  }
+  explicit FileInfo(bool isd, size_t ts, size_t sz, std::string n, std::string d)
+    : isDir{ isd }, timestamp{ ts }, size{ sz }, name{ std::move(n) }, domain{ std::move(d) } {}
+
   bool isDir;
   size_t timestamp;
   size_t size;
   std::string name;
+  std::string domain;
 
   inline std::string signature() const {
     return fmt::format("{0}_{1}_{2}", name, size, timestamp);

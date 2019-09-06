@@ -76,7 +76,7 @@ TEST(MetaTest, TestClusterConfigLoad) {
   const auto& tables = clusterInfo.tables();
   EXPECT_EQ(tables.size(), 4);
   for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
-    LOG(INFO) << "TABLE: " << itr->toString();
+    LOG(INFO) << "TABLE: " << (*itr)->toString();
   }
 }
 

@@ -22,6 +22,7 @@
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 #include "memory/keyed/FlatRowCursor.h"
+#include "meta/TableSpec.h"
 #include "meta/TestTable.h"
 #include "type/Serde.h"
 
@@ -44,6 +45,10 @@ using nebula::ingest::IngestSpec;
 using nebula::ingest::SpecState;
 using nebula::memory::keyed::FlatBuffer;
 using nebula::memory::keyed::FlatRowCursor;
+using nebula::meta::DataSource;
+using nebula::meta::TableSpec;
+using nebula::meta::TimeSpec;
+using nebula::meta::TimeType;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Kind;
@@ -283,9 +288,22 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     auto spec = task.spec<IngestSpec>();
 
     // create ingest task
-    auto version = mb.CreateString(spec->version());
-    auto id = mb.CreateString(spec->id());
-    auto it = CreateIngestTask(mb, version, id, spec->size(), (int8_t)spec->state());
+    auto table = spec->table();
+    const auto& time = table->timeSpec;
+    auto it = CreateIngestTask(mb,
+                               mb.CreateString(table->loader),
+                               (int8_t)table->source,
+                               mb.CreateString(table->format),
+                               mb.CreateString(table->schema),
+                               (int8_t)time.type,
+                               time.unixTimeValue,
+                               mb.CreateString(time.colName),
+                               mb.CreateString(time.pattern),
+                               mb.CreateString(spec->version()),
+                               mb.CreateString(spec->id()),
+                               mb.CreateString(spec->domain()),
+                               spec->size(),
+                               (int8_t)spec->state());
 
     // create task spec
     auto ts = CreateTaskSpec(mb, tt, it);
@@ -306,33 +324,41 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     auto it = ptr->ingest();
 
     // NOTE: here incurs string copy in IngestSpec constructor, better to avoid it
-    auto is = std::make_shared<IngestSpec>(it->version()->str(), it->id()->str());
-    is->setSize(it->size());
-    is->setState((SpecState)it->state());
+    // build time spec
+    TimeSpec time{
+      (TimeType)it->time_type(),
+      it->time_value(),
+      it->time_column()->str(),
+      it->time_format()->str()
+    };
+
+    // build table spec
+    std::string tbName = "";
+    std::string src = "";
+    std::string bak = "";
+    auto table = std::make_shared<TableSpec>(std::move(tbName),
+                                             0,
+                                             0,
+                                             it->schema()->str(),
+                                             (DataSource)it->source(),
+                                             it->loader()->str(),
+                                             std::move(src),
+                                             std::move(bak),
+                                             it->format()->str(),
+                                             std::move(time));
+
+    auto is = std::make_shared<IngestSpec>(
+      table,
+      it->version()->str(),
+      it->id()->str(),
+      it->domain()->str(),
+      it->size(),
+      (SpecState)it->state());
 
     return Task(tt, is);
   }
 
   throw NException(fmt::format("Unhandled task type: {0}", tst));
-}
-
-// load some nebula test data into current process
-void loadNebulaTestData() {
-  // load test data to run this query
-  auto bm = nebula::execution::BlockManager::init();
-
-  // set up a start and end time for the data set in memory
-  auto start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
-  auto end = nebula::common::Evidence::time("2019-05-01", "%Y-%m-%d");
-
-  // let's plan these many data std::thread::hardware_concurrency()
-  nebula::meta::TestTable testTable;
-  auto numBlocks = std::thread::hardware_concurrency();
-  auto window = (end - start) / numBlocks;
-  for (unsigned i = 0; i < numBlocks; i++) {
-    size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
-  }
 }
 
 } // namespace base

@@ -135,9 +135,6 @@ public:
   static nebula::common::Task deserialize(const flatbuffers::grpc::Message<TaskSpec>*);
 };
 
-// load nebula test data set into currnet process
-void loadNebulaTestData();
-
 } // namespace base
 } // namespace service
 } // namespace nebula

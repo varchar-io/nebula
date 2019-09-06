@@ -59,7 +59,7 @@ public:
 
 private:
   // process a table spec and generate all specs into the given specs container
-  void process(const std::string&, const nebula::meta::TableSpec&, std::vector<SpecPtr>&);
+  void process(const std::string&, const nebula::meta::TableSpecPtr&, std::vector<SpecPtr>&);
 
   // update the snapshot of new spec list into spec repo
   void update(const std::vector<SpecPtr>&);

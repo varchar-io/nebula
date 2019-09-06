@@ -39,6 +39,9 @@ private:
   ~Evidence() = default;
 
 public: /** only static methods */
+  static constexpr auto HOUR_SECONDS = 3600;
+  static constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
+
   inline static size_t ticks() {
     return std::chrono::system_clock::now().time_since_epoch().count();
   }

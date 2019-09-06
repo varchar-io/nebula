@@ -30,7 +30,6 @@ namespace nebula {
 namespace meta {
 
 using NNodeSet = std::unordered_set<NNode, NodeHash, NodeEqual>;
-using TableSpecSet = std::unordered_set<TableSpec, TableSpecHash, TableSpecEqual>;
 
 // server options mapping in cluster.yml for server
 struct ServerOptions {

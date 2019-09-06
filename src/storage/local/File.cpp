@@ -39,7 +39,8 @@ std::vector<FileInfo> File::list(const std::string& dir) {
       files.emplace_back(dp->d_type == 4,
                          0,
                          dp->d_reclen,
-                         std::string(dp->d_name));
+                         std::string(dp->d_name),
+                         "");
     }
 
     closedir(d);
@@ -62,9 +63,10 @@ FileInfo File::info(const std::string& file) {
     0,
     // status.last_write_time().time_since_epoch().count(),
     fs::file_size(file),
-    file);
+    file,
+    "");
 #else
-  return FileInfo(false, 0, 0, file);
+  return FileInfo(false, 0, 0, file, "");
 #endif
 }
 

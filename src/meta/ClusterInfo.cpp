@@ -80,7 +80,7 @@ TimeSpec asTimeSpec(const YAML::Node& node) {
 }
 
 void ClusterInfo::load(const std::string& file) {
-  
+
   YAML::Node config = YAML::LoadFile(file);
 
   // set the version from the config
@@ -113,16 +113,17 @@ void ClusterInfo::load(const std::string& file) {
 
     // table definition
     const auto& td = it->second;
-    tableSet.emplace(name,
-                     td["max-mb"].as<size_t>(),
-                     td["max-hr"].as<size_t>(),
-                     TypeSerializer::from(td["schema"].as<std::string>()),
-                     asDataSource(td["data"].as<std::string>()),
-                     td["loader"].as<std::string>(),
-                     td["source"].as<std::string>(),
-                     td["backup"].as<std::string>(),
-                     td["format"].as<std::string>(),
-                     asTimeSpec(td["time"]));
+    tableSet.emplace(std::make_shared<TableSpec>(
+      name,
+      td["max-mb"].as<size_t>(),
+      td["max-hr"].as<size_t>(),
+      td["schema"].as<std::string>(),
+      asDataSource(td["data"].as<std::string>()),
+      td["loader"].as<std::string>(),
+      td["source"].as<std::string>(),
+      td["backup"].as<std::string>(),
+      td["format"].as<std::string>(),
+      asTimeSpec(td["time"])));
   }
 
   // swap with new table set

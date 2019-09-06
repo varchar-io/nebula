@@ -33,7 +33,7 @@ using nebula::meta::ClusterInfo;
 using nebula::meta::DataSource;
 using nebula::meta::NNode;
 using nebula::meta::NNodeSet;
-using nebula::meta::TableSpec;
+using nebula::meta::TableSpecPtr;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
 using nebula::storage::FileInfo;
@@ -73,16 +73,16 @@ std::string buildIndentityByTime(const TimeSpec& time) {
 }
 
 // this method is to generate one spec per file
-void genSpecPerFile(const std::string& version,
+void genSpecPerFile(const TableSpecPtr& table,
+                    const std::string& version,
                     const std::vector<FileInfo>& files,
                     std::vector<std::shared_ptr<IngestSpec>>& specs) {
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
     if (!itr->isDir) {
       // generate a ingest spec from given file info
       // use name as its identifier
-      auto spec = std::make_shared<IngestSpec>(version, itr->name);
-      // use size as truth of changes
-      spec->setSize(itr->size);
+      auto spec = std::make_shared<IngestSpec>(
+        table, version, itr->name, itr->domain, itr->size, SpecState::NEW);
 
       // push to the repo
       specs.push_back(spec);
@@ -95,11 +95,11 @@ void genSpecPerFile(const std::string& version,
 //  1. list files with timestamp
 //  2. each file name will be used as identifier and timestamp will distinguish different data
 void genSpecs4Swap(const std::string& version,
-                   const TableSpec& table,
+                   const TableSpecPtr& table,
                    std::vector<std::shared_ptr<IngestSpec>>& specs) {
-  if (table.source == DataSource::S3) {
+  if (table->source == DataSource::S3) {
     // parse location to get protocol, domain/bucket, path
-    auto sourceInfo = nebula::storage::parse(table.location);
+    auto sourceInfo = nebula::storage::parse(table->location);
 
     // making a s3 fs with given host
     auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
@@ -107,7 +107,7 @@ void genSpecs4Swap(const std::string& version,
     // list all objects/files from given path
     auto files = fs->list(sourceInfo.path);
     LOG(INFO) << fmt::format("list {0}:{1} = {2}", sourceInfo.host, sourceInfo.path, files.size());
-    genSpecPerFile(version, files, specs);
+    genSpecPerFile(table, version, files, specs);
     return;
   }
 
@@ -115,11 +115,11 @@ void genSpecs4Swap(const std::string& version,
 }
 
 void genSpecs4Roll(const std::string& version,
-                   const TableSpec& table,
+                   const TableSpecPtr& table,
                    std::vector<std::shared_ptr<IngestSpec>>& specs) {
-  if (table.source == DataSource::S3) {
+  if (table->source == DataSource::S3) {
     // parse location to get protocol, domain/bucket, path
-    auto sourceInfo = nebula::storage::parse(table.location);
+    auto sourceInfo = nebula::storage::parse(table->location);
 
     // making a s3 fs with given host
     auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
@@ -131,12 +131,12 @@ void genSpecs4Roll(const std::string& version,
       return Evidence::fmt_ymd_dash(now - daysBack * DAY_SECONDS);
     };
 
-    const auto max_days = table.max_hr / 24;
+    const auto max_days = table->max_hr / 24;
     for (size_t i = 0; i <= max_days; ++i) {
       // we only provide single macro for now
       auto path = fmt::format(sourceInfo.path, fmt::arg("date", dateMacro(i)));
       auto files = fs->list(path);
-      genSpecPerFile(version, files, specs);
+      genSpecPerFile(table, version, files, specs);
     }
 
     return;
@@ -145,25 +145,25 @@ void genSpecs4Roll(const std::string& version,
   throw NException("only s3 supported for now");
 }
 
-void SpecRepo::process(const std::string& version, const TableSpec& table, std::vector<std::shared_ptr<IngestSpec>>& specs) {
+void SpecRepo::process(const std::string& version, const TableSpecPtr& table, std::vector<std::shared_ptr<IngestSpec>>& specs) {
   // specialized loader handling - nebula test set identified by static time provided
-  if (table.loader == "NebulaTest") {
+  if (table->loader == "NebulaTest") {
     // single spec for nebula test loader
-    specs.push_back(std::make_shared<IngestSpec>(version, buildIndentityByTime(table.timeSpec)));
+    specs.push_back(std::make_shared<IngestSpec>(table, version, buildIndentityByTime(table->timeSpec), "", 0, SpecState::NEW));
     return;
   }
 
-  if (table.loader == "Swap") {
+  if (table->loader == "Swap") {
     genSpecs4Swap(version, table, specs);
     return;
   }
 
-  if (table.loader == "Roll") {
+  if (table->loader == "Roll") {
     genSpecs4Roll(version, table, specs);
     return;
   }
 
-  throw NException(fmt::format("Unsupported loader: {0} for table {1}", table.loader, table.toString()));
+  throw NException(fmt::format("Unsupported loader: {0} for table {1}", table->loader, table->toString()));
 }
 
 void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {

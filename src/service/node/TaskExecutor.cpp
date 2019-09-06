@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 
 #include "TaskExecutor.h"
+#include "ingest/IngestSpec.h"
 
 DEFINE_uint32(TASK_QUEUE_SIZE, 1000, "task queue size for bounded queue");
 
@@ -30,6 +31,8 @@ namespace node {
 
 using nebula::common::Task;
 using nebula::common::TaskState;
+using nebula::common::TaskType;
+using nebula::ingest::IngestSpec;
 
 TaskExecutor& TaskExecutor::singleton() {
   static TaskExecutor executor{ FLAGS_TASK_QUEUE_SIZE };
@@ -63,7 +66,7 @@ TaskState TaskExecutor::enqueue(const Task& task) {
 
   // found this task, it is already acked
   if (itr != state_.end()) {
-    LOG(INFO) << "Task in node: " << itr->second;
+    LOG(INFO) << "Task already in node, state=" << (char)itr->second;
     return itr->second;
   }
 
@@ -79,13 +82,20 @@ TaskState TaskExecutor::enqueue(const Task& task) {
     return TaskState::FAILED;
   }
 
-  return TaskState::SUCCEEDED;
+  return TaskState::WAITING;
 }
 
 bool TaskExecutor::process(const Task& task) {
-  // TODO execute the task
+  // handle all different type of tasks assigned by server
   LOG(INFO) << "processed task: " << task.signature();
-  return true;
+
+  // handle ingestion task
+  if (task.type() == TaskType::INGESTION) {
+    std::shared_ptr<IngestSpec> is = task.spec<IngestSpec>();
+    return is->work();
+  }
+
+  return false;
 }
 
 } // namespace node

@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <unordered_set>
+
 #include "common/Hash.h"
 #include "type/Type.h"
 
@@ -66,7 +68,7 @@ struct TableSpec {
   // max time span in hour resident in memory
   size_t max_hr;
   // table schema
-  nebula::type::Schema schema;
+  std::string schema;
   // data source to load from
   DataSource source;
   // loader to decide how to load data in
@@ -80,12 +82,12 @@ struct TableSpec {
   // time spec to generate time value
   TimeSpec timeSpec;
 
-  TableSpec(std::string n, size_t mm, size_t mh, nebula::type::Schema s,
+  TableSpec(std::string n, size_t mm, size_t mh, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak, std::string f, TimeSpec ts)
     : name{ std::move(n) },
       max_mb{ mm },
       max_hr{ mh },
-      schema{ s },
+      schema{ std::move(s) },
       source{ ds },
       loader{ std::move(lo) },
       location{ std::move(loc) },
@@ -99,20 +101,26 @@ struct TableSpec {
   }
 };
 
+// define table spec pointer
+using TableSpecPtr = std::shared_ptr<TableSpec>;
+
 // Current hash and equal are based on table name only
 // There should not be duplicate table names in the system
 struct TableSpecHash {
 public:
-  size_t operator()(const TableSpec& ts) const {
-    return nebula::common::Hasher::hashString(ts.name);
+  size_t operator()(const TableSpecPtr& ts) const {
+    return nebula::common::Hasher::hashString(ts->name);
   }
 };
 
 struct TableSpecEqual {
 public:
-  bool operator()(const TableSpec& ts1, const TableSpec& ts2) const {
-    return ts1.name == ts2.name;
+  bool operator()(const TableSpecPtr& ts1, const TableSpecPtr& ts2) const {
+    return ts1->name == ts2->name;
   }
 };
+
+using TableSpecSet = std::unordered_set<TableSpecPtr, TableSpecHash, TableSpecEqual>;
+
 } // namespace meta
 } // namespace nebula
