@@ -62,7 +62,7 @@ class NodeServerImpl final : public NodeServer::Service {
     override;
 
 public:
-  NodeServerImpl() : tableService_{ std::make_shared<nebula::execution::meta::TableService>() } {}
+  NodeServerImpl() : tableService_{ nebula::execution::meta::TableService::singleton() } {}
 
 private:
   std::shared_ptr<nebula::execution::meta::TableService> tableService_;

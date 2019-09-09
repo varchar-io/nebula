@@ -17,8 +17,10 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include "NNode.h"
 #include "Table.h"
+#include "common/Likely.h"
 
 /**
  * Define nebula cell - a data block or segment metadaeta that loaded in memory.
@@ -32,7 +34,7 @@ struct BlockState {
 };
 
 struct BlockSignature {
-  BlockSignature(const std::string& t, size_t i, size_t s, size_t e, const std::string& sp = "")
+  explicit BlockSignature(const std::string& t, size_t i, size_t s, size_t e, const std::string& sp = "")
     : table{ t }, id{ i }, start{ s }, end{ e }, spec{ sp } {}
   // table name
   std::string table;
@@ -42,6 +44,18 @@ struct BlockSignature {
   size_t start;
   size_t end;
   std::string spec;
+
+  inline bool sameSpec(const BlockSignature& another) const {
+    // same object by comparing address
+    if (UNLIKELY(std::addressof(another) == std::addressof(*this))) {
+      return true;
+    }
+
+    // same table and same spec -
+    // ?? do we have case where different table sharing the same spec
+    return spec == another.spec
+           && table == another.table;
+  }
 
   inline std::string toString() const {
     return fmt::format("{0}_{1}_{2}_{3}_{4}", table, spec, id, start, end);
@@ -79,6 +93,10 @@ public:
 
   inline const BlockSignature& signature() const {
     return sign_;
+  }
+
+  inline const std::string& spec() const {
+    return sign_.spec;
   }
 
   inline const BlockState& state() const {

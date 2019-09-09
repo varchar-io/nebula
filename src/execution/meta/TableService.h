@@ -17,9 +17,7 @@
 #pragma once
 
 #include "execution/BlockManager.h"
-#include "execution/io/trends/Comments.h"
-#include "execution/io/trends/Pins.h"
-#include "execution/io/trends/Trends.h"
+#include "meta/ClusterInfo.h"
 #include "meta/MetaService.h"
 #include "meta/NNode.h"
 #include "meta/Table.h"
@@ -34,28 +32,30 @@ namespace nebula {
 namespace execution {
 namespace meta {
 
+using TablePtr = std::shared_ptr<nebula::meta::Table>;
 class TableService : public nebula::meta::MetaService {
-public:
+
+private:
   TableService() {
-#define ADD_TYPE(T)                  \
-  {                                  \
-    auto t1 = std::make_shared<T>(); \
-    presets_[t1->name()] = t1;       \
+    // always enroll test table
+    enroll(std::make_shared<nebula::meta::TestTable>());
   }
+  TableService(TableService&) = delete;
+  TableService(TableService&&) = delete;
 
-    ADD_TYPE(nebula::meta::TestTable)
-    ADD_TYPE(nebula::execution::io::trends::SignaturesTable)
-    ADD_TYPE(nebula::execution::io::trends::CommentsTable)
-    ADD_TYPE(nebula::execution::io::trends::PinsTable)
-    ADD_TYPE(nebula::execution::io::trends::TrendsTable)
-
-#undef ADD_TYPE
-  }
+public:
   virtual ~TableService() = default;
 
+public:
+  static std::shared_ptr<TableService>& singleton() {
+    static auto ts = std::shared_ptr<TableService>(new TableService());
+    return ts;
+  }
+
+public:
   virtual std::shared_ptr<nebula::meta::Table> query(const std::string& name) override {
-    auto it = presets_.find(name);
-    if (it != presets_.end()) {
+    auto it = tables_.find(name);
+    if (it != tables_.end()) {
       return it->second;
     }
 
@@ -66,9 +66,23 @@ public:
     const std::shared_ptr<nebula::meta::Table>,
     std::function<bool(const nebula::meta::NNode&)>) override;
 
+  // TODO(cao) - currently the data source of table definition is from system configs
+  // this system wide truth is not good for schema evolution.
+  // e.g. what about if different data blocks loaded in different time has different schema?
+  void enroll(const TablePtr& tp) {
+    // no need a lock
+    const auto& tn = tp->name();
+    if (tables_.find(tn) == tables_.end()) {
+      tables_[tn] = tp;
+    }
+  }
+
+  // enroll/refresh tables from the whole cluster info
+  void enroll(const nebula::meta::ClusterInfo&);
+
 private:
   // preset is a list of preload table before meta service functions
-  std::unordered_map<std::string, std::shared_ptr<nebula::meta::Table>> presets_;
+  std::unordered_map<std::string, TablePtr> tables_;
 };
 } // namespace meta
 } // namespace execution

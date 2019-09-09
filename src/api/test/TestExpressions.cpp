@@ -96,8 +96,8 @@ TEST(ExpressionsTest, TypeDetection) {
 TEST(ExpressionsTest, TestExpressionType) {
   // all the expressions are working as non-const and non-reference
   // to favor the expresssion chain
-  TableService ms;
-  auto tbl = ms.query("nebula.test");
+  auto ms = TableService::singleton();
+  auto tbl = ms->query("nebula.test");
 
   // constant type
   nebula::api::dsl::ConstExpression<int> a(1);
@@ -146,8 +146,8 @@ TEST(ExpressionsTest, TestExpressionType) {
 }
 
 TEST(ExpressionsTest, TestExpressionEval) {
-  TableService ms;
-  auto tbl = ms.query("nebula.test");
+  auto ms = TableService::singleton();
+  auto tbl = ms->query("nebula.test");
   {
     auto idvalue = (nebula::api::dsl::col("id") * 0) != 0;
     idvalue.type(*tbl);
@@ -228,8 +228,8 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
   EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
-  TableService ms;
-  auto tbl = ms.query("nebula.test");
+  auto ms = TableService::singleton();
+  auto tbl = ms->query("nebula.test");
 
   // verify the mocked data has expected result
   EXPECT_EQ(rowData.readString("event"), "abcdefg");
@@ -293,8 +293,8 @@ public:
 
 // Test serde of expressions
 TEST(ExpressionsTest, TestSerde) {
-  TableService ms;
-  auto tbl = ms.query("nebula.test");
+  auto ms = TableService::singleton();
+  auto tbl = ms->query("nebula.test");
   nebula::execution::eval::EvalContext ctx;
   MockRow3 rowData;
   EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));

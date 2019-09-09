@@ -57,6 +57,9 @@ public:
     throw NException("Not implemented");
   }
 
+  // download a prefix to a local tmp file
+  virtual std::string copy(const std::string&) override;
+
 private:
   Aws::SDKOptions options_;
   std::string bucket_;

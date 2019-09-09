@@ -37,25 +37,6 @@ TEST(StorageTest, TestLocalFiles) {
   EXPECT_TRUE(files.size() > 0);
 }
 
-TEST(StorageTest, TestLoadingCsv) {
-  auto file = "/Users/shawncao/trends.draft.csv";
-  CsvReader reader(file);
-  int count = 0;
-  while (reader.hasNext()) {
-    auto& row = reader.next();
-    auto method = row.readString("methodology");
-    if (method == "test_data_limit_100000") {
-      count++;
-      // LOG(INFO) << fmt::format("{0:10} | {1:10} | {2:10}",
-      //                          row.readString("query"),
-      //                          row.readString("dt"),
-      //                          row.readInt("count"));
-    }
-  }
-
-  LOG(INFO) << " Total rows loaded: " << count;
-}
-
 TEST(StorageTest, DISABLED_TestS3Api) {
   auto fs = nebula::storage::makeFS("s3", "pinlogs");
   auto keys = fs->list("nebula/pin_signatures/");
@@ -74,6 +55,15 @@ TEST(StorageTest, DISABLED_TestS3Api) {
       }
     }
   }
+}
+
+TEST(StorageTest, DISABLED_TestS3Copy) {
+  auto fs = nebula::storage::makeFS("s3", "pinlogs");
+  auto local = fs->copy("nebula/pin_pins/cd=2019-08-31/000117");
+  auto lfs = nebula::storage::makeFS("local");
+  auto fi = lfs->info(local);
+
+  LOG(INFO) << "file info: " << fi.signature();
 }
 
 TEST(StorageTest, TestUriParse) {

@@ -51,8 +51,8 @@ RowCursorPtr NodeExecutor::execute(const ExecutionPlan& plan) {
   // query total number of blocks to  executor on and
   // launch block executor on each in parallel
   // TODO(cao): this table service instance potentially can be carried by a query context on each node
-  TableService ts;
-  const std::vector<Batch*> blocks = blockManager_->query(*ts.query(blockPhase.table()), plan);
+  auto ts = TableService::singleton();
+  const std::vector<Batch*> blocks = blockManager_->query(*ts->query(blockPhase.table()), plan);
 
   LOG(INFO) << "Processing total blocks: " << blocks.size();
   std::vector<folly::Future<RowCursorPtr>> results;

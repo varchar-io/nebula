@@ -19,6 +19,7 @@
 #include <unordered_set>
 
 #include "common/Hash.h"
+#include "meta/Table.h"
 #include "type/Type.h"
 
 /**
@@ -45,7 +46,9 @@ enum class TimeType {
   // using current timestamp when loading
   CURRENT,
   // time is from a given column
-  COLUMN
+  COLUMN,
+  // system defined macro named by pattern
+  MACRO
 };
 
 struct TimeSpec {
@@ -79,11 +82,14 @@ struct TableSpec {
   std::string backup;
   // data format
   std::string format;
+  // column properties
+  ColumnProps columnProps;
   // time spec to generate time value
   TimeSpec timeSpec;
 
   TableSpec(std::string n, size_t mm, size_t mh, std::string s,
-            DataSource ds, std::string lo, std::string loc, std::string bak, std::string f, TimeSpec ts)
+            DataSource ds, std::string lo, std::string loc, std::string bak,
+            std::string f, ColumnProps cp, TimeSpec ts)
     : name{ std::move(n) },
       max_mb{ mm },
       max_hr{ mh },
@@ -93,6 +99,7 @@ struct TableSpec {
       location{ std::move(loc) },
       backup{ std::move(bak) },
       format{ std::move(f) },
+      columnProps{ std::move(cp) },
       timeSpec{ std::move(ts) } {}
 
   inline std::string toString() const {

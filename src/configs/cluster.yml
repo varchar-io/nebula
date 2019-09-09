@@ -20,7 +20,7 @@ tables:
     max-mb: 10000
     # max 10 days assignment
     max-hr: 240
-    schema: "ROW<_time_:bigint, id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
     data: custom
     loader: NebulaTest
     source: ""
@@ -31,42 +31,56 @@ tables:
       # get it from linux by "date +%s"
       value: 1565994194
 
-  pin.comments:
-    max-mb: 40000
-    max-hr: 0
-    schema: "ROW<_time_:long, user_id:long, pin_signature:string, comments:string>"
-    data: s3
-    loader: Swap
-    source: s3://pinlogs/nebula/pin_comments/
-    backup: s3://nebula/n101/
-    format: csv
-    time:
-      type: column
-      column: created_at
-      pattern: "%Y-%m-%d %H:%M:%S"
+  # pin.comments:
+  #   max-mb: 40000
+  #   max-hr: 0
+  #   schema: "ROW<pin_signature:string, user_id:long, comments:string, created_at:string>"
+  #   data: s3
+  #   loader: Swap
+  #   source: s3://pinlogs/nebula/pin_comments/
+  #   backup: s3://nebula/n101/
+  #   format: csv
+  #   columns:
+  #     user_id:
+  #       bloom_filter: true
+  #     pin_signature:
+  #       bloom_filter: true
+  #   time:
+  #     type: column
+  #     column: created_at
+  #     pattern: "%Y-%m-%d %H:%M:%S"
 
-  pin.signatures:
-    max-mb: 40000
-    max-hr: 0
-    schema: "ROW<_time_:long, pin_signature:string, pin_id:long>"
-    data: s3
-    loader: Swap
-    source: s3://pinlogs/nebula/pin_signatures/
-    backup: s3://nebula/n102/
-    format: csv
-    time:
-      type: current
+  # pin.signatures:
+  #   max-mb: 40000
+  #   max-hr: 0
+  #   schema: "ROW<pin_signature:string, pin_id:long>"
+  #   data: s3
+  #   loader: Swap
+  #   source: s3://pinlogs/nebula/pin_signatures/
+  #   backup: s3://nebula/n102/
+  #   format: csv
+  #   columns:
+  #     pin_signature:
+  #       bloom_filter: true
+  #     pin_id:
+  #       bloom_filter: true
+  #   time:
+  #     type: current
 
   pin.pins:
     max-mb: 200000
-    max-hr: 720
-    schema: "ROW<_time_:long, id:long, board_id:long, user_id:long, title:string, details:string, signature:string, repins:long>"
+    max-hr: 48
+    schema: "ROW<id:long, user_id:long, link_domain:string, title:string, details:string, image_signature:string>"
     data: s3
     loader: Roll
     source: s3://pinlogs/nebula/pin_pins/cd=%7Bdate%7D
     backup: s3://nebula/n103/
     format: parquet
+    columns:
+      id:
+        bloom_filter: true
+      user_id:
+        bloom_filter: true
     time:
-      type: column
-      column: created_at
-      pattern: "%Y-%m-%d %H:%M:%S"
+      type: macro
+      pattern: date

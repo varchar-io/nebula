@@ -75,9 +75,13 @@ class FlatBuffer {
 
 public:
   FlatBuffer(const nebula::type::Schema&);
-  FlatBuffer(const nebula::type::Schema&, const NByte*);
+  FlatBuffer(const nebula::type::Schema&, NByte*);
 
-  virtual ~FlatBuffer() = default;
+  virtual ~FlatBuffer() {
+    if (chunk_) {
+      nebula::common::Pool::getDefault().free(chunk_);
+    }
+  }
 
   // add a row into current batch
   size_t add(const nebula::surface::RowData& row);
@@ -146,6 +150,9 @@ private:
   std::unique_ptr<Buffer> main_;
   std::unique_ptr<Buffer> data_;
   std::unique_ptr<Buffer> list_;
+
+  // an owned data buffer passed in - need to free it in destructor
+  void* chunk_;
 
   // A row accessor cursor to read data of given row
   friend class RowAccessor;

@@ -17,9 +17,6 @@
 
 #include <grpcpp/grpcpp.h>
 #include "QueryHandler.h"
-#include "execution/io/trends/Comments.h"
-#include "execution/io/trends/Pins.h"
-#include "execution/meta/TableService.h"
 #include "meta/TestTable.h"
 #include "nebula.grpc.pb.h"
 
@@ -31,7 +28,6 @@ namespace nebula {
 namespace service {
 namespace server {
 
-// build for specific product such as trends
 class V1ServiceImpl final : public V1::Service {
   grpc::Status Tables(grpc::ServerContext*, const ListTables*, TableList*);
   grpc::Status State(grpc::ServerContext*, const TableStateRequest*, TableStateResponse*);
@@ -39,9 +35,6 @@ class V1ServiceImpl final : public V1::Service {
 
   // query handler to handle all the queries
   QueryHandler handler_;
-
-  // table meta service
-  nebula::execution::meta::TableService ts_;
 
 private:
   grpc::Status replyError(nebula::service::base::ErrorCode, QueryResponse*, size_t) const;

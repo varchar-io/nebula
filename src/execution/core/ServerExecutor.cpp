@@ -56,7 +56,7 @@ RowCursorPtr ServerExecutor::execute(const ExecutionPlan& plan, const std::share
                // TODO(cao) - add error handling too via thenError
                .onTimeout(RPC_TIMEOUT, [&]() -> RowCursorPtr { 
                  LOG(WARNING) << "Timeout: " << RPC_TIMEOUT.count();
-                 return std::make_shared<EmptyRowCursor>(); });
+                 return EmptyRowCursor::instance(); });
 
     results.push_back(std::move(f));
   }
@@ -66,7 +66,12 @@ RowCursorPtr ServerExecutor::execute(const ExecutionPlan& plan, const std::share
 
   // only one result - don't need any aggregation or composite
   if (x.size() == 1) {
-    return topSort(x.at(0).value(), plan);
+    const auto& op = x.at(0);
+    if (op.hasException() || !op.hasValue()) {
+      return EmptyRowCursor::instance();
+    }
+
+    return topSort(op.value(), plan);
   }
 
   // multiple results
@@ -78,6 +83,11 @@ RowCursorPtr ServerExecutor::execute(const ExecutionPlan& plan, const std::share
 }
 
 RowCursorPtr ServerExecutor::topSort(RowCursorPtr input, const ExecutionPlan& plan) {
+  // short circuit
+  if (input->size() == 0) {
+    return input;
+  }
+
   // do the aggregation from all different nodes
   // sort and top of results
   auto schema = plan.getOutputSchema();

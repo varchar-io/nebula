@@ -205,8 +205,31 @@ bool BlockManager::add(const BatchBlock& block) {
   return true;
 }
 
+bool BlockManager::add(std::vector<io::BatchBlock> range) {
+  std::move(range.begin(), range.end(), std::inserter(blocks_, blocks_.begin()));
+  return true;
+}
+
 bool BlockManager::remove(const BatchBlock&) {
   throw NException("Not implemeneted yet");
+}
+
+// remove all blocks that share the given spec
+// NOTE: thread-unsafe~!
+size_t BlockManager::removeSameSpec(const nebula::meta::BlockSignature& bs) {
+  size_t count = 0;
+  auto itr = blocks_.begin();
+  while (itr != blocks_.end()) {
+    if (bs.sameSpec(itr->signature())) {
+      itr = blocks_.erase(itr);
+      count++;
+      continue;
+    }
+
+    ++itr;
+  }
+
+  return count;
 }
 
 } // namespace execution

@@ -64,6 +64,8 @@ public:
   // add a block into the system - the data may be loaded internal
   bool add(const nebula::meta::BlockSignature&);
 
+  bool add(std::vector<io::BatchBlock>);
+
   // add a block already loaded
   bool add(const io::BatchBlock&);
 
@@ -121,6 +123,9 @@ public:
     // do atomic swap?
     std::swap(states, tableStates_);
   }
+
+  // remove blocks that share the spec of given block signature
+  size_t removeSameSpec(const nebula::meta::BlockSignature&);
 
 private:
   // table: <block count, row count, raw size, min time, max time>

@@ -92,7 +92,8 @@ public:
 
 protected:
   // A read-only slice!! wrapping an external buffer but not owning it
-  Slice(const NByte* buffer, size_t size) : pool_{ Pool::getDefault() }, size_{ size }, ptr_{ const_cast<NByte*>(buffer) }, ownbuffer_{ false } {}
+  Slice(const NByte* buffer, size_t size, bool own = false)
+    : pool_{ Pool::getDefault() }, size_{ size }, ptr_{ const_cast<NByte*>(buffer) }, ownbuffer_{ own } {}
   Slice(size_t size) : pool_{ Pool::getDefault() }, size_{ size }, ptr_{ static_cast<NByte*>(pool_.allocate(size)) }, ownbuffer_{ true } {}
   Slice(Slice&) = delete;
   Slice(Slice&&) = delete;

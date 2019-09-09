@@ -20,6 +20,7 @@
 #include <mutex>
 
 #include "common/Task.h"
+#include "execution/io/BlockLoader.h"
 #include "meta/NNode.h"
 #include "meta/TableSpec.h"
 
@@ -62,13 +63,15 @@ public:
     const std::string& id,
     const std::string& domain,
     size_t size,
-    SpecState state)
+    SpecState state,
+    size_t date)
     : table_{ table },
       version_{ version },
       id_{ id },
       domain_{ domain },
       size_{ size },
       state_{ state },
+      mdate_{ date },
       node_{ nebula::meta::NNode::invalid() } {}
   virtual ~IngestSpec() = default;
 
@@ -126,9 +129,26 @@ public:
     return domain_;
   }
 
+  inline size_t macroDate() const {
+    return mdate_;
+  }
+
   // do the work based on current spec
   // it may have missing field since most likely data is after deserialized
   bool work() noexcept;
+
+private:
+  // ingest a given local file (usually tmp file) into a list of blocks
+  std::vector<nebula::execution::io::BatchBlock> ingest(const std::string&) noexcept;
+
+  // load swap
+  bool loadSwap() noexcept;
+
+  // load roll
+  bool loadRoll() noexcept;
+
+  // load current spec as blocks
+  std::vector<nebula::execution::io::BatchBlock> load() noexcept;
 
 private:
   nebula::meta::TableSpecPtr table_;
@@ -138,6 +158,8 @@ private:
   std::string domain_;
   size_t size_;
   SpecState state_;
+  // macro date value in unix time stamp
+  size_t mdate_;
 
   // node info if the spec has affinity on a node
   nebula::meta::NNode node_;

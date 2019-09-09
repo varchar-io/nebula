@@ -76,13 +76,14 @@ std::string buildIndentityByTime(const TimeSpec& time) {
 void genSpecPerFile(const TableSpecPtr& table,
                     const std::string& version,
                     const std::vector<FileInfo>& files,
-                    std::vector<std::shared_ptr<IngestSpec>>& specs) {
+                    std::vector<std::shared_ptr<IngestSpec>>& specs,
+                    size_t macroDate) {
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
     if (!itr->isDir) {
       // generate a ingest spec from given file info
       // use name as its identifier
       auto spec = std::make_shared<IngestSpec>(
-        table, version, itr->name, itr->domain, itr->size, SpecState::NEW);
+        table, version, itr->name, itr->domain, itr->size, SpecState::NEW, macroDate);
 
       // push to the repo
       specs.push_back(spec);
@@ -107,7 +108,7 @@ void genSpecs4Swap(const std::string& version,
     // list all objects/files from given path
     auto files = fs->list(sourceInfo.path);
     LOG(INFO) << fmt::format("list {0}:{1} = {2}", sourceInfo.host, sourceInfo.path, files.size());
-    genSpecPerFile(table, version, files, specs);
+    genSpecPerFile(table, version, files, specs, 0);
     return;
   }
 
@@ -127,16 +128,14 @@ void genSpecs4Roll(const std::string& version,
     // list all objects/files from given path
     // A roll spec will cover X days given table location of source data
     const auto now = Evidence::now();
-    const auto dateMacro = [&now](auto daysBack) -> std::string {
-      return Evidence::fmt_ymd_dash(now - daysBack * DAY_SECONDS);
-    };
-
     const auto max_days = table->max_hr / 24;
     for (size_t i = 0; i <= max_days; ++i) {
       // we only provide single macro for now
-      auto path = fmt::format(sourceInfo.path, fmt::arg("date", dateMacro(i)));
+      auto timeValue = now - i * DAY_SECONDS;
+      auto path = fmt::format(
+        sourceInfo.path, fmt::arg("date", Evidence::fmt_ymd_dash(timeValue)));
       auto files = fs->list(path);
-      genSpecPerFile(table, version, files, specs);
+      genSpecPerFile(table, version, files, specs, timeValue);
     }
 
     return;
@@ -149,7 +148,7 @@ void SpecRepo::process(const std::string& version, const TableSpecPtr& table, st
   // specialized loader handling - nebula test set identified by static time provided
   if (table->loader == "NebulaTest") {
     // single spec for nebula test loader
-    specs.push_back(std::make_shared<IngestSpec>(table, version, buildIndentityByTime(table->timeSpec), "", 0, SpecState::NEW));
+    specs.push_back(std::make_shared<IngestSpec>(table, version, buildIndentityByTime(table->timeSpec), "", 0, SpecState::NEW, 0));
     return;
   }
 

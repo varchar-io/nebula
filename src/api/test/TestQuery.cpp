@@ -27,7 +27,6 @@
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
-#include "execution/io/trends/Trends.h"
 #include "execution/meta/TableService.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
@@ -46,130 +45,12 @@ using nebula::common::Cursor;
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
-using nebula::execution::io::trends::TrendsTable;
 using nebula::execution::meta::TableService;
+using nebula::meta::BlockSignature;
 using nebula::meta::TestTable;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
-
-TEST(ApiTest, TestReadSamples) {
-  TrendsTable trends;
-  auto ms = std::make_shared<TableService>();
-
-  // query this table
-  const auto upbound = std::numeric_limits<int64_t>::max();
-  const auto query = table(trends.name(), ms)
-                       .where(col("_time_") > 0 && col("_time_") < upbound && starts(col("query"), "winter"))
-                       .select(
-                         col("*"))
-                       .limit(10);
-
-  // compile the query into an execution plan
-  auto plan = query.compile();
-
-  // print out the plan through logging
-  plan->setWindow({ 0, upbound });
-  plan->display();
-
-  // load test data to run this query
-  trends.load(256);
-
-  nebula::common::Evidence::Duration tick;
-  // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
-
-  // print out result;
-  LOG(INFO) << "----------------------------------------------------------------";
-  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << fmt::format("col: {0:20} | {1:12} | {2:12}", "Query", "Count", "Time");
-  while (result->hasNext()) {
-    const auto& row = result->next();
-    LOG(INFO) << fmt::format("row: {0:20} | {1:12} | {2:12}",
-                             row.readString("query"),
-                             row.readLong("count"),
-                             row.readLong(nebula::meta::Table::TIME_COLUMN));
-  }
-}
-
-TEST(ApiTest, TestDataFromCsv) {
-  TrendsTable trends;
-  auto ms = std::make_shared<TableService>();
-
-  // query this table
-  const auto upbound = std::numeric_limits<int64_t>::max();
-  const auto query = table(trends.name(), ms)
-                       .where(col("_time_") > 0 && col("_time_") < upbound && starts(col("query"), "winter"))
-                       .select(
-                         col("query"),
-                         sum(col("count")).as("total"))
-                       .groupby({ 1 });
-
-  // compile the query into an execution plan
-  auto plan = query.compile();
-
-  // print out the plan through logging
-  plan->setWindow({ 0, upbound });
-  plan->display();
-
-  // load test data to run this query
-  trends.load(256);
-
-  nebula::common::Evidence::Duration tick;
-  // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
-
-  // print out result;
-  LOG(INFO) << "----------------------------------------------------------------";
-  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << fmt::format("col: {0:20} | {1:12}", "Query", "Total");
-  while (result->hasNext()) {
-    const auto& row = result->next();
-    LOG(INFO) << fmt::format("row: {0:20} | {1:12}",
-                             row.readString("query"),
-                             row.readLong("total"));
-  }
-}
-
-TEST(ApiTest, TestMatchedKeys) {
-  TrendsTable trends;
-  auto ms = std::make_shared<TableService>();
-
-  // query this table
-  const auto query = table(trends.name(), ms)
-                       .where(like(col("query"), "leg work%"))
-                       .select(
-                         col("query"),
-                         col("_time_"),
-                         sum(col("count")).as("total"))
-                       .groupby({ 1, 2 });
-
-  // compile the query into an execution plan
-  auto plan = query.compile();
-
-  // print out the plan through logging
-  plan->display();
-
-  // load test data to run this query
-  trends.load(1);
-
-  nebula::common::Evidence::Duration tick;
-  // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
-
-  // print out result;
-  LOG(INFO) << "----------------------------------------------------------------";
-  LOG(INFO) << "Query: select query, count(1) as total from trends.draft where query like '%work%' group by 1;";
-  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << fmt::format("col: {0:20} | {1:12} | {2:12}", "Query", "Date", "Total");
-  while (result->hasNext()) {
-    const auto& row = result->next();
-    LOG(INFO) << fmt::format("row: {0:20} | {1:12} | {2:12}",
-                             row.readString("query"),
-                             row.readLong("_time_"),
-                             row.readInt("total"));
-  }
-}
 
 TEST(ApiTest, TestMultipleBlocks) {
   // load test data to run this query
@@ -180,13 +61,13 @@ TEST(ApiTest, TestMultipleBlocks) {
   int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
-  auto ms = std::make_shared<TableService>();
+  auto ms = TableService::singleton();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
   }
 
   // query this table
@@ -234,13 +115,13 @@ TEST(ApiTest, TestStringEqEmpty) {
   int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
-  auto ms = std::make_shared<TableService>();
+  auto ms = TableService::singleton();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
   }
 
   // query this table
@@ -288,13 +169,13 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
   int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
-  auto ms = std::make_shared<TableService>();
+  auto ms = TableService::singleton();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
   }
 
   // we know we don't have an id larger than this number, so the query should skip all blocks

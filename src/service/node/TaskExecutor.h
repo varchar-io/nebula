@@ -57,6 +57,7 @@ private:
   // use std::unordered_map<signature, state> for query (not cleared up)
   folly::ProducerConsumerQueue<nebula::common::Task> queue_;
   std::unordered_map<std::string, nebula::common::TaskState> state_;
+  std::mutex stateLock_;
 };
 
 } // namespace node

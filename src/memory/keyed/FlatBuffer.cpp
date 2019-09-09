@@ -24,6 +24,7 @@ using nebula::common::PagedSlice;
 using nebula::surface::ListData;
 using nebula::surface::RowData;
 using nebula::type::Kind;
+
 void FlatBuffer::initSchema() {
   // build name to index look up
   // build a field name to data node
@@ -43,7 +44,8 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema)
   : schema_{ schema },
     main_{ std::make_unique<Buffer>(2 * 1024) },
     data_{ std::make_unique<Buffer>(32 * 1024) },
-    list_{ std::make_unique<Buffer>(4 * 1024) } {
+    list_{ std::make_unique<Buffer>(4 * 1024) },
+    chunk_{ nullptr } {
   this->initSchema();
 }
 
@@ -51,7 +53,8 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema)
 // NOTE: This read-only object doesn't own the data buffer neither copy, it only references it.
 //       Hence external buffer holder needs to be live the same scope this object,
 //       We can improve this interface later.
-FlatBuffer::FlatBuffer(const nebula::type::Schema& schema, const NByte* data) : schema_{ schema } {
+FlatBuffer::FlatBuffer(const nebula::type::Schema& schema, NByte* data)
+  : schema_{ schema }, chunk_{ data } {
   this->initSchema();
 
   // deserialize data for rows and all data blocks

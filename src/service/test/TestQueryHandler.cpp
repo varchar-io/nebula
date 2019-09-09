@@ -21,7 +21,6 @@
 #include "common/Folly.h"
 #include "execution/core/NodeConnector.h"
 #include "execution/core/ServerExecutor.h"
-#include "execution/io/trends/Trends.h"
 #include "execution/meta/TableService.h"
 #include "fmt/format.h"
 #include "meta/NBlock.h"
@@ -43,8 +42,8 @@ using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
-using nebula::execution::io::trends::TrendsTable;
 using nebula::execution::meta::TableService;
+using nebula::meta::BlockSignature;
 using nebula::meta::NBlock;
 using nebula::meta::TestTable;
 using nebula::service::base::ErrorCode;
@@ -55,108 +54,6 @@ using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
-
-TEST(ServiceTest, TestQueryHandler) {
-  TrendsTable trends;
-
-  // load test data to run this query
-  trends.load(10);
-
-  nebula::common::Evidence::Duration tick;
-  QueryHandler handler;
-  QueryRequest request;
-  request.set_table(trends.name());
-  request.set_start(Evidence::time("2019-02-01", "%Y-%m-%d"));
-  request.set_end(Evidence::time("2019-05-01", "%Y-%m-%d"));
-  auto pa = request.mutable_filtera();
-  {
-    auto expr = pa->add_expression();
-    expr->set_column("query");
-    expr->set_op(Operation::LIKE);
-    expr->add_value("lego%");
-  }
-
-  request.add_dimension("query");
-  request.add_dimension("_time_");
-  auto metric = request.add_metric();
-  metric->set_column("count");
-  metric->set_method(Rollup::SUM);
-
-  ErrorCode err = ErrorCode::NONE;
-
-  // No error in compiling the query
-  auto query = handler.build(trends, request, err);
-  auto plan = handler.compile(query, { request.start(), request.end() }, err);
-  EXPECT_EQ(err, ErrorCode::NONE);
-
-  // No error in exeucting the query
-  auto connector = std::make_shared<NodeConnector>();
-  auto result = handler.query(*plan, connector, err);
-  EXPECT_EQ(err, ErrorCode::NONE);
-
-  // print out result;
-  LOG(INFO) << "----------------------------------------------------------------";
-  LOG(INFO) << "Query: select query, count(1) as total from trends.draft where query like '%work%' group by 1;";
-  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << fmt::format("col: {0:40} | {1:12} | {2:12}", "Query", "Date", "Total");
-  while (result->hasNext()) {
-    const auto& row = result->next();
-    LOG(INFO) << fmt::format("row: {0:40} | {1:12} | {2:12}",
-                             row.readString("query"),
-                             row.readLong("_time_"),
-                             row.readInt("count.sum"));
-  }
-}
-
-TEST(ServiceTest, TestJsonifyResults) {
-  TrendsTable trends;
-
-  // load test data to run this query
-  trends.load(4);
-
-  nebula::common::Evidence::Duration tick;
-  QueryHandler handler;
-  QueryRequest request;
-  request.set_table(trends.name());
-  request.set_start(Evidence::time("2017-02-01", "%Y-%m-%d"));
-  request.set_end(Evidence::time("2019-05-01", "%Y-%m-%d"));
-  auto pa = request.mutable_filtera();
-  // COUNT needs to be more than 2
-  {
-    auto expr = pa->add_expression();
-    expr->set_column("count");
-    expr->set_op(Operation::MORE);
-    expr->add_value("2");
-  }
-  // AND query like "lego %"
-  {
-    auto expr = pa->add_expression();
-    expr->set_column("query");
-    expr->set_op(Operation::LIKE);
-    expr->add_value("apple%");
-  }
-
-  request.add_dimension("query");
-  request.add_dimension("_time_");
-  auto metric = request.add_metric();
-  metric->set_column("count");
-  metric->set_method(Rollup::SUM);
-
-  ErrorCode err = ErrorCode::NONE;
-
-  // No error in compiling the query
-  auto query = handler.build(trends, request, err);
-  auto plan = handler.compile(query, { request.start(), request.end() }, err);
-  EXPECT_EQ(err, ErrorCode::NONE);
-
-  // No error in exeucting the query
-  auto connector = std::make_shared<NodeConnector>();
-  auto result = handler.query(*plan, connector, err);
-  EXPECT_EQ(err, ErrorCode::NONE);
-
-  LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << ServiceProperties::jsonify(result, plan->getOutputSchema());
-}
 
 TEST(ServiceTest, TestQueryTimeline) {
   // load test data to run this query
@@ -172,7 +69,7 @@ TEST(ServiceTest, TestQueryTimeline) {
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
   }
 
   // load test data to run this query
@@ -228,7 +125,7 @@ TEST(ServiceTest, TestStringFilters) {
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
   }
 
   // load test data to run this query
@@ -285,7 +182,7 @@ TEST(ServiceTest, TestQuerySamples) {
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
   }
 
   // load test data to run this query
@@ -376,13 +273,13 @@ TEST(ServiceTest, TestQuerySerde) {
   auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
-  auto ms = std::make_shared<TableService>();
+  auto ms = TableService::singleton();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
   }
 
   const auto query = table(testTable.name(), ms)
@@ -432,13 +329,13 @@ TEST(ServiceTest, TestDataSerde) {
   auto end = Evidence::time("2019-05-01", "%Y-%m-%d");
 
   // let's plan these many data std::thread::hardware_concurrency()
-  auto ms = std::make_shared<TableService>();
+  auto ms = TableService::singleton();
   nebula::meta::TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
-    bm->add({ testTable.name(), i++, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
   }
 
   const auto query = table(testTable.name(), ms)

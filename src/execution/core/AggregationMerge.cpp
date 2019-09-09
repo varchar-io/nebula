@@ -55,6 +55,11 @@ RowCursorPtr merge(
     auto hf = std::make_unique<HashFlat>(schema, keys);
 
     for (auto it = sources.begin(); it < sources.end(); ++it) {
+      // if the result is empty
+      if (!it->hasValue()) {
+        continue;
+      }
+
       auto blockResult = it->value();
 
       // iterate the block result and partial aggregate it in hash flat

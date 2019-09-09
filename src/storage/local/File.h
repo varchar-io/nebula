@@ -44,7 +44,12 @@ public:
 
   // return file info of given file path
   virtual FileInfo info(const std::string&) override;
+
+  virtual std::string copy(const std::string&) override {
+    throw NException("Not implemented");
+  }
 };
+
 } // namespace local
 } // namespace storage
 } // namespace nebula

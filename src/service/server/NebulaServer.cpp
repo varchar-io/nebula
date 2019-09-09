@@ -30,6 +30,7 @@
 #include "common/Folly.h"
 #include "common/TaskScheduler.h"
 #include "execution/BlockManager.h"
+#include "execution/meta/TableService.h"
 #include "ingest/SpecRepo.h"
 #include "memory/Batch.h"
 #include "meta/ClusterInfo.h"
@@ -61,6 +62,7 @@ using grpc::Status;
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::io::BlockLoader;
+using nebula::execution::meta::TableService;
 using nebula::memory::Batch;
 using nebula::meta::Table;
 using nebula::service::base::ErrorCode;
@@ -90,7 +92,8 @@ grpc::Status V1ServiceImpl::Tables(grpc::ServerContext*, const ListTables* reque
 }
 
 grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest* request, TableStateResponse* reply) {
-  const auto table = ts_.query(request->table());
+
+  const auto table = TableService::singleton()->query(request->table());
   auto bm = BlockManager::init();
   // query the table's state
   auto metrics = bm->getTableMetrics(table->name());
@@ -124,7 +127,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
   ErrorCode error = ErrorCode::NONE;
 
   // get the table
-  auto table = ts_.query(request->table());
+  auto table = TableService::singleton()->query(request->table());
 
   // build the query
   auto query = handler_.build(*table, *request, error);
@@ -236,6 +239,9 @@ void RunServer() {
         // load the new conf
         auto& ci = nebula::meta::ClusterInfo::singleton();
         ci.load(FLAGS_CLS_CONF);
+
+        // TODO(cao) - how to support table schema/column props evolution?
+        nebula::execution::meta::TableService::singleton()->enroll(ci);
 
         // refresh data specs
         specRepo.refresh(ci);

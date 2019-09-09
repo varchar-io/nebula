@@ -44,7 +44,7 @@ __attribute__((unused)) static Query table(const std::string& name, const std::s
   auto ms = metaservice;
   if (ms == nullptr) {
     // default one
-    ms = std::make_shared<nebula::execution::meta::TableService>();
+    ms = nebula::execution::meta::TableService::singleton();
   }
 
   // before we use copy-elision by calling constructor directly

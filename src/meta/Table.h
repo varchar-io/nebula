@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "common/Errors.h"
 #include "type/Type.h"
 
@@ -43,12 +45,18 @@ struct Column {
   bool withDict = false;
 };
 
+using ColumnProps = std::unordered_map<std::string, Column>;
+
 class Table {
 public:
-  Table(const std::string& name) : name_{ name }, schema_{ nullptr } {
+  Table(const std::string& name) : Table(name, nullptr) {}
+  Table(const std::string& name, Schema schema) : Table(name, schema, {}) {}
+  Table(const std::string& name, Schema schema, ColumnProps columns)
+    : name_{ name }, schema_{ schema }, columns_{ std::move(columns) } {
     // TODO(cao) - load table properties from meta data service
     loadTable();
   }
+
   virtual ~Table() = default;
 
   friend bool operator==(const Table& t1, const Table& t2) noexcept {
@@ -76,7 +84,12 @@ public:
   }
 
   // retrieve all column meta data by its name
-  virtual Column column(const std::string&) const noexcept {
+  virtual Column column(const std::string& col) const noexcept {
+    auto column = columns_.find(col);
+    if (column != columns_.end()) {
+      return column->second;
+    }
+
     return {};
   }
 
@@ -85,6 +98,7 @@ protected:
   // such as "nebula.test"
   std::string name_;
   Schema schema_;
+  ColumnProps columns_;
 
 private:
   void loadTable();

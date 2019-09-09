@@ -97,7 +97,9 @@ std::shared_ptr<folly::FunctionScheduler> NodeSync::async(
         }
       }
 
-      LOG(INFO) << fmt::format("Communicated tasks {0} to nodes {1}.", taskNotified, nodesTalked);
+      if (taskNotified > 0) {
+        LOG(INFO) << fmt::format("Communicated tasks {0} to nodes {1}.", taskNotified, nodesTalked);
+      }
     },
     std::chrono::milliseconds(intervalMs),
     "Node-Sync");

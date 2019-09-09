@@ -36,7 +36,7 @@ TEST(MetaTest, TestTestTable) {
 
 TEST(MetaTest, TestNBlock) {
   BlockState state;
-  NBlock<int> b1({ "mock", 0, 5, 10 }, NNode::inproc(), state);
+  NBlock<int> b1(BlockSignature{ "mock", 0, 5, 10 }, NNode::inproc(), state);
 
   // check in range
   ASSERT_TRUE(b1.inRange(5));

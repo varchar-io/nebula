@@ -496,6 +496,32 @@ TEST(ParquetTest, TestReadThroughFlatRow) {
 
   EXPECT_EQ(rows, numRows);
 }
+
+TEST(ParquetTest, DISABLED_TestRealParquetFile) {
+  auto localFile = "/tmp/parquet.f";
+  auto schema = TypeSerializer::from("ROW<id:long, user_id:long, link_domain:string, title:string, details:string, image_signature:string>");
+  ParquetReader reader(localFile, schema);
+  auto rows = 0;
+  auto toString = [](const RowData& row) -> std::string {
+    return fmt::format(
+      "b={0}, i={1}, l={2}, f={3}, d={4}, s={5}",
+      row.isNull("id") ? "NULL" : folly::to<std::string>(row.readLong("id")),
+      row.isNull("user_id") ? "NULL" : folly::to<std::string>(row.readLong("user_id")),
+      row.isNull("link_domain") ? "NULL" : row.readString("link_domain"),
+      row.isNull("title") ? "NULL" : row.readString("title"),
+      row.isNull("details") ? "NULL" : row.readString("details"),
+      row.isNull("image_signature") ? "NULL" : row.readString("image_signature"));
+  };
+
+  LOG(INFO) << "Total rows: " << reader.size();
+  while (reader.hasNext()) {
+    const auto& r = reader.next();
+    LOG(INFO) << "ROW" << rows++ << ": " << toString(r);
+  }
+
+  EXPECT_EQ(rows, reader.size());
+}
+
 } // namespace test
 } // namespace storage
 } // namespace nebula

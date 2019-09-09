@@ -20,7 +20,7 @@
 #include "TaskExecutor.h"
 #include "ingest/IngestSpec.h"
 
-DEFINE_uint32(TASK_QUEUE_SIZE, 1000, "task queue size for bounded queue");
+DEFINE_uint32(TASK_QUEUE_SIZE, 5000, "task queue size for bounded queue");
 
 /**
  * Define node server that does the work as nebula server asks.
@@ -59,29 +59,34 @@ void TaskExecutor::process() {
   }
 }
 
+// enqueue could be called by multiple session, need sync
 TaskState TaskExecutor::enqueue(const Task& task) {
+  std::lock_guard<std::mutex> guard(stateLock_);
+
   // unique ID in the running system to avoid duplicate task
   const auto sign = task.signature();
   auto itr = state_.find(sign);
 
   // found this task, it is already acked
   if (itr != state_.end()) {
-    LOG(INFO) << "Task already in node, state=" << (char)itr->second;
+    VLOG(1) << "Task already in node, state=" << (char)itr->second;
     return itr->second;
   }
 
   // if not found, we queue this task, and set its state as waiting
   if (queue_.isFull()) {
-    LOG(INFO) << "Queue is full, can not enqueue task at this moment. Q-size: " << queue_.capacity();
+    VLOG(1) << "Queue is full, can not enqueue task at this moment. Q-size: " << queue_.capacity();
     return TaskState::FAILED;
   }
 
   // enqueue it for sure
   if (!queue_.write(task)) {
-    LOG(INFO) << "Failed to enqueue the task, unknown reason.";
+    LOG(ERROR) << "Failed to enqueue the task, unknown reason.";
     return TaskState::FAILED;
   }
 
+  // save its state
+  state_[sign] = TaskState::WAITING;
   return TaskState::WAITING;
 }
 
@@ -92,6 +97,8 @@ bool TaskExecutor::process(const Task& task) {
   // handle ingestion task
   if (task.type() == TaskType::INGESTION) {
     std::shared_ptr<IngestSpec> is = task.spec<IngestSpec>();
+
+    // process a new task - enroll its table if its first time
     return is->work();
   }
 

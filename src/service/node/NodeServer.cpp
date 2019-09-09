@@ -18,14 +18,17 @@
 // #define USE_YOMM2_MD
 // #endif
 
+#include <gflags/gflags.h>
+
 #include "NodeServer.h"
 #include "TaskExecutor.h"
 #include "common/TaskScheduler.h"
 #include "execution/BlockManager.h"
 #include "execution/core/NodeExecutor.h"
-#include "execution/io/trends/Trends.h"
 #include "execution/serde/RowCursorSerde.h"
 #include "surface/DataSurface.h"
+
+DEFINE_int32(MAX_MSG_SIZE, 1073741824, "max message size sending between node and server, default to 1G");
 
 /**
  * Define node server that does the work as nebula server asks.
@@ -142,7 +145,6 @@ grpc::Status NodeServerImpl::Poll(
   const auto bm = BlockManager::init();
   flatbuffers::grpc::MessageBuilder mb;
   auto blocks = bm->all();
-  // LOG(INFO) << "Current node hosts # blocks: " << blocks.size();
 
   std::vector<flatbuffers::Offset<DataBlock>> db;
   db.reserve(blocks.size());
@@ -151,7 +153,7 @@ grpc::Status NodeServerImpl::Poll(
                    const auto& state = bb.state();
                    return CreateDataBlockDirect(
                      mb, bb.getTable().c_str(), bb.getId(), bb.start(), bb.end(),
-                     bb.storage().c_str(), state.numRows, state.rawSize);
+                     bb.spec().c_str(), bb.storage().c_str(), state.numRows, state.rawSize);
                  });
 
   mb.Finish(CreateNodeStateReplyDirect(mb, &db));
@@ -192,6 +194,8 @@ void RunServer() {
   nebula::service::node::NodeServerImpl node;
 
   grpc::ServerBuilder builder;
+  builder.SetMaxReceiveMessageSize(FLAGS_MAX_MSG_SIZE);
+  builder.SetMaxSendMessageSize(FLAGS_MAX_MSG_SIZE);
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(&node);
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());

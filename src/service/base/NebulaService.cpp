@@ -37,6 +37,7 @@ using nebula::api::dsl::Expression;
 using nebula::api::dsl::Query;
 using nebula::api::dsl::Serde;
 using nebula::api::dsl::SortType;
+using nebula::common::Pool;
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
@@ -45,6 +46,7 @@ using nebula::ingest::IngestSpec;
 using nebula::ingest::SpecState;
 using nebula::memory::keyed::FlatBuffer;
 using nebula::memory::keyed::FlatRowCursor;
+using nebula::meta::ColumnProps;
 using nebula::meta::DataSource;
 using nebula::meta::TableSpec;
 using nebula::meta::TimeSpec;
@@ -271,7 +273,11 @@ RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>
   const auto schema = nebula::type::TypeSerializer::from(flatbuffers::GetString(ptr->schema()));
   N_ENSURE(ptr->type() == BatchType::BatchType_Flat, "only support flat for now");
 
-  auto bytes = ptr->data()->data();
+  // TODO(cao) - can we avoid this allocation?
+  auto data = ptr->data();
+  auto size = data->size();
+  auto bytes = static_cast<NByte*>(Pool::getDefault().allocate(size));
+  std::memcpy(bytes, data->data(), size);
 
   // TODO(cao) - It is not good, we're reference some data from batch but actually not owning it.
   auto fb = std::make_unique<FlatBuffer>(schema, bytes);
@@ -290,7 +296,21 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     // create ingest task
     auto table = spec->table();
     const auto& time = table->timeSpec;
+
+    // serialize column properties
+    auto numCols = table->columnProps.size();
+    std::vector<flatbuffers::Offset<ColumnProp>> colProps;
+    colProps.reserve(numCols);
+    for (auto& itr : table->columnProps) {
+      colProps.push_back(
+        CreateColumnProp(mb, mb.CreateString(itr.first), itr.second.withBloomFilter));
+    }
+    auto fbColProps = mb.CreateVector<flatbuffers::Offset<ColumnProp>>(colProps);
+
+    // serialize the ingest task
     auto it = CreateIngestTask(mb,
+                               mb.CreateString(table->name),
+                               table->max_hr,
                                mb.CreateString(table->loader),
                                (int8_t)table->source,
                                mb.CreateString(table->format),
@@ -299,11 +319,13 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
                                time.unixTimeValue,
                                mb.CreateString(time.colName),
                                mb.CreateString(time.pattern),
+                               fbColProps,
                                mb.CreateString(spec->version()),
                                mb.CreateString(spec->id()),
                                mb.CreateString(spec->domain()),
                                spec->size(),
-                               (int8_t)spec->state());
+                               (int8_t)spec->state(),
+                               spec->macroDate());
 
     // create task spec
     auto ts = CreateTaskSpec(mb, tt, it);
@@ -332,19 +354,28 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
       it->time_format()->str()
     };
 
+    // build column properties
+    ColumnProps props;
+    auto colProps = it->column_props();
+    for (auto itr = colProps->begin(); itr != colProps->end(); ++itr) {
+      // adding all properties here
+      props[itr->name()->str()] = { itr->bf() };
+    }
+
     // build table spec
-    std::string tbName = "";
+    std::string tbName = it->name()->str();
     std::string src = "";
     std::string bak = "";
     auto table = std::make_shared<TableSpec>(std::move(tbName),
                                              0,
-                                             0,
+                                             it->max_hr(),
                                              it->schema()->str(),
                                              (DataSource)it->source(),
                                              it->loader()->str(),
                                              std::move(src),
                                              std::move(bak),
                                              it->format()->str(),
+                                             std::move(props),
                                              std::move(time));
 
     auto is = std::make_shared<IngestSpec>(
@@ -353,7 +384,8 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
       it->id()->str(),
       it->domain()->str(),
       it->size(),
-      (SpecState)it->state());
+      (SpecState)it->state(),
+      it->date());
 
     return Task(tt, is);
   }

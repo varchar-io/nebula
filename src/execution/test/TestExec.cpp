@@ -21,7 +21,6 @@
 #include "execution/core/BlockExecutor.h"
 #include "execution/eval/UDF.h"
 #include "execution/eval/ValueEval.h"
-#include "execution/io/trends/Pins.h"
 #include "execution/serde/RowCursorSerde.h"
 #include "memory/Batch.h"
 #include "meta/TestTable.h"
@@ -43,11 +42,6 @@ using nebula::type::TypeSerializer;
 
 TEST(ExecutionTest, TestOperator) {
   LOG(INFO) << "Execution provides physical executuin units at any stage";
-}
-
-TEST(ExecutionTest, TestLoadPins) {
-  nebula::execution::io::trends::PinsTable pins;
-  pins.load(1);
 }
 
 static constexpr auto line = [](const RowData& r) {

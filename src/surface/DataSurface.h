@@ -55,6 +55,11 @@ public:
   virtual std::unique_ptr<RowData> item(size_t) const override {
     throw NException("Empty cursor");
   }
+
+  static RowCursorPtr instance() {
+    static RowCursorPtr inst = std::make_shared<EmptyRowCursor>();
+    return inst;
+  }
 };
 
 // (TODO) CRTP - avoid virtual methods?

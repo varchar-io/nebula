@@ -17,8 +17,8 @@
 #pragma once
 
 #include <any>
-#include <vector>
 #include <functional>
+#include <vector>
 #include "common/Errors.h"
 
 namespace nebula {
@@ -174,6 +174,10 @@ public:
     return childAt<R>(size() - 1);
   }
 
+  void addChild(TreeNode child) {
+    children_.push_back(child);
+  }
+
   template <typename... S>
   size_t addChildren(std::shared_ptr<Tree<S>>... children) {
     auto size = children_.size();
@@ -185,6 +189,11 @@ public:
     // Otherwise we can use this method to do expansion
     // each_arg([this](auto c) { children_.push_back(c); }, children...);
     return children_.size() - size;
+  }
+
+  void removeAt(size_t i) {
+    // remove the ith item
+    children_.erase(children_.begin() + i);
   }
 
 protected:

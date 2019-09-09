@@ -46,6 +46,7 @@ struct convert<nebula::meta::ServerOptions> {
 namespace nebula {
 namespace meta {
 
+using nebula::meta::Column;
 using nebula::type::TypeSerializer;
 
 DataSource asDataSource(const std::string& data) {
@@ -76,7 +77,25 @@ TimeSpec asTimeSpec(const YAML::Node& node) {
     };
   }
 
+  if (timeType == "macro") {
+    return { TimeType::MACRO, 0, "", node["pattern"].as<std::string>() };
+  }
+
   throw NException("Misconfigured time spec");
+}
+
+std::unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
+  // iterate over each column
+  ColumnProps props;
+  for (YAML::const_iterator it = node.begin(); it != node.end(); ++it) {
+    auto colName = it->first.as<std::string>();
+    const auto& settings = it->second;
+    props.emplace(colName,
+                  Column{
+                    settings["bloom_filter"].as<bool>() });
+  }
+
+  return props;
 }
 
 void ClusterInfo::load(const std::string& file) {
@@ -123,6 +142,7 @@ void ClusterInfo::load(const std::string& file) {
       td["source"].as<std::string>(),
       td["backup"].as<std::string>(),
       td["format"].as<std::string>(),
+      asColumnProps(td["columns"]),
       asTimeSpec(td["time"])));
   }
 

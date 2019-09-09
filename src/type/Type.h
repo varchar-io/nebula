@@ -256,12 +256,12 @@ public:
   // A generic way to provide type creation
   static auto create(const std::string& name, const std::vector<TreeNode>& children)
     -> TreeNode {
-    return std::dynamic_pointer_cast<TreeBase>(std::make_shared<TType>(name, children));
+    return std::static_pointer_cast<TreeBase>(std::make_shared<TType>(name, children));
   }
 
   static auto createTree(const std::string& name)
     -> TreeNode {
-    return std::dynamic_pointer_cast<TreeBase>(std::make_shared<TType>(name));
+    return std::static_pointer_cast<TreeBase>(std::make_shared<TType>(name));
   }
 
 public:
@@ -281,6 +281,21 @@ public:
       auto columnType = childType(i);
       if (name == columnType->name()) {
         func(columnType);
+        break;
+      }
+    }
+  }
+
+  // remove a field by specified name
+  void remove(const std::string& name) {
+    N_ENSURE(KIND == Kind::STRUCT, "only support working on row type");
+
+    // build a field name to data node
+    for (size_t i = 0, s = this->size(); i < s; ++i) {
+      // name match
+      auto columnType = childType(i);
+      if (name == columnType->name()) {
+        this->removeAt(i);
         break;
       }
     }

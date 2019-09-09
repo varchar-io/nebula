@@ -54,7 +54,11 @@ public:
   // read a file/object fully into a memory buffer
   virtual size_t read(const std::string&, char*) = 0;
 
+  // return file info of given file handler
   virtual FileInfo info(const std::string&) = 0;
+
+  // copy a file to an tmp file - most likely used for remote file download scenario
+  virtual std::string copy(const std::string&) = 0;
 };
 } // namespace storage
 } // namespace nebula

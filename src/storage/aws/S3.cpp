@@ -15,10 +15,15 @@
  */
 
 #include "S3.h"
+
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/ListObjectsV2Request.h>
+#include <cstdio>
+#include <fstream>
 #include <glog/logging.h>
+#include <iostream>
+#include <unistd.h>
 
 /**
  * A wrapper for interacting with AWS / S3
@@ -85,6 +90,38 @@ void S3::read(const std::string& prefix, const std::string& key) {
   char line[255] = { 0 };
   stream.getline(line, 254);
   LOG(INFO) << line;
+}
+
+std::string S3::copy(const std::string& key) {
+  // Set up the request
+  Aws::S3::S3Client client;
+  Aws::S3::Model::GetObjectRequest objReq;
+  objReq.SetBucket(this->bucket_);
+  objReq.SetKey(key);
+
+  // Get the object
+  auto result = client.GetObject(objReq);
+  if (result.IsSuccess()) {
+    // Get an Aws::IOStream reference to the retrieved file
+    auto& retrieved = result.GetResultWithOwnership().GetBody();
+
+    // construct a tmp file name from std io lib
+    // local file name tmeplate to copy data into
+    char tmpFile[] = "/tmp/nebula.s3.XXXXXX";
+    int ret = mkstemp(tmpFile);
+    N_ENSURE(ret != -1, "Failed to create temp file");
+
+    // create an out stream and copy data from S3 stream to it
+    std::ofstream output(tmpFile, std::ios::binary);
+    output << retrieved.rdbuf();
+
+    // return a copy of file
+    return tmpFile;
+  }
+
+  auto error = result.GetError();
+  LOG(ERROR) << "ERROR: " << error.GetExceptionName() << ": " << error.GetMessage();
+  return {};
 }
 
 } // namespace aws

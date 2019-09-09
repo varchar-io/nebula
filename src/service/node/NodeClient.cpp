@@ -29,9 +29,11 @@ using nebula::common::TaskState;
 using nebula::execution::BlockManager;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::io::BatchBlock;
+using nebula::meta::BlockSignature;
 using nebula::service::base::BatchSerde;
 using nebula::service::base::QuerySerde;
 using nebula::service::base::TaskSerde;
+using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
 
 void NodeClient::echo(const std::string& name) {
@@ -107,7 +109,7 @@ folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
 
     LOG(ERROR) << "Node failure: " << status.error_message();
     // else return empty result set
-    p->setValue(RowCursorPtr(0));
+    p->setValue(EmptyRowCursor::instance());
   });
 
   return p->getFuture();
@@ -135,7 +137,7 @@ void NodeClient::state() {
     for (size_t i = 0; i < size; ++i) {
       const DataBlock* db = blocks->Get(i);
       bm->add(BatchBlock(
-        { db->tbl()->str(), db->id(), db->ts(), db->te() },
+        BlockSignature{ db->tbl()->str(), db->id(), db->ts(), db->te(), db->spec()->str() },
         node_,
         { db->rows(), db->rsize() }));
     }

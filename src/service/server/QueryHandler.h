@@ -34,7 +34,7 @@ namespace server {
 
 class QueryHandler final {
 public:
-  QueryHandler() : ms_{ std::make_shared<nebula::execution::meta::TableService>() } {}
+  QueryHandler() : ms_{ nebula::execution::meta::TableService::singleton() } {}
   // build the query object to execute
   std::shared_ptr<nebula::api::dsl::Query> build(
     const nebula::meta::Table&,

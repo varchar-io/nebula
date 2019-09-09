@@ -55,7 +55,7 @@ using nebula::type::TypeSerializer;
 TEST(ApiTest, TestQueryStructure) {
   auto tbl = "nebula.test";
   // set up table for testing
-  auto ms = std::make_shared<TableService>();
+  auto ms = TableService::singleton();
   const auto query = table(tbl, ms)
                        .where(like(col("event"), "NN%"))
                        .select(
@@ -114,7 +114,7 @@ TEST(ApiTest, TestQueryStructure) {
 TEST(ApiTest, TestSortingAndTop) {
   auto tbl = "nebula.test";
   // set up table for testing
-  auto ms = std::make_shared<TableService>();
+  auto ms = TableService::singleton();
   const auto query = table(tbl, ms)
                        .where(like(col("event"), "N%"))
                        .select(
@@ -181,7 +181,7 @@ TEST(ApiTest, TestExprValueEval) {
   auto id2 = mirror.readInt("id");
   auto expected2 = id1 * 2 + 10 - (id2 / 4);
 
-  auto ms = std::make_shared<TableService>();
+  auto ms = TableService::singleton();
   auto tbl = ms->query("nebula.test");
   expr.type(*tbl);
   expr2.type(*tbl);
