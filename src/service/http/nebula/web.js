@@ -11,7 +11,7 @@ const d3 = NebulaClient.d3;
 const ds = NebulaClient.d3.select;
 const $$ = (e) => $(e).val();
 
-const serviceAddr = "http://dev-shawncao:8080";
+const serviceAddr = "{SERVER-ADDRESS}";
 const v1Client = new NebulaClient.V1Client(serviceAddr);
 
 const formatTime = (unix) => {

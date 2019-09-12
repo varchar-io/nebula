@@ -47,7 +47,6 @@
 DEFINE_string(CLS_CONF, "configs/cluster.yml", "cluster config file");
 DEFINE_uint64(CLS_CONF_UPDATE_INTERVAL, 5000, "interval in milliseconds to update cluster config");
 DEFINE_uint64(NODE_SYNC_INTERVAL, 5000, "interval in ms to conduct node sync");
-DEFINE_string(HOST_ADDR, "localhost", "Local dev purpose address to connect services");
 
 /**
  * A cursor template that help iterating a container.
