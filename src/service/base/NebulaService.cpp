@@ -15,12 +15,15 @@
  */
 
 #include "NebulaService.h"
+
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+
 #include "api/dsl/Serde.h"
 #include "common/Evidence.h"
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
+#include "ingest/BlockExpire.h"
 #include "memory/keyed/FlatRowCursor.h"
 #include "meta/TableSpec.h"
 #include "meta/TestTable.h"
@@ -42,6 +45,7 @@ using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
 using nebula::execution::QueryWindow;
+using nebula::ingest::BlockExpire;
 using nebula::ingest::IngestSpec;
 using nebula::ingest::SpecState;
 using nebula::memory::keyed::FlatBuffer;
@@ -51,6 +55,7 @@ using nebula::meta::DataSource;
 using nebula::meta::TableSpec;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
+using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Kind;
@@ -276,6 +281,12 @@ RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>
   // TODO(cao) - can we avoid this allocation?
   auto data = ptr->data();
   auto size = data->size();
+  // short circuit of zero size data
+  if (size == 0) {
+    LOG(INFO) << "Received an empty result set.";
+    return EmptyRowCursor::instance();
+  }
+
   auto bytes = static_cast<NByte*>(Pool::getDefault().allocate(size));
   std::memcpy(bytes, data->data(), size);
 
@@ -329,6 +340,26 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
 
     // create task spec
     auto ts = CreateTaskSpec(mb, tt, it);
+    mb.Finish(ts);
+    return mb.ReleaseMessage<TaskSpec>();
+  }
+
+  // serialize task of expiration
+  if (tt == TaskType::EXPIRATION) {
+    auto spec = task.spec<BlockExpire>();
+
+    // create ingest task
+    auto blocks = spec->blocks();
+    std::vector<flatbuffers::Offset<flatbuffers::String>> fbBlocks;
+    fbBlocks.reserve(blocks.size());
+    for (auto& itr : blocks) {
+      fbBlocks.push_back(mb.CreateString(itr));
+    }
+
+    auto et = CreateExpireTask(mb, mb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(fbBlocks));
+
+    // create task spec
+    auto ts = CreateTaskSpec(mb, tt, 0, et);
     mb.Finish(ts);
     return mb.ReleaseMessage<TaskSpec>();
   }
@@ -388,6 +419,18 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
       it->date());
 
     return Task(tt, is);
+  }
+
+  if (tt == TaskType::EXPIRATION) {
+    auto blocks = ptr->expire()->blocks();
+    std::list<std::string> idList;
+    for (auto itr = blocks->begin(); itr != blocks->end(); ++itr) {
+      idList.emplace_back(itr->data(), itr->size());
+    }
+
+    // move this list into a new object
+    auto be = std::make_shared<BlockExpire>(std::move(idList));
+    return Task(tt, be);
   }
 
   throw NException(fmt::format("Unhandled task type: {0}", tst));

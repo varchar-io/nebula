@@ -27,6 +27,7 @@ namespace node {
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::execution::BlockManager;
+using nebula::execution::BlockSet;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::io::BatchBlock;
 using nebula::meta::BlockSignature;
@@ -134,14 +135,17 @@ void NodeClient::state() {
 
     // update into current server block management
     auto bm = BlockManager::init();
+    BlockSet nBlocks;
     for (size_t i = 0; i < size; ++i) {
       const DataBlock* db = blocks->Get(i);
-      bm->add(BatchBlock(
+      nBlocks.emplace(BatchBlock{
         BlockSignature{ db->tbl()->str(), db->id(), db->ts(), db->te(), db->spec()->str() },
         node_,
-        { db->rows(), db->rsize() }));
+        { db->rows(), db->rsize() } });
     }
 
+    // do swap with existing node
+    bm->set(node_, std::move(nBlocks));
     return;
   }
 

@@ -518,11 +518,6 @@ bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, 
 }
 
 size_t FlatBuffer::serialize(NByte* buffer) const {
-  const auto numRows = rows_.size();
-  if (numRows == 0) {
-    return 0;
-  }
-
   auto offset = 0;
   // write size_t value
   const auto writeSizeT = [&buffer, &offset](size_t value) {
@@ -530,8 +525,13 @@ size_t FlatBuffer::serialize(NByte* buffer) const {
     offset += SIZET_SIZE;
   };
 
-  // write num rows
+  // write num rows always in case reader size check row size
+  // rather than binary size
+  const auto numRows = rows_.size();
   writeSizeT(numRows);
+  if (numRows == 0) {
+    return 0;
+  }
 
   // write all rows' offset and length
   for (size_t i = 0; i < numRows; ++i) {

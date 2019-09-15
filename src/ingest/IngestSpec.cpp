@@ -63,7 +63,7 @@ static constexpr auto LOADER_SWAP = "Swap";
 static constexpr auto LOADER_ROLL = "Roll";
 
 // load some nebula test data into current process
-void loadNebulaTestData(const TableSpecPtr& table) {
+void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
   // load test data to run this query
   auto bm = BlockManager::init();
 
@@ -79,7 +79,7 @@ void loadNebulaTestData(const TableSpecPtr& table) {
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
     bm->add(nebula::meta::BlockSignature{
-      testTable.name(), i++, begin, begin + window, testTable.name() });
+      testTable.name(), i++, begin, begin + window, spec });
   }
 }
 
@@ -87,7 +87,7 @@ bool IngestSpec::work() noexcept {
   // TODO(cao) - refator this to have better hirachy for different ingest types.
   const auto& loader = table_->loader;
   if (loader == FLAGS_NTEST_LOADER) {
-    loadNebulaTestData(table_);
+    loadNebulaTestData(table_, id_);
     return true;
   }
 

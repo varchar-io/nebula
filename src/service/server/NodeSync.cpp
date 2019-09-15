@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include "execution/BlockManager.h"
+#include "ingest/BlockExpire.h"
 #include "meta/ClusterInfo.h"
 #include "meta/NNode.h"
 #include "service/base/NebulaService.h"
@@ -37,6 +38,8 @@ using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
 using nebula::execution::BlockManager;
+using nebula::execution::BlockSet;
+using nebula::ingest::BlockExpire;
 using nebula::ingest::SpecRepo;
 using nebula::ingest::SpecState;
 using nebula::meta::ClusterInfo;
@@ -56,18 +59,42 @@ std::shared_ptr<folly::FunctionScheduler> NodeSync::async(
       // TODO(cao) - here, we may have incurred too many communications between server and nodes.
       // we should batch all requests for each node and communicate once.
       // but assuming changes delta won't be large in small cluster, should be fast enough for now
-
       const auto& ci = ClusterInfo::singleton();
+      const auto& bm = BlockManager::init();
       auto nodesTalked = 0;
+
       for (const auto& node : ci.nodes()) {
         // fetch node state in server
         auto client = connector->makeClient(node, pool);
+
+        // extracting all expired spec from existing blocks on this node
+        // make a copy since it's possible to be removed.
+        BlockSet blocks = bm->all(node);
+
+        // recording expired block ID for given node
+        std::list<std::string> expired;
+        for (auto itr = blocks.begin(); itr != blocks.end(); ++itr) {
+          auto& sign = itr->signature();
+          if (!specRepo.contains(sign.spec)) {
+            expired.push_back(sign.toString());
+          }
+        }
+
+        // sync expire task to node
+        const auto expireSize = expired.size();
+        if (expireSize > 0) {
+          Task t(TaskType::EXPIRATION, std::shared_ptr<Signable>(new BlockExpire(std::move(expired))));
+          TaskState state = client->task(t);
+          LOG(INFO) << fmt::format("Expire {0} blocks in node {1}: {2}", expireSize, node.server, state);
+        }
+
+        // call node state with expired spec list
         client->state();
         nodesTalked++;
       }
 
       // after state update
-      BlockManager::init()->updateTableMetrics();
+      bm->updateTableMetrics();
 
       // iterate over all specs, if it needs to be process, process it
       auto taskNotified = 0;

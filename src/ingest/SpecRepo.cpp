@@ -144,11 +144,15 @@ void genSpecs4Roll(const std::string& version,
   throw NException("only s3 supported for now");
 }
 
-void SpecRepo::process(const std::string& version, const TableSpecPtr& table, std::vector<std::shared_ptr<IngestSpec>>& specs) {
+void SpecRepo::process(
+  const std::string& version,
+  const TableSpecPtr& table,
+  std::vector<std::shared_ptr<IngestSpec>>& specs) {
   // specialized loader handling - nebula test set identified by static time provided
   if (table->loader == "NebulaTest") {
     // single spec for nebula test loader
-    specs.push_back(std::make_shared<IngestSpec>(table, version, buildIndentityByTime(table->timeSpec), "", 0, SpecState::NEW, 0));
+    specs.push_back(std::make_shared<IngestSpec>(
+      table, version, buildIndentityByTime(table->timeSpec), "nebula.test", 0, SpecState::NEW, 0));
     return;
   }
 

@@ -57,6 +57,12 @@ public:
     return specs_;
   }
 
+  // spec repo captures current snapshot of all specs
+  // check given spec ID is in current snapshot or not
+  inline bool contains(const std::string& spec) const {
+    return specs_.find(spec) != specs_.end();
+  }
+
 private:
   // process a table spec and generate all specs into the given specs container
   void process(const std::string&, const nebula::meta::TableSpecPtr&, std::vector<SpecPtr>&);

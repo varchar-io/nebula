@@ -20,7 +20,8 @@ namespace nebula {
 namespace common {
 
 enum TaskType : int8_t {
-  INGESTION = 'I'
+  INGESTION = 'I',
+  EXPIRATION = 'E'
 };
 
 enum TaskState : int8_t {

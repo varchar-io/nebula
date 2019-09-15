@@ -53,6 +53,7 @@ using nebula::meta::Table;
 using nebula::service::Operation;
 using nebula::service::base::ErrorCode;
 using nebula::service::base::ServiceProperties;
+using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::type::Kind;
 using nebula::type::Schema;
@@ -89,7 +90,7 @@ RowCursorPtr QueryHandler::query(
   } catch (const std::exception& exp) {
     LOG(ERROR) << "Error in executing query: " << exp.what();
     err = ErrorCode::FAIL_EXECUTE_QUERY;
-    return {};
+    return EmptyRowCursor::instance();
   }
 }
 

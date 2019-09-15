@@ -522,6 +522,18 @@ TEST(ParquetTest, DISABLED_TestRealParquetFile) {
   EXPECT_EQ(rows, reader.size());
 }
 
+TEST(ParquetTest, TestEventsParquet) {
+  auto localFile = "/tmp/events.p";
+  auto schema = TypeSerializer::from("ROW<dt:string, eventtype:string, image_signature:string, country:string>");
+  ParquetReader reader(localFile, schema);
+  while (reader.hasNext()) {
+    const auto& r = reader.next();
+    LOG(INFO) << (r.isNull("image_signature") ? "NULL" : r.readString("image_signature"));
+  }
+
+  LOG(INFO) << "Total rows: " << reader.size();
+}
+
 } // namespace test
 } // namespace storage
 } // namespace nebula

@@ -43,8 +43,9 @@ struct Equal {
   }
 };
 
+using BlockSet = std::unordered_set<io::BatchBlock, Hash, Equal>;
+
 class BlockManager {
-  using BlockSet = std::unordered_set<io::BatchBlock, Hash, Equal>;
   using TableStates = std::unordered_map<std::string, std::tuple<size_t, size_t, size_t, size_t, size_t>>;
 
 public:
@@ -71,6 +72,12 @@ public:
 
   // remove a block from managmenet pool
   bool remove(const io::BatchBlock&);
+
+  // remove a block from management pool by given ID
+  size_t removeById(const std::string&);
+
+  // swap an external block set for given node
+  void set(const nebula::meta::NNode&, BlockSet);
 
   std::tuple<size_t, size_t, size_t, size_t, size_t> getTableMetrics(const std::string& table) const {
     if (tableStates_.find(table) == tableStates_.end()) {

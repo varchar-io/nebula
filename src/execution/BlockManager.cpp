@@ -214,6 +214,30 @@ bool BlockManager::remove(const BatchBlock&) {
   throw NException("Not implemeneted yet");
 }
 
+// remove block that share the given ID
+// NOTE: thread-unsafe~!
+size_t BlockManager::removeById(const std::string& id) {
+  //TODO(cao) - perf issue: we should not iterate all
+  // instead, leverage the hash set nature by converting id into a BlockSignature
+  auto itr = blocks_.begin();
+  while (itr != blocks_.end()) {
+    if (itr->signature().toString() == id) {
+      itr = blocks_.erase(itr);
+      return 1;
+    }
+
+    ++itr;
+  }
+
+  return 0;
+}
+
+// swap a new block set for given node
+void BlockManager::set(const NNode& node, BlockSet set) {
+  // just overwrite the existing key
+  remotes_[node] = std::move(set);
+}
+
 // remove all blocks that share the given spec
 // NOTE: thread-unsafe~!
 size_t BlockManager::removeSameSpec(const nebula::meta::BlockSignature& bs) {

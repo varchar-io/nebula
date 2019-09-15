@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 
 #include "TaskExecutor.h"
+#include "ingest/BlockExpire.h"
 #include "ingest/IngestSpec.h"
 
 DEFINE_uint32(TASK_QUEUE_SIZE, 5000, "task queue size for bounded queue");
@@ -32,6 +33,7 @@ namespace node {
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
+using nebula::ingest::BlockExpire;
 using nebula::ingest::IngestSpec;
 
 TaskExecutor& TaskExecutor::singleton() {
@@ -100,6 +102,12 @@ bool TaskExecutor::process(const Task& task) {
 
     // process a new task - enroll its table if its first time
     return is->work();
+  }
+
+  if (task.type() == TaskType::EXPIRATION) {
+    auto be = task.spec<BlockExpire>();
+
+    return be->work();
   }
 
   return false;

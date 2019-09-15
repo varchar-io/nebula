@@ -16,6 +16,7 @@
 #pragma once
 
 #include "common/Folly.h"
+#include "common/Task.h"
 #include "ingest/SpecRepo.h"
 
 /**

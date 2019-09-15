@@ -120,6 +120,12 @@ table IngestTask {
   date: uint64;
 }
 
+// expire blocks 
+table ExpireTask {
+  // list of blocks by block ID (toString)
+  blocks: [string];
+}
+
 table TaskSpec {
 
   // this is directly mapping to nebula::common::TaskType
@@ -127,6 +133,9 @@ table TaskSpec {
 
   // present super set fields here for each type to choose
   ingest: IngestTask;
+
+  // present if type is expiration
+  expire: ExpireTask;
 }
 
 table TaskReply {
