@@ -84,3 +84,22 @@ tables:
     time:
       type: macro
       pattern: date
+
+  s3.prefix:
+    max-mb: 200000
+    max-hr: 0
+    schema: "ROW<prefix:string, operation_type:string, requests:long, size:long>"
+    data: s3
+    loader: Swap
+    source: s3://pinlogs/nebula/s3_pfx/
+    backup: s3://nebula/n104/
+    format: parquet
+    columns:
+      prefix:
+        dict: true
+      operation_type:
+        dict: true
+    time:
+      type: static
+      # date +%s --date='2019-09-10'
+      value: 1568073600

@@ -33,8 +33,12 @@ std::shared_ptr<grpc::Channel> ConnectionPool::connection(const std::string& add
   // lock here for new connection creation?
   auto located = connections_.find(addr);
   if (located == connections_.end()) {
+    // all client configurations come to here
+    grpc::ChannelArguments chArgs;
+    chArgs.SetMaxReceiveMessageSize(-1);
     LOG(INFO) << "Creating a channel to " << addr;
-    auto channel = grpc::CreateChannel(addr, grpc::InsecureChannelCredentials());
+
+    auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), chArgs);
     connections_[addr] = channel;
     return channel;
   }

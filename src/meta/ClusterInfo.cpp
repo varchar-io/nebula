@@ -84,15 +84,31 @@ TimeSpec asTimeSpec(const YAML::Node& node) {
   throw NException("Misconfigured time spec");
 }
 
+Column col(const YAML::Node& settings) {
+#define EVAL_SETTING(NAME, VAR, TYPE) \
+  const auto& NAME = settings[#NAME]; \
+  if (NAME) {                         \
+    VAR = NAME.as<TYPE>();            \
+  }
+
+  bool bf = false;
+  EVAL_SETTING(bloom_filter, bf, bool)
+
+  bool d = false;
+  EVAL_SETTING(dict, d, bool)
+
+  return Column{ bf, d };
+
+#undef EVAL_SETTING
+}
+
 std::unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
   // iterate over each column
   ColumnProps props;
   for (YAML::const_iterator it = node.begin(); it != node.end(); ++it) {
     auto colName = it->first.as<std::string>();
     const auto& settings = it->second;
-    props.emplace(colName,
-                  Column{
-                    settings["bloom_filter"].as<bool>() });
+    props.emplace(colName, col(settings));
   }
 
   return props;

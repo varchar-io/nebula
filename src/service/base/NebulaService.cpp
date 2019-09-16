@@ -50,6 +50,7 @@ using nebula::ingest::IngestSpec;
 using nebula::ingest::SpecState;
 using nebula::memory::keyed::FlatBuffer;
 using nebula::memory::keyed::FlatRowCursor;
+using nebula::meta::Column;
 using nebula::meta::ColumnProps;
 using nebula::meta::DataSource;
 using nebula::meta::TableSpec;
@@ -314,7 +315,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     colProps.reserve(numCols);
     for (auto& itr : table->columnProps) {
       colProps.push_back(
-        CreateColumnProp(mb, mb.CreateString(itr.first), itr.second.withBloomFilter));
+        CreateColumnProp(mb, mb.CreateString(itr.first), itr.second.withBloomFilter, itr.second.withDict));
     }
     auto fbColProps = mb.CreateVector<flatbuffers::Offset<ColumnProp>>(colProps);
 
@@ -390,7 +391,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     auto colProps = it->column_props();
     for (auto itr = colProps->begin(); itr != colProps->end(); ++itr) {
       // adding all properties here
-      props[itr->name()->str()] = { itr->bf() };
+      props[itr->name()->str()] = Column{ itr->bf(), itr->dict() };
     }
 
     // build table spec

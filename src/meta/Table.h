@@ -38,11 +38,14 @@ using nebula::type::Schema;
  * Define column properties that fetched from meta data system
  */
 struct Column {
+  explicit Column(bool bf = false, bool d = false)
+    : withBloomFilter{ bf }, withDict{ d } {}
+
   // by default, we don't build bloom filter
-  bool withBloomFilter = false;
+  bool withBloomFilter;
 
   // by default, we turn on dictionay for strings
-  bool withDict = false;
+  bool withDict;
 };
 
 using ColumnProps = std::unordered_map<std::string, Column>;
@@ -90,7 +93,7 @@ public:
       return column->second;
     }
 
-    return {};
+    return Column{};
   }
 
 protected:

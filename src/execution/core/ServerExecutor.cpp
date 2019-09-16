@@ -45,7 +45,8 @@ using nebula::surface::RowData;
 using nebula::surface::TopRows;
 using nebula::type::Kind;
 
-static std::chrono::milliseconds RPC_TIMEOUT = std::chrono::milliseconds(5000);
+// set 10 seconds for now as max time to complete a query
+static std::chrono::milliseconds RPC_TIMEOUT = std::chrono::milliseconds(10000);
 
 RowCursorPtr ServerExecutor::execute(const ExecutionPlan& plan, const std::shared_ptr<NodeConnector> connector) {
   std::vector<folly::Future<RowCursorPtr>> results;

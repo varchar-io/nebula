@@ -71,6 +71,8 @@ table ColumnProp {
   name: string;
   // bloom filter
   bf: bool;
+  // enable dictionary
+  dict: bool;
 }
 
 // this is serde format mapping to IngestSpec
