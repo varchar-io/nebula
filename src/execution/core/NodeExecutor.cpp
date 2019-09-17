@@ -15,11 +15,21 @@
  */
 
 #include "NodeExecutor.h"
+
+#include <gflags/gflags.h>
+
 #include "AggregationMerge.h"
 #include "BlockExecutor.h"
+#include "TopSort.h"
 #include "execution/eval/UDF.h"
 #include "execution/meta/TableService.h"
 #include "memory/keyed/FlatRowCursor.h"
+
+DEFINE_uint64(TOP_SORT_SCALE,
+              0,
+              "This defines scale set of top sorting queries, by default, we're returning everything when scale is 0."
+              "However, many times we want fast return so that we don't need to serialize massive data back to server,"
+              "instead we return scale times of sorting result back to server and this may result in wrong answer!");
 
 /**
  * Nebula runtime / online meta data.
@@ -74,7 +84,14 @@ RowCursorPtr NodeExecutor::execute(const ExecutionPlan& plan) {
   // the results set from different block exeuction can be simply composite together
   // but the query needs to aggregate on keys, then we have to merge the results based on partial aggregatin plan
   const NodePhase& nodePhase = plan.fetch<PhaseType::PARTIAL>();
-  return merge(nodePhase.outputSchema(), nodePhase.keys(), nodePhase.fields(), nodePhase.hasAgg(), x);
+  auto merged = merge(nodePhase.outputSchema(), nodePhase.keys(), nodePhase.fields(), nodePhase.hasAgg(), x);
+
+  // if scale is 0 or this query has no limit on it
+  if (FLAGS_TOP_SORT_SCALE == 0 || nodePhase.top() == 0) {
+    return merged;
+  }
+
+  return topSort(merged, plan, FLAGS_TOP_SORT_SCALE);
 }
 
 folly::Future<RowCursorPtr> NodeExecutor::compute(const Batch& block, const BlockPhase& phase) {

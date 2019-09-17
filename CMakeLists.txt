@@ -55,7 +55,8 @@ else()
     set(NCXX /usr/bin/g++)
     set(NCC /usr/bin/gcc)
     set(NCFLAGS "-Wall -Wextra -Werror -lstdc++ -lstdc++fs -Wl,--no-as-needed -no-pie -ldl -I/usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
-    set(NCFLAGS_RELEASE "-O3 -march=native -s")
+    # -Ofast vs -O3, -s will remove symbols, using -g to add debug info
+    set(NCFLAGS_RELEASE "-Ofast -march=native -s")
   endif()
 endif()
 

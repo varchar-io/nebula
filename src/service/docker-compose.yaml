@@ -7,6 +7,8 @@ services:
     image: nebula/node
     ports:
       - "9199:9199"
+    cap_add:
+      - ALL
   server:
     build:
       context: ./

@@ -124,7 +124,7 @@ static constexpr auto join = [](const std::vector<size_t>& vector) {
 
 class ExecutionPhase {
 public:
-  ExecutionPhase(nebula::type::Schema input) : input_{ input }, upstream_{ nullptr } {}
+  ExecutionPhase(nebula::type::Schema input) : input_{ input }, upstream_{ nullptr }, limit_{ 0 } {}
   ExecutionPhase(std::unique_ptr<ExecutionPhase> upstream)
     : upstream_{ std::move(upstream) } {
     input_ = upstream_->outputSchema();
