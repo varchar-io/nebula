@@ -132,7 +132,8 @@ foreach(i RANGE ${list_max_index})
     PRIVATE ${CARES_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${XXH_LIBRARY}
-    PRIVATE ${AWS_LIBRARY})
+    PRIVATE ${AWS_LIBRARY}
+    PRIVATE ${PERF_LIBRARY})
     
     # disalbe warning into errors for due to these generated files
     target_compile_options(${target} PRIVATE -Wno-error=unused-parameter)

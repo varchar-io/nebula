@@ -15,7 +15,9 @@
  */
 
 #include "QueryHandler.h"
+
 #include <folly/Conv.h>
+
 #include "execution/core/ServerExecutor.h"
 #include "service/node/NodeClient.h"
 #include "service/node/RemoteNodeConnector.h"

@@ -39,7 +39,7 @@ public:
   static TaskExecutor& singleton();
 
 public:
-  void process();
+  void process(std::function<void()>);
 
   nebula::common::TaskState enqueue(const nebula::common::Task&);
 

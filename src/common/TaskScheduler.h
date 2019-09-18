@@ -32,7 +32,10 @@ public:
         f();
 
         // after the function is done, reschedule it again before exiting.
-        this->setInterval(ms, std::move(f));
+        // if stopped signals, we don't schedule anymore to allow server shutdown
+        if (!stopped_) {
+          this->setInterval(ms, std::move(f));
+        }
       },
       std::chrono::milliseconds(ms));
   }
@@ -45,11 +48,17 @@ public:
   }
 
   inline void run() {
+    stopped_ = false;
     eventBase_.loop();
+  }
+
+  inline void stop() {
+    stopped_ = true;
   }
 
 private:
   folly::EventBase eventBase_;
+  std::atomic<bool> stopped_;
 };
 
 } // namespace common

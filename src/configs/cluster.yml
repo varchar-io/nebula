@@ -67,25 +67,25 @@ tables:
   #   time:
   #     type: current
 
-  pin.pins:
-    max-mb: 200000
-    max-hr: 48
-    schema: "ROW<id:long, user_id:long, link_domain:string, title:string, details:string, image_signature:string>"
-    data: s3
-    loader: Roll
-    source: s3://pinlogs/nebula/pin_pins/cd=%7Bdate%7D
-    backup: s3://nebula/n103/
-    format: parquet
-    columns:
-      id:
-        bloom_filter: true
-      user_id:
-        bloom_filter: true
-      link_domain:
-        dict: true
-    time:
-      type: macro
-      pattern: date
+  # pin.pins:
+  #   max-mb: 200000
+  #   max-hr: 48
+  #   schema: "ROW<id:long, user_id:long, link_domain:string, title:string, details:string, image_signature:string>"
+  #   data: s3
+  #   loader: Roll
+  #   source: s3://pinlogs/nebula/pin_pins/cd=%7Bdate%7D
+  #   backup: s3://nebula/n103/
+  #   format: parquet
+  #   columns:
+  #     id:
+  #       bloom_filter: true
+  #     user_id:
+  #       bloom_filter: true
+  #     link_domain:
+  #       dict: true
+  #   time:
+  #     type: macro
+  #     pattern: date
 
   s3.prefix:
     max-mb: 200000

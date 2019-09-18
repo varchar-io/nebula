@@ -30,6 +30,7 @@ namespace nebula {
 namespace service {
 namespace node {
 
+using nebula::common::SingleCommandTask;
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
@@ -41,7 +42,7 @@ TaskExecutor& TaskExecutor::singleton() {
   return executor;
 }
 
-void TaskExecutor::process() {
+void TaskExecutor::process(std::function<void()> shutdown) {
   // process all items in sequence
   while (!queue_.isEmpty()) {
     Task* task = queue_.frontPtr();
@@ -49,6 +50,16 @@ void TaskExecutor::process() {
     // mark this task state as processing
     auto sign = task->signature();
     state_[sign] = TaskState::PROCESSING;
+
+    // fast command execution
+    if (task->type() == TaskType::COMMAND) {
+      auto c = task->spec<SingleCommandTask>();
+      if (c->isShutdown()) {
+        if (shutdown) {
+          shutdown();
+        }
+      }
+    }
 
     // process this task
     bool result = process(*task);

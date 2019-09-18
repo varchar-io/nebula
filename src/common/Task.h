@@ -21,7 +21,8 @@ namespace common {
 
 enum TaskType : int8_t {
   INGESTION = 'I',
-  EXPIRATION = 'E'
+  EXPIRATION = 'E',
+  COMMAND = 'C'
 };
 
 enum TaskState : int8_t {
@@ -65,6 +66,31 @@ public:
 private:
   TaskType type_;
   std::shared_ptr<Signable> spec_;
+};
+
+// A single command task used for single command communication.
+// such as node shutdown.
+class SingleCommandTask : public Signable {
+public:
+  SingleCommandTask(std::string command) : command_{ std::move(command) } {}
+  virtual ~SingleCommandTask() = default;
+
+  virtual std::string signature() const override {
+    return command_;
+  }
+
+  inline bool isShutdown() const noexcept {
+    return shutdown()->signature() == command_;
+  }
+
+public:
+  static std::shared_ptr<Signable> shutdown() noexcept {
+    static std::shared_ptr<SingleCommandTask> SHUTDOWN = std::make_shared<SingleCommandTask>("SHUTDOWN");
+    return SHUTDOWN;
+  }
+
+private:
+  std::string command_;
 };
 
 } // namespace common

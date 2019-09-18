@@ -16,6 +16,11 @@
 
 #include "FlatBuffer.h"
 
+#include <gflags/gflags.h>
+DEFINE_uint64(FB_MAIN_PAGE, 1024 * 1024, "Main memory page size");
+DEFINE_uint64(FB_DATA_PAGE, 4096 * 1024, "Data memory page size");
+DEFINE_uint64(FB_LIST_PAGE, 2048 * 1024, "List memory page size");
+
 namespace nebula {
 namespace memory {
 namespace keyed {
@@ -24,27 +29,34 @@ using nebula::common::PagedSlice;
 using nebula::surface::ListData;
 using nebula::surface::RowData;
 using nebula::type::Kind;
+using nebula::type::ListType;
+using nebula::type::TypeNode;
 
-void FlatBuffer::initSchema() {
+void FlatBuffer::initSchema() noexcept {
   // build name to index look up
   // build a field name to data node
-  const auto numCols = schema_->size();
-  fields_.reserve(numCols);
-  widths_.reserve(numCols);
+  numColumns_ = schema_->size();
+  fields_.reserve(numColumns_);
+  kw_.reserve(numColumns_);
+  parsers_.reserve(numColumns_);
 
-  for (size_t i = 0; i < numCols; ++i) {
+  for (size_t i = 0; i < numColumns_; ++i) {
     auto f = schema_->childType(i);
     fields_[f->name()] = i;
 
-    widths_[i] = widthInMain(f->k());
+    auto kind = f->k();
+    kw_.push_back({ kind, widthInMain(kind) });
+
+    // generate column parser for each column
+    parsers_.push_back(genParser(f, i));
   }
 }
 
 FlatBuffer::FlatBuffer(const nebula::type::Schema& schema)
   : schema_{ schema },
-    main_{ std::make_unique<Buffer>(2 * 1024) },
-    data_{ std::make_unique<Buffer>(32 * 1024) },
-    list_{ std::make_unique<Buffer>(4 * 1024) },
+    main_{ std::make_unique<Buffer>(FLAGS_FB_MAIN_PAGE) },
+    data_{ std::make_unique<Buffer>(FLAGS_FB_DATA_PAGE) },
+    list_{ std::make_unique<Buffer>(FLAGS_FB_LIST_PAGE) },
     chunk_{ nullptr } {
   this->initSchema();
 }
@@ -71,11 +83,11 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema, NByte* data)
     return;
   }
 
-  // populate all rows OL
-  rows_.reserve(numRows);
-  for (size_t i = 0; i < numRows; ++i) {
-    rows_.push_back({ readSizeT(), readSizeT() });
-  }
+  // this section will have numRows * SIZE_T for each row offset
+  auto offsetOffset = offset;
+
+  // skip it for now to prepare main data
+  offset += numRows * SIZET_SIZE;
 
   // write main block size
   auto mainSize = readSizeT();
@@ -93,9 +105,20 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema, NByte* data)
 
   list_ = std::make_unique<Buffer>(listSize, data + offset);
   offset += listSize;
+
+  // populate all rows properties
+  rows_.reserve(numRows);
+
+  // reset back to read each offset value
+  offset = offsetOffset;
+  for (size_t i = 0; i < numRows; ++i) {
+    // read each column props of all rows (should it be lazy?)
+    auto rowOffset = readSizeT();
+    rows_.emplace_back(rowOffset, columnProps(rowOffset));
+  }
 }
 
-size_t FlatBuffer::widthInMain(Kind kind) {
+size_t FlatBuffer::widthInMain(Kind kind) noexcept {
 #define SCALAR_WIDTH_DISTR(KIND)                        \
   case Kind::KIND: {                                    \
     return nebula::type::TypeTraits<Kind::KIND>::width; \
@@ -119,7 +142,7 @@ size_t FlatBuffer::widthInMain(Kind kind) {
     return 8;
   }
   default:
-    throw NException("other types not supported yet");
+    return 0;
   }
 
 #undef SCALAR_WIDTH_DISTR
@@ -202,13 +225,9 @@ size_t FlatBuffer::appendList(Kind itemKind, std::unique_ptr<ListData> list) {
   return offset;
 }
 
-size_t FlatBuffer::rollback() {
+bool FlatBuffer::rollback() {
   // has last row to roll back
-  size_t size = 0;
   if (rows_.size() > 0) {
-    // size of the last row to be roll back
-    size = std::get<1>(rows_.back());
-
     // remove last row
     rows_.pop_back();
 
@@ -216,9 +235,48 @@ size_t FlatBuffer::rollback() {
     main_->offset = std::get<0>(last_);
     data_->offset = std::get<1>(last_);
     list_->offset = std::get<2>(last_);
+
+    return true;
   }
 
-  return size;
+  return false;
+}
+
+std::function<void(const RowData&)> FlatBuffer::genParser(const TypeNode& tn, size_t i) noexcept {
+
+#define SCALAR_DATA_DISTR(KIND, FUNC)                                      \
+  case Kind::KIND: {                                                       \
+    return [this, i](const RowData& row) { append(row.FUNC(i), *main_); }; \
+  }
+
+  // add solid values for each type
+  switch (tn->k()) {
+    SCALAR_DATA_DISTR(BOOLEAN, readBool)
+    SCALAR_DATA_DISTR(TINYINT, readByte)
+    SCALAR_DATA_DISTR(SMALLINT, readShort)
+    SCALAR_DATA_DISTR(INTEGER, readInt)
+    SCALAR_DATA_DISTR(BIGINT, readLong)
+    SCALAR_DATA_DISTR(REAL, readFloat)
+    SCALAR_DATA_DISTR(DOUBLE, readDouble)
+    SCALAR_DATA_DISTR(VARCHAR, readString)
+
+  case Kind::ARRAY: {
+    auto listType = std::static_pointer_cast<ListType>(tn);
+
+    return [this, childKind = listType->childType(0)->k(), i](const RowData& row) {
+      auto list = row.readList(i);
+
+      // write 4 bytes of N = number of items
+      append<int32_t>(list->getItems(), *main_);
+      auto listOffset = appendList(childKind, std::move(list));
+      append<int32_t>(listOffset, *main_);
+    };
+  }
+  default:
+    return {};
+  }
+
+#undef SCALAR_DATA_DISTR
 }
 
 // add a row into current batch
@@ -226,100 +284,62 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
   // record current state before adding a new row - used for rollback
   last_ = std::make_tuple(main_->offset, data_->offset, list_->offset);
 
+  // current row offset
   const auto rowOffset = main_->offset;
-  const auto numColumns = schema_->size();
 
+  // in the main memory, we're push all nulls for first X bytes (x = numColumns)
+  // This is designed for nulls fast load of memory locality
+  // this is why we have two loops
+  FlatColumnProps columnProps;
+  columnProps.reserve(numColumns_);
   std::vector<bool> nulls;
-  nulls.reserve(numColumns);
-  for (size_t i = 0; i < numColumns; ++i) {
-    auto type = schema_->childType(i);
-    const Kind kind = type->k();
-    nulls.push_back(appendNull(row.isNull(i), kind, *main_));
+  nulls.reserve(numColumns_);
+  for (size_t i = 0; i < numColumns_; ++i) {
+    auto nv = appendNull(row.isNull(i), kw_.at(i).first, *main_);
+    nulls.push_back(nv);
   }
 
-#define SCALAR_DATA_DISTR(KIND, FUNC) \
-  case Kind::KIND: {                  \
-    append(row.FUNC(i), *main_);      \
-    break;                            \
-  }
-
-  // handle every column
-  for (size_t i = 0; i < numColumns; ++i) {
-
-    // if it is null, do nothing
-    if (nulls[i]) {
-      continue;
-    }
-
-    auto type = schema_->childType(i);
-    const Kind kind = type->k();
-    // add solid values for each type
-    switch (kind) {
-      SCALAR_DATA_DISTR(BOOLEAN, readBool)
-      SCALAR_DATA_DISTR(TINYINT, readByte)
-      SCALAR_DATA_DISTR(SMALLINT, readShort)
-      SCALAR_DATA_DISTR(INTEGER, readInt)
-      SCALAR_DATA_DISTR(BIGINT, readLong)
-      SCALAR_DATA_DISTR(REAL, readFloat)
-      SCALAR_DATA_DISTR(DOUBLE, readDouble)
-      SCALAR_DATA_DISTR(VARCHAR, readString)
-
-    case Kind::ARRAY: {
-      auto list = row.readList(i);
-
-      // write 4 bytes of N = number of items
-      append<int32_t>(list->getItems(), *main_);
-      auto listType = std::dynamic_pointer_cast<nebula::type::ListType>(type);
-      auto childKind = listType->childType(0)->k();
-      auto listOffset = appendList(childKind, std::move(list));
-      append<int32_t>(listOffset, *main_);
-
-      break;
-    }
-    default:
-      throw NException("other types not supported yet");
+  // write data of each column through its parser
+  for (size_t i = 0; i < numColumns_; ++i) {
+    // push each column props
+    auto nv = nulls.at(i);
+    columnProps.emplace_back(nv, main_->offset - rowOffset);
+    if (!nv) {
+      parsers_.at(i)(row);
     }
   }
-#undef SCALAR_DATA_DISTR
 
   // after processing all columns, we got the row offset and length, record it here
-  rows_.push_back(std::make_tuple(rowOffset, main_->offset - rowOffset));
+  rows_.emplace_back(rowOffset, std::move(columnProps));
 
   return rowOffset;
 }
 
 // random access to a row - may require internal seek
 const std::unique_ptr<RowData> FlatBuffer::crow(size_t rowId) const {
-  auto& rowProp = rows_[rowId];
-  auto rowOffset = std::get<0>(rowProp);
-  // calculate each column: null or not, offset,
-
-  return std::make_unique<RowAccessor>(*this, rowOffset, columnProps(rowOffset));
+  // pass in row offset and column props of this row
+  return std::make_unique<RowAccessor>(*this, rows_.at(rowId));
 }
 
 const RowData& FlatBuffer::row(size_t rowId) {
-  auto& rowProp = rows_[rowId];
-  auto rowOffset = std::get<0>(rowProp);
-  // calculate each column: null or not, offset,
-
-  current_ = std::make_unique<RowAccessor>(*this, rowOffset, columnProps(rowOffset));
+  // pass in row offset and column props of this row
+  current_ = std::make_unique<RowAccessor>(*this, rows_.at(rowId));
   return *current_;
 }
 
-FlatColumnProps FlatBuffer::columnProps(size_t offset) const {
-  auto numCols = schema_->size();
+FlatColumnProps FlatBuffer::columnProps(size_t offset) const noexcept {
+  // do not use constructor with count instances of T
   FlatColumnProps colProps;
-  colProps.reserve(numCols);
+  colProps.reserve(numColumns_);
 
   // first numCols bytes store nulls for all columns
-  auto colOffset = numCols;
-  for (size_t i = 0; i < numCols; ++i) {
+  auto colOffset = numColumns_;
+  for (size_t i = 0; i < numColumns_; ++i) {
     auto nullByte = main_->slice.read<int8_t>(offset + i);
-    Kind kind = (Kind)(nullByte & ~HIGH6_1);
     bool nv = (nullByte & HIGH6_1) != 0;
-    colProps.emplace_back(nv, colOffset, kind);
+    colProps.emplace_back(nv, colOffset);
     if (!nv) {
-      colOffset += widths_[i];
+      colOffset += kw_.at(i).second;
     }
   }
 
@@ -329,8 +349,9 @@ FlatColumnProps FlatBuffer::columnProps(size_t offset) const {
 // compute hash value of given row and column list
 // The function has very similar logic as row accessor, we inline it for perf
 size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
-  auto rowOffset = std::get<0>(rows_[rowId]);
-  FlatColumnProps colProps = columnProps(std::get<0>(rows_[rowId]));
+  const auto& rowProps = rows_.at(rowId);
+  auto rowOffset = rowProps.offset;
+  const auto& colProps = rowProps.colProps;
   static constexpr size_t flip = 0x3600ABC35871E005UL;
   static constexpr size_t start = 0xC6A4A7935BD1E995UL;
   size_t hvalue = start;
@@ -347,13 +368,13 @@ size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
                 [&colProps, &hvalue, &rowOffset, this](const size_t index) {
                   const auto& item = colProps[index];
                   // is null
-                  if (std::get<0>(item)) {
+                  if (item.isNull) {
                     // std::__hash_combine()
                     hvalue = (hvalue ^ flip) >> 32;
                   } else {
                     // fetch value
-                    size_t colOffset = std::get<1>(item);
-                    Kind k = std::get<2>(item);
+                    size_t colOffset = item.offset;
+                    Kind k = kw_.at(index).first;
                     // we only support primitive types for keys
                     size_t n8bytes = 0;
                     switch (k) {
@@ -391,10 +412,14 @@ size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
 
 // check if two rows are equal to each other on given columns
 bool FlatBuffer::equal(size_t row1, size_t row2, const std::vector<size_t>& cols) const {
-  auto row1Offset = std::get<0>(rows_[row1]);
-  auto row2Offset = std::get<0>(rows_[row2]);
-  FlatColumnProps colProps1 = columnProps(row1Offset);
-  FlatColumnProps colProps2 = columnProps(row2Offset);
+  const auto& row1Props = rows_[row1];
+  const auto& row2Props = rows_[row2];
+  auto row1Offset = row1Props.offset;
+  auto row2Offset = row2Props.offset;
+  const FlatColumnProps& colProps1 = row1Props.colProps;
+  const FlatColumnProps& colProps2 = row2Props.colProps;
+
+  // just do memcmp on each field, if cols are continues primitves, compare it once
 
 #define TYPE_COMPARE(KIND, TYPE)                                                                                \
   case Kind::KIND: {                                                                                            \
@@ -408,19 +433,18 @@ bool FlatBuffer::equal(size_t row1, size_t row2, const std::vector<size_t>& cols
     const auto& item1 = colProps1[index];
     const auto& item2 = colProps2[index];
     // is null
-    auto isItNull = std::get<0>(item1);
-    if (isItNull != std::get<0>(item2)) {
+    if (item1.isNull != item2.isNull) {
       return false;
     }
 
-    if (isItNull) {
+    if (item1.isNull) {
       continue;
     }
 
     // fetch value
-    size_t colOffset1 = std::get<1>(item1);
-    size_t colOffset2 = std::get<1>(item2);
-    Kind k = std::get<2>(item1);
+    size_t colOffset1 = item1.offset;
+    size_t colOffset2 = item2.offset;
+    Kind k = kw_.at(index).first;
     // we only support primitive types for keys
     switch (k) {
       TYPE_COMPARE(BOOLEAN, bool)
@@ -461,10 +485,12 @@ bool FlatBuffer::equal(size_t row1, size_t row2, const std::vector<size_t>& cols
 // copy data of row1 into row2
 bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, const std::vector<size_t>& cols) {
   // LOG(INFO) << "copy row " << row1 << " into " << row2;
-  auto row1Offset = std::get<0>(rows_[row1]);
-  auto row2Offset = std::get<0>(rows_[row2]);
-  FlatColumnProps colProps1 = columnProps(row1Offset);
-  FlatColumnProps colProps2 = columnProps(row2Offset);
+  const auto& row1Props = rows_.at(row1);
+  const auto& row2Props = rows_.at(row2);
+  auto row1Offset = row1Props.offset;
+  auto row2Offset = row2Props.offset;
+  const auto& colProps1 = row1Props.colProps;
+  const auto& colProps2 = row2Props.colProps;
 
 #define UPDATE_COLUMN(COLUMN, KIND, TYPE)                       \
   case Kind::KIND: {                                            \
@@ -478,7 +504,7 @@ bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, 
     break;                                                      \
   }
 
-  for (size_t i = 0, size = schema_->size(); i < size; ++i) {
+  for (size_t i = 0; i < numColumns_; ++i) {
     // skip keys
     if (std::any_of(cols.begin(), cols.end(), [i](size_t item) { return item == i; })) {
       continue;
@@ -488,15 +514,15 @@ bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, 
     const auto& item2 = colProps2[i];
 
     // is null
-    if (std::get<0>(item1)) {
+    if (item1.isNull) {
       // TODO(cao) - ensure column i of row2 to be null;
       continue;
     }
 
     // fetch value
-    size_t colOffset1 = std::get<1>(item1);
-    size_t colOffset2 = std::get<1>(item2);
-    Kind k = std::get<2>(item1);
+    size_t colOffset1 = item1.offset;
+    size_t colOffset2 = item2.offset;
+    Kind k = kw_.at(i).first;
 
     // we only support primitive types aggregation fields
     switch (k) {
@@ -533,11 +559,9 @@ size_t FlatBuffer::serialize(NByte* buffer) const {
     return 0;
   }
 
-  // write all rows' offset and length
+  // write all rows' offset
   for (size_t i = 0; i < numRows; ++i) {
-    auto& rowEntry = rows_.at(i);
-    writeSizeT(std::get<0>(rowEntry));
-    writeSizeT(std::get<1>(rowEntry));
+    writeSizeT(rows_.at(i).offset);
   }
 
   // write main block size
@@ -566,18 +590,17 @@ size_t FlatBuffer::serialize(NByte* buffer) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-RowAccessor::RowAccessor(const FlatBuffer& fb, size_t offset, FlatColumnProps colProps)
-  : fb_{ fb }, offset_{ offset }, colProps_{ std::move(colProps) } {}
+RowAccessor::RowAccessor(const FlatBuffer& fb, const RowProps& rowProps)
+  : fb_{ fb }, rowProps_{ rowProps } {}
 
 bool RowAccessor::isNull(IndexType index) const {
   // null position for given field
-  return std::get<0>(colProps_[index]);
+  return rowProps_.colProps.at(index).isNull;
 }
 
-#define READ_FIELD(TYPE, FUNC)                               \
-  TYPE RowAccessor::FUNC(IndexType index) const {            \
-    auto colOffset = std::get<1>(colProps_[index]);          \
-    return fb_.main_->slice.read<TYPE>(offset_ + colOffset); \
+#define READ_FIELD(TYPE, FUNC)                                                               \
+  TYPE RowAccessor::FUNC(IndexType index) const {                                            \
+    return fb_.main_->slice.read<TYPE>(rowProps_.offset + rowProps_.colProps[index].offset); \
   }
 
 READ_FIELD(bool, readBool)
@@ -591,10 +614,10 @@ READ_FIELD(double, readDouble)
 #undef READ_FIELD
 
 std::string_view RowAccessor::readString(IndexType index) const {
-  auto colOffset = std::get<1>(colProps_[index]);
+  auto colOffset = rowProps_.colProps[index].offset;
   // read 4 bytes offset and 4 bytes length
-  auto offset = fb_.main_->slice.read<int32_t>(offset_ + colOffset);
-  auto len = fb_.main_->slice.read<int32_t>(offset_ + colOffset + 4);
+  auto offset = fb_.main_->slice.read<int32_t>(rowProps_.offset + colOffset);
+  auto len = fb_.main_->slice.read<int32_t>(rowProps_.offset + colOffset + 4);
 
   // read the real data from data_
   return fb_.data_->slice.read(offset, len);
@@ -602,10 +625,10 @@ std::string_view RowAccessor::readString(IndexType index) const {
 
 // compound types
 std::unique_ptr<nebula::surface::ListData> RowAccessor::readList(IndexType index) const {
-  auto colOffset = std::get<1>(colProps_[index]);
+  auto colOffset = rowProps_.colProps[index].offset;
   // read 4 bytes offset and 4 bytes length
-  auto items = fb_.main_->slice.read<int32_t>(offset_ + colOffset);
-  auto offset = fb_.main_->slice.read<int32_t>(offset_ + colOffset + 4);
+  auto items = fb_.main_->slice.read<int32_t>(rowProps_.offset + colOffset);
+  auto offset = fb_.main_->slice.read<int32_t>(rowProps_.offset + colOffset + 4);
 
   // can we cache this query or cache listAccessor?
   auto listType = std::dynamic_pointer_cast<nebula::type::ListType>(fb_.schema_->childType(index));

@@ -63,15 +63,34 @@ struct Buffer {
   nebula::common::PagedSlice slice;
 };
 
-// define column properties of given row: nullable, column offset in main, kind.
-using FlatColumnProps = std::vector<std::tuple<bool, size_t, nebula::type::Kind>>;
+struct ColumnProps {
+  explicit ColumnProps(bool nv, uint32_t os) : isNull{ nv }, offset{ os } {}
+  // whether it is a null value
+  bool isNull;
+
+  // its relative offset in current row in main buffer
+  uint32_t offset;
+};
+
+// define column properties of given row: nullable, kind, column offset in main.
+using FlatColumnProps = std::vector<ColumnProps>;
+
+struct RowProps {
+  explicit RowProps(size_t of, FlatColumnProps cp)
+    : offset{ of }, colProps{ std::move(cp) } {}
+  // row offset in buffer
+  size_t offset;
+
+  // column properties
+  FlatColumnProps colProps;
+};
 
 // an update callback signature
 using UpdateCallback = std::function<bool(size_t, nebula::type::Kind, void*, void*, void*)>;
 
 class FlatBuffer {
-  // offset and length
-  using OL = std::tuple<size_t, size_t>;
+  // column parser to read data in from a row
+  using Parser = std::function<void(const nebula::surface::RowData&)>;
 
 public:
   FlatBuffer(const nebula::type::Schema&);
@@ -87,7 +106,7 @@ public:
   size_t add(const nebula::surface::RowData& row);
 
   // this method only rollback last added row and the only one row only.
-  size_t rollback();
+  bool rollback();
 
   // random access to a row - may require internal seek
   const nebula::surface::RowData& row(size_t);
@@ -110,7 +129,7 @@ public:
 
   inline size_t binSize() const {
     return SIZET_SIZE +                                   // num rows
-           2 * rows_.size() * SIZET_SIZE +                // rows offset and length data
+           rows_.size() * SIZET_SIZE +                    // rows offset
            SIZET_SIZE +                                   // main block size
            SIZET_SIZE +                                   // data block size
            SIZET_SIZE +                                   // list block size
@@ -134,18 +153,20 @@ private:
   size_t appendList(nebula::type::Kind, std::unique_ptr<nebula::surface::ListData>);
 
   // get column properties of given row
-  FlatColumnProps columnProps(size_t) const;
+  FlatColumnProps columnProps(size_t) const noexcept;
 
-  static size_t widthInMain(nebula::type::Kind);
+  static size_t widthInMain(nebula::type::Kind) noexcept;
 
-  void initSchema();
+  void initSchema() noexcept;
+
+  std::function<void(const nebula::surface::RowData&)> genParser(const nebula::type::TypeNode&, size_t) noexcept;
 
 private:
   // offset of last row used for supporting roll back
   std::tuple<size_t, size_t, size_t> last_;
 
   // record each row's offset and length
-  std::vector<OL> rows_;
+  std::vector<RowProps> rows_;
   nebula::type::Schema schema_;
   std::unique_ptr<Buffer> main_;
   std::unique_ptr<Buffer> data_;
@@ -160,13 +181,20 @@ private:
 
   // fields_ is name->index mapping
   std::unordered_map<std::string, size_t> fields_;
-  // widths_ indicats the column's width in main_ buffer if not null.
-  std::vector<size_t> widths_;
+
+  // kw_ indicats the column's kind and width in main_ buffer if not null.
+  std::vector<std::pair<nebula::type::Kind, size_t>> kw_;
+
+  // parsers are function pointers to parse row data of each column
+  std::vector<Parser> parsers_;
+
+  // number of columns - reduce func calls even they are inlined
+  size_t numColumns_;
 };
 
 class RowAccessor : public nebula::surface::RowData {
 public:
-  RowAccessor(const FlatBuffer&, size_t, FlatColumnProps);
+  RowAccessor(const FlatBuffer&, const RowProps&);
   virtual ~RowAccessor() = default;
 
 public:
@@ -202,8 +230,7 @@ private:
   const FlatBuffer& fb_;
 
   // current row offset and all column properties
-  size_t offset_;
-  FlatColumnProps colProps_;
+  const RowProps& rowProps_;
 };
 
 using nebula::surface::IndexType;

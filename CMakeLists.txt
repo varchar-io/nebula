@@ -52,11 +52,50 @@ else()
     set(NCFLAGS "-Wall -Wextra -Werror -I/usr/include/ -I/usr/local/include")
     set(NCFLAGS_RELEASE "-O3")
   else()
+    # this build branch is the final release version
     set(NCXX /usr/bin/g++)
     set(NCC /usr/bin/gcc)
-    set(NCFLAGS "-Wall -Wextra -Werror -lstdc++ -lstdc++fs -Wl,--no-as-needed -no-pie -ldl -I/usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
-    # -Ofast vs -O3, -s will remove symbols, using -g to add debug info
-    set(NCFLAGS_RELEASE "-Ofast -march=native -s")
+    list(APPEND LNCFLAGS 
+      "-Wall -Wextra -Werror -lstdc++ -lstdc++fs"
+      "-Wl,--no-as-needed -no-pie -ldl"
+      "-I/usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
+
+    # in my testing with aggregation func, tcmalloc performs better than jemalloc
+    # turn it on as default for now
+    if(NOT PPROF)
+      set(PPROF 2)
+    endif()
+
+    # build flag -DGPROF
+    if (GPROF STREQUAL "1")
+      # using gprof  
+      list(APPEND LNCFLAGS 
+        "-pg -g"
+        "-DGPROF")
+    # build flag -DPPROF -> gperftools
+    elseif(PPROF STREQUAL "1")
+      # or using gperftools, ask each target to depends on perftools_library for linking
+      # unwind is needed by gperftools
+      list(APPEND LNCFLAGS
+      "-lunwind"
+      "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -g"
+      "-DPPROF")
+    elseif(PPROF STREQUAL "2")
+      # or using gperftools, ask each target to depends on perftools_library for linking
+      # unwind is needed by gperftools
+      list(APPEND LNCFLAGS
+      "-lunwind"
+      "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -s")
+    else()
+      # strip symbols since we don't need profiling and use jemalloc by default on linux release
+      # MALLOC_CONF=stats_print:true ./NodeServer to enable jemalloc stats  
+      list(APPEND LNCFLAGS 
+      "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -s")
+    endif()
+
+    string(REPLACE ";" " " NCFLAGS "${LNCFLAGS}")
+    # -Ofast vs -O3
+    set(NCFLAGS_RELEASE "-Ofast -march=native")
   endif()
 endif()
 
@@ -192,11 +231,14 @@ include(ext/Arrow_Ext.cmake)
 # include xxhash
 include(ext/Xxh_Ext.cmake)
 
-#include yaml
+# include yaml
 include(ext/Yaml_Ext.cmake)
 
-#include uri parser
+# include uri parser
 include(ext/Uri_Ext.cmake)
+
+# include perf tools
+include(ext/Perf_Ext.cmake)
 
 # "brew install conan" first - it's great after migrating to conan
 # at least for folly - thanks conan, how to solve conflicts with existing lib like gflags?.

@@ -119,8 +119,8 @@ protected:
  */
 class PagedSlice : public Slice {
 public:
-  PagedSlice(const NByte* buffer, size_t size) : Slice{ buffer, size }, slices_{ 1 } {}
-  PagedSlice(size_t page) : Slice{ page }, slices_{ 1 } {}
+  PagedSlice(const NByte* buffer, size_t size) : Slice{ buffer, size }, slices_{ 1 }, numExtended_{ 0 } {}
+  PagedSlice(size_t page) : Slice{ page }, slices_{ 1 }, numExtended_{ 0 } {}
   ~PagedSlice() = default;
 
   // append a bytes array of length bytes to position
@@ -183,6 +183,9 @@ private:
 
 private:
   size_t slices_;
+
+  // recording total number of extension
+  size_t numExtended_;
 };
 
 } // namespace common

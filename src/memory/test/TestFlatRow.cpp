@@ -51,7 +51,7 @@ TEST(RowTest, TestFlatRow) {
     row.write("flag", true);
 
     // row is ready to read now
-    EXPECT_EQ(row.readInt("flag"), true);
+    EXPECT_EQ(row.readBool("flag"), true);
     EXPECT_EQ(row.readInt("id"), 2);
     EXPECT_EQ(row.readString("name"), "nebula");
     EXPECT_EQ(row.readFloat("weight"), 23.5);

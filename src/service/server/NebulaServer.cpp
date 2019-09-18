@@ -59,6 +59,9 @@ namespace server {
 using grpc::ServerContext;
 using grpc::Status;
 using nebula::common::Evidence;
+using nebula::common::SingleCommandTask;
+using nebula::common::Task;
+using nebula::common::TaskType;
 using nebula::execution::BlockManager;
 using nebula::execution::io::BlockLoader;
 using nebula::execution::meta::TableService;
@@ -125,8 +128,23 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
   nebula::common::Evidence::Duration tick;
   ErrorCode error = ErrorCode::NONE;
 
+  auto tableName = request->table();
+  constexpr auto NUCLEAR = "_nuclear_";
+  if (NUCLEAR == tableName) {
+    LOG(INFO) << "Received a nuclear command, tearing down everything";
+    // DEBUG/PROFILE PURPOSE:
+    // shutdown the local node by this command
+    RemoteNodeConnector connector{ nullptr };
+    auto nodes = nebula::meta::ClusterInfo::singleton().nodes();
+    N_ENSURE(nodes.size() > 0, "cluster info has no nodes??");
+    auto client = connector.makeClient(*nodes.begin(), threadPool_);
+    Task task(TaskType::COMMAND, SingleCommandTask::shutdown());
+    client->task(task);
+    return Status::OK;
+  }
+
   // get the table
-  auto table = TableService::singleton()->query(request->table());
+  auto table = TableService::singleton()->query(tableName);
 
   // build the query
   auto query = handler_.build(*table, *request, error);
@@ -240,6 +258,11 @@ void RunServer() {
 
         // TODO(cao) - how to support table schema/column props evolution?
         nebula::execution::meta::TableService::singleton()->enroll(ci);
+      }
+
+      {
+        // no matter if cluster config changes, regen specss
+        auto& ci = nebula::meta::ClusterInfo::singleton();
 
         // refresh data specs
         specRepo.refresh(ci);

@@ -145,8 +145,8 @@ TEST(FlatBufferTest, TestSerde) {
   // initialize a flat row with given schema
   FlatBuffer fb(test.schema());
 
-  // add 10 rows
-  constexpr auto rows2test = 5;
+  // add some rows
+  constexpr auto rows2test = 53;
   auto seed = Evidence::unix_timestamp();
   MockRowData row(seed);
 

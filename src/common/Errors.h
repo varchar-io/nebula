@@ -69,49 +69,28 @@ static constexpr cstr lslash(cstr str) {
     throw nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, "RuntimeError", MSG); \
   })
 
-#define N_ENSURE(e, msg)                                                                             \
-  ({                                                                                                 \
-    auto const& _tmp = (e);                                                                          \
-    _tmp ? _tmp : throw nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, #e, msg); \
+#define THROW_IF_NOT_EXP(EXP, MSG)                                  \
+  ({                                                                \
+    if (!(EXP)) {                                                   \
+      throw NException(fmt::format("[Violation: #EXP]: {0}", MSG)); \
+    }                                                               \
   })
 
-#define N_ENSURE_NOT_NULL(p, m) \
-  N_ENSURE(p != nullptr, fmt::format("[NULL-{0}]: {1}", #p, m));
+#define N_ENSURE(e, msg) THROW_IF_NOT_EXP(e, msg)
 
-#define N_ENSURE_NE(l, r, m)                                               \
-  ({                                                                       \
-    auto msg = fmt::format("[Range Violation: {0} != {1}]: {2}", l, r, m); \
-    N_ENSURE(l != r, msg);                                                 \
-  })
+#define N_ENSURE_NOT_NULL(p, m) THROW_IF_NOT_EXP(p != nullptr, m)
 
-#define N_ENSURE_EQ(l, r, m)                                               \
-  ({                                                                       \
-    auto msg = fmt::format("[Range Violation: {0} == {1}]: {2}", l, r, m); \
-    N_ENSURE(l == r, msg);                                                 \
-  })
+#define N_ENSURE_NE(l, r, m) THROW_IF_NOT_EXP(l != r, m)
 
-#define N_ENSURE_LT(l, r, m)                                              \
-  ({                                                                      \
-    auto msg = fmt::format("[Range Violation: {0} < {1}]: {2}", l, r, m); \
-    N_ENSURE(l < r, msg);                                                 \
-  })
+#define N_ENSURE_EQ(l, r, m) THROW_IF_NOT_EXP(l == r, m)
 
-#define N_ENSURE_LE(l, r, m)                                               \
-  ({                                                                       \
-    auto msg = fmt::format("[Range Violation: {0} <= {1}]: {2}", l, r, m); \
-    N_ENSURE(l <= r, msg);                                                 \
-  })
+#define N_ENSURE_LT(l, r, m) THROW_IF_NOT_EXP(l < r, m)
 
-#define N_ENSURE_GT(l, r, m)                                              \
-  ({                                                                      \
-    auto msg = fmt::format("[Range Violation: {0} > {1}]: {2}", l, r, m); \
-    N_ENSURE(l > r, msg);                                                 \
-  })
+#define N_ENSURE_LE(l, r, m) THROW_IF_NOT_EXP(l <= r, m)
 
-#define N_ENSURE_GE(l, r, m)                                               \
-  ({                                                                       \
-    auto msg = fmt::format("[Range Violation: {0} >= {1}]: {2}", l, r, m); \
-    N_ENSURE(l >= r, msg);                                                 \
-  })
+#define N_ENSURE_GT(l, r, m) THROW_IF_NOT_EXP(l > r, m)
+
+#define N_ENSURE_GE(l, r, m) THROW_IF_NOT_EXP(l >= r, m)
+
 } // namespace common
 } // namespace nebula

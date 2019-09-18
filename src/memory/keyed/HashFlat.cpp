@@ -26,15 +26,11 @@ bool HashFlat::update(const nebula::surface::RowData& row, const UpdateCallback&
 
   auto newRow = getRows() - 1;
   auto hValue = hash(newRow, keys_);
-  auto key = Key({ *this, newRow });
-  auto itr = keyedRows_.find(key);
-  if (itr != keyedRows_.end()) {
-    // update existing data and hash
-    auto target = std::get<1>(itr->first);
-
+  Key key{ *this, newRow, hValue };
+  auto itr = rowKeys_.find(key);
+  if (itr != rowKeys_.end()) {
     // copy the new row data into target
-    copy(newRow, target, callback, keys_);
-    rowHash_[target] = hValue;
+    copy(newRow, std::get<1>(*itr), callback, keys_);
 
     // rollback the new added row
     rollback();
@@ -42,12 +38,8 @@ bool HashFlat::update(const nebula::surface::RowData& row, const UpdateCallback&
     return true;
   }
 
-  // we got a new unique row
-  // ensure every row is recorded
-  keyedRows_[key] = newRow;
-  N_ENSURE_EQ(newRow, rowHash_.size(), "row number match");
-  rowHash_.push_back(hValue);
-
+  // a new key
+  rowKeys_.insert(key);
   return false;
 }
 

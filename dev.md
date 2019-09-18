@@ -92,6 +92,26 @@ https://gist.github.com/shawncao/7f3d6bb26feb2e0f48888a5ea4ab0f53
 7. To have readable report, make sure the binary has symbols in it.
     build with symbols > -g?
 8. more tools can be found here http://euccas.github.io/blog/20170827/cpu-profiling-tools-on-linux.html
+9. Use gperftools
+   1.  clone source from github https://github.com/gperftools/gperftools.git
+   2.  install the tool set on machine (tested on both mac and ubuntu)
+       1.  ./autogen.sh
+       2.  ./configure
+       3.  sudo make install
+   3.  use it in the app
+       1.  make nebula with -DGPROF=1 using "gprof"
+       2.  OR make nebula with -DPPROF=1 using "gperftools"
+       3.  Run Node server separately from other images by removing "node" service from docker-compose.yaml
+           1.  LD_PRELOAD=/usr/local/lib/libprofiler.so CPUPROFILE=/tmp/prof_ns.out CPUPROFILE_FREQUENCY=400 ./NodeServer
+       4.  if using gperftools, run NodeServer like this "LD_PRELOAD=/usr/local/lib/libprofiler.so CPUPROFILE=/tmp/prof_ns5.out ./NodeServer"
+           1.  A bit more info on using gperftools: https://gperftools.github.io/gperftools/cpuprofile.html
+           2.  to see reports with graph, install grpahviz "sudo apt-get install graphviz gv"
+           3.  then we can do "pprof --gv <bin> x.out"
+           4.  We can also (more practical since difficult to config gv on linux) gen svg file and copy it to mac to open by browsers.
+               1.  such as "pprof --svg NodeServer /tmp/prof_ns.out > prof.svg"
+       5.  if using gprof, run NodeServer normally
+   4.  To make perfiler to flush/write perf results out, we need the app to exit normally. Hence implemented a hook to shutdown first node.
+       1.  http://dev-shawncao:8088/?api=nuclear
 
 ### new fresh setup on ubuntu 18.04 recordings
 Source build usually are "cmake .. -DCMAKE_BUILD_TYPE=Release && make -j36 && sudo make install" except those tar.gz with bootstrap such as cmake, boost
@@ -103,24 +123,24 @@ We will automate these steps one day.
 5.  install gflags (source build, github, cmake)
 6.  install glog (source build, github, cmake)
 7.  install double-conversion (source build, github, cmake)
-8.  install jemalloc (source build, github, autoconf, make)
+8.  install jemalloc (source build, github, autoconf, make OR "sudo apt-get install -y libjemalloc-dev")
 9.  install lz4 (source build, github, make)
 10. install zstd (source build, github, make)
 11. install snappy (source build, github, cmake)
-11. install libevent (source build, github, cmake)
-12. install libunwind (apt-get libunwind-dev)
-13. install libelf (apt-get libelf-dev)
-13. install libdwarf (source build, https://github.com/tomhughes/libdwarf, configure/make)
-14. "cp /usr/include/libdwarf/dwarf.h /usr/include/dwarf.h"
-15. install folly (source build, github, cmake)
-16. install boost 1.69.0 (check boost_ext.cmake)
-17. install flex (apt-get)
-18. install bison (apt-get)
-19. install openssl (source build, github, config, make install)
-20. install gtest (source build, github, cmake)
-21. install golang (apt-get install will not place go in /usr/local expected by grpc)
-22. install golang (tar unpack to /usr/local "tar -C /usr/local -xzf go$VERSION.$OS-$ARCH.tar.gz", export to path)
-23. install protobuf (source build, github, follow instructions strictly including "sudo ldconfig")
-24. install libcurl (apt-get, libcurl4-gnutls-dev and dependencies: libkrb5-dev, libgnutls28-dev, libgcrypt-dev, libldap-dev, librtmp-dev, libidn11-dev, libnghttp2-dev, libpsl-dev)
-25. install rapidjson (nebula build, rapidjson/buid, sudo make install)
-26. install libiberty (apt-get libiberty-dev)
+12. install libevent (source build, github, cmake)
+13. install libunwind (apt-get libunwind-dev)
+14. install libelf (apt-get libelf-dev)
+15. install libdwarf (source build, https://github.com/tomhughes/libdwarf, configure/make)
+16. "cp /usr/include/libdwarf/dwarf.h /usr/include/dwarf.h"
+17. install folly (source build, github, cmake)
+18. install boost 1.69.0 (check boost_ext.cmake)
+19. install flex (apt-get)
+20. install bison (apt-get)
+21. install openssl (source build, github, config, make install)
+22. install gtest (source build, github, cmake)
+23. install golang (apt-get install will not place go in /usr/local expected by grpc)
+24. install golang (tar unpack to /usr/local "tar -C /usr/local -xzf go$VERSION.$OS-$ARCH.tar.gz", export to path)
+25. install protobuf (source build, github, follow instructions strictly including "sudo ldconfig")
+26. install libcurl (apt-get, libcurl4-gnutls-dev and dependencies: libkrb5-dev, libgnutls28-dev, libgcrypt-dev, libldap-dev, librtmp-dev, libidn11-dev, libnghttp2-dev, libpsl-dev)
+27. install rapidjson (nebula build, rapidjson/buid, sudo make install)
+28. install libiberty (apt-get libiberty-dev)

@@ -60,7 +60,6 @@ const query = (table, start, end, fc, op, fv, cols, limit, res) => {
 
         res.end();
     });
-
 };
 
 /**
@@ -153,6 +152,41 @@ const api_handlers = {
     "signature_of_pin": getSignatureByPin
 };
 
+/**
+ * Shut down nebula server and its nodes.
+ * Used for debugging and profiling purpose.
+ */
+const shutdown = () => {
+    const req = new NebulaClient.QueryRequest();
+    req.setTable("_nuclear_");
+    req.setStart(10);
+    req.setEnd(20);
+
+    // single filter
+    const p2 = new NebulaClient.Predicate();
+    p2.setColumn("a");
+    p2.setOp("0");
+    p2.setValueList(["b"]);
+    const filter = new NebulaClient.PredicateAnd();
+    filter.setExpressionList([p2]);
+    req.setFiltera(filter);
+
+    // set dimension
+    req.setDimensionList(["c"]);
+
+    // set limit
+    req.setTop(1);
+
+    // do the query
+    client.query(req, {}, (err, reply) => {
+        console.log(`ERR=${err}, REP=${reply}`);
+    });
+
+    return JSON.stringify({
+        state: 'OK'
+    });
+};
+
 //create a server object listening at 80:
 http.createServer(async function (req, res) {
     const q = url.parse(req.url, true).query;
@@ -163,6 +197,8 @@ http.createServer(async function (req, res) {
 
         if (q.api === "list") {
             res.write(listApi(q));
+        } else if (q.api === "nuclear") {
+            res.write(shutdown());
         } else if (q.api in api_handlers) {
             // basic requirement
             if (!q.start || !q.end) {

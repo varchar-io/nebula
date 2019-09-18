@@ -128,6 +128,11 @@ table ExpireTask {
   blocks: [string];
 }
 
+// fast communicate one single command specified by command value
+table CommandTask {
+  command: string;
+}
+
 table TaskSpec {
 
   // this is directly mapping to nebula::common::TaskType
@@ -138,6 +143,9 @@ table TaskSpec {
 
   // present if type is expiration
   expire: ExpireTask;
+
+  // present a command task
+  command: CommandTask;
 }
 
 table TaskReply {

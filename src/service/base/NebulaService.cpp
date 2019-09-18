@@ -41,6 +41,7 @@ using nebula::api::dsl::Query;
 using nebula::api::dsl::Serde;
 using nebula::api::dsl::SortType;
 using nebula::common::Pool;
+using nebula::common::SingleCommandTask;
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
@@ -365,6 +366,16 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     return mb.ReleaseMessage<TaskSpec>();
   }
 
+  if (tt == TaskType::COMMAND) {
+    auto spec = task.spec<SingleCommandTask>();
+    auto ct = CreateCommandTaskDirect(mb, spec->signature().c_str());
+
+    // create task spec
+    auto ts = CreateTaskSpec(mb, tt, 0, 0, ct);
+    mb.Finish(ts);
+    return mb.ReleaseMessage<TaskSpec>();
+  }
+
   throw NException(fmt::format("Unhandled task type: {0}", tt));
 }
 
@@ -432,6 +443,12 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     // move this list into a new object
     auto be = std::make_shared<BlockExpire>(std::move(idList));
     return Task(tt, be);
+  }
+
+  if (tt == TaskType::COMMAND) {
+    std::string cmd = ptr->command()->command()->str();
+    auto sct = std::make_shared<SingleCommandTask>(std::move(cmd));
+    return Task(tt, sct);
   }
 
   throw NException(fmt::format("Unhandled task type: {0}", tst));

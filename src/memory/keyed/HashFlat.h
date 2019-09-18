@@ -16,6 +16,9 @@
 
 #pragma once
 
+// #include <folly/container/F14Set.h>
+#include <unordered_set>
+
 #include "FlatBuffer.h"
 #include "surface/DataSurface.h"
 
@@ -28,7 +31,8 @@ namespace keyed {
 */
 
 class HashFlat : public FlatBuffer {
-  using Key = std::tuple<HashFlat&, size_t>;
+  // key is tuple of hash flat object, row id, row hash (by keys)
+  using Key = std::tuple<HashFlat&, size_t, size_t>;
 
 public:
   HashFlat(const nebula::type::Schema schema,
@@ -42,28 +46,17 @@ public:
   bool update(const nebula::surface::RowData&, const UpdateCallback&);
 
   struct Hash {
-    size_t operator()(const Key& row) const {
-      auto& flat = std::get<0>(row);
-      auto rowId = std::get<1>(row);
-
-      // calculate the specified row's hash based on its keys
-      auto size = flat.rowHash_.size();
-      if (rowId < size) {
-        return flat.rowHash_.at(rowId);
-      }
-
-      // for every key column
-      return flat.hash(rowId, flat.keys_);
+    inline size_t operator()(const Key& key) const noexcept {
+      return std::get<2>(key);
     }
   };
 
   struct Equal {
-    bool operator()(const Key& row1, const Key& row2) const {
+    bool operator()(const Key& row1, const Key& row2) const noexcept {
+      // both keys have to coming from the same flat object
       auto& flat = std::get<0>(row1);
-      auto rowId1 = std::get<1>(row1);
-      auto rowId2 = std::get<1>(row2);
-      // two rows equal if they have the same keysƒ
-      return flat.equal(rowId1, rowId2, flat.keys_);
+      // two rows equal if they have the same keys
+      return flat.equal(std::get<1>(row1), std::get<1>(row2), flat.keys_);
     }
   };
 
@@ -71,12 +64,13 @@ private:
   std::vector<size_t> keys_;
 
   // rowHash_ is used to cache hash
-  std::vector<size_t> rowHash_;
+  // std::vector<size_t> rowHash_;
 
   // TODO(cao):
   // build error Undefined symbols for architecture x86_64: "folly::f14::detail::F14LinkCheck
-  // folly::F14FastMap<Key, size_t, Hash, Equal> keyedRows_;
-  std::unordered_map<Key, size_t, Hash, Equal> keyedRows_;
+  // https://engineering.fb.com/developer-tools/f14/
+  // folly::F14FastSet<Key, Hash, Equal> rowKeys_;
+  std::unordered_set<Key, Hash, Equal> rowKeys_;
 };
 } // namespace keyed
 } // namespace memory

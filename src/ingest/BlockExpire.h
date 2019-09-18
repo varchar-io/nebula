@@ -34,7 +34,6 @@ public:
   virtual ~BlockExpire() = default;
 
   virtual std::string signature() const override {
-    // TODO(cao) - use file+size as unique signature?
     return fmt::format("{0}", blocks_.size());
   }
 
@@ -52,6 +51,7 @@ public:
       removed += bm->removeById(bid);
     }
 
+    // TODO(cao) - we need to update task states so data can be ingested again.
     LOG(INFO) << "Removed expired blocks: " << removed;
     return true;
   }

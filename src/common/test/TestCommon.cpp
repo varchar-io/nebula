@@ -23,6 +23,7 @@
 
 #include "common/Errors.h"
 #include "common/Evidence.h"
+#include "common/Fold.h"
 #include "common/Hash.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
@@ -387,6 +388,29 @@ TEST(CommonTest, TestNamedFormat) {
   {
     auto str = fmt::format("Hello, {name}!", fmt::arg("notfit", "World"), fmt::arg("name", "Nebula"));
     EXPECT_EQ(str, "Hello, Nebula!");
+  }
+}
+
+TEST(CommonTest, TestMultiFold) {
+  // test different data size for the algo
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  for (auto size = 1; size < 1000; size *= 2) {
+    LOG(INFO) << "Test multi-fold with size = " << size;
+
+    // fill sequences in the values vector
+    std::vector<int> values(size);
+    std::generate(values.begin(), values.end(), [n = 0]() mutable { return n++; });
+
+    nebula::common::fold<int>(pool, values, [](int& from, int& to) {
+      to += from;
+    });
+
+    auto sum = 0;
+    for (auto i = 0; i < size; ++i) {
+      sum += i;
+    }
+
+    EXPECT_EQ(values.at(0), sum);
   }
 }
 

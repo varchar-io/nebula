@@ -107,6 +107,9 @@ grpc::Status NodeServerImpl::Query(
   grpc::ServerContext*,
   const flatbuffers::grpc::Message<QueryPlan>* query,
   flatbuffers::grpc::Message<BatchRows>* batch) {
+#ifdef PPROF
+  ProfilerStart("/tmp/ns_query.out");
+#endif
   try {
     auto plan = QuerySerde::from(tableService_, query);
 
@@ -121,6 +124,10 @@ grpc::Status NodeServerImpl::Query(
   } catch (const std::exception& exp) {
     return grpc::Status(grpc::StatusCode::INTERNAL, exp.what());
   }
+
+#ifdef PPROF
+  ProfilerStop();
+#endif
 
   return grpc::Status::OK;
 }
@@ -190,7 +197,8 @@ grpc::Status NodeServerImpl::Task(
 
 void RunServer() {
   // launch the server
-  std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::base::ServiceProperties::NPORT));
+  std::string server_address = fmt::format(
+    "0.0.0.0:{0}", nebula::service::base::ServiceProperties::NPORT);
   nebula::service::node::NodeServerImpl node;
 
   grpc::ServerBuilder builder;
@@ -206,10 +214,19 @@ void RunServer() {
   // this may prevent system to exit properly, will revisit and revise.
   // run the loop.
   nebula::common::TaskScheduler taskScheduler;
+  auto shutdownHandler = [&server, &taskScheduler]() {
+    LOG(INFO) << "Shutting down current node...";
+
+    // stop scheduler
+    taskScheduler.stop();
+
+    // shut down server
+    server->Shutdown();
+  };
   taskScheduler.setInterval(
     1000,
-    [] {
-      nebula::service::node::TaskExecutor::singleton().process();
+    [shutdownHandler] {
+      nebula::service::node::TaskExecutor::singleton().process(shutdownHandler);
     });
 
   // NOTE that, this is blocking main thread to wait for server down

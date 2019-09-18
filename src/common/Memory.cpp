@@ -16,6 +16,10 @@
 
 #include "Memory.h"
 
+#include <gflags/gflags.h>
+
+DEFINE_bool(ALLOC_CHECK, false, "check allocation and fail it grows too much");
+
 namespace nebula {
 namespace common {
 
@@ -27,27 +31,39 @@ Pool& Pool::getDefault() {
 // not-threadsafe
 void PagedSlice::ensure(size_t size) {
   // increase 10 slices requests, logging warning, increase over 30 slices requests, logging error.
-  static constexpr int errors[] = { 50, 100 };
+  static constexpr size_t errors[] = { 50, 100 };
   if (UNLIKELY(size >= capacity())) {
+    // TODO(cao): a bit prediction here, is this effective?
+    // OR we just need real paged slices without continous memory chunk
+    if (numExtended_ > 4) {
+      // give 2 times of what asked
+      size *= 2;
+    } else if (numExtended_ > 8) {
+      size *= 4;
+    } else if (numExtended_ > 16) {
+      size *= 8;
+    }
+
     auto slices = slices_;
-    auto detects = 0;
     while (slices * size_ <= size) {
       ++slices;
 
-      if (UNLIKELY(++detects >= errors[0])) {
-        if (UNLIKELY(detects == errors[0])) {
+      if (FLAGS_ALLOC_CHECK) {
+        auto detects = slices - slices_;
+        if (detects >= errors[0]) {
           LOG(WARNING) << "Slices increased too fast in single request";
-        }
 
-        // over error bound - fail it
-        if (UNLIKELY(detects > errors[1])) {
-          LOG(FATAL) << fmt::format(
-            "Slices grows too fast: page size ({0}) too small or allocation leak towards {1}", size_, size);
+          // over error bound - fail it
+          if (UNLIKELY(detects > errors[1])) {
+            LOG(FATAL) << fmt::format(
+              "Slices grows too fast: page size ({0}) too small or allocation leak towards {1}", size_, size);
+          }
         }
       }
     }
 
     N_ENSURE_GT(slices, slices_, "required slices should be more than existing capacity");
+    ++numExtended_;
     this->ptr_ = static_cast<NByte*>(this->pool_.extend(this->ptr_, capacity(), slices * size_));
     std::swap(slices, slices_);
   }
