@@ -88,8 +88,9 @@ TEST(ApiTest, TestMultipleBlocks) {
   plan->display();
 
   nebula::common::Evidence::Duration tick;
+  folly::CPUThreadPoolExecutor pool{ 8 };
   // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
 
   // query should have results
   EXPECT_GT(result->size(), 0);
@@ -143,7 +144,8 @@ TEST(ApiTest, TestStringEqEmpty) {
 
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
 
   // query should have results
   EXPECT_EQ(result->size(), 1);
@@ -201,7 +203,8 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
 
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
 
   // query should have results
   EXPECT_EQ(result->size(), 1);

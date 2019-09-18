@@ -143,7 +143,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
   // create a remote connector and execute the query plan
   LOG(INFO) << "create a remote node connector ";
   auto connector = std::make_shared<RemoteNodeConnector>(query);
-  RowCursorPtr result = handler_.query(*plan, connector, error);
+  RowCursorPtr result = handler_.query(threadPool_, *plan, connector, error);
   auto durationMs = tick.elapsedMs();
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, durationMs);
@@ -210,8 +210,7 @@ void RunServer() {
   nebula::ingest::SpecRepo specRepo;
 
   // start node sync to sync all node's states and tasks
-  folly::CPUThreadPoolExecutor shared{ std::thread::hardware_concurrency() };
-  auto nsync = nebula::service::server::NodeSync::async(shared, specRepo, FLAGS_NODE_SYNC_INTERVAL);
+  auto nsync = nebula::service::server::NodeSync::async(v1Service.pool(), specRepo, FLAGS_NODE_SYNC_INTERVAL);
 
   // TODO (cao): start a thread to sync up with etcd setup for cluster info.
   // register cluster info, we're using two different time based scheduelr currently

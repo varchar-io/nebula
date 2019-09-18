@@ -48,9 +48,6 @@ public:
   }
 
 protected:
-  static nebula::surface::RowCursorPtr invokeNode(const ExecutionPlan& plan);
-
-protected:
   nebula::meta::NNode node_;
   folly::ThreadPoolExecutor& pool_;
 };

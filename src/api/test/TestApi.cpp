@@ -94,7 +94,8 @@ TEST(ApiTest, TestQueryStructure) {
   tick.reset();
 
   // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -137,7 +138,8 @@ TEST(ApiTest, TestSortingAndTop) {
   nebula::common::Evidence::Duration tick;
 
   // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan);
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";

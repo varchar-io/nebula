@@ -36,8 +36,17 @@ class V1ServiceImpl final : public V1::Service {
   // query handler to handle all the queries
   QueryHandler handler_;
 
+public:
+  V1ServiceImpl() : threadPool_{ std::thread::hardware_concurrency() } {}
+  virtual ~V1ServiceImpl() = default;
+
+  folly::ThreadPoolExecutor& pool() {
+    return threadPool_;
+  }
+
 private:
   grpc::Status replyError(nebula::service::base::ErrorCode, QueryResponse*, size_t) const;
+  folly::CPUThreadPoolExecutor threadPool_;
 };
 
 } // namespace server

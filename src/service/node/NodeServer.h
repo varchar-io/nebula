@@ -16,9 +16,8 @@
 #pragma once
 
 #include <grpcpp/grpcpp.h>
-#include <iostream>
-#include <memory>
-#include <string>
+
+#include "common/Folly.h"
 #include "execution/meta/TableService.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
@@ -62,10 +61,14 @@ class NodeServerImpl final : public NodeServer::Service {
     override;
 
 public:
-  NodeServerImpl() : tableService_{ nebula::execution::meta::TableService::singleton() } {}
+  NodeServerImpl()
+    : tableService_{ nebula::execution::meta::TableService::singleton() },
+      threadPool_{ std::thread::hardware_concurrency() } {}
+  virtual ~NodeServerImpl() = default;
 
 private:
   std::shared_ptr<nebula::execution::meta::TableService> tableService_;
+  folly::CPUThreadPoolExecutor threadPool_;
 };
 
 } // namespace node

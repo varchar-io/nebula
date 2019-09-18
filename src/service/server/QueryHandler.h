@@ -47,6 +47,7 @@ public:
     nebula::service::base::ErrorCode&) const noexcept;
 
   nebula::surface::RowCursorPtr query(
+    folly::ThreadPoolExecutor&,
     const nebula::execution::ExecutionPlan&,
     const std::shared_ptr<nebula::execution::core::NodeConnector> connector,
     nebula::service::base::ErrorCode&) const noexcept;

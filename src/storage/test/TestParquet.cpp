@@ -522,7 +522,7 @@ TEST(ParquetTest, DISABLED_TestRealParquetFile) {
   EXPECT_EQ(rows, reader.size());
 }
 
-TEST(ParquetTest, TestEventsParquet) {
+TEST(ParquetTest, DISABLED_TestEventsParquet) {
   auto localFile = "/tmp/events.p";
   auto schema = TypeSerializer::from("ROW<dt:string, eventtype:string, image_signature:string, country:string>");
   ParquetReader reader(localFile, schema);

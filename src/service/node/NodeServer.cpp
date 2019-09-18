@@ -112,7 +112,7 @@ grpc::Status NodeServerImpl::Query(
 
     // execute this plan and get results
     NodeExecutor executor(BlockManager::init());
-    auto cursor = executor.execute(*plan);
+    auto cursor = executor.execute(threadPool_, *plan);
 
     const auto& buffer = nebula::execution::serde::asBuffer(*cursor, plan->getOutputSchema());
 

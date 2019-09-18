@@ -226,27 +226,16 @@ TEST(CommonTest, TestYamlParser) {
   YAML::Node config = YAML::LoadFile("configs/test.yml");
 
   printType(config);
-  LOG(INFO) << "Version=" << config["version"].as<int>();
+  LOG(INFO) << "Version=" << config["version"].as<std::string>();
 
-  const auto& list = config["root"];
-  LOG(INFO) << "Root=" << list.size();
-  printType(list);
-  for (size_t i = 0; i < list.size(); ++i) {
-    printType(list[i]);
-  }
-
-  LOG(INFO) << "Name=" << list[0]["name"].as<std::string>();
-  LOG(INFO) << "Rank=" << list[1]["rank"].as<int>();
-  auto& props = list[2]["attributions"];
-  printType(props);
-  for (size_t i = 0; i < props.size(); ++i) {
-    LOG(INFO) << props[i].as<std::string>();
-  }
+  const auto& nodes = config["nodes"];
+  LOG(INFO) << "Root=" << nodes.size();
+  printType(nodes);
 }
 
 TEST(CommonTest, TestTimer) {
   nebula::common::TaskScheduler scheduler;
-  scheduler.setInterval(1000, [] { LOG(INFO) << "Did Interval"; });
+  // scheduler.setInterval(1000, [] { LOG(INFO) << "Did Interval"; });
   scheduler.setTimeout(2000, [] { LOG(INFO) << "Did Timeout"; });
 
   // run scheduler

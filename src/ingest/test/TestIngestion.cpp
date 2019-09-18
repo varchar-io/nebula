@@ -38,6 +38,7 @@ TEST(IngestTest, TestIngestSpec) {
 }
 
 TEST(IngestTest, TestSpecGeneration) {
+#ifndef __APPLE__
   nebula::ingest::SpecRepo sr;
 
   // load cluster info from sample config
@@ -52,6 +53,7 @@ TEST(IngestTest, TestSpecGeneration) {
   for (auto itr = specs.cbegin(), end = specs.cend(); itr != end; ++itr) {
     LOG(INFO) << fmt::format("ID={0}, Spec={1}", itr->first, itr->second->toString());
   }
+#endif
 }
 } // namespace test
 } // namespace ingest

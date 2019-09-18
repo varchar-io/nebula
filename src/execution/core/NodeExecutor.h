@@ -34,17 +34,13 @@ namespace core {
 class NodeExecutor {
 public:
   NodeExecutor(const std::shared_ptr<BlockManager> blockManager)
-    : blockManager_{ blockManager }, threadPool_{ std::thread::hardware_concurrency() } {}
+    : blockManager_{ blockManager } {}
 
 public:
-  nebula::surface::RowCursorPtr execute(const ExecutionPlan& plan);
-
-private:
-  folly::Future<nebula::surface::RowCursorPtr> compute(const nebula::memory::Batch&, const BlockPhase&);
+  nebula::surface::RowCursorPtr execute(folly::ThreadPoolExecutor&, const ExecutionPlan&);
 
 private:
   const std::shared_ptr<BlockManager> blockManager_;
-  folly::CPUThreadPoolExecutor threadPool_;
 };
 } // namespace core
 } // namespace execution

@@ -158,7 +158,7 @@ TEST(FlatBufferTest, TestSerde) {
   EXPECT_EQ(fb.getRows(), rows2test);
 
   auto size = fb.binSize();
-  auto buffer = new NByte[size];
+  auto buffer = static_cast<NByte*>(nebula::common::Pool::getDefault().allocate(size));
 
   // serialize size should equal expected bin size
   EXPECT_EQ(size, fb.serialize(buffer));
@@ -176,8 +176,9 @@ TEST(FlatBufferTest, TestSerde) {
     EXPECT_EQ(line(r), line(r2));
   }
 
-  // release buffer
-  delete[] buffer;
+  // DO NOT release buffer as it's owned by flatbuffer
+  // it has moved in semantic and own it
+  // delete[] buffer;
 }
 
 } // namespace test

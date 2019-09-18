@@ -20,8 +20,6 @@
 #include "TopSort.h"
 #include "common/Folly.h"
 #include "execution/eval/UDF.h"
-#include "memory/keyed/FlatRowCursor.h"
-#include "memory/keyed/HashFlat.h"
 
 // TODO(cao) - COMMENT OUT, lib link issue
 // DEFINE_uint32(NODE_TIMEOUT, 2000, "miliseconds");
@@ -33,24 +31,20 @@ namespace nebula {
 namespace execution {
 namespace core {
 
-using nebula::common::CompositeCursor;
-using nebula::common::Cursor;
-using nebula::execution::eval::UDAF;
-using nebula::memory::keyed::FlatRowCursor;
-using nebula::memory::keyed::HashFlat;
 using nebula::meta::NNode;
 using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
-using nebula::surface::RowData;
-using nebula::type::Kind;
 
 // set 10 seconds for now as max time to complete a query
 static std::chrono::milliseconds RPC_TIMEOUT = std::chrono::milliseconds(10000);
 
-RowCursorPtr ServerExecutor::execute(const ExecutionPlan& plan, const std::shared_ptr<NodeConnector> connector) {
+RowCursorPtr ServerExecutor::execute(
+  folly::ThreadPoolExecutor& pool,
+  const ExecutionPlan& plan,
+  const std::shared_ptr<NodeConnector> connector) {
   std::vector<folly::Future<RowCursorPtr>> results;
   for (const NNode& node : plan.getNodes()) {
-    auto c = connector->makeClient(node, threadPool_);
+    auto c = connector->makeClient(node, pool);
     auto f = c->execute(plan)
                // set time out handling
                // TODO(cao) - add error handling too via thenError

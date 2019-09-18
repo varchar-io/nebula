@@ -28,21 +28,13 @@ using nebula::common::Cursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 
-RowCursorPtr NodeClient::invokeNode(const ExecutionPlan& plan) {
-  // TODO(cao): replace with RPC call to the real node, use the in-node call for now
-  NodeExecutor nodeExec(BlockManager::init());
-  LOG(INFO) << "Running a node executor: " << plan.id();
-  return nodeExec.execute(plan);
-}
-
 folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
   auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
 
   // start to full fill the future
-  // TODO(cao) - I don't know yet why using [&] capture for p here doesn't work.
-  // life time issue? changing it to a class member doesn't help.
-  pool_.add([&plan, p]() {
-    p->setValue(invokeNode(plan));
+  pool_.add([&plan, &pool = pool_, p]() {
+    NodeExecutor nodeExec(BlockManager::init());
+    p->setValue(nodeExec.execute(pool, plan));
   });
 
   return p->getFuture();

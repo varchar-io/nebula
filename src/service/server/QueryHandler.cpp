@@ -49,6 +49,7 @@ using nebula::execution::ExecutionPlan;
 using nebula::execution::QueryWindow;
 using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
+using nebula::meta::NNode;
 using nebula::meta::Table;
 using nebula::service::Operation;
 using nebula::service::base::ErrorCode;
@@ -80,13 +81,14 @@ std::unique_ptr<ExecutionPlan> QueryHandler::compile(
 }
 
 RowCursorPtr QueryHandler::query(
+  folly::ThreadPoolExecutor& pool,
   const ExecutionPlan& plan,
   const std::shared_ptr<NodeConnector> connector,
   ErrorCode& err) const noexcept {
   // execute the query plan
   try {
     // create a node connector for this executor
-    return ServerExecutor(nebula::meta::NNode::local().toString()).execute(plan, connector);
+    return ServerExecutor(NNode::local().toString()).execute(pool, plan, connector);
   } catch (const std::exception& exp) {
     LOG(ERROR) << "Error in executing query: " << exp.what();
     err = ErrorCode::FAIL_EXECUTE_QUERY;
@@ -115,7 +117,7 @@ std::shared_ptr<Query> QueryHandler::build(const Table& tb, const QueryRequest& 
   }
 }
 
-std::shared_ptr<nebula::api::dsl::Query> QueryHandler::buildQuery(const Table& tb, const QueryRequest& req) const {
+std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequest& req) const {
   // build filter
   auto q = std::make_shared<Query>(req.table(), ms_);
 

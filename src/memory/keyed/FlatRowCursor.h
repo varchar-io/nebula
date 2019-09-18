@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include "HashFlat.h"
 #include "common/Cursor.h"
 #include "surface/DataSurface.h"
 

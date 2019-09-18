@@ -39,17 +39,16 @@ class ServerExecutor {
 
 public:
   ServerExecutor(const std::string& server)
-    : server_{ server }, threadPool_{ 8 } {
-    // this servrer should be myself
-  }
+    : server_{ server } {}
 
   // execute the query plan to get a data set
-  nebula::surface::RowCursorPtr execute(const ExecutionPlan&, const std::shared_ptr<NodeConnector> = inproc());
+  nebula::surface::RowCursorPtr execute(
+    folly::ThreadPoolExecutor&,
+    const ExecutionPlan&,
+    const std::shared_ptr<NodeConnector> = inproc());
 
 private:
   const std::string server_;
-  // TODO(cao) - let's create a global shared pool across all sessions
-  folly::CPUThreadPoolExecutor threadPool_;
 };
 
 } // namespace core

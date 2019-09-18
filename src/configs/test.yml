@@ -1,8 +1,32 @@
-version: 99
-root:
-  - name: nebula
-  - rank: 1
-  - attributions:
-      - awesome
-      - cool
-      - fast
+version: 1.0
+
+# server configs
+server:
+  # as node will treat server to run as a node
+  # if false, server will not load any data in itself.
+  # NOTE that, there are maybe missing functions to fully compatible for server as node.
+  # such as task execution may not be implemented.
+  anode: false
+
+# will be provided by enviroment
+nodes:
+  - node:
+      host: 10.1.179.237
+      port: 9199
+
+tables:
+  nebula.test:
+    # max 10G RAM assigment
+    max-mb: 10000
+    # max 10 days assignment
+    max-hr: 240
+    schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    data: custom
+    loader: NebulaTest
+    source: ""
+    backup: s3://nebula/n100/
+    format: none
+    time:
+      type: static
+      # get it from linux by "date +%s"
+      value: 1565994194

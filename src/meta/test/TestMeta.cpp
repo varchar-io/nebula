@@ -62,19 +62,19 @@ TEST(MetaTest, TestNNode) {
 }
 
 TEST(MetaTest, TestClusterConfigLoad) {
-  auto yamlFile = "configs/cluster.yml";
+  auto yamlFile = "configs/test.yml";
   auto& clusterInfo = nebula::meta::ClusterInfo::singleton();
   clusterInfo.load(yamlFile);
 
   // verify data against config file
   const auto& nodes = clusterInfo.nodes();
-  EXPECT_EQ(nodes.size(), 2);
+  EXPECT_EQ(nodes.size(), 1);
   for (auto itr = nodes.cbegin(); itr != nodes.cend(); ++itr) {
     LOG(INFO) << "NODE: " << itr->toString();
   }
 
   const auto& tables = clusterInfo.tables();
-  EXPECT_EQ(tables.size(), 4);
+  EXPECT_EQ(tables.size(), 1);
   for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
     LOG(INFO) << "TABLE: " << (*itr)->toString();
   }
