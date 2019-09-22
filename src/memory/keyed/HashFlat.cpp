@@ -29,8 +29,8 @@ bool HashFlat::update(const nebula::surface::RowData& row, const UpdateCallback&
   Key key{ *this, newRow, hValue };
   auto itr = rowKeys_.find(key);
   if (itr != rowKeys_.end()) {
-    // copy the new row data into target
-    copy(newRow, std::get<1>(*itr), callback, keys_);
+    // copy the new row data into target for non-keys
+    copy(newRow, std::get<1>(*itr), callback, nonKeys_);
 
     // rollback the new added row
     rollback();

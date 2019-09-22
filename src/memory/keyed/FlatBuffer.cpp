@@ -38,7 +38,7 @@ void FlatBuffer::initSchema() noexcept {
   numColumns_ = schema_->size();
   fields_.reserve(numColumns_);
   kw_.reserve(numColumns_);
-  parsers_.reserve(numColumns_);
+  colOps_.reserve(numColumns_);
 
   for (size_t i = 0; i < numColumns_; ++i) {
     auto f = schema_->childType(i);
@@ -48,7 +48,11 @@ void FlatBuffer::initSchema() noexcept {
     kw_.push_back({ kind, widthInMain(kind) });
 
     // generate column parser for each column
-    parsers_.push_back(genParser(f, i));
+    colOps_.emplace_back(
+      genParser(f, i),
+      genComparator(f, i),
+      genHasher(f, i),
+      genCopier(f, i));
   }
 }
 
@@ -250,7 +254,8 @@ std::function<void(const RowData&)> FlatBuffer::genParser(const TypeNode& tn, si
   }
 
   // add solid values for each type
-  switch (tn->k()) {
+  auto kind = kw_.at(i).first;
+  switch (kind) {
     SCALAR_DATA_DISTR(BOOLEAN, readBool)
     SCALAR_DATA_DISTR(TINYINT, readByte)
     SCALAR_DATA_DISTR(SMALLINT, readShort)
@@ -273,10 +278,184 @@ std::function<void(const RowData&)> FlatBuffer::genParser(const TypeNode& tn, si
     };
   }
   default:
-    return {};
+    return [i](const RowData&) {
+      LOG(INFO) << "Parse on un-supported column: " << i;
+    };
   }
 
 #undef SCALAR_DATA_DISTR
+}
+
+Comparator FlatBuffer::genComparator(const nebula::type::TypeNode&, size_t i) noexcept {
+#define PREPARE_AND_NULLCHECK()                     \
+  const auto& row1Props = rows_[row1];              \
+  const auto& row2Props = rows_[row2];              \
+  auto row1Offset = row1Props.offset;               \
+  auto row2Offset = row2Props.offset;               \
+  const auto& colProps1 = row1Props.colProps.at(i); \
+  const auto& colProps2 = row2Props.colProps.at(i); \
+  if (colProps1.isNull != colProps2.isNull) {       \
+    return -1;                                      \
+  }                                                 \
+  if (colProps1.isNull) {                           \
+    return 0;                                       \
+  }
+
+#define TYPE_COMPARE(KIND, TYPE)                                                                       \
+  case Kind::KIND: {                                                                                   \
+    return [this, i](size_t row1, size_t row2) -> int {                                                \
+      PREPARE_AND_NULLCHECK()                                                                          \
+      return main_->slice.compare<TYPE>(row1Offset + colProps1.offset, row2Offset + colProps2.offset); \
+    };                                                                                                 \
+  }
+
+  // fetch value
+  Kind k = kw_.at(i).first;
+  // we only support primitive types for keys
+  switch (k) {
+    TYPE_COMPARE(BOOLEAN, bool)
+    TYPE_COMPARE(TINYINT, int8_t)
+    TYPE_COMPARE(SMALLINT, int16_t)
+    TYPE_COMPARE(INTEGER, int32_t)
+    TYPE_COMPARE(BIGINT, int64_t)
+    TYPE_COMPARE(REAL, int32_t)
+    TYPE_COMPARE(DOUBLE, int64_t)
+  case Kind::VARCHAR: {
+    // read the real data from data_
+    // TODO(cao) - we don't need convert strings from bytes for hash
+    // instead, slice should be able to compare two byte range
+    return [this, i](size_t row1, size_t row2) -> int {
+      PREPARE_AND_NULLCHECK()
+
+      // offset and length of each
+      auto o1 = row1Offset + colProps1.offset;
+      auto s1Length = main_->slice.read<int32_t>(o1 + 4);
+      auto o2 = row2Offset + colProps2.offset;
+      auto s2Length = main_->slice.read<int32_t>(o2 + 4);
+
+      // length has to be the same
+      if (s1Length != s2Length) {
+        return s1Length - s2Length;
+      }
+
+      auto s1Offset = main_->slice.read<int32_t>(o1);
+      auto s2Offset = main_->slice.read<int32_t>(o2);
+
+      return data_->slice.compare(s1Offset, s2Offset, s1Length);
+    };
+  }
+  default:
+    return [i](size_t, size_t) -> int {
+      LOG(ERROR) << "Compare a non-supported column: " << i;
+      return 0;
+    };
+  }
+
+#undef PREPARE_AND_NULLCHECK
+#undef TYPE_COMPARE
+}
+
+Hasher FlatBuffer::genHasher(const nebula::type::TypeNode&, size_t i) noexcept {
+  // TODO(why do we hash these bytes instead using its own value?)
+#define PREPARE_AND_NULL()                             \
+  const auto& rowProps = rows_.at(row);                \
+  auto rowOffset = rowProps.offset;                    \
+  const auto& colProps = rowProps.colProps.at(i);      \
+  static constexpr size_t flip = 0x3600ABC35871E005UL; \
+  if (colProps.isNull) {                               \
+    hash = (hash ^ flip) >> 32;                        \
+    return hash;                                       \
+  }
+
+#define TYPE_HASH(KIND, TYPE)                                        \
+  case Kind::KIND: {                                                 \
+    return [this, i](size_t row, size_t hash) {                      \
+      PREPARE_AND_NULL()                                             \
+      auto h = main_->slice.hash<TYPE>(rowOffset + colProps.offset); \
+      return (hash ^ h) >> 32;                                       \
+    };                                                               \
+  }
+
+  // fetch value
+  Kind k = kw_.at(i).first;
+  switch (k) {
+    TYPE_HASH(BOOLEAN, bool)
+    TYPE_HASH(TINYINT, int8_t)
+    TYPE_HASH(SMALLINT, int16_t)
+    TYPE_HASH(INTEGER, int32_t)
+    TYPE_HASH(BIGINT, int64_t)
+    TYPE_HASH(REAL, int32_t)
+    TYPE_HASH(DOUBLE, int64_t)
+  case Kind::VARCHAR: {
+    // read 4 bytes offset and 4 bytes length
+    return [this, i](size_t row, size_t hash) {
+      PREPARE_AND_NULL()
+
+      auto oo = rowOffset + colProps.offset;
+      auto offset = main_->slice.read<int32_t>(oo);
+      auto len = main_->slice.read<int32_t>(oo + 4);
+
+      // read the real data from data_
+      // TODO(cao) - we don't need convert strings from bytes for hash
+      // instead, slice should be able to hash the range[offset, len] much cheaper
+      if (len == 0) {
+        return hash;
+      }
+
+      auto h = data_->slice.hash(offset, len);
+      return (hash ^ h) >> 32;
+    };
+  }
+  default:
+    return [i](size_t, size_t) -> size_t {
+      LOG(ERROR) << "Hash a non-supported column: " << i;
+      return 0;
+    };
+  }
+
+#undef PREPARE_AND_NULL
+#undef TYPE_HASH
+}
+
+Copier FlatBuffer::genCopier(const nebula::type::TypeNode&, size_t i) noexcept {
+  // TODO(cao): ensure target to be null - generic way handle null metrics?
+#define UPDATE_COLUMN(COLUMN, KIND, TYPE)                                        \
+  case Kind::KIND: {                                                             \
+    return [this, i](size_t row1, size_t row2, const UpdateCallback& callback) { \
+      const auto& row1Props = rows_.at(row1);                                    \
+      const auto& row2Props = rows_.at(row2);                                    \
+      const auto& colProps1 = row1Props.colProps.at(i);                          \
+      const auto& colProps2 = row2Props.colProps.at(i);                          \
+      if (colProps1.isNull) {                                                    \
+        return;                                                                  \
+      }                                                                          \
+      auto targetOffset = row2Props.offset + colProps2.offset;                   \
+      auto nv = main_->slice.read<TYPE>(row1Props.offset + colProps1.offset);    \
+      auto ov = main_->slice.read<TYPE>(targetOffset);                           \
+      TYPE x;                                                                    \
+      auto feedback = callback(COLUMN, Kind::KIND, &ov, &nv, &x);                \
+      N_ENSURE(feedback, "callback should always return true");                  \
+      main_->slice.write<TYPE>(targetOffset, x);                                 \
+    };                                                                           \
+  }
+
+  Kind k = kw_.at(i).first;
+  // we only support primitive types aggregation fields
+  switch (k) {
+    UPDATE_COLUMN(i, BOOLEAN, bool)
+    UPDATE_COLUMN(i, TINYINT, int8_t)
+    UPDATE_COLUMN(i, SMALLINT, int16_t)
+    UPDATE_COLUMN(i, INTEGER, int32_t)
+    UPDATE_COLUMN(i, BIGINT, int64_t)
+    UPDATE_COLUMN(i, REAL, int32_t)
+    UPDATE_COLUMN(i, DOUBLE, int64_t)
+  default:
+    return [i](size_t, size_t, const UpdateCallback&) {
+      LOG(ERROR) << "This column can not be copy-updated: " << i;
+    };
+  }
+
+#undef UPDATE_COLUMN
 }
 
 // add a row into current batch
@@ -305,7 +484,7 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
     auto nv = nulls.at(i);
     columnProps.emplace_back(nv, main_->offset - rowOffset);
     if (!nv) {
-      parsers_.at(i)(row);
+      colOps_.at(i).parser(row);
     }
   }
 
@@ -349,196 +528,35 @@ FlatColumnProps FlatBuffer::columnProps(size_t offset) const noexcept {
 // compute hash value of given row and column list
 // The function has very similar logic as row accessor, we inline it for perf
 size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
-  const auto& rowProps = rows_.at(rowId);
-  auto rowOffset = rowProps.offset;
-  const auto& colProps = rowProps.colProps;
-  static constexpr size_t flip = 0x3600ABC35871E005UL;
   static constexpr size_t start = 0xC6A4A7935BD1E995UL;
   size_t hvalue = start;
 
-// TODO(why do we hash these bytes instead using its own value?)
-// n8bytes = std::hash<TYPE>()();
-#define TYPE_HASH(KIND, TYPE)                                 \
-  case Kind::KIND: {                                          \
-    n8bytes = main_->slice.read<TYPE>(rowOffset + colOffset); \
-    break;                                                    \
-  }
-
+  // update on every column
   std::for_each(std::begin(cols), std::end(cols),
-                [&colProps, &hvalue, &rowOffset, this](const size_t index) {
-                  const auto& item = colProps[index];
-                  // is null
-                  if (item.isNull) {
-                    // std::__hash_combine()
-                    hvalue = (hvalue ^ flip) >> 32;
-                  } else {
-                    // fetch value
-                    size_t colOffset = item.offset;
-                    Kind k = kw_.at(index).first;
-                    // we only support primitive types for keys
-                    size_t n8bytes = 0;
-                    switch (k) {
-                      TYPE_HASH(BOOLEAN, bool)
-                      TYPE_HASH(TINYINT, int8_t)
-                      TYPE_HASH(SMALLINT, int16_t)
-                      TYPE_HASH(INTEGER, int32_t)
-                      TYPE_HASH(BIGINT, int64_t)
-                      TYPE_HASH(REAL, int32_t)
-                      TYPE_HASH(DOUBLE, int64_t)
-                    case Kind::VARCHAR: {
-                      // read 4 bytes offset and 4 bytes length
-                      auto offset = main_->slice.read<int32_t>(rowOffset + colOffset);
-                      auto len = main_->slice.read<int32_t>(rowOffset + colOffset + 4);
-
-                      // read the real data from data_
-                      // TODO(cao) - we don't need convert strings from bytes for hash
-                      // instead, slice should be able to hash the range[offset, len] much cheaper
-                      n8bytes = data_->slice.hash(offset, len);
-                      break;
-                    }
-                    default:
-                      throw NException("Only support primitive types as keys");
-                    }
-
-                    // update the hash with the item value's hash
-                    hvalue = (hvalue ^ n8bytes) >> 32;
-                  }
+                [this, &hvalue, rowId](size_t index) {
+                  hvalue = colOps_.at(index).hasher(rowId, hvalue);
                 });
-
-#undef TYPE_HASH
 
   return hvalue;
 }
 
 // check if two rows are equal to each other on given columns
 bool FlatBuffer::equal(size_t row1, size_t row2, const std::vector<size_t>& cols) const {
-  const auto& row1Props = rows_[row1];
-  const auto& row2Props = rows_[row2];
-  auto row1Offset = row1Props.offset;
-  auto row2Offset = row2Props.offset;
-  const FlatColumnProps& colProps1 = row1Props.colProps;
-  const FlatColumnProps& colProps2 = row2Props.colProps;
-
-  // just do memcmp on each field, if cols are continues primitves, compare it once
-
-#define TYPE_COMPARE(KIND, TYPE)                                                                                \
-  case Kind::KIND: {                                                                                            \
-    if (main_->slice.read<TYPE>(row1Offset + colOffset1) != main_->slice.read<TYPE>(row2Offset + colOffset2)) { \
-      return false;                                                                                             \
-    }                                                                                                           \
-    break;                                                                                                      \
-  }
-
   for (auto index : cols) {
-    const auto& item1 = colProps1[index];
-    const auto& item2 = colProps2[index];
-    // is null
-    if (item1.isNull != item2.isNull) {
+    if (colOps_.at(index).comparator(row1, row2) != 0) {
       return false;
     }
-
-    if (item1.isNull) {
-      continue;
-    }
-
-    // fetch value
-    size_t colOffset1 = item1.offset;
-    size_t colOffset2 = item2.offset;
-    Kind k = kw_.at(index).first;
-    // we only support primitive types for keys
-    switch (k) {
-      TYPE_COMPARE(BOOLEAN, bool)
-      TYPE_COMPARE(TINYINT, int8_t)
-      TYPE_COMPARE(SMALLINT, int16_t)
-      TYPE_COMPARE(INTEGER, int32_t)
-      TYPE_COMPARE(BIGINT, int64_t)
-      TYPE_COMPARE(REAL, int32_t)
-      TYPE_COMPARE(DOUBLE, int64_t)
-    case Kind::VARCHAR: {
-      // read the real data from data_
-      // TODO(cao) - we don't need convert strings from bytes for hash
-      // instead, slice should be able to compare two byte range
-      auto s1 = data_->slice.read(
-        main_->slice.read<int32_t>(row1Offset + colOffset1),
-        main_->slice.read<int32_t>(row1Offset + colOffset1 + 4));
-
-      auto s2 = data_->slice.read(
-        main_->slice.read<int32_t>(row2Offset + colOffset2),
-        main_->slice.read<int32_t>(row2Offset + colOffset2 + 4));
-
-      if (s1 != s2) {
-        return false;
-      }
-
-      break;
-    }
-    default:
-      throw NException("Only support primitive types as keys");
-    }
   }
-
-#undef TYPE_COMPARE
 
   return true;
 }
 
-// copy data of row1 into row2
+// copy data of row1 into row2 for all specified columns
 bool FlatBuffer::copy(size_t row1, size_t row2, const UpdateCallback& callback, const std::vector<size_t>& cols) {
-  // LOG(INFO) << "copy row " << row1 << " into " << row2;
-  const auto& row1Props = rows_.at(row1);
-  const auto& row2Props = rows_.at(row2);
-  auto row1Offset = row1Props.offset;
-  auto row2Offset = row2Props.offset;
-  const auto& colProps1 = row1Props.colProps;
-  const auto& colProps2 = row2Props.colProps;
-
-#define UPDATE_COLUMN(COLUMN, KIND, TYPE)                       \
-  case Kind::KIND: {                                            \
-    auto targetOffset = row2Offset + colOffset2;                \
-    auto nv = main_->slice.read<TYPE>(row1Offset + colOffset1); \
-    auto ov = main_->slice.read<TYPE>(targetOffset);            \
-    TYPE x;                                                     \
-    auto feedback = callback(COLUMN, Kind::KIND, &ov, &nv, &x); \
-    N_ENSURE(feedback, "callback should always return true");   \
-    main_->slice.write<TYPE>(targetOffset, x);                  \
-    break;                                                      \
+  // column list to be updated
+  for (size_t i : cols) {
+    colOps_.at(i).copier(row1, row2, callback);
   }
-
-  for (size_t i = 0; i < numColumns_; ++i) {
-    // skip keys
-    if (std::any_of(cols.begin(), cols.end(), [i](size_t item) { return item == i; })) {
-      continue;
-    }
-
-    const auto& item1 = colProps1[i];
-    const auto& item2 = colProps2[i];
-
-    // is null
-    if (item1.isNull) {
-      // TODO(cao) - ensure column i of row2 to be null;
-      continue;
-    }
-
-    // fetch value
-    size_t colOffset1 = item1.offset;
-    size_t colOffset2 = item2.offset;
-    Kind k = kw_.at(i).first;
-
-    // we only support primitive types aggregation fields
-    switch (k) {
-      UPDATE_COLUMN(i, BOOLEAN, bool)
-      UPDATE_COLUMN(i, TINYINT, int8_t)
-      UPDATE_COLUMN(i, SMALLINT, int16_t)
-      UPDATE_COLUMN(i, INTEGER, int32_t)
-      UPDATE_COLUMN(i, BIGINT, int64_t)
-      UPDATE_COLUMN(i, REAL, int32_t)
-      UPDATE_COLUMN(i, DOUBLE, int64_t)
-    default:
-      throw NException("Only support primitive types as keys");
-    }
-  }
-
-#undef TYPE_COMPARE
 
   return true;
 }

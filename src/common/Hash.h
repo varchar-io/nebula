@@ -30,15 +30,15 @@ namespace common {
 
 class Hasher {
 public:
-  XXH_FORCE_INLINE size_t hashString(const std::string_view& sv) {
+  XXH_FORCE_INLINE size_t hashString(const std::string_view& sv) noexcept {
     return hash64(sv.data(), sv.size());
   }
 
-  XXH_FORCE_INLINE size_t hashString(const std::string& str) {
+  XXH_FORCE_INLINE size_t hashString(const std::string& str) noexcept {
     return hash64(str.data(), str.size());
   }
 
-  XXH_FORCE_INLINE size_t hash64(const void* p, const size_t len) {
+  XXH_FORCE_INLINE size_t hash64(const void* p, const size_t len) noexcept {
     return XXH3_64bits(p, len);
   }
 };

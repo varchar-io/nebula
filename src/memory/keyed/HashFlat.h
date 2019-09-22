@@ -37,7 +37,18 @@ class HashFlat : public FlatBuffer {
 public:
   HashFlat(const nebula::type::Schema schema,
            const std::vector<size_t>& keys)
-    : FlatBuffer(schema), keys_{ std::move(keys) } {}
+    : FlatBuffer(schema), keys_{ keys } {
+    auto numCols = schema->size();
+    nonKeys_.reserve(numCols - keys_.size());
+    for (size_t i = 0; i < numCols; ++i) {
+      if (std::none_of(keys_.begin(), keys_.end(), [i](size_t ki) { return ki == i; })) {
+        nonKeys_.push_back(i);
+      }
+    }
+
+    // set a max load factor to reduce rehash
+    rowKeys_.max_load_factor(0.2);
+  }
 
   virtual ~HashFlat() = default;
 
@@ -62,6 +73,7 @@ public:
 
 private:
   std::vector<size_t> keys_;
+  std::vector<size_t> nonKeys_;
 
   // rowHash_ is used to cache hash
   // std::vector<size_t> rowHash_;

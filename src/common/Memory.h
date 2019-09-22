@@ -165,8 +165,24 @@ public:
   }
 
   // compute hash of bytes range
-  size_t hash(size_t position, size_t length) const {
+  inline size_t hash(size_t position, size_t length) const noexcept {
     return Hasher::hash64(this->ptr_ + position, length);
+  }
+
+  template <typename T>
+  inline size_t hash(size_t offset) const noexcept {
+    constexpr size_t size = sizeof(T);
+    return Hasher::hash64(ptr_ + offset, size);
+  }
+
+  inline int compare(size_t offset1, size_t offset2, size_t size) noexcept {
+    return std::memcmp(ptr_ + offset1, ptr_ + offset2, size);
+  }
+
+  template <typename T>
+  inline int compare(size_t offset1, size_t offset2) noexcept {
+    constexpr size_t size = sizeof(T);
+    return compare(offset1, offset2, size);
   }
 
   // capacity

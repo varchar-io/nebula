@@ -88,10 +88,32 @@ struct RowProps {
 // an update callback signature
 using UpdateCallback = std::function<bool(size_t, nebula::type::Kind, void*, void*, void*)>;
 
-class FlatBuffer {
-  // column parser to read data in from a row
-  using Parser = std::function<void(const nebula::surface::RowData&)>;
+// column parser to read data in from a row
+using Parser = std::function<void(const nebula::surface::RowData&)>;
 
+// column comparator between two rows
+using Comparator = std::function<int(size_t, size_t)>;
+
+// Hasher on one column of given row and base hash value
+using Hasher = std::function<size_t(size_t, size_t)>;
+
+// Copier on one column from given row1 to row2 which using external updater
+using Copier = std::function<void(size_t, size_t, const UpdateCallback&)>;
+
+struct ColOps {
+  explicit ColOps(Parser p, Comparator c, Hasher h, Copier o)
+    : parser{ std::move(p) },
+      comparator{ std::move(c) },
+      hasher{ std::move(h) },
+      copier{ std::move(o) } {}
+
+  Parser parser;
+  Comparator comparator;
+  Hasher hasher;
+  Copier copier;
+};
+
+class FlatBuffer {
 public:
   FlatBuffer(const nebula::type::Schema&);
   FlatBuffer(const nebula::type::Schema&, NByte*);
@@ -159,7 +181,10 @@ private:
 
   void initSchema() noexcept;
 
-  std::function<void(const nebula::surface::RowData&)> genParser(const nebula::type::TypeNode&, size_t) noexcept;
+  Parser genParser(const nebula::type::TypeNode&, size_t) noexcept;
+  Comparator genComparator(const nebula::type::TypeNode&, size_t) noexcept;
+  Hasher genHasher(const nebula::type::TypeNode&, size_t) noexcept;
+  Copier genCopier(const nebula::type::TypeNode&, size_t) noexcept;
 
 private:
   // offset of last row used for supporting roll back
@@ -186,7 +211,7 @@ private:
   std::vector<std::pair<nebula::type::Kind, size_t>> kw_;
 
   // parsers are function pointers to parse row data of each column
-  std::vector<Parser> parsers_;
+  std::vector<ColOps> colOps_;
 
   // number of columns - reduce func calls even they are inlined
   size_t numColumns_;
