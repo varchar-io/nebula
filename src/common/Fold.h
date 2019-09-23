@@ -58,9 +58,20 @@ void fold(folly::ThreadPoolExecutor& pool,
     return;
   }
 
+  // for width = 1, it indicates using current thread to do all merge
+  if (width == 1) {
+    auto& to = const_cast<T&>(sources.at(0));
+    for (size_t i = 1; i < size; ++i) {
+      auto& from = const_cast<T&>(sources.at(i));
+      algo(from, to);
+    }
+
+    return;
+  }
+
   // calculate the width of each fold at least folding 2
   constexpr size_t MIN_WIDTH = 2;
-  if (width < 2) {
+  if (width == 0) {
     const auto poolSize = pool.numThreads();
     width = std::max((size / poolSize), MIN_WIDTH);
   }

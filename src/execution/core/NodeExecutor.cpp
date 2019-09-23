@@ -89,11 +89,11 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
   // depends on the query plan, if there is no aggregation
   // the results set from different block exeuction can be simply composite together
   // but the query needs to aggregate on keys, then we have to merge the results based on partial aggregatin plan
-  const NodePhase& nodePhase = plan.fetch<PhaseType::PARTIAL>();
-  auto merged = merge(pool, nodePhase.fields(), nodePhase.hasAgg(), x);
+  const NodePhase& phase = plan.fetch<PhaseType::PARTIAL>();
+  auto merged = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAgg(), x);
 
   // if scale is 0 or this query has no limit on it
-  if (FLAGS_TOP_SORT_SCALE == 0 || nodePhase.top() == 0) {
+  if (FLAGS_TOP_SORT_SCALE == 0 || phase.top() == 0) {
     return merged;
   }
 

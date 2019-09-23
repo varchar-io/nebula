@@ -19,14 +19,16 @@
 #include <fmt/format.h>
 #include <gflags/gflags.h>
 
-#include "BlockExecutor.h"
 #include "common/Fold.h"
 #include "execution/eval/UDF.h"
+#include "execution/serde/RowCursorSerde.h"
 #include "memory/keyed/FlatRowCursor.h"
 
-DEFINE_uint64(MULTI_FOLD_WIDTH, 0,
+DEFINE_uint64(MULTI_FOLD_WIDTH, 1,
               "defines if we want fixed width for multi-fold passes."
-              "If less than 2, width will be decided automatically by pool size.");
+              "0: use pool size to calculate width = total / size"
+              "1: use current thread, not using pool"
+              "2+: use this width to do folding parallel");
 
 /**
  * A logic wrapper to merge aggregation results shared by aggregators (Node Executor or Server Executor)
@@ -47,7 +49,9 @@ using nebula::type::Kind;
 using nebula::type::Schema;
 
 RowCursorPtr merge(
-  folly::ThreadPoolExecutor& pool,
+  folly::ThreadPoolExecutor&,
+  const Schema schema,
+  const std::vector<size_t>& keys,
   const std::vector<std::unique_ptr<ValueEval>>& fields,
   const bool hasAggregation,
   const std::vector<folly::Try<nebula::surface::RowCursorPtr>>& sources) {
@@ -85,43 +89,64 @@ RowCursorPtr merge(
     // if it is aggregation, we're sure the data cursor will be hash flat.
     // So that we can do this multi-fold pass
     // transform folly tries into HashFlat
-    std::vector<std::unique_ptr<HashFlat>> blocks;
-    blocks.reserve(size);
+    // std::vector<std::unique_ptr<HashFlat>> blocks;
+    // blocks.reserve(size);
+    auto hf = std::make_unique<HashFlat>(schema, keys);
     for (auto it = sources.begin(); it < sources.end(); ++it) {
       // if the result is empty
       if (!it->hasValue()) {
         continue;
       }
 
-      auto b = std::static_pointer_cast<nebula::execution::core::BlockExecutor>(it->value());
-      auto buffer = b->takeResult();
-      auto flat = std::unique_ptr<HashFlat>{ static_cast<HashFlat*>(buffer.release()) };
-      blocks.push_back(std::move(flat));
+      auto blockResult = it->value();
+      while (blockResult->hasNext()) {
+        const auto& row = blockResult->next();
+        hf->update(row, update);
+      }
     }
 
-    if (blocks.size() == 0) {
-      LOG(INFO) << "no valid block to merge.";
-      return EmptyRowCursor::instance();
-    }
-
-    // fold blocks if there are more than one
-    if (blocks.size() > 1) {
-      nebula::common::fold<std::unique_ptr<HashFlat>>(
-        pool, blocks, [&update](std::unique_ptr<HashFlat>& from, std::unique_ptr<HashFlat>& to) {
-          // do the in-place merge
-          // iterate the block result and partial aggregate it in hash flat
-          FlatRowCursor cursor(std::move(from));
-          while (cursor.hasNext()) {
-            const auto& row = cursor.next();
-            to->update(row, update);
-          }
-        },
-        FLAGS_MULTI_FOLD_WIDTH);
-    }
-
-    // after fold, all data aggregated at position 0
-    return std::make_shared<FlatRowCursor>(std::move(blocks.at(0)));
+    return std::make_shared<FlatRowCursor>(std::move(hf));
   }
+
+  // TODO(cao) - I'm seeing multi-fold problems and even worse performance
+  // Need more time to work on this, most likely caused by the manipulation on the pointers/casting/moving
+  //   // convert to flat buffer pointer, we do not need schema used for new instance
+  //   auto buffer = nebula::execution::serde::asBuffer(*it->value(), nullptr);
+  //   N_ENSURE_NOT_NULL(buffer, "invalid buffer in merge path");
+  //   // this buffer could be HashFlat if it is from local aggregation
+  //   // or plain flat buffer which is searialized through boundary
+  //   auto origin = buffer.release();
+  //   auto flat = dynamic_cast<HashFlat*>(origin);
+  //   if (flat) {
+  //     blocks.push_back(std::unique_ptr<HashFlat>{ flat });
+  //   } else {
+  //     blocks.push_back(std::make_unique<HashFlat>(origin, keys));
+  //   }
+  // }
+
+  // if (blocks.size() == 0) {
+  //   LOG(INFO) << "no valid block to merge.";
+  //   return EmptyRowCursor::instance();
+  // }
+
+  // fold blocks if there are more than one
+  // if (blocks.size() > 1) {
+  //   nebula::common::fold<std::unique_ptr<HashFlat>>(
+  //     pool, blocks, [&update](std::unique_ptr<HashFlat>& from, std::unique_ptr<HashFlat>& to) {
+  //       // do the in-place merge
+  //       // iterate the block result and partial aggregate it in hash flat
+  //       FlatRowCursor cursor(std::move(from));
+  //       auto i = 0;
+  //       while (cursor.hasNext()) {
+  //         const auto& row = cursor.next();
+  //         to->update(row, update);
+  //       }
+  //     },
+  //     FLAGS_MULTI_FOLD_WIDTH);
+  // }
+
+  // // after fold, all data aggregated at position 0
+  // return std::make_shared<FlatRowCursor>(std::move(blocks.at(0)));
 
   auto composite = std::make_shared<CompositeCursor<RowData>>();
   auto failures = 0;

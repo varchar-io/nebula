@@ -14,6 +14,7 @@ add_library(${NEBULA_EXEC} STATIC
     ${NEBULA_SRC}/execution/io/BlockLoader.cpp
     ${NEBULA_SRC}/execution/meta/TableService.cpp
     ${NEBULA_SRC}/execution/op/Operator.cpp
+    ${NEBULA_SRC}/execution/serde/RowCursorSerde.cpp
     ${NEBULA_SRC}/execution/BlockManager.cpp
     ${NEBULA_SRC}/execution/ExecutionPlan.cpp)
 
@@ -29,7 +30,8 @@ target_link_libraries(${NEBULA_EXEC}
     PUBLIC ${GLOG_LIBRARY}
     PUBLIC ${GFLAGS_LIBRARY}
     PUBLIC ${ROARING_LIBRARY}
-    PUBLIC ${JSON_LIBRARY})
+    PUBLIC ${JSON_LIBRARY}
+    PUBLIC ${OMM_LIBRARY})
 
 # build test binary
 add_executable(ExecTests

@@ -356,15 +356,15 @@ Comparator FlatBuffer::genComparator(const nebula::type::TypeNode&, size_t i) no
 }
 
 Hasher FlatBuffer::genHasher(const nebula::type::TypeNode&, size_t i) noexcept {
+  static constexpr size_t flip = 0x3600ABC35871E005UL;
+
   // TODO(why do we hash these bytes instead using its own value?)
-#define PREPARE_AND_NULL()                             \
-  const auto& rowProps = rows_.at(row);                \
-  auto rowOffset = rowProps.offset;                    \
-  const auto& colProps = rowProps.colProps.at(i);      \
-  static constexpr size_t flip = 0x3600ABC35871E005UL; \
-  if (colProps.isNull) {                               \
-    hash = (hash ^ flip) >> 32;                        \
-    return hash;                                       \
+#define PREPARE_AND_NULL()                        \
+  const auto& rowProps = rows_.at(row);           \
+  auto rowOffset = rowProps.offset;               \
+  const auto& colProps = rowProps.colProps.at(i); \
+  if (colProps.isNull) {                          \
+    return (hash ^ flip) >> 32;                   \
   }
 
 #define TYPE_HASH(KIND, TYPE)                                        \
@@ -391,9 +391,9 @@ Hasher FlatBuffer::genHasher(const nebula::type::TypeNode&, size_t i) noexcept {
     return [this, i](size_t row, size_t hash) {
       PREPARE_AND_NULL()
 
-      auto oo = rowOffset + colProps.offset;
-      auto offset = main_->slice.read<int32_t>(oo);
-      auto len = main_->slice.read<int32_t>(oo + 4);
+      auto so = rowOffset + colProps.offset;
+      auto offset = main_->slice.read<int32_t>(so);
+      auto len = main_->slice.read<int32_t>(so + 4);
 
       // read the real data from data_
       // TODO(cao) - we don't need convert strings from bytes for hash
@@ -531,11 +531,10 @@ size_t FlatBuffer::hash(size_t rowId, const std::vector<size_t>& cols) const {
   static constexpr size_t start = 0xC6A4A7935BD1E995UL;
   size_t hvalue = start;
 
-  // update on every column
-  std::for_each(std::begin(cols), std::end(cols),
-                [this, &hvalue, rowId](size_t index) {
-                  hvalue = colOps_.at(index).hasher(rowId, hvalue);
-                });
+  // hash on every column
+  for (auto index : cols) {
+    hvalue = colOps_.at(index).hasher(rowId, hvalue);
+  }
 
   return hvalue;
 }
@@ -634,8 +633,9 @@ READ_FIELD(double, readDouble)
 std::string_view RowAccessor::readString(IndexType index) const {
   auto colOffset = rowProps_.colProps[index].offset;
   // read 4 bytes offset and 4 bytes length
-  auto offset = fb_.main_->slice.read<int32_t>(rowProps_.offset + colOffset);
-  auto len = fb_.main_->slice.read<int32_t>(rowProps_.offset + colOffset + 4);
+  auto so = rowProps_.offset + colOffset;
+  auto offset = fb_.main_->slice.read<int32_t>(so);
+  auto len = fb_.main_->slice.read<int32_t>(so + 4);
 
   // read the real data from data_
   return fb_.data_->slice.read(offset, len);
@@ -645,8 +645,9 @@ std::string_view RowAccessor::readString(IndexType index) const {
 std::unique_ptr<nebula::surface::ListData> RowAccessor::readList(IndexType index) const {
   auto colOffset = rowProps_.colProps[index].offset;
   // read 4 bytes offset and 4 bytes length
-  auto items = fb_.main_->slice.read<int32_t>(rowProps_.offset + colOffset);
-  auto offset = fb_.main_->slice.read<int32_t>(rowProps_.offset + colOffset + 4);
+  auto lo = rowProps_.offset + colOffset;
+  auto items = fb_.main_->slice.read<int32_t>(lo);
+  auto offset = fb_.main_->slice.read<int32_t>(lo + 4);
 
   // can we cache this query or cache listAccessor?
   auto listType = std::dynamic_pointer_cast<nebula::type::ListType>(fb_.schema_->childType(index));

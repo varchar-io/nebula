@@ -165,6 +165,10 @@ public:
     return schema_;
   }
 
+  inline void* chunk() const {
+    return chunk_;
+  }
+
 private:
   bool appendNull(bool, nebula::type::Kind, Buffer&);
 

@@ -31,6 +31,8 @@ namespace core {
 
 nebula::surface::RowCursorPtr merge(
   folly::ThreadPoolExecutor&,
+  const nebula::type::Schema,
+  const std::vector<size_t>&,
   const std::vector<std::unique_ptr<nebula::execution::eval::ValueEval>>&,
   const bool,
   const std::vector<folly::Try<nebula::surface::RowCursorPtr>>&);

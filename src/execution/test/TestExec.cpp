@@ -17,6 +17,8 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <yorel/yomm2/cute.hpp>
+
 #include "execution/ExecutionPlan.h"
 #include "execution/core/BlockExecutor.h"
 #include "execution/eval/UDF.h"

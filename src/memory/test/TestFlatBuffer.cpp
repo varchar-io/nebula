@@ -146,7 +146,7 @@ TEST(FlatBufferTest, TestSerde) {
   FlatBuffer fb(test.schema());
 
   // add some rows
-  constexpr auto rows2test = 53;
+  constexpr auto rows2test = 201053;
   auto seed = Evidence::unix_timestamp();
   MockRowData row(seed);
 

@@ -20,6 +20,19 @@ namespace nebula {
 namespace memory {
 namespace keyed {
 
+void HashFlat::init() {
+  auto numCols = schema()->size();
+  nonKeys_.reserve(numCols - keys_.size());
+  for (size_t i = 0; i < numCols; ++i) {
+    if (std::none_of(keys_.begin(), keys_.end(), [i](size_t ki) { return ki == i; })) {
+      nonKeys_.push_back(i);
+    }
+  }
+
+  // set a max load factor to reduce rehash
+  rowKeys_.max_load_factor(0.2);
+}
+
 bool HashFlat::update(const nebula::surface::RowData& row, const UpdateCallback& callback) {
   // add it as a new row first
   this->add(row);

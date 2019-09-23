@@ -38,16 +38,12 @@ public:
   HashFlat(const nebula::type::Schema schema,
            const std::vector<size_t>& keys)
     : FlatBuffer(schema), keys_{ keys } {
-    auto numCols = schema->size();
-    nonKeys_.reserve(numCols - keys_.size());
-    for (size_t i = 0; i < numCols; ++i) {
-      if (std::none_of(keys_.begin(), keys_.end(), [i](size_t ki) { return ki == i; })) {
-        nonKeys_.push_back(i);
-      }
-    }
+    init();
+  }
 
-    // set a max load factor to reduce rehash
-    rowKeys_.max_load_factor(0.2);
+  HashFlat(FlatBuffer* in, const std::vector<size_t>& keys)
+    : FlatBuffer(in->schema(), (NByte*)in->chunk()), keys_{ keys } {
+    init();
   }
 
   virtual ~HashFlat() = default;
@@ -70,6 +66,9 @@ public:
       return flat.equal(std::get<1>(row1), std::get<1>(row2), flat.keys_);
     }
   };
+
+private:
+  void init();
 
 private:
   std::vector<size_t> keys_;

@@ -70,7 +70,7 @@ RowCursorPtr ServerExecutor::execute(
 
   // multiple results
   const auto& phase = plan.fetch<PhaseType::GLOBAL>();
-  auto result = merge(pool, phase.fields(), phase.hasAgg(), x);
+  auto result = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAgg(), x);
 
   // apply sorting and limit if available
   return topSort(result, plan);

@@ -107,7 +107,6 @@ void genSpecs4Swap(const std::string& version,
 
     // list all objects/files from given path
     auto files = fs->list(sourceInfo.path);
-    LOG(INFO) << fmt::format("list {0}:{1} = {2}", sourceInfo.host, sourceInfo.path, files.size());
     genSpecPerFile(table, version, files, specs, 0);
     return;
   }
@@ -172,6 +171,7 @@ void SpecRepo::process(
 void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
   // go through the new spec list and update the existing ones
   // need lock here?
+  auto brandnew, renew = 0;
   for (auto itr = specs.cbegin(), end = specs.cend(); itr != end; ++itr) {
     // check if we have this spec already?
     auto specPtr = (*itr);
@@ -179,13 +179,20 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
     auto found = specs_.find(id);
     if (found == specs_.end()) {
       specs_.emplace(id, specPtr);
+      ++brandnew;
     } else {
       // TODO(cao) - use only size for the checker for now, may extend to other properties
       // this is an update case, otherwise, spec doesn't change, ignore it.
       if (specPtr->size() != found->second->size()) {
         found->second->setState(SpecState::RENEW);
+        ++renew;
       }
     }
+  }
+
+  // print out update stats
+  if (brandnew > 0 || renew > 0) {
+    LOG(INFO) << "Updating " << specs.size() << " specs: brandnew =" << brandnew << ", renew=" << renew;
   }
 }
 
