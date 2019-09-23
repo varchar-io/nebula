@@ -171,7 +171,8 @@ void SpecRepo::process(
 void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
   // go through the new spec list and update the existing ones
   // need lock here?
-  auto brandnew, renew = 0;
+  auto brandnew = 0;
+  auto renew = 0;
   for (auto itr = specs.cbegin(), end = specs.cend(); itr != end; ++itr) {
     // check if we have this spec already?
     auto specPtr = (*itr);
