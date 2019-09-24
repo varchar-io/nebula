@@ -452,9 +452,9 @@ window.onhashchange = function () {
     execute();
 };
 
-// load table list 
+// load table list - maximum 100?
 const listReq = new NebulaClient.ListTables();
-listReq.setLimit(5);
+listReq.setLimit(100);
 v1Client.tables(listReq, {}, (err, reply) => {
     const stats = ds('#stats');
     if (err !== null) {
@@ -462,7 +462,7 @@ v1Client.tables(listReq, {}, (err, reply) => {
         return;
     }
 
-    const list = reply.getTableList();
+    const list = reply.getTableList().sort();
     const options = ds('#tables').selectAll("option").data(list).enter().append('option');
     options.text(d => d).attr("value", d => d);
 

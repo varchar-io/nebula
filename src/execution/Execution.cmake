@@ -31,7 +31,8 @@ target_link_libraries(${NEBULA_EXEC}
     PUBLIC ${GFLAGS_LIBRARY}
     PUBLIC ${ROARING_LIBRARY}
     PUBLIC ${JSON_LIBRARY}
-    PUBLIC ${OMM_LIBRARY})
+    PUBLIC ${OMM_LIBRARY}
+    PUBLIC ${BOOST_REGEX_LIBRARY})
 
 # build test binary
 add_executable(ExecTests
@@ -44,7 +45,8 @@ target_link_libraries(ExecTests
     PRIVATE ${XXH_LIBRARY}
     PRIVATE ${GTEST_LIBRARY}
     PRIVATE ${GTEST_MAIN_LIBRARY}
-    PRIVATE ${GMOCK_LIBRARY})
+    PRIVATE ${GMOCK_LIBRARY}
+    PRIVATE ${BOOST_REGEX_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

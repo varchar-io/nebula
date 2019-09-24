@@ -240,6 +240,9 @@ include(ext/Uri_Ext.cmake)
 # include perf tools
 include(ext/Perf_Ext.cmake)
 
+#include kafka library
+include(ext/Kafka_Ext.cmake)
+
 # "brew install conan" first - it's great after migrating to conan
 # at least for folly - thanks conan, how to solve conflicts with existing lib like gflags?.
 # use conan to install the dependency

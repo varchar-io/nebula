@@ -19,6 +19,7 @@ target_link_libraries(${NEBULA_STORAGE}
 
 #build test binary
 add_executable(StorageTests
+    ${NEBULA_SRC}/storage/test/TestKafka.cpp
     ${NEBULA_SRC}/storage/test/TestParquet.cpp
     ${NEBULA_SRC}/storage/test/TestStorage.cpp)
 
@@ -46,7 +47,8 @@ target_link_libraries(StorageTests
     PRIVATE ${XXH_LIBRARY}
     PRIVATE ${AWS_COMMON_LIBRARY}
     PRIVATE ${AWS_S3_LIBRARY}
-    PRIVATE ${AWS_CORE_LIBRARY})
+    PRIVATE ${AWS_CORE_LIBRARY}
+    PRIVATE ${KAFKA_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

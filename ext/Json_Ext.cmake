@@ -1,5 +1,5 @@
 if(APPLE)
-    find_package(Threads REQUIRED)
+  find_package(Threads REQUIRED)
 
   # http://roaringbitmap.org/
   # by default, roaring is providng dynamic lib for linking

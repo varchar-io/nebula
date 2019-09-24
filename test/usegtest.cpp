@@ -1,5 +1,5 @@
-#include "folly/Optional.h"
-#include "gtest/gtest.h"
+#include <folly/Optional.h>
+#include <gtest/gtest.h>
 
 TEST(MathTest, TwoPlusTwoEqualsFour) { EXPECT_EQ(4, 2 + 2); }
 
