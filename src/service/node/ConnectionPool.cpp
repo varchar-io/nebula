@@ -32,18 +32,27 @@ std::shared_ptr<ConnectionPool> ConnectionPool::init() noexcept {
 std::shared_ptr<grpc::Channel> ConnectionPool::connection(const std::string& addr) {
   // lock here for new connection creation?
   auto located = connections_.find(addr);
-  if (located == connections_.end()) {
-    // all client configurations come to here
-    grpc::ChannelArguments chArgs;
-    chArgs.SetMaxReceiveMessageSize(-1);
-    LOG(INFO) << "Creating a channel to " << addr;
+  if (located != connections_.end()) {
+    // do a little maintainance here
+    auto channel = located->second;
+    auto state = channel->GetState(true);
+    if (state != grpc_connectivity_state::GRPC_CHANNEL_SHUTDOWN) {
+      return channel;
+    }
 
-    auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), chArgs);
-    connections_[addr] = channel;
-    return channel;
+    // will be replaced by channel recreation below
+    LOG(INFO) << "Seeing a dead channel to " << addr;
   }
 
-  return located->second;
+  // all client configurations come to here
+  grpc::ChannelArguments chArgs;
+  chArgs.SetMaxReceiveMessageSize(-1);
+  LOG(INFO) << "Creating a channel to " << addr;
+
+  auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), chArgs);
+  connections_[addr] = channel;
+
+  return channel;
 }
 
 } // namespace node

@@ -32,24 +32,42 @@ namespace nebula {
 namespace storage {
 namespace aws {
 
+static constexpr auto S3_LIST_NO_LIMIT = std::numeric_limits<int>::max();
+
 std::vector<FileInfo> S3::list(const std::string& prefix) {
   Aws::S3::S3Client client;
-  Aws::S3::Model::ListObjectsV2Request listReq;
 
-  // It is important to specify "delimiter" to return folders only
-  // Otherwise the call will return all objects at any level with maximum 1K keys
-  listReq.SetBucket(this->bucket_);
-  listReq.SetPrefix(prefix);
-  auto outcome = client.ListObjectsV2(listReq);
-  if (!outcome.IsSuccess()) {
-    LOG(ERROR) << fmt::format("Error listing prefix {0}: {1}", prefix, outcome.GetError().GetMessage());
-    return {};
-  }
-
-  // translate into lists
-  auto result = std::move(outcome.GetResultWithOwnership());
+  // token for continuation
+  Aws::String token;
   std::vector<FileInfo> objects;
 
+  do {
+    Aws::S3::Model::ListObjectsV2Request listReq;
+
+    // It is important to specify "delimiter" to return folders only
+    // Otherwise the call will return all objects at any level with maximum 1K keys
+    listReq.SetBucket(this->bucket_);
+    listReq.SetPrefix(prefix);
+    listReq.SetMaxKeys(S3_LIST_NO_LIMIT);
+    // if token has valid value, set it
+    if (token.size() > 0) {
+      listReq.SetContinuationToken(token);
+    }
+
+    // work on the outcome
+    auto outcome = client.ListObjectsV2(listReq);
+    if (!outcome.IsSuccess()) {
+      LOG(ERROR) << fmt::format("Error listing prefix {0}: {1}", prefix, outcome.GetError().GetMessage());
+      return {};
+    }
+
+    // translate into lists
+    auto result = std::move(outcome.GetResultWithOwnership());
+
+    // reset token for next fetch
+    token = result.GetIsTruncated() ? result.GetNextContinuationToken() : "";
+
+    // extraction into objects to return
 #define EXTRACT_LIST(FETCH, KEY, SIZE, ISD)                     \
   {                                                             \
     const auto& list = result.FETCH();                          \
@@ -58,13 +76,14 @@ std::vector<FileInfo> S3::list(const std::string& prefix) {
     }                                                           \
   }
 
-  // list all prefix first - folder operation
-  EXTRACT_LIST(GetCommonPrefixes, GetPrefix, 0, true)
+    // list all prefix first - folder operation
+    EXTRACT_LIST(GetCommonPrefixes, GetPrefix, 0, true)
 
-  // list all objects now - objects
-  EXTRACT_LIST(GetContents, GetKey, itr->GetSize(), false)
+    // list all objects now - objects
+    EXTRACT_LIST(GetContents, GetKey, itr->GetSize(), false)
 
 #undef EXTRACT_LIST
+  } while (token.size() > 0);
 
   return objects;
 }

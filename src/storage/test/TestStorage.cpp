@@ -39,12 +39,13 @@ TEST(StorageTest, TestLocalFiles) {
 
 TEST(StorageTest, DISABLED_TestS3Api) {
   auto fs = nebula::storage::makeFS("s3", "pinlogs");
-  auto keys = fs->list("nebula/pin_signatures/");
+  auto keys = fs->list("nebula/pin_messages/");
   for (auto& key : keys) {
     LOG(INFO) << "key: " << key.name;
   }
 
   // display content of one key
+  LOG(INFO) << "Total keys: " << keys.size();
   if (keys.size() > 0) {
     auto objs = fs->list(keys.front().name);
     int count = 0;
