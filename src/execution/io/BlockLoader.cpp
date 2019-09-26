@@ -37,7 +37,7 @@ using nebula::surface::MockRowData;
 BatchBlock BlockLoader::from(const BlockSignature& sign, std::shared_ptr<nebula::memory::Batch> b) {
   N_ENSURE_NOT_NULL(b, "requires a solid batch");
   BlockState state{ b->getRows(), b->getRawSize() };
-  return BatchBlock(sign, std::move(b), state);
+  return BatchBlock(sign, b, state);
 }
 
 BatchBlock BlockLoader::load(const BlockSignature& block) {

@@ -75,6 +75,18 @@ table ColumnProp {
   dict: bool;
 }
 
+table ColumnMap {
+  name: string;
+  index: uint32;
+}
+
+table Serde {
+  protocol: string;
+
+  // optional: column map - map column name to some integer value
+  column_map: [ColumnMap];
+}
+
 // this is serde format mapping to IngestSpec
 // we also flatten other info into the single task spec.
 // TODO(cao) - do not flatten fields, it is hard to maintain
@@ -91,6 +103,9 @@ table IngestTask {
 
   // ref: TableSpec.DataSource
   source: byte;
+
+  // location of the table
+  location: string;
 
   // ref: TableSpec.format 
   format: string;
@@ -110,8 +125,11 @@ table IngestTask {
   // ref: TimeSpec.pattern
   time_format: string;
 
+  // data serde
+  serde: Serde;
+
   // column properties
-  column_props: [ColumnProp];
+  column_props: [ColumnProp];  
 
   // ingest spec itself
   version: string;

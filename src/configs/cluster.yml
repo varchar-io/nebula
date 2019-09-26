@@ -37,7 +37,7 @@ tables:
   #   schema: "ROW<pin_signature:string, user_id:long, comments:string, created_at:string>"
   #   data: s3
   #   loader: Swap
-  #   source: s3://pinlogs/nebula/pin_comments/
+  #   source: s3://<bucket>/nebula/pin_comments/
   #   backup: s3://nebula/n101/
   #   format: csv
   #   columns:
@@ -56,7 +56,7 @@ tables:
   #   schema: "ROW<pin_signature:string, pin_id:long>"
   #   data: s3
   #   loader: Swap
-  #   source: s3://pinlogs/nebula/pin_signatures/
+  #   source: s3://<bucket>/nebula/pin_signatures/
   #   backup: s3://nebula/n102/
   #   format: csv
   #   columns:
@@ -73,7 +73,7 @@ tables:
   #   schema: "ROW<id:long, user_id:long, link_domain:string, title:string, details:string, image_signature:string>"
   #   data: s3
   #   loader: Roll
-  #   source: s3://pinlogs/nebula/pin_pins/cd=%7Bdate%7D
+  #   source: s3://<bucket>/nebula/pin_pins/cd=%7Bdate%7D
   #   backup: s3://nebula/n103/
   #   format: parquet
   #   columns:
@@ -87,21 +87,49 @@ tables:
   #     type: macro
   #     pattern: date
 
-  s3.prefix:
+  # s3.prefix:
+  #   max-mb: 200000
+  #   max-hr: 0
+  #   schema: "ROW<prefix:string, operation_type:string, requests:long, size:long>"
+  #   data: s3
+  #   loader: Swap
+  #   source: s3://<bucket>/nebula/s3_pfx/
+  #   backup: s3://nebula/n104/
+  #   format: parquet
+  #   columns:
+  #     prefix:
+  #       dict: true
+  #     operation_type:
+  #       dict: true
+  #   time:
+  #     type: static
+  #     # date +%s --date='2019-09-10'
+  #     value: 1568073600
+
+  ## all kafka table name will start with "k." followed by topic name
+  ## to indicating its a kafka data source
+  k.<topic>:
     max-mb: 200000
-    max-hr: 0
-    schema: "ROW<prefix:string, operation_type:string, requests:long, size:long>"
-    data: s3
-    loader: Swap
-    source: s3://pinlogs/nebula/s3_pfx/
-    backup: s3://nebula/n104/
-    format: parquet
+    max-hr: 24
+    # all kafka schema will have column name postfixed by field ID
+    # TODO(cao): in the future, we can have separate thrift schema
+    schema: "ROW<id:string, referer:string, country:string>"
+    data: kafka
+    topic: <topic>
+    loader: Roll
+    source: <broker>
+    backup: s3://nebula/n105/
+    format: thrift
+    serde:
+      protocol: binary
+      cmap:
+        id: 1
+        referer: 3
+        country: 6
     columns:
-      prefix:
+      referer:
         dict: true
-      operation_type:
+      country:
         dict: true
     time:
-      type: static
-      # date +%s --date='2019-09-10'
-      value: 1568073600
+      type: current

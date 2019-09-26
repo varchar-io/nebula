@@ -37,7 +37,8 @@ namespace meta {
 // define data source
 enum class DataSource {
   Custom,
-  S3
+  S3,
+  KAFKA
 };
 
 // type of time source to fill time column
@@ -64,6 +65,17 @@ struct TimeSpec {
   std::string pattern;
 };
 
+// serde info for some data format, such as thrift
+struct Serde {
+  // protocol - thrift has binary, or compact protocol
+  // json may have bson variant
+  std::string protocol;
+
+  // column map from column name to field ID
+  // which should be defined by thrift schema
+  std::unordered_map<std::string, uint32_t> cmap;
+};
+
 struct TableSpec {
   // table name
   std::string name;
@@ -83,6 +95,8 @@ struct TableSpec {
   std::string backup;
   // data format
   std::string format;
+  // Serde of the data
+  Serde serde;
   // column properties
   ColumnProps columnProps;
   // time spec to generate time value
@@ -90,7 +104,7 @@ struct TableSpec {
 
   TableSpec(std::string n, size_t mm, size_t mh, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak,
-            std::string f, ColumnProps cp, TimeSpec ts)
+            std::string f, Serde sd, ColumnProps cp, TimeSpec ts)
     : name{ std::move(n) },
       max_mb{ mm },
       max_hr{ mh },
@@ -100,6 +114,7 @@ struct TableSpec {
       location{ std::move(loc) },
       backup{ std::move(bak) },
       format{ std::move(f) },
+      serde{ std::move(sd) },
       columnProps{ std::move(cp) },
       timeSpec{ std::move(ts) } {}
 

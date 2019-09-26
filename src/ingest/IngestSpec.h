@@ -147,6 +147,9 @@ private:
   // load roll
   bool loadRoll() noexcept;
 
+  // load kafka
+  bool loadKafka() noexcept;
+
   // load current spec as blocks
   std::vector<nebula::execution::io::BatchBlock> load() noexcept;
 

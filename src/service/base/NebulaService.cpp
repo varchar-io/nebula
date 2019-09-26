@@ -310,6 +310,18 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     auto table = spec->table();
     const auto& time = table->timeSpec;
 
+    // serialize serde
+    auto mapSize = table->serde.cmap.size();
+    std::vector<flatbuffers::Offset<ColumnMap>> cmap;
+    cmap.reserve(mapSize);
+    for (auto& itr : table->serde.cmap) {
+      cmap.push_back(
+        CreateColumnMap(mb, mb.CreateString(itr.first), itr.second));
+    }
+    auto serde = CreateSerde(mb,
+                             mb.CreateString(table->serde.protocol),
+                             mb.CreateVector<flatbuffers::Offset<ColumnMap>>(cmap));
+
     // serialize column properties
     auto numCols = table->columnProps.size();
     std::vector<flatbuffers::Offset<ColumnProp>> colProps;
@@ -326,12 +338,14 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
                                table->max_hr,
                                mb.CreateString(table->loader),
                                (int8_t)table->source,
+                               mb.CreateString(table->location),
                                mb.CreateString(table->format),
                                mb.CreateString(table->schema),
                                (int8_t)time.type,
                                time.unixTimeValue,
                                mb.CreateString(time.colName),
                                mb.CreateString(time.pattern),
+                               serde,
                                fbColProps,
                                mb.CreateString(spec->version()),
                                mb.CreateString(spec->id()),
@@ -405,9 +419,18 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
       props[itr->name()->str()] = Column{ itr->bf(), itr->dict() };
     }
 
+    // build serde
+    auto serde = it->serde();
+    nebula::meta::Serde sd;
+    sd.protocol = serde->protocol()->str();
+    auto cmap = serde->column_map();
+    for (auto itr = cmap->begin(); itr != cmap->end(); ++itr) {
+      sd.cmap.emplace(itr->name()->str(), itr->index());
+    }
+
     // build table spec
     std::string tbName = it->name()->str();
-    std::string src = "";
+    std::string src = it->location()->str();
     std::string bak = "";
     auto table = std::make_shared<TableSpec>(std::move(tbName),
                                              0,
@@ -418,6 +441,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
                                              std::move(src),
                                              std::move(bak),
                                              it->format()->str(),
+                                             std::move(sd),
                                              std::move(props),
                                              std::move(time));
 

@@ -8,6 +8,7 @@ const url = require('url');
 const NebulaClient = require('./dist/node/main');
 const serviceAddr = process.env.NS_ADDR || "dev-shawncao:9190";
 const comments_table = "pin.comments";
+const pins_table = "pin.pins";
 const signatures_table = "pin.signatures";
 const client = NebulaClient.qc(serviceAddr);
 const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
@@ -27,7 +28,7 @@ const error = (msg) => {
  * limit: 1000
  * res: http response
  */
-const query = (table, start, end, fc, op, fv, cols, limit, res) => {
+const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, res) => {
     const req = new NebulaClient.QueryRequest();
     req.setTable(table);
     req.setStart(seconds(start));
@@ -44,6 +45,14 @@ const query = (table, start, end, fc, op, fv, cols, limit, res) => {
 
     // set dimension
     req.setDimensionList(cols);
+
+    if (metrics.length > 0) {
+        req.setMetricList(metrics);
+    }
+
+    if (order) {
+        req.setOrder(order);
+    }
 
     // set limit
     req.setTop(limit);
@@ -63,13 +72,43 @@ const query = (table, start, end, fc, op, fv, cols, limit, res) => {
 };
 
 /**
+ * Count pins per domain given time range with filter 
+ */
+const getPinsPerDomainWithKey = (q, res) => {
+    console.log(`querying pins for details like ${q.key}`);
+    if (q.key) {
+        // build metrics
+        const m = new NebulaClient.Metric();
+        m.setColumn("id");
+        m.setMethod(1);
+
+        // set order on metric only means we don't order on samples for now
+        const o = new NebulaClient.Order();
+        o.setColumn("id");
+        o.setType(1);
+        // search user Id
+        query(pins_table, q.start, q.end, "details", "4", `%${q.key}%`,
+            ["_time_", "link_domain"],
+            [m], o,
+            q.limit || 10000, res);
+        return;
+    }
+
+    res.write(error("Missing key."));
+    res.end();
+};
+
+/**
  * get all comments for given user id
  */
 const getCommentsByUserId = (q, res) => {
     console.log(`querying comments for user_id=${q.user_id}`);
     if (q.user_id) {
         // search user Id
-        query(comments_table, q.start, q.end, "user_id", "0", q.user_id, ["_time_", "pin_signature", "comments"], q.limit || 100, res);
+        query(comments_table, q.start, q.end, "user_id", "0", q.user_id,
+            ["_time_", "pin_signature", "comments"],
+            [], null,
+            q.limit || 100, res);
         return;
     }
 
@@ -84,7 +123,10 @@ const getCommentsByPinSignature = (q, res) => {
     console.log(`querying comments for pin_signature=${q.pin_signature}`);
     if (q.pin_signature) {
         // search pin Id
-        query(comments_table, q.start, q.end, "pin_signature", "0", q.pin_signature, ["_time_", "user_id", "comments"], q.limit || 100, res);
+        query(comments_table, q.start, q.end, "pin_signature", "0", q.pin_signature,
+            ["_time_", "user_id", "comments"],
+            [], null,
+            q.limit || 100, res);
         return;
     }
 
@@ -99,7 +141,10 @@ const getPinsBySignature = (q, res) => {
     console.log(`querying comments for pin_signature=${q.pin_signature}`);
     if (q.pin_signature) {
         // search pin Id
-        query(signatures_table, q.start, q.end, "pin_signature", "0", q.pin_signature, ["pin_id"], q.limit || 100, res);
+        query(signatures_table, q.start, q.end, "pin_signature", "0", q.pin_signature,
+            ["pin_id"],
+            [], null,
+            q.limit || 100, res);
         return;
     }
 
@@ -114,7 +159,10 @@ const getSignatureByPin = (q, res) => {
     console.log(`querying comments for pin_id=${q.pin_id}`);
     if (q.pin_id) {
         // search pin Id
-        query(signatures_table, q.start, q.end, "pin_id", "0", q.pin_id, ["pin_signature"], q.limit || 100, res);
+        query(signatures_table, q.start, q.end, "pin_id", "0", q.pin_id,
+            ["pin_signature"],
+            [], null,
+            q.limit || 100, res);
         return;
     }
 
@@ -129,7 +177,10 @@ const getCommentsByPattern = (q, res) => {
     console.log(`querying comments for comments like ${q.pattern}`);
     if (q.pattern) {
         // search comments like
-        query(comments_table, q.start, q.end, "comments", "4", q.pattern, ["_time_", "user_id", "pin_signature", "comments"], q.limit || 100, res);
+        query(comments_table, q.start, q.end, "comments", "4", q.pattern,
+            ["_time_", "user_id", "pin_signature", "comments"],
+            [], null,
+            q.limit || 100, res);
         return;
     }
 
@@ -149,7 +200,8 @@ const api_handlers = {
     "comments_by_pinsignature": getCommentsByPinSignature,
     "comments_by_pattern": getCommentsByPattern,
     "pins_by_signature": getPinsBySignature,
-    "signature_of_pin": getSignatureByPin
+    "signature_of_pin": getSignatureByPin,
+    "keyed_pins_per_domain": getPinsPerDomainWithKey
 };
 
 /**

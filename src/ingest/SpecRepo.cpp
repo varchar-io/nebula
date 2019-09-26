@@ -20,6 +20,13 @@
 #include "SpecRepo.h"
 #include "common/Evidence.h"
 #include "storage/NFS.h"
+#include "storage/kafka/KafkaTopic.h"
+
+DEFINE_uint64(KAFKA_SPEC_ROWS,
+              50000,
+              "rows per sepc for kafka ingestion"
+              "this value is used in spec identifier so do not modify");
+DEFINE_uint64(KAFKA_TIMEOUT_MS, 5000, "Timeout of each Kafka API call");
 
 /**
  * We will sync etcd configs for cluster info into this memory object
@@ -37,8 +44,10 @@ using nebula::meta::TableSpecPtr;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
 using nebula::storage::FileInfo;
+using nebula::storage::kafka::KafkaTopic;
 
-constexpr auto DAY_SECONDS = 3600 * 24;
+constexpr auto HOUR_SECONDS = 3600;
+constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
 
 // generate a list of ingestion spec based on cluster info
 void SpecRepo::refresh(const ClusterInfo& ci) {
@@ -50,7 +59,7 @@ void SpecRepo::refresh(const ClusterInfo& ci) {
   const auto& tableSpecs = ci.tables();
 
   // generate a version all spec to be made during this batch: {config version}_{current unix timestamp}
-  const auto version = fmt::format("{0}.{1}", ci.version(), nebula::common::Evidence::unix_timestamp());
+  const auto version = fmt::format("{0}.{1}", ci.version(), Evidence::unix_timestamp());
   for (auto itr = tableSpecs.cbegin(); itr != tableSpecs.cend(); ++itr) {
     process(version, *itr, specs);
   }
@@ -66,7 +75,7 @@ std::string buildIndentityByTime(const TimeSpec& time) {
     return folly::to<std::string>(time.unixTimeValue);
   }
   case TimeType::CURRENT: {
-    return folly::to<std::string>(nebula::common::Evidence::unix_timestamp());
+    return folly::to<std::string>(Evidence::unix_timestamp());
   }
   default: return "";
   }
@@ -143,6 +152,25 @@ void genSpecs4Roll(const std::string& version,
   throw NException("only s3 supported for now");
 }
 
+void genKafkaSpec(const std::string& version,
+                  const TableSpecPtr& table,
+                  std::vector<std::shared_ptr<IngestSpec>>& specs) {
+  // visit each partition of the topic and figure out range for each spec
+  // stream is different as static file, to make it reproducible, we need
+  // a stable spec generation based on offsets, every N (eg. 10K) records per spec
+  KafkaTopic topic(table->location, table->name, FLAGS_KAFKA_TIMEOUT_MS);
+
+  // set start time
+  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * HOUR_SECONDS);
+  auto segments = topic.segmentsByTimestamp(startMs, FLAGS_KAFKA_SPEC_ROWS);
+
+  // turn these segments into ingestion spec
+  for (auto itr = segments.cbegin(), end = segments.cend(); itr != end; ++itr) {
+    specs.push_back(std::make_shared<IngestSpec>(
+      table, version, itr->id(), "kafka", itr->size, SpecState::NEW, 0));
+  }
+}
+
 void SpecRepo::process(
   const std::string& version,
   const TableSpecPtr& table,
@@ -155,17 +183,28 @@ void SpecRepo::process(
     return;
   }
 
-  if (table->loader == "Swap") {
-    genSpecs4Swap(version, table, specs);
+  // S3 has two mode:
+  // 1. swap data when renewed or
+  // 2. roll data clustered by time
+  if (table->source == DataSource::S3) {
+    if (table->loader == "Swap") {
+      genSpecs4Swap(version, table, specs);
+      return;
+    }
+
+    if (table->loader == "Roll") {
+      genSpecs4Roll(version, table, specs);
+      return;
+    }
+  }
+
+  if (table->source == DataSource::KAFKA) {
+    genKafkaSpec(version, table, specs);
     return;
   }
 
-  if (table->loader == "Roll") {
-    genSpecs4Roll(version, table, specs);
-    return;
-  }
-
-  throw NException(fmt::format("Unsupported loader: {0} for table {1}", table->loader, table->toString()));
+  throw NException(fmt::format("Unsupported loader: {0} for table {1}",
+                               table->loader, table->toString()));
 }
 
 void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
@@ -203,12 +242,20 @@ void SpecRepo::assign(const ClusterInfo& ci) {
   // for now, we just round robin to spin into each slot
   const NNodeSet& ns = ci.nodes();
   const std::vector<NNode> nodes(ns.cbegin(), ns.cend());
+  // we're looking for a stable assignmet, given the same set of nodes
+  // this order is most likely having stable order
+  // std::sort(nodes.begin(), nodes.end(), [](auto& n1, auto& n2) {
+  //   return n1.server.compare(n2.server);
+  // });
   const auto size = nodes.size();
 
   N_ENSURE_GT(size, 0, "No nodes to assign nebula spec");
   size_t idx = 0;
 
   // for each spec
+  // TODO(cao): should we do hash-based shuffling here to ensure a stable assignment?
+  // Round-robin is easy to break the position affinity whenever new spec is coming
+  // Or we can keep order of the specs so that any old spec is associated.
   for (auto& spec : specs_) {
     // not assigned yet
     auto sp = spec.second;

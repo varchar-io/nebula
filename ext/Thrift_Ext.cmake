@@ -43,6 +43,10 @@ set_target_properties(${THRIFT_LIBRARY} PROPERTIES
     "INTERFACE_INCLUDE_DIRECTORIES" "${THRIFT_INCLUDE_DIRS}")
 add_dependencies(${THRIFT_LIBRARY} thrift)
 
+# during the build, it will generate one config.h in BINARY_DIR
+# we either can add that path to include path or copy this single file to SRC folder
+configure_file(${BINARY_DIR}/thrift/config.h ${THRIFT_INCLUDE_DIRS}/thrift/config.h COPYONLY)
+
 # install thrift through brew
 # "brew install thrift"
 # thrift

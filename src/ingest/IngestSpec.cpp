@@ -25,6 +25,7 @@
 #include "storage/CsvReader.h"
 #include "storage/NFS.h"
 #include "storage/ParquetReader.h"
+#include "storage/kafka/KafkaReader.h"
 #include "type/Serde.h"
 
 // TODO(cao) - system wide enviroment configs should be moved to cluster config to provide
@@ -54,6 +55,9 @@ using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
 using nebula::storage::CsvReader;
 using nebula::storage::ParquetReader;
+using nebula::storage::kafka::KafkaReader;
+using nebula::storage::kafka::KafkaSegment;
+using nebula::storage::kafka::KafkaTopic;
 using nebula::surface::RowCursor;
 using nebula::surface::RowData;
 using nebula::type::LongType;
@@ -91,14 +95,21 @@ bool IngestSpec::work() noexcept {
     return true;
   }
 
-  // either swap, they are reading files
-  if (loader == LOADER_SWAP) {
-    return this->loadSwap();
+  const auto data = table_->source;
+  if (data == DataSource::S3) {
+    // either swap, they are reading files
+    if (loader == LOADER_SWAP) {
+      return this->loadSwap();
+    }
+
+    // if roll, they are reading files
+    if (loader == LOADER_ROLL) {
+      return this->loadRoll();
+    }
   }
 
-  // if roll, they are reading files
-  if (loader == LOADER_ROLL) {
-    return this->loadRoll();
+  if (data == DataSource::KAFKA) {
+    return this->loadKafka();
   }
 
   // can not hanlde other loader type yet
@@ -157,6 +168,50 @@ bool IngestSpec::loadRoll() noexcept {
   }
 
   return false;
+}
+
+// current is a kafka spec
+bool IngestSpec::loadKafka() noexcept {
+  // build up the segment to consume
+  auto segment = KafkaSegment::from(id_);
+  KafkaReader reader(table_, std::move(segment));
+
+  // get a table definition
+  auto table = table_->to();
+
+  // enroll the table in case it is the first time
+  TableService::singleton()->enroll(table);
+
+  // build a batch
+  auto batch = std::make_shared<Batch>(*table, reader.size());
+
+  auto lowTime = std::numeric_limits<size_t>::max();
+  auto highTime = std::numeric_limits<size_t>::min();
+  while (reader.hasNext()) {
+    auto& row = reader.next();
+
+    // update time range before adding the row to the batch
+    // get time column value
+    size_t time = row.readLong(Table::TIME_COLUMN);
+    if (time < lowTime) {
+      lowTime = time;
+    }
+
+    if (time > highTime) {
+      highTime = time;
+    }
+
+    // add a new entry
+    batch->add(row);
+  }
+
+  // build a block and add it to block manager
+  BlockManager::init()->add(
+    BlockLoader::from(BlockSignature{ table->name(), 0, lowTime, highTime, id_ },
+                      batch));
+
+  // iterate this read until it reaches end of the segment - blocking queue?
+  return true;
 }
 
 // row wrapper to translate "date" string into reserved "_time_" column

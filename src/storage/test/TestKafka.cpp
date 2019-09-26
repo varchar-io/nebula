@@ -17,23 +17,36 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-
 #include <rdkafkacpp.h>
+#include <thrift/protocol/TBinaryProtocol.h>
+#include <thrift/protocol/TCompactProtocol.h>
+#include <thrift/transport/TBufferTransports.h>
+
+#include "common/Evidence.h"
+#include "meta/TableSpec.h"
+#include "storage/kafka/KafkaReader.h"
 
 namespace nebula {
 namespace storage {
 namespace test {
 
+using apache::thrift::protocol::TBinaryProtocol;
+using apache::thrift::protocol::TCompactProtocol;
+using apache::thrift::protocol::TType;
+using apache::thrift::transport::TMemoryBuffer;
+
 static bool run = true;
 static bool exit_eof = false;
 static int eof_cnt = 0;
-static int partition_cnt = 0;
 static int verbosity = 3;
 static long msg_cnt = 0;
 static int64_t msg_bytes = 0;
 static void sigterm(int) {
   run = false;
 }
+
+static const auto BROKERS = "<broker>";
+static const auto TOPIC = "<topic>";
 
 class ExampleEventCb : public RdKafka::EventCb {
 public:
@@ -48,7 +61,7 @@ public:
       break;
 
     case RdKafka::Event::EVENT_STATS:
-      LOG(ERROR) << "\"STATS\": " << event.str();
+      // LOG(ERROR) << "\"STATS\": " << event.str();
       break;
 
     case RdKafka::Event::EVENT_LOG:
@@ -66,43 +79,94 @@ public:
   }
 };
 
-class ExampleRebalanceCb : public RdKafka::RebalanceCb {
-private:
-  static void part_list_print(const std::vector<RdKafka::TopicPartition*>& partitions) {
-    for (unsigned int i = 0; i < partitions.size(); i++)
-      LOG(ERROR) << partitions[i]->topic() << "[" << partitions[i]->partition() << "], ";
+static void part_list_print(RdKafka::KafkaConsumer* consumer,
+                            RdKafka::TopicPartition* p) {
+  // query low and high offset of this partition 1820139
+  int64_t lowOffset = -1;
+  int64_t highOffset = -1;
+  auto e = consumer->query_watermark_offsets(
+    p->topic(), p->partition(), &lowOffset, &highOffset, 5000);
+  if (e != RdKafka::ERR_NO_ERROR) {
+    LOG(ERROR) << "Error: " << e;
   }
+  LOG(INFO) << "Low offset: " << lowOffset << ", High offset:" << highOffset;
+  LOG(ERROR) << p->topic() << "[" << p->partition() << "]: " << p->offset();
+};
 
+class ExampleRebalanceCb : public RdKafka::RebalanceCb {
 public:
   void rebalance_cb(RdKafka::KafkaConsumer* consumer,
                     RdKafka::ErrorCode err,
                     std::vector<RdKafka::TopicPartition*>& partitions) {
     LOG(ERROR) << "RebalanceCb: " << RdKafka::err2str(err) << ": ";
 
-    part_list_print(partitions);
-
     if (err == RdKafka::ERR__ASSIGN_PARTITIONS) {
-      consumer->assign(partitions);
-      partition_cnt = (int)partitions.size();
+      consumer->assign({ partitions.at(0) });
     } else {
       consumer->unassign();
-      partition_cnt = 0;
     }
+
     eof_cnt = 0;
   }
 };
 
-void msg_consume(RdKafka::Message* message, void*) {
+void read(uint8_t* data, size_t size) {
+  auto buffer = std::make_shared<TMemoryBuffer>(data, size);
+  TBinaryProtocol proto(buffer);
+  std::string name = "demo";
+
+  // TBinaryProtocol starts with first field
+  // auto length = proto.readStructBegin(name);
+
+  // read all fields
+  while (true) {
+    TType type = apache::thrift::protocol::T_STOP;
+    int16_t id = 0;
+
+    proto.readFieldBegin(name, type, id);
+
+    // no more fields to read
+    if (id == 0) {
+      break;
+    }
+
+#define TYPE_EXTRACT(T, CT, M)                  \
+  case TType::T: {                              \
+    CT v;                                       \
+    proto.M(v);                                 \
+    LOG(INFO) << id << "(" << #CT << "):" << v; \
+    break;                                      \
+  }
+
+    switch (type) {
+      TYPE_EXTRACT(T_STRING, std::string, readBinary)
+      TYPE_EXTRACT(T_BOOL, bool, readBool)
+      TYPE_EXTRACT(T_BYTE, int8_t, readByte)
+      TYPE_EXTRACT(T_I16, int16_t, readI16)
+      TYPE_EXTRACT(T_I32, int32_t, readI32)
+      TYPE_EXTRACT(T_I64, int64_t, readI64)
+      TYPE_EXTRACT(T_DOUBLE, double, readDouble)
+
+    default: {
+      LOG(ERROR) << "Type not supported at field: " << id;
+      break;
+    }
+    }
+#undef TYPE_EXTRACT
+
+    proto.readFieldEnd();
+  }
+}
+
+bool msg_consume(RdKafka::Message* message, void*) {
   switch (message->err()) {
   case RdKafka::ERR__TIMED_OUT:
-    break;
+    return false;
 
-  case RdKafka::ERR_NO_ERROR:
-    /* Real message */
+  case RdKafka::ERR_NO_ERROR: { /* Real message */
     msg_cnt++;
     msg_bytes += message->len();
-    if (verbosity >= 3)
-      LOG(ERROR) << "Read msg at offset " << message->offset();
+    LOG(ERROR) << "Read msg at offset " << message->offset();
     RdKafka::MessageTimestamp ts;
     ts = message->timestamp();
     if (verbosity >= 2 && ts.type != RdKafka::MessageTimestamp::MSG_TIMESTAMP_NOT_AVAILABLE) {
@@ -115,65 +179,39 @@ void msg_consume(RdKafka::Message* message, void*) {
     }
 
     if (verbosity >= 2 && message->key()) {
-      LOG(INFO) << "Key: " << *message->key() << std::endl;
+      LOG(INFO) << "Key: " << *message->key();
     }
-    if (verbosity >= 1) {
-      LOG(INFO) << static_cast<int>(message->len()) << static_cast<const char*>(message->payload());
-    }
-    break;
+
+    // parse the payload using thrift deserialization
+    LOG(INFO) << static_cast<int>(message->len()) << static_cast<const char*>(message->payload());
+    auto data = static_cast<uint8_t*>(message->payload());
+    auto size = message->len();
+    read(data, size);
+
+    return true;
+  }
 
   case RdKafka::ERR__PARTITION_EOF:
-    /* Last message */
-    if (exit_eof && ++eof_cnt == partition_cnt) {
-      LOG(ERROR) << "%% EOF reached for all " << partition_cnt << " partition(s)";
-      run = false;
-    }
-    break;
-
   case RdKafka::ERR__UNKNOWN_TOPIC:
-  case RdKafka::ERR__UNKNOWN_PARTITION:
+  case RdKafka::ERR__UNKNOWN_PARTITION: {
     LOG(ERROR) << "Consume failed: " << message->errstr();
     run = false;
-    break;
+    return false;
+  }
 
-  default:
+  default: {
     /* Errors */
     LOG(ERROR) << "Consume failed: " << message->errstr();
     run = false;
+    return false;
+  }
   }
 }
 
 TEST(KafkaTest, TestLibKafkaConsumer) {
-  // "Usage: %s -g <group-id> [options] topic1 topic2..\n"
-  // "\n"
-  // "librdkafka version %s (0x%08x)\n"
-  // "\n"
-  // " Options:\n"
-  // "  -g <group-id>   Consumer group id\n"
-  // "  -b <brokers>    Broker address (localhost:9092)\n"
-  // "  -z <codec>      Enable compression:\n"
-  // "                  none|gzip|snappy\n"
-  // "  -e              Exit consumer when last message\n"
-  // "                  in partition has been received.\n"
-  // "  -d [facs..]     Enable debugging contexts:\n"
-  // "                  %s\n"
-  // "  -M <intervalms> Enable statistics\n"
-  // "  -X <prop=name>  Set arbitrary librdkafka "
-  // "configuration property\n"
-  // "                  Properties prefixed with \"topic.\" "
-  // "will be set on topic object.\n"
-  // "                  Use '-X list' to see the full list\n"
-  // "                  of supported properties.\n"
-  // "  -q              Quiet / Decrease verbosity\n"
-  // "  -v              Increase verbosity\n"
-  // "\n"
-  // "\n",
-  // argv[0],
-  // RdKafka::version_str().c_str(), RdKafka::version(),
-  // RdKafka::get_debug_contexts().c_str());
-  std::string brokers = "<BROKER>";
+  std::string brokers = BROKERS;
   std::string errstr;
-  std::vector<std::string> topics{ "<TOPIC>" };
+  std::vector<std::string> topics{ TOPIC };
 
   /*
    * Create configuration objects
@@ -183,7 +221,7 @@ TEST(KafkaTest, TestLibKafkaConsumer) {
 
   ExampleRebalanceCb ex_rebalance_cb;
   conf->set("rebalance_cb", &ex_rebalance_cb, errstr);
-  conf->set("enable.partition.eof", "true", errstr);
+  // conf->set("enable.partition.eof", "true", errstr);
 
   // set group ID = 1
   if (conf->set("group.id", "1", errstr) != RdKafka::Conf::CONF_OK) {
@@ -200,12 +238,6 @@ TEST(KafkaTest, TestLibKafkaConsumer) {
   // exit when reaching end of stream
   exit_eof = true;
 
-  // set statistics printing interval at every 5 seconds
-  if (conf->set("statistics.interval.ms", "5000", errstr) != RdKafka::Conf::CONF_OK) {
-    LOG(ERROR) << errstr;
-    exit(1);
-  }
-
   /*
    * Set configuration properties
    */
@@ -215,21 +247,8 @@ TEST(KafkaTest, TestLibKafkaConsumer) {
   ExampleEventCb ex_event_cb;
   conf->set("event_cb", &ex_event_cb, errstr);
 
-  // dump all configs
-  for (auto pass = 0; pass < 2; pass++) {
-    std::list<std::string>* dump;
-    if (pass == 0) {
-      dump = conf->dump();
-      LOG(INFO) << "# Global config";
-    } else {
-      dump = tconf->dump();
-      LOG(INFO) << "# Topic config";
-    }
-
-    for (std::list<std::string>::iterator it = dump->begin(); it != dump->end();) {
-      LOG(INFO) << *it++ << " = " << *it++;
-    }
-  }
+  // no auto offset store
+  conf->set("enable.auto.offset.store", "false", errstr);
 
   conf->set("default_topic_conf", tconf, errstr);
   delete tconf;
@@ -250,6 +269,16 @@ TEST(KafkaTest, TestLibKafkaConsumer) {
 
   LOG(INFO) << "% Created consumer " << consumer->name();
 
+  // test out partition info
+  auto ts = nebula::common::Evidence::time("2019-09-27 11:00:00", "%Y-%m-%d %H:%M:%S");
+  RdKafka::TopicPartition* p = RdKafka::TopicPartition::create("waltz_widget_unauth", 0, ts * 1000);
+  std::vector<RdKafka::TopicPartition*> offsettoppars{ p };
+  consumer->assign(offsettoppars);
+  consumer->offsetsForTimes(offsettoppars, 1000);
+
+  part_list_print(consumer, p);
+  LOG(ERROR) << p->topic() << "[" << p->partition() << "]: " << p->offset();
+
   /*
    * Subscribe to topics
    */
@@ -263,8 +292,9 @@ TEST(KafkaTest, TestLibKafkaConsumer) {
    * Consume messages
    */
   auto count = 0;
-  while (run && count++ < 10) {
-    RdKafka::Message* msg = consumer->consume(1000);
+  while (run && count++ < 3) {
+    LOG(INFO) << "READ a message";
+    RdKafka::Message* msg = consumer->consume(5000);
     msg_consume(msg, NULL);
     delete msg;
   }
@@ -285,6 +315,60 @@ TEST(KafkaTest, TestLibKafkaConsumer) {
    * memory leaks.
    */
   RdKafka::wait_destroyed(5000);
+}
+
+TEST(KafkaTest, TestKafkaTopic) {
+  nebula::storage::kafka::KafkaTopic topic(BROKERS, TOPIC);
+
+  // 10 hours ago
+  auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 10;
+  auto segments1 = topic.segmentsByTimestamp(tenHr * 1000, 50000);
+  for (auto& s : segments1) {
+    if (s.partition == 0) {
+      LOG(INFO) << "" << s.id();
+    }
+  }
+}
+
+TEST(KafkaTest, TestKafkaReader) {
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, TOPIC);
+
+  // 10 hours ago
+  auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 10;
+  auto segments = topic->segmentsByTimestamp(tenHr * 1000, 5000);
+  N_ENSURE(segments.size() > 0, "more than 0 segments");
+  LOG(INFO) << "Generated " << segments.size() << " segments. Pick first one to read";
+
+  nebula::meta::Serde serde;
+  serde.protocol = "binary";
+  serde.cmap = { { "id", 1 }, { "referer", 3 }, { "country", 6 } };
+  nebula::meta::ColumnProps cp;
+  nebula::meta::TimeSpec ts;
+  ts.type = nebula::meta::TimeType::CURRENT;
+
+  auto table = std::make_shared<nebula::meta::TableSpec>(
+    TOPIC, 1000, 100, "ROW<id:string, referer:string, country:string>",
+    nebula::meta::DataSource::KAFKA, "Roll", BROKERS, "",
+    "thrift", serde, cp, ts);
+
+  const auto& seg = segments.front();
+  nebula::storage::kafka::KafkaReader reader(table, seg);
+  EXPECT_EQ(reader.size(), seg.size);
+  while (reader.hasNext()) {
+    auto& row = reader.next();
+    LOG(INFO) << "message time: " << row.readLong(nebula::meta::Table::TIME_COLUMN);
+  }
+}
+
+TEST(KafkaTest, TestKafkaSegmentSerde) {
+  nebula::storage::kafka::KafkaSegment seg{ 2, 5499999, 3200010 };
+  auto id = seg.id();
+  LOG(INFO) << "Segment ID=" << id;
+  auto seg2 = nebula::storage::kafka::KafkaSegment::from(id);
+  auto id2 = seg2.id();
+  LOG(INFO) << "Segment2 ID=" << id2;
+  EXPECT_EQ(id, id2);
+  // EXPECT_EQ(seg, seg2);
 }
 
 } // namespace test

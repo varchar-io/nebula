@@ -7,6 +7,8 @@ add_library(${NEBULA_STORAGE} STATIC
     ${NEBULA_SRC}/storage/NFS.cpp
     ${NEBULA_SRC}/storage/ParquetReader.cpp
     ${NEBULA_SRC}/storage/aws/S3.cpp
+    ${NEBULA_SRC}/storage/kafka/KafkaTopic.cpp
+    ${NEBULA_SRC}/storage/kafka/KafkaReader.cpp
     ${NEBULA_SRC}/storage/local/File.cpp)
 target_link_libraries(${NEBULA_STORAGE}
     PUBLIC ${NEBULA_COMMON}
@@ -15,7 +17,9 @@ target_link_libraries(${NEBULA_STORAGE}
     PUBLIC ${PARQUET_LIBRARY}
     PUBLIC ${ARROW_LIBRARY}
     PUBLIC ${AWS_LIBRARY}
-    PUBLIC ${CURL_LIBRARY})
+    PUBLIC ${CURL_LIBRARY}
+    PUBLIC ${THRIFT_LIBRARY}
+    PUBLIC ${KAFKA_LIBRARY})
 
 #build test binary
 add_executable(StorageTests

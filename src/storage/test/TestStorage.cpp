@@ -38,7 +38,7 @@ TEST(StorageTest, TestLocalFiles) {
 }
 
 TEST(StorageTest, DISABLED_TestS3Api) {
-  auto fs = nebula::storage::makeFS("s3", "pinlogs");
+  auto fs = nebula::storage::makeFS("s3", "<bucket>");
   auto keys = fs->list("nebula/pin_messages/");
   for (auto& key : keys) {
     LOG(INFO) << "key: " << key.name;
@@ -59,7 +59,7 @@ TEST(StorageTest, DISABLED_TestS3Api) {
 }
 
 TEST(StorageTest, DISABLED_TestS3Copy) {
-  auto fs = nebula::storage::makeFS("s3", "pinlogs");
+  auto fs = nebula::storage::makeFS("s3", "<bucket>");
   auto local = fs->copy("nebula/pin_pins/cd=2019-08-31/000117");
   auto lfs = nebula::storage::makeFS("local");
   auto fi = lfs->info(local);

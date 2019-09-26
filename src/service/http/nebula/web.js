@@ -45,8 +45,9 @@ const initTable = (table, callback) => {
 
             // populate dimension columns
             const dimensions = reply.getDimensionList().filter((v) => v !== '_time_');
-            const metrics = reply.getMetricList().filter((v) => v !== '_time_');
+            let metrics = reply.getMetricList().filter((v) => v !== '_time_');
             const all = dimensions.concat(metrics);
+            let rollups = Object.keys(NebulaClient.Rollup);
 
             $('#dwrapper').html("Dimension: <select id=\"dcolumns\" multiple></select>");
             ds('#dcolumns')
@@ -61,6 +62,13 @@ const initTable = (table, callback) => {
                 plugins: ['restore_on_backspace', 'remove_button'],
                 persist: false
             });
+
+            // if the table has no metrics column (no value columns)
+            // we only allow count on first column then
+            if (metrics.length == 0) {
+                metrics = [dimensions[0]];
+                rollups = ['COUNT'];
+            }
 
             // populate metrics columns
             ds('#mcolumns')
@@ -113,7 +121,7 @@ const initTable = (table, callback) => {
             ds('#ru')
                 .html("")
                 .selectAll("option")
-                .data(Object.keys(NebulaClient.Rollup))
+                .data(rollups)
                 .enter()
                 .append('option')
                 .text(k => k.toLowerCase())

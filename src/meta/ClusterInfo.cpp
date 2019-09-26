@@ -58,6 +58,10 @@ DataSource asDataSource(const std::string& data) {
     return DataSource::S3;
   }
 
+  if (data == "kafka") {
+    return DataSource::KAFKA;
+  }
+
   throw NException("Misconfigured data source");
 }
 
@@ -114,6 +118,21 @@ std::unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
   return props;
 }
 
+Serde asSerde(const YAML::Node& node) {
+  Serde serde;
+  if (node) {
+    serde.protocol = node["protocol"].as<std::string>();
+    auto maps = node["cmap"];
+    if (maps) {
+      for (YAML::const_iterator it = maps.begin(); it != maps.end(); ++it) {
+        serde.cmap.emplace(it->first.as<std::string>(), it->second.as<uint32_t>());
+      }
+    }
+  }
+
+  return serde;
+}
+
 void ClusterInfo::load(const std::string& file) {
 
   YAML::Node config = YAML::LoadFile(file);
@@ -148,16 +167,27 @@ void ClusterInfo::load(const std::string& file) {
 
     // table definition
     const auto& td = it->second;
+    auto ds = asDataSource(td["data"].as<std::string>());
+
+    // TODO(cao): sorry but we have a hard rule here,
+    // every Kafka table will be named as "k.{topic_name}"
+    // we may want to turn this into an extra field in table rather than name.
+    if (ds == DataSource::KAFKA) {
+      // here we want topic name as table name
+      name = td["topic"].as<std::string>();
+    }
+
     tableSet.emplace(std::make_shared<TableSpec>(
       name,
       td["max-mb"].as<size_t>(),
       td["max-hr"].as<size_t>(),
       td["schema"].as<std::string>(),
-      asDataSource(td["data"].as<std::string>()),
+      ds,
       td["loader"].as<std::string>(),
       td["source"].as<std::string>(),
       td["backup"].as<std::string>(),
       td["format"].as<std::string>(),
+      asSerde(td["serde"]),
       asColumnProps(td["columns"]),
       asTimeSpec(td["time"])));
   }
