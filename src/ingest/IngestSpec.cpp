@@ -215,17 +215,6 @@ std::vector<BatchBlock> IngestSpec::ingest(const std::string& file) noexcept {
   // to other columns for simple transformation
   // but right now, we're expecting the same schema of data
 
-  // get table schema and create a table
-  auto schema = TypeSerializer::from(table_->schema);
-
-  // list all columns describing the current file
-  std::vector<std::string> columns;
-  columns.reserve(schema->size());
-  for (size_t i = 0, size = schema->size(); i < size; ++i) {
-    auto type = schema->childType(i);
-    columns.push_back(type->name());
-  }
-
   // based on time spec, we need to replace or append time column
   auto timeType = table_->timeSpec.type;
   std::function<int64_t(const RowData*)> timeFunc;
@@ -233,19 +222,15 @@ std::vector<BatchBlock> IngestSpec::ingest(const std::string& file) noexcept {
   // static time spec
   switch (timeType) {
   case TimeType::STATIC: {
-    schema->addChild(LongType::createTree(Table::TIME_COLUMN));
     timeFunc = [value = table_->timeSpec.unixTimeValue](const RowData*) { return value; };
     break;
   }
   case TimeType::CURRENT: {
-    schema->addChild(LongType::createTree(Table::TIME_COLUMN));
     timeFunc = [](const RowData*) { return Evidence::unix_timestamp(); };
     break;
   }
   case TimeType::COLUMN: {
     const auto& ts = table_->timeSpec;
-    schema->remove(ts.colName);
-    schema->addChild(LongType::createTree(Table::TIME_COLUMN));
     // TODO(cao) - currently only support string column with time pattern
     // we should be able to support other types such as column is number
     timeFunc = [&ts](const RowData* r) {
@@ -254,7 +239,6 @@ std::vector<BatchBlock> IngestSpec::ingest(const std::string& file) noexcept {
     break;
   }
   case TimeType::MACRO: {
-    schema->addChild(LongType::createTree(Table::TIME_COLUMN));
     const auto& ts = table_->timeSpec;
     // TODO(cao) - support only one macro for now, need to generalize it
     if (ts.pattern == "date") {
@@ -270,7 +254,7 @@ std::vector<BatchBlock> IngestSpec::ingest(const std::string& file) noexcept {
   }
   }
 
-  auto table = std::make_shared<Table>(table_->name, schema, table_->columnProps);
+  auto table = table_->to();
 
   // enroll the table in case it is the first time
   TableService::singleton()->enroll(table);
@@ -280,13 +264,23 @@ std::vector<BatchBlock> IngestSpec::ingest(const std::string& file) noexcept {
   // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
   LOG(INFO) << "Ingesting from " << file;
 
+  // get table schema and create a table
+  const auto schema = TypeSerializer::from(table_->schema);
+  // list all columns describing the current file
+  std::vector<std::string> columns;
+  columns.reserve(schema->size());
+  for (size_t i = 0, size = schema->size(); i < size; ++i) {
+    auto type = schema->childType(i);
+    columns.push_back(type->name());
+  }
+
   // depends on the type
   std::unique_ptr<RowCursor> source = nullptr;
   if (table_->format == "csv") {
     source = std::make_unique<CsvReader>(file, '\t', columns);
   } else if (table_->format == "parquet") {
     // schema is modified with time column, we need original schema here
-    source = std::make_unique<ParquetReader>(file, TypeSerializer::from(table_->schema));
+    source = std::make_unique<ParquetReader>(file, schema);
   } else {
     LOG(ERROR) << "Unsupported file format: " << table_->format;
     return {};

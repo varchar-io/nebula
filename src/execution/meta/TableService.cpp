@@ -48,15 +48,12 @@ std::vector<NNode> TableService::queryNodes(
   return nodes;
 }
 
+// enroll each table with registration
 void TableService::enroll(const ClusterInfo& ci) {
-  for (const auto& tp : ci.tables()) {
-    // TODO(cao) - need some contract definition whether user can define _time_ column or not
-    // TIME_COLUMN is reserved column, can't be configured by user
-    auto schema = TypeSerializer::from(tp->schema);
-    schema->addChild(LongType::createTree(Table::TIME_COLUMN));
-
-    enroll(std::make_shared<Table>(tp->name, schema, tp->columnProps));
-  }
+  const auto& tsp = ci.tables();
+  std::for_each(tsp.cbegin(), tsp.cend(), [this](auto itr) {
+    enroll(itr->to());
+  });
 }
 
 } // namespace meta

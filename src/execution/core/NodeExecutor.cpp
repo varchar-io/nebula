@@ -25,7 +25,7 @@
 #include "execution/meta/TableService.h"
 
 DEFINE_uint64(TOP_SORT_SCALE,
-              1,
+              0,
               "This defines scale set of top sorting queries, by default, we're returning everything when scale is 0."
               "However, many times we want fast return so that we don't need to serialize massive data back to server,"
               "instead we return scale times of sorting result back to server and this may result in wrong answer!");
@@ -93,9 +93,9 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
   auto merged = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAgg(), x);
 
   // if scale is 0 or this query has no limit on it
-  // if (FLAGS_TOP_SORT_SCALE == 0 || phase.top() == 0) {
-  //   return merged;
-  // }
+  if (FLAGS_TOP_SORT_SCALE == 0 || phase.top() == 0) {
+    return merged;
+  }
 
   return topSort(merged, plan, FLAGS_TOP_SORT_SCALE);
 }

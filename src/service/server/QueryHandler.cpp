@@ -219,10 +219,15 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     q->sortby({ 1 });
   } else if (req.has_order()) {
     auto order = req.order();
-    // search column index
-    for (size_t i = 0, size = columns.size(); i < size; ++i) {
-      if (columns.at(i) == order.column()) {
-        q->sortby({ i + 1 }, orderTypeConvert(order.type()));
+    // Search column index for sorting
+    // Non-Science: we're ordering by first metric column
+    // However, the column specified from client/UI could be duplicate
+    // to some dimension column, such as (user_id, count(user_id)).
+    // Since we place metrics after dimension, search from end to beginning
+    // will help us find metrics column first and this is satisfying most cases.
+    for (size_t i = columns.size(); i > 0; --i) {
+      if (columns.at(i - 1) == order.column()) {
+        q->sortby({ i }, orderTypeConvert(order.type()));
         break;
       }
     }

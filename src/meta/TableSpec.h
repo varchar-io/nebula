@@ -20,6 +20,7 @@
 
 #include "common/Hash.h"
 #include "meta/Table.h"
+#include "type/Serde.h"
 #include "type/Type.h"
 
 /**
@@ -105,6 +106,23 @@ struct TableSpec {
   inline std::string toString() const {
     // table name @ location - format: time
     return fmt::format("{0}@{1}-{2}: {3}", name, location, format, timeSpec.unixTimeValue);
+  }
+
+  // generate table pointer
+  std::shared_ptr<Table> to() const {
+    // raw schema to manipulate on
+    auto schemaPtr = nebula::type::TypeSerializer::from(schema);
+
+    // we need a time column for any input data source
+    schemaPtr->addChild(nebula::type::LongType::createTree(Table::TIME_COLUMN));
+
+    // if time column is provided by input data, we will remove it for final schema
+    if (timeSpec.type == TimeType::COLUMN) {
+      schemaPtr->remove(timeSpec.colName);
+    }
+
+    // build up a new table from this spec
+    return std::make_shared<Table>(name, schemaPtr, columnProps);
   }
 };
 
