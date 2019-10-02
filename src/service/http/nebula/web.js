@@ -15,12 +15,14 @@ const serviceAddr = "{SERVER-ADDRESS}";
 const v1Client = new NebulaClient.V1Client(serviceAddr);
 
 const formatTime = (unix) => {
-    const date = new Date(unix * 1000);
+    const date = new Date(unix);
     const y = date.getFullYear();
     // month is 0-based index
     const m = date.getMonth() + 1;
     const d = date.getDate();
-    return `${y}-${m}-${d}`;
+    const h = date.getHours();
+    const mi = date.getMinutes();
+    return `${y}-${m}-${d} ${h}:${mi}`;
 };
 
 const initTable = (table, callback) => {
@@ -36,12 +38,23 @@ const initTable = (table, callback) => {
             stats.text("Failed to get reply");
         } else {
             const bc = reply.getBlockcount();
-            const rc = reply.getRowcount();
-            const ms = reply.getMemsize();
-            const mit = formatTime(reply.getMintime());
-            const mat = formatTime(reply.getMaxtime());
+            const rc = Math.round(reply.getRowcount() / 10000) / 100;
+            const ms = Math.round(reply.getMemsize() / 10000000) / 100;
+            const mints = reply.getMintime() * 1000;
+            const maxts = reply.getMaxtime() * 1000;
 
-            stats.text(`[Blocks: ${bc}, Rows: ${rc}, Mem: ${ms}, Min T: ${mit}, Max T: ${mat}]`);
+            stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${formatTime(mints)}, Max T: ${formatTime(maxts)}]`);
+
+            // set up datetime picker for start and end dates
+            const dto = {
+                enableTime: true,
+                defaultDate: "today",
+                minDate: mints,
+                maxDate: maxts
+            };
+
+            $("#start").flatpickr(dto);
+            $("#end").flatpickr(dto);
 
             // populate dimension columns
             const dimensions = reply.getDimensionList().filter((v) => v !== '_time_');
@@ -173,13 +186,13 @@ const checkRequest = () => {
     }
 
     // if data aggregations, we enforce filter
-    if (display != NebulaClient.DisplayType.SAMPLES &&
-        display != NebulaClient.DisplayType.TIMELINE) {
-        if ($$('#fvalue').length == 0) {
-            ds("#qr").text(`Please specify filters for specific aggregations`);
-            return true;
-        }
-    }
+    // if (display != NebulaClient.DisplayType.SAMPLES &&
+    //     display != NebulaClient.DisplayType.TIMELINE) {
+    //     if ($$('#fvalue').length == 0) {
+    //         ds("#qr").text(`Please specify filters for specific aggregations`);
+    //         return true;
+    //     }
+    // }
 
     // pass the check
     return false;
@@ -288,7 +301,7 @@ const execute = () => {
         return;
     }
 
-    const p = JSON.parse(decodeURI(h.substr(1)));
+    const p = JSON.parse(decodeURIComponent(h.substr(1)));
     console.log(`Query: ${p}`);
 
     // URL decoding the string and json object parsing
@@ -483,7 +496,6 @@ v1Client.tables(listReq, {}, (err, reply) => {
     // restore the selection
     restore();
 });
-
 
 // a pointer to latest dimensions selectize
 let $sdc = null;

@@ -47,10 +47,12 @@ folly::Future<RowCursorPtr> dist(
   const Batch& block,
   const BlockPhase& phase) {
   auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
-  pool.add([&block, &phase, p]() {
-    // compute phase on block and return the result
-    p->setValue(nebula::execution::core::compute(block, phase));
-  });
+  pool.addWithPriority(
+    [&block, &phase, p]() {
+      // compute phase on block and return the result
+      p->setValue(nebula::execution::core::compute(block, phase));
+    },
+    folly::Executor::HI_PRI);
 
   return p->getFuture();
 }

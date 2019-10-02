@@ -45,7 +45,7 @@ static void sigterm(int) {
   run = false;
 }
 
-static const auto BROKERS = "<broker>";
+static const auto BROKERS = "<brokers>";
 static const auto TOPIC = "<topic>";
 
 class ExampleEventCb : public RdKafka::EventCb {
@@ -271,7 +271,7 @@ TEST(KafkaTest, TestLibKafkaConsumer) {
 
   // test out partition info
   auto ts = nebula::common::Evidence::time("2019-09-27 11:00:00", "%Y-%m-%d %H:%M:%S");
-  RdKafka::TopicPartition* p = RdKafka::TopicPartition::create("waltz_widget_unauth", 0, ts * 1000);
+  RdKafka::TopicPartition* p = RdKafka::TopicPartition::create(TOPIC, 0, ts * 1000);
   std::vector<RdKafka::TopicPartition*> offsettoppars{ p };
   consumer->assign(offsettoppars);
   consumer->offsetsForTimes(offsettoppars, 1000);
@@ -354,9 +354,22 @@ TEST(KafkaTest, TestKafkaReader) {
   const auto& seg = segments.front();
   nebula::storage::kafka::KafkaReader reader(table, seg);
   EXPECT_EQ(reader.size(), seg.size);
+  std::vector<int64_t> times;
+  times.reserve(seg.size);
   while (reader.hasNext()) {
     auto& row = reader.next();
-    LOG(INFO) << "message time: " << row.readLong(nebula::meta::Table::TIME_COLUMN);
+    times.push_back(row.readLong(nebula::meta::Table::TIME_COLUMN));
+  }
+
+  // read it again and check every time stamp is the same
+  // to ensure each spec is reproduciable
+  nebula::storage::kafka::KafkaReader reader2(table, seg);
+  EXPECT_EQ(reader2.size(), seg.size);
+  auto i = 0;
+  while (reader2.hasNext()) {
+    auto& row = reader2.next();
+    EXPECT_EQ(times.at(i++),
+              row.readLong(nebula::meta::Table::TIME_COLUMN));
   }
 }
 

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include "KafkaProvider.h"
 #include "KafkaTopic.h"
 #include "common/Errors.h"
 #include "memory/FlatRow.h"
@@ -49,7 +50,8 @@ public:
       fields_.emplace(itr->second, itr->first);
     }
 
-    load();
+    // load all desired messages through this consumer
+    load(KafkaProvider::getConsumer(table_->location));
   }
 
   virtual ~KafkaReader() = default;
@@ -64,10 +66,18 @@ public:
 
 private:
   // load all messages in the repo
-  void load();
+  void load(RdKafka::KafkaConsumer*);
 
   // populate current message into flat row with thrift and bianry protocol
   void populateThriftBinary(const RdKafka::Message&);
+
+  void nullifyRow() noexcept {
+    // write everything a null if encoutering an invalid message
+    row_.reset();
+    for (auto itr = fields_.cbegin(); itr != fields_.cend(); ++itr) {
+      row_.writeNull(itr->second);
+    }
+  }
 
 private:
   nebula::meta::TableSpecPtr table_;

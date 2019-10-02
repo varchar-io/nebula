@@ -35,36 +35,6 @@ using apache::thrift::protocol::TType;
 using apache::thrift::transport::TMemoryBuffer;
 using nebula::meta::Table;
 
-class KafkaEventCb : public RdKafka::EventCb {
-public:
-  virtual void event_cb(RdKafka::Event& event) override {
-    switch (event.type()) {
-    case RdKafka::Event::EVENT_ERROR:
-      if (event.fatal()) {
-        LOG(FATAL) << "event error";
-      }
-      LOG(ERROR) << "ERROR (" << RdKafka::err2str(event.err()) << "): " << event.str();
-      break;
-
-    case RdKafka::Event::EVENT_STATS:
-      // LOG(ERROR) << "\"STATS\": " << event.str();
-      break;
-
-    case RdKafka::Event::EVENT_LOG:
-      LOG(ERROR) << fmt::format("LOG-{0}-{1}: {2}", event.severity(), event.fac().c_str(), event.str().c_str());
-      break;
-
-    case RdKafka::Event::EVENT_THROTTLE:
-      LOG(ERROR) << "THROTTLED: " << event.throttle_time() << "ms by " << event.broker_name() << " id " << (int)event.broker_id();
-      break;
-
-    default:
-      LOG(ERROR) << "EVENT " << event.type() << " (" << RdKafka::err2str(event.err()) << "): " << event.str();
-      break;
-    }
-  }
-};
-
 class SegmentedRebalanceCb : public RdKafka::RebalanceCb {
 public:
   SegmentedRebalanceCb(KafkaSegment segment) : segment_{ std::move(segment) } {
@@ -101,75 +71,37 @@ private:
 };
 
 // build the subscription pipeline
-void KafkaReader::load() {
+void KafkaReader::load(RdKafka::KafkaConsumer* consumer) {
   // reserve maximum segment size
   messages_.reserve(segment_.size);
 
   // properties
-  const auto& brokers = table_->location;
   const auto& topic = table_->name;
 
-  // set up the kafka configurations
-  std::string error;
-  auto conf = std::unique_ptr<RdKafka::Conf>(RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL));
-  auto tconf = std::unique_ptr<RdKafka::Conf>(RdKafka::Conf::create(RdKafka::Conf::CONF_TOPIC));
+  // subscribe is designed for group balance, we use assign directly
+  LOG(INFO) << "Consume " << table_->location << "/" << topic << ":" << segment_.id();
+  auto p = std::unique_ptr<RdKafka::TopicPartition>(
+    RdKafka::TopicPartition::create(topic, segment_.partition, timeoutMs_));
 
-#define SET_KEY_VALUE_CHECK(K, V)                         \
-  if (conf->set(K, V, error) != RdKafka::Conf::CONF_OK) { \
-    LOG(ERROR) << "Kafka: " << error;                     \
-    return;                                               \
-  }
+  // set offset of this partition
+  p->set_offset(segment_.offset);
 
-  // set up gzip
-  SET_KEY_VALUE_CHECK("compression.codec", "gzip")
-
-  // set brokers
-  SET_KEY_VALUE_CHECK("metadata.broker.list", brokers)
-
-  // set event callback
-  KafkaEventCb ecb;
-  SET_KEY_VALUE_CHECK("event_cb", &ecb)
-
-  // set rebalance job
-  SegmentedRebalanceCb rcb(segment_);
-  SET_KEY_VALUE_CHECK("rebalance_cb", &rcb)
-
-  // group Id is a must
-  SET_KEY_VALUE_CHECK("group.id", std::to_string(segment_.partition))
-
-  // set default topic config
-  SET_KEY_VALUE_CHECK("default_topic_conf", tconf.get())
-
-#undef SET_KEY_VALUE_CHECK
-
-  auto consumer = std::unique_ptr<RdKafka::KafkaConsumer>(
-    RdKafka::KafkaConsumer::create(conf.get(), error));
-
-  // subscribe the topic
-  LOG(INFO) << "Consume " << brokers << "/" << topic << ":" << segment_.id();
-  RdKafka::ErrorCode err = consumer->subscribe({ topic });
-  if (err) {
-    LOG(ERROR) << "Failed to subscribe topic: " << topic << ", error: " << RdKafka::err2str(err);
-    return;
-  }
+  // assign the partition to start consuming
+  consumer->assign({ p.get() });
 
   // run the loop to process all messages
-  size_t count = 0;
-  while (count < segment_.size) {
+  while (messages_.size() < segment_.size) {
     // when this message is consumed from queue, please delete it
     auto msg = std::unique_ptr<RdKafka::Message>(consumer->consume(timeoutMs_));
     // message may be empty
     if (msg && msg->len() > 0) {
       messages_.push_back(std::move(msg));
-
-      // RdKafka::MessageTimestamp ts = msg->timestamp();
-      // counts this valid message
-      count++;
     }
   }
 
-  consumer->unsubscribe();
-
+  // unassign the partition
+  consumer->unassign();
+  // consumer->unsubscribe();
   // TODO(cao): calling close will hanging forever.
   // consumer->close();
 
@@ -203,6 +135,9 @@ void KafkaReader::populateThriftBinary(const RdKafka::Message& msg) {
   std::string name;
 
   // read all fields
+  const auto numFields = fields_.size();
+  std::unordered_set<uint32_t> fieldsWritten;
+  fieldsWritten.reserve(numFields);
   while (true) {
     TType type = apache::thrift::protocol::T_STOP;
     int16_t id = 0;
@@ -218,6 +153,7 @@ void KafkaReader::populateThriftBinary(const RdKafka::Message& msg) {
     auto f = fields_.find(id);
     if (f != fields_.end()) {
       auto name = f->second;
+      fieldsWritten.emplace(id);
 #define TYPE_EXTRACT(T, CT, M) \
   case TType::T: {             \
     CT v;                      \
@@ -246,6 +182,17 @@ void KafkaReader::populateThriftBinary(const RdKafka::Message& msg) {
 
     proto.readFieldEnd();
   }
+
+  // in case anything happened, not all fields found from this message
+  const auto numWritten = fieldsWritten.size();
+  if (UNLIKELY(numWritten < numFields)) {
+    LOG(INFO) << "See missing fields in message: " << (numFields - numWritten);
+    for (auto itr = fields_.cbegin(); itr != fields_.cend(); ++itr) {
+      if (fieldsWritten.find(itr->first) == fieldsWritten.end()) {
+        row_.writeNull(itr->second);
+      }
+    }
+  }
 }
 
 // next row data of CsvRow
@@ -255,7 +202,13 @@ const nebula::surface::RowData& KafkaReader::next() {
 
   // parse this msg into row_ based on serde info
   if (table_->format == "thrift" && table_->serde.protocol == "binary") {
-    populateThriftBinary(*msg);
+    try {
+      populateThriftBinary(*msg);
+    } catch (std::exception& exp) {
+      LOG(ERROR) << "Error in parsing a message at offset=" << msg->offset() << ": " << exp.what();
+      nullifyRow();
+    }
+
     index_++;
     return row_;
   }

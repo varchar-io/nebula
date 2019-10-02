@@ -7,8 +7,9 @@ add_library(${NEBULA_STORAGE} STATIC
     ${NEBULA_SRC}/storage/NFS.cpp
     ${NEBULA_SRC}/storage/ParquetReader.cpp
     ${NEBULA_SRC}/storage/aws/S3.cpp
-    ${NEBULA_SRC}/storage/kafka/KafkaTopic.cpp
+    ${NEBULA_SRC}/storage/kafka/KafkaProvider.cpp
     ${NEBULA_SRC}/storage/kafka/KafkaReader.cpp
+    ${NEBULA_SRC}/storage/kafka/KafkaTopic.cpp
     ${NEBULA_SRC}/storage/local/File.cpp)
 target_link_libraries(${NEBULA_STORAGE}
     PUBLIC ${NEBULA_COMMON}

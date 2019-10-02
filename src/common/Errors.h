@@ -69,11 +69,11 @@ static constexpr cstr lslash(cstr str) {
     throw nebula::common::NebulaException(__NFILE__, __LINE__, __FUNCTION__, "RuntimeError", MSG); \
   })
 
-#define THROW_IF_NOT_EXP(EXP, MSG)                                  \
-  ({                                                                \
-    if (!(EXP)) {                                                   \
-      throw NException(fmt::format("[Violation: #EXP]: {0}", MSG)); \
-    }                                                               \
+#define THROW_IF_NOT_EXP(EXP, MSG)                                       \
+  ({                                                                     \
+    if (!(EXP)) {                                                        \
+      throw NException(fmt::format("[Violation: {0}]: {1}", #EXP, MSG)); \
+    }                                                                    \
   })
 
 #define N_ENSURE(e, msg) THROW_IF_NOT_EXP(e, msg)

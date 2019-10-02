@@ -64,11 +64,21 @@ class NodeServerImpl final : public NodeServer::Service {
 public:
   NodeServerImpl()
     : tableService_{ nebula::execution::meta::TableService::singleton() },
-      threadPool_{ std::thread::hardware_concurrency() } {}
+      threadPool_{ std::thread::hardware_concurrency(), 2 } {}
   virtual ~NodeServerImpl() = default;
+
+  folly::ThreadPoolExecutor& pool() {
+    return threadPool_;
+  }
 
 private:
   std::shared_ptr<nebula::execution::meta::TableService> tableService_;
+
+  // by default if not specified, CPUThreadPoolExecutor will use UnboundedBlockingQueue
+  // so we can add as many task as we want.
+  // Initialize this pool with two priority queues:
+  //    higher for query execution.
+  //    lower for task execution.
   folly::CPUThreadPoolExecutor threadPool_;
 };
 

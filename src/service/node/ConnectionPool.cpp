@@ -47,6 +47,15 @@ std::shared_ptr<grpc::Channel> ConnectionPool::connection(const std::string& add
   // all client configurations come to here
   grpc::ChannelArguments chArgs;
   chArgs.SetMaxReceiveMessageSize(-1);
+
+  // keep alive connection settings
+  chArgs.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);
+  chArgs.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 10000);
+  chArgs.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);
+  chArgs.SetInt(GRPC_ARG_HTTP2_BDP_PROBE, 1);
+  chArgs.SetInt(GRPC_ARG_HTTP2_MIN_RECV_PING_INTERVAL_WITHOUT_DATA_MS, 5000);
+  chArgs.SetInt(GRPC_ARG_HTTP2_MIN_SENT_PING_INTERVAL_WITHOUT_DATA_MS, 10000);
+  chArgs.SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 0);
   LOG(INFO) << "Creating a channel to " << addr;
 
   auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), chArgs);
