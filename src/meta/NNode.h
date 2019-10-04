@@ -29,6 +29,14 @@
 namespace nebula {
 namespace meta {
 
+// node states
+enum class NState {
+  ACTIVE,
+  BAD,
+  DEAD
+};
+
+// node role
 enum class NRole {
   NODE,
   SERVER
@@ -39,9 +47,10 @@ struct NNode {
   NRole role;
   std::string server;
   size_t port;
+  NState state;
 
   NNode(NRole r, std::string h, size_t p)
-    : role{ r }, server{ std::move(h) }, port{ p } {}
+    : role{ r }, server{ std::move(h) }, port{ p }, state{ NState::ACTIVE } {}
 
   inline std::string toString() const {
     return fmt::format("{0}:{1}", server, port);
@@ -65,6 +74,10 @@ struct NNode {
 
   inline bool isInvalid() const {
     return this->equals(invalid());
+  }
+
+  inline bool isActive() const {
+    return state == nebula::meta::NState::ACTIVE;
   }
 
   static const NNode& local() {

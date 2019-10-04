@@ -149,7 +149,9 @@ void NodeClient::state() {
     return;
   }
 
-  LOG(ERROR) << "RPC failed: code=" << status.error_code() << ", msg=" << status.error_message();
+  LOG(ERROR) << "RPC failed to " << node_.server << ": code=" << status.error_code() << ", msg=" << status.error_message();
+  // when this happens, we should try to rebuild the channel to this host
+  ConnectionPool::init()->reset(node_);
 }
 
 TaskState NodeClient::task(const Task& task) {

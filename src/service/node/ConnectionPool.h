@@ -18,6 +18,10 @@
 #include <grpcpp/grpcpp.h>
 #include <unordered_map>
 
+#include "common/Evidence.h"
+#include "meta/ClusterInfo.h"
+#include "meta/NNode.h"
+
 namespace nebula {
 namespace service {
 namespace node {
@@ -39,9 +43,44 @@ public:
   // api to get maintained channel
   std::shared_ptr<grpc::Channel> connection(const std::string&);
 
+  // reset the connection to this node
+  void reset(const nebula::meta::NNode&);
+
+private:
+  void recordReset(const std::string& addr) {
+    auto reported = resets_.find(addr);
+    if (reported != resets_.end()) {
+      // increment the size
+      ++reported->second.second;
+    } else {
+      resets_.emplace(addr, std::pair{ nebula::common::Evidence::unix_timestamp(), 1 });
+    }
+
+    // process all resets
+    for (auto itr = resets_.begin(); itr != resets_.end(); ++itr) {
+      auto count = itr->second.second;
+
+      // TODO(cao): simple algo for now = if by avg reset in less than 5 minutes
+      // mark this node as bad node
+      if (count > 3) {
+        auto durationSeconds = nebula::common::Evidence::unix_timestamp() - reported->second.first;
+        auto avgSeconds = durationSeconds / count;
+        if (avgSeconds < 300) {
+          LOG(INFO) << "Marking this node as bad since it is reseting every " << avgSeconds;
+          nebula::meta::ClusterInfo::singleton().mark(addr);
+        } else if (avgSeconds > 3600) {
+          LOG(INFO) << "Reactivating this node since it is reseting every " << avgSeconds;
+          nebula::meta::ClusterInfo::singleton().mark(addr, nebula::meta::NState::ACTIVE);
+        }
+      }
+    }
+  }
+
 private:
   ConnectionPool() = default;
   std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> connections_;
+  //recording resets times, firs time stamp to reset and total reset count
+  std::unordered_map<std::string, std::pair<size_t, size_t>> resets_;
 };
 
 } // namespace node

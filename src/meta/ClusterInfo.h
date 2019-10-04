@@ -72,6 +72,16 @@ public:
     return server_;
   }
 
+  inline void mark(const std::string& node, NState state = NState::BAD) {
+    for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
+      if (node == itr->toString()) {
+        auto item = nodes_.extract(itr);
+        item.value().state = state;
+        break;
+      }
+    }
+  }
+
 private:
   void update(const NNode& node);
 

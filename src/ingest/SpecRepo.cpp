@@ -208,6 +208,10 @@ void SpecRepo::process(
 }
 
 void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
+  // next version of all specs
+  std::unordered_map<std::string, SpecPtr> next;
+  next.reserve(specs.size());
+
   // go through the new spec list and update the existing ones
   // need lock here?
   auto brandnew = 0;
@@ -218,21 +222,37 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
     const auto& id = specPtr->id();
     auto found = specs_.find(id);
     if (found == specs_.end()) {
-      specs_.emplace(id, specPtr);
       ++brandnew;
     } else {
       // TODO(cao) - use only size for the checker for now, may extend to other properties
       // this is an update case, otherwise, spec doesn't change, ignore it.
-      if (specPtr->size() != found->second->size()) {
-        found->second->setState(SpecState::RENEW);
+      auto prev = found->second;
+      if (specPtr->size() != prev->size()) {
+        specPtr->setState(SpecState::RENEW);
+
+        // get existing assignment, keep the same affinity unless its a bad host
+        if (prev->assigned()) {
+          const auto& node = prev->affinity();
+          if (node.isActive()) {
+            specPtr->setAffinity(node);
+          }
+        }
+
         ++renew;
       }
     }
+
+    // move to the next version
+    next.emplace(id, specPtr);
   }
 
   // print out update stats
   if (brandnew > 0 || renew > 0) {
     LOG(INFO) << "Updating " << specs.size() << " specs: brandnew =" << brandnew << ", renew=" << renew;
+
+    // let's swap with existing one
+    N_ENSURE_EQ(specs.size(), next.size(), "next version should have the expected size of items");
+    std::swap(specs_, next);
   }
 }
 
@@ -241,7 +261,8 @@ void SpecRepo::assign(const ClusterInfo& ci) {
   // TODO(cao) - build resource constaints here to reach a balance
   // for now, we just round robin to spin into each slot
   const NNodeSet& ns = ci.nodes();
-  const std::vector<NNode> nodes(ns.cbegin(), ns.cend());
+  const std::vector<NNode> nodes(ns.begin(), ns.end());
+
   // we're looking for a stable assignmet, given the same set of nodes
   // this order is most likely having stable order
   // std::sort(nodes.begin(), nodes.end(), [](auto& n1, auto& n2) {
@@ -259,9 +280,22 @@ void SpecRepo::assign(const ClusterInfo& ci) {
   for (auto& spec : specs_) {
     // not assigned yet
     auto sp = spec.second;
-    if (sp->affinity().isInvalid()) {
-      sp->setAffinity(nodes.at(idx));
-      idx = (idx + 1) % size;
+    if (!sp->assigned()) {
+      auto startId = idx;
+      while (true) {
+        auto& n = nodes.at(idx);
+        if (n.isActive()) {
+          sp->setAffinity(n);
+          idx = (idx + 1) % size;
+          break;
+        }
+
+        idx = (idx + 1) % size;
+        if (idx == startId) {
+          LOG(ERROR) << "No active node found to assign spec.";
+          throw NException("No active nodes in nebula.");
+        }
+      }
     }
   }
 }

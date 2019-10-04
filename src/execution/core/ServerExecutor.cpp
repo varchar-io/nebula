@@ -21,8 +21,10 @@
 #include "common/Folly.h"
 #include "execution/eval/UDF.h"
 
-// TODO(cao) - COMMENT OUT, lib link issue
-// DEFINE_uint32(NODE_TIMEOUT, 2000, "miliseconds");
+// maximum timeout in ms a query can best do
+DEFINE_uint64(RPC_TIMEOUT,
+              5000,
+              "maximum time nebula can torelate for each query in miliseconds");
 
 /**
  * Nebula runtime / online meta data.
@@ -36,7 +38,7 @@ using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
 
 // set 10 seconds for now as max time to complete a query
-static std::chrono::milliseconds RPC_TIMEOUT = std::chrono::milliseconds(10000);
+static const auto RPC_TIMEOUT = std::chrono::milliseconds(FLAGS_RPC_TIMEOUT);
 
 RowCursorPtr ServerExecutor::execute(
   folly::ThreadPoolExecutor& pool,
@@ -49,7 +51,7 @@ RowCursorPtr ServerExecutor::execute(
                // set time out handling
                // TODO(cao) - add error handling too via thenError
                .onTimeout(RPC_TIMEOUT, [&]() -> RowCursorPtr { 
-                 LOG(WARNING) << "Timeout: " << RPC_TIMEOUT.count();
+                 LOG(WARNING) << "RPC Timeout: " << FLAGS_RPC_TIMEOUT;
                  return EmptyRowCursor::instance(); });
 
     results.push_back(std::move(f));

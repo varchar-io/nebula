@@ -57,11 +57,24 @@ std::shared_ptr<grpc::Channel> ConnectionPool::connection(const std::string& add
   chArgs.SetInt(GRPC_ARG_HTTP2_MIN_SENT_PING_INTERVAL_WITHOUT_DATA_MS, 10000);
   chArgs.SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 0);
   LOG(INFO) << "Creating a channel to " << addr;
-
   auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), chArgs);
+  auto state = channel->GetState(true);
+  if (state == grpc_connectivity_state::GRPC_CHANNEL_SHUTDOWN || state == grpc_connectivity_state::GRPC_CHANNEL_TRANSIENT_FAILURE) {
+    // a bad channel when creating
+    recordReset(addr);
+    return channel;
+  }
+
   connections_[addr] = channel;
 
   return channel;
+}
+
+void ConnectionPool::reset(const nebula::meta::NNode& node) {
+  const auto addr = node.toString();
+  connections_.erase(addr);
+  LOG(INFO) << "Removing a channel to " << addr;
+  recordReset(addr);
 }
 
 } // namespace node

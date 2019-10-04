@@ -25,10 +25,14 @@
 #include "execution/meta/TableService.h"
 
 DEFINE_uint64(TOP_SORT_SCALE,
-              0,
+              10,
               "This defines scale set of top sorting queries, by default, we're returning everything when scale is 0."
               "However, many times we want fast return so that we don't need to serialize massive data back to server,"
               "instead we return scale times of sorting result back to server and this may result in wrong answer!");
+
+DEFINE_uint64(NODE_TIMEOUT,
+              5000,
+              "maximum time nebula can torelate for each query in miliseconds");
 
 /**
  * Nebula runtime / online meta data.
@@ -39,7 +43,11 @@ namespace core {
 
 using nebula::execution::meta::TableService;
 using nebula::memory::Batch;
+using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
+
+// set 10 seconds for now as max time to complete a query
+static const auto NODE_TIMEOUT = std::chrono::milliseconds(FLAGS_NODE_TIMEOUT);
 
 // distribute the compute task into a promise
 folly::Future<RowCursorPtr> dist(
@@ -81,7 +89,7 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
                  });
 
   // compile the results into a single row cursor
-  auto x = folly::collectAll(results).get();
+  auto x = folly::collectAll(results).get(NODE_TIMEOUT);
 
   // single response optimization
   if (x.size() == 1) {

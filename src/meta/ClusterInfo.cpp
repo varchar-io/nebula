@@ -148,7 +148,15 @@ void ClusterInfo::load(const std::string& file) {
   NNodeSet nodeSet;
   for (size_t i = 0, size = nodes.size(); i < size; ++i) {
     const auto& node = nodes[i]["node"];
-    nodeSet.emplace(NRole::NODE, node["host"].as<std::string>(), node["port"].as<size_t>());
+
+    // if this is an existing node, and we may want to check its state
+    NNode nn = {NRole::NODE, node["host"].as<std::string>(), node["port"].as<size_t>()};
+    auto existing = nodes_.find(nn);
+    if (existing != nodes_.end()) {
+      nn.state = existing->state;
+    }
+
+    nodeSet.insert(nn);
   }
 
   // add current server as a node if option says so
