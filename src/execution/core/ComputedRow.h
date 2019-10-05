@@ -55,6 +55,21 @@ public:
 private:
   nebula::execution::eval::EvalContext& ctx_;
   const std::vector<std::unique_ptr<eval::ValueEval>>& fields_;
+
+  // TODO(cao) - we have been struggling on whether to use std::optional as RowData interface
+  // There are basically two situations for providing RowData interface:
+  // 1. the RowData interface is served upon a stateful data set, 
+  //    which we can easily extract NULL state before invoking readX interface to get value
+  //    Batch, FlatBuffer or FlatRow are all these cases
+  // 2. Another case is serving RowData interface on top of a runtime.
+  //    In this case, we don't know its null state before we finish the computing and we don't want to compute twice.
+  //    ComputedRow, Parquet/Kafka reader are all these cases, in thse cases, today we have to use a "cache" to store its state to serve both API.
+  // Accordingly, we definitely have multiple choices to mitigate this issue:
+  // 1. we can unify isNull API into single readX API with a return type of std::optional<>
+  //    this solution provides clean and nice interface in the whole system, the downside of it is the overhead of memory layout, 
+  //    as the wrapper introduces more bytes per type especially when layout alignment is enforced. Are we willing to pay 16 bytes for storing a double value
+  //    We may look for faster/simpler version to replace it such as compact_optional<> or markable (https://github.com/akrzemi1/markable)
+  // 2. build fast cache to bridge isNull and readX as what it is, like how can FlatRow fast enough?
 };
 
 } // namespace core

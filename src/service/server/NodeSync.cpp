@@ -85,7 +85,7 @@ std::shared_ptr<folly::FunctionScheduler> NodeSync::async(
         if (expireSize > 0) {
           Task t(TaskType::EXPIRATION, std::shared_ptr<Signable>(new BlockExpire(std::move(expired))));
           TaskState state = client->task(t);
-          LOG(INFO) << fmt::format("Expire {0} blocks in node {1}: {2}", expireSize, node.server, state);
+          LOG(INFO) << fmt::format("Expire {0} blocks in node {1}: {2}", expireSize, node.server, (char)state);
         }
 
         // call node state with expired spec list

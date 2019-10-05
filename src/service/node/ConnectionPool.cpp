@@ -48,14 +48,19 @@ std::shared_ptr<grpc::Channel> ConnectionPool::connection(const std::string& add
   grpc::ChannelArguments chArgs;
   chArgs.SetMaxReceiveMessageSize(-1);
 
+  // TODO(cao): not clear how to best tune these settings to avoid unstable errors.
+  // such as
+  //   Received a GOAWAY with error code ENHANCE_YOUR_CALM and debug data equal to "too_many_pings"
+  // Simialr issue: https://github.com/grpc/grpc-node/issues/138
+  // Commenting out these settings for now.
   // keep alive connection settings
-  chArgs.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);
-  chArgs.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 10000);
-  chArgs.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);
-  chArgs.SetInt(GRPC_ARG_HTTP2_BDP_PROBE, 1);
-  chArgs.SetInt(GRPC_ARG_HTTP2_MIN_RECV_PING_INTERVAL_WITHOUT_DATA_MS, 5000);
-  chArgs.SetInt(GRPC_ARG_HTTP2_MIN_SENT_PING_INTERVAL_WITHOUT_DATA_MS, 10000);
-  chArgs.SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 0);
+  // chArgs.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);
+  // chArgs.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 10000);
+  // chArgs.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);
+  // chArgs.SetInt(GRPC_ARG_HTTP2_BDP_PROBE, 1);
+  // chArgs.SetInt(GRPC_ARG_HTTP2_MIN_RECV_PING_INTERVAL_WITHOUT_DATA_MS, 5000);
+  // chArgs.SetInt(GRPC_ARG_HTTP2_MIN_SENT_PING_INTERVAL_WITHOUT_DATA_MS, 10000);
+  // chArgs.SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 0);
   LOG(INFO) << "Creating a channel to " << addr;
   auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), chArgs);
   auto state = channel->GetState(true);

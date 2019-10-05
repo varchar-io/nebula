@@ -208,7 +208,7 @@ bool msg_consume(RdKafka::Message* message, void*) {
   }
 }
 
-TEST(KafkaTest, TestLibKafkaConsumer) {
+TEST(KafkaTest, DISABLED_TestLibKafkaConsumer) {
   std::string brokers = BROKERS;
   std::string errstr;
   std::vector<std::string> topics{ TOPIC };
@@ -317,7 +317,7 @@ TEST(KafkaTest, TestLibKafkaConsumer) {
   RdKafka::wait_destroyed(5000);
 }
 
-TEST(KafkaTest, TestKafkaTopic) {
+TEST(KafkaTest, DISABLED_TestKafkaTopic) {
   nebula::storage::kafka::KafkaTopic topic(BROKERS, TOPIC);
 
   // 10 hours ago
@@ -330,7 +330,7 @@ TEST(KafkaTest, TestKafkaTopic) {
   }
 }
 
-TEST(KafkaTest, TestKafkaReader) {
+TEST(KafkaTest, DISABLED_TestKafkaReader) {
   auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, TOPIC);
 
   // 10 hours ago
@@ -382,6 +382,28 @@ TEST(KafkaTest, TestKafkaSegmentSerde) {
   LOG(INFO) << "Segment2 ID=" << id2;
   EXPECT_EQ(id, id2);
   // EXPECT_EQ(seg, seg2);
+}
+
+TEST(KafkaTest, DISABLED_TestConsumeSpecificSegment) {
+  nebula::meta::Serde serde;
+  serde.protocol = "binary";
+  serde.cmap = { { "id", 1 }, { "referer", 3 }, { "country", 6 } };
+  nebula::meta::ColumnProps cp;
+  nebula::meta::TimeSpec ts;
+  ts.type = nebula::meta::TimeType::CURRENT;
+
+  auto table = std::make_shared<nebula::meta::TableSpec>(
+    TOPIC, 1000, 100, "ROW<id:string, referer:string, country:string>",
+    nebula::meta::DataSource::KAFKA, "Roll", BROKERS, "",
+    "thrift", serde, cp, ts);
+
+  nebula::storage::kafka::KafkaSegment seg{ 4, 7550000, 50000 };
+  nebula::storage::kafka::KafkaReader reader(table, seg);
+  EXPECT_EQ(reader.size(), seg.size);
+  while (reader.hasNext()) {
+    auto& row = reader.next();
+    LOG(INFO) << "Timestamp:" << row.readLong(nebula::meta::Table::TIME_COLUMN);
+  }
 }
 
 } // namespace test

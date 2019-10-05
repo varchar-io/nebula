@@ -7,6 +7,7 @@ WORKDIR /etc/web/nebula
 # install node
 # RUN chmod -R 777 /etc/web/nebula
 # RUN apk --no-cache add g++ gcc libgcc libstdc++ linux-headers make python
+RUN npm config set package-lock false
 RUN npm install --save --production
 
 # why do we need to switch user? Just use root

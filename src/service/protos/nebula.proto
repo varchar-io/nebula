@@ -159,6 +159,7 @@ message QueryRequest {
 
   // dimensions (key columns / group by columns) to pull metrics for
   repeated string dimension = 7;
+  
   // metric list, such as sum(col_a), count(col_b)
   repeated Metric metric = 8;
 

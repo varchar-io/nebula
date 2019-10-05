@@ -74,6 +74,7 @@ private:
   void nullifyRow() noexcept {
     // write everything a null if encoutering an invalid message
     row_.reset();
+    row_.write(nebula::meta::Table::TIME_COLUMN, 0l);
     for (auto itr = fields_.cbegin(); itr != fields_.cend(); ++itr) {
       row_.writeNull(itr->second);
     }

@@ -56,6 +56,9 @@ RdKafka::KafkaConsumer* KafkaProvider::getConsumer(const std::string& brokers) {
   // set group id anyways even we don't use consumer group at all
   SET_KEY_VALUE_CHECK("group.id", "consumer_per_thread_per_brokers");
 
+  // const auto INTEGER_MAX = std::to_string(std::numeric_limits<int32_t>::max());
+  SET_KEY_VALUE_CHECK("max.poll.interval.ms", "86400000");
+
   // set event callback by a static instance
   static KafkaEventCb ecb;
   SET_KEY_VALUE_CHECK("event_cb", &ecb)

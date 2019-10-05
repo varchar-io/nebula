@@ -20,8 +20,8 @@ const formatTime = (unix) => {
     // month is 0-based index
     const m = date.getMonth() + 1;
     const d = date.getDate();
-    const h = date.getHours();
-    const mi = date.getMinutes();
+    const h = `${date.getHours()}`.padStart(2, 0);
+    const mi = `${date.getMinutes()}`.padStart(2, 0);
     return `${y}-${m}-${d} ${h}:${mi}`;
 };
 
@@ -166,13 +166,16 @@ const checkRequest = () => {
     const display = $$("#display");
     if (display == NebulaClient.DisplayType.TIMELINE) {
         const windowSize = $$("#window");
-        const start = new Date($$("#start")).getTime();
-        const end = new Date($$("#end")).getTime();
-        const rangeSeconds = (end - start) / 1000;
-        const buckets = rangeSeconds / windowSize;
-        if (buckets > 500) {
-            ds("#qr").text(`Too many data points to return ${buckets}, please increase window granularity.`);
-            return true;
+        // window size == 0: auto
+        if (windowSize > 0) {
+            const start = new Date($$("#start")).getTime();
+            const end = new Date($$("#end")).getTime();
+            const rangeSeconds = (end - start) / 1000;
+            const buckets = rangeSeconds / windowSize;
+            if (buckets > 1000) {
+                ds("#qr").text(`Too many data points to return ${buckets}, please increase window granularity.`);
+                return true;
+            }
         }
     }
 
@@ -184,15 +187,6 @@ const checkRequest = () => {
             return true;
         }
     }
-
-    // if data aggregations, we enforce filter
-    // if (display != NebulaClient.DisplayType.SAMPLES &&
-    //     display != NebulaClient.DisplayType.TIMELINE) {
-    //     if ($$('#fvalue').length == 0) {
-    //         ds("#qr").text(`Please specify filters for specific aggregations`);
-    //         return true;
-    //     }
-    // }
 
     // pass the check
     return false;
@@ -297,7 +291,7 @@ const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
 const execute = () => {
     // get parameters from URL
     const h = hash();
-    if (!h || h.length < 2) {
+    if (!h || h.length <= 2) {
         return;
     }
 
@@ -370,41 +364,6 @@ const execute = () => {
         };
     };
 
-    const MIN_SECONDS = 60;
-    const HOUR_SECONDS = MIN_SECONDS * 60;
-    const DAY_SECONDS = HOUR_SECONDS * 24;
-    const WEEK_SECONDS = DAY_SECONDS * 7;
-    const timeFormat = (unit, range) => {
-        // unit is secnods value
-        // format refer: https://github.com/d3/d3-time-format
-        // no more than 10 ticks
-        let scale = Math.round(range / unit / 1000 / 10);
-        if (scale < 1) {
-            scale = 1;
-        }
-
-        let ticks = d3.timeWeek.every(scale);
-        let fmt = "%b %Y";
-        if (unit < MIN_SECONDS) {
-            ticks = d3.timeMinute.every(scale);
-            fmt = "%S";
-        } else if (unit < HOUR_SECONDS) {
-            ticks = d3.timeHour.every(scale);
-            fmt = "%H:%M:%S";
-        } else if (unit < DAY_SECONDS) {
-            ticks = d3.timeHour.every(scale);
-            fmt = "%H:%M";
-        } else if (unit < WEEK_SECONDS) {
-            ticks = d3.timeDay.every(scale);
-            fmt = "%m/%d/%y";
-        }
-
-        return {
-            t: ticks,
-            f: d3.timeFormat(fmt)
-        };
-    };
-
     if (checkRequest()) {
         return;
     }
@@ -439,12 +398,7 @@ const execute = () => {
                         case NebulaClient.DisplayType.TIMELINE:
                             const WINDOW_KEY = '_window_';
                             const start = new Date($$('#start'));
-                            const end = new Date($$('#end'));
-                            const window = +$$('#window');
-                            const fmt = timeFormat(window, end - start);
-
-                            charts.displayTimeline(json, WINDOW_KEY, keys.m, start, end, window * 1000, fmt.t, fmt.f);
-                            // charts.displayLine(json, keys.m, (scale = 1) => (d, i) => fmt(new Date(start + window * 1000 * json[Math.floor(i * scale)][WINDOW_KEY])));
+                            charts.displayTimeline(json, WINDOW_KEY, keys.m, +start);
                             break;
                         case NebulaClient.DisplayType.BAR:
                             charts.displayBar(json, keys.d, keys.m);

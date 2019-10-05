@@ -17,10 +17,13 @@
 #include "QueryHandler.h"
 
 #include <folly/Conv.h>
+#include <gflags/gflags.h>
 
 #include "execution/core/ServerExecutor.h"
 #include "service/node/NodeClient.h"
 #include "service/node/RemoteNodeConnector.h"
+
+DEFINE_uint32(AUTO_WINDOW_SIZE, 1000, "maximum data point when selecting auto window");
 
 /**
  * Define some basic sharable proerpties for nebula service
@@ -168,10 +171,18 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
     columns.push_back(column);
 
-    // fields.push_back(std::make_shared<U>(Table::TIME_COLUMN, ));
+    // we have minimum size of window as 1 second to be enforced
+    // so if buckets is smaller than range (seconds), we use each range as
     auto range = req.end() - req.start();
     int32_t window = (int32_t)req.window();
-    auto buckets = window == 0 ? req.top() : range / window;
+    auto buckets = window == 0 ? FLAGS_AUTO_WINDOW_SIZE : range / window;
+    if (buckets > range) {
+      buckets = range;
+    }
+
+    // recalculate window based on buckets
+    window = range / buckets;
+    N_ENSURE_GT(window, 0, "window should be at least 1 second");
 
     // only one bucket?
     std::shared_ptr<Expression> windowExpr = nullptr;
@@ -181,7 +192,8 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
       windowExpr = w;
     } else {
       int64_t beginTime = (int64_t)req.start();
-      auto expr = ((col(column) - beginTime) / window).as(Table::WINDOW_COLUMN);
+      // divided by window to get the bucket and times window to get a time point
+      auto expr = ((col(column) - beginTime) / window * window).as(Table::WINDOW_COLUMN);
       windowExpr = std::make_shared<decltype(expr)>(expr);
     }
 

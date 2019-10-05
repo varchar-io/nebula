@@ -23,7 +23,7 @@
 #include "storage/kafka/KafkaTopic.h"
 
 DEFINE_uint64(KAFKA_SPEC_ROWS,
-              50000,
+              10000,
               "rows per sepc for kafka ingestion"
               "this value is used in spec identifier so do not modify");
 DEFINE_uint64(KAFKA_TIMEOUT_MS, 5000, "Timeout of each Kafka API call");

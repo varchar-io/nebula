@@ -222,7 +222,7 @@ export class Charts {
             svg.append("g").call(d3.axisLeft(y));
         };
 
-        this.displayTimeline = (json, key, value, start, end, window, ts, tf) => {
+        this.displayTimeline = (json, key, value, start) => {
             // clear the area first
             const area = ds('#show');
             area.html("");
@@ -238,18 +238,31 @@ export class Charts {
             const width = area.node().scrollWidth - margin.left - margin.right;
             const height = 400 - margin.top - margin.bottom;
 
+            // filter and sort by key, and map each key to time
+            // key is in seconds and start is in milliseconds
+            const data = json.filter(obj => +obj[value] > 0).sort((a, b) => a[key] - b[key]).map(e => {
+                let obj = {};
+                obj[key] = e[key] * 1000 + start;
+                obj[value] = +e[value];
+                return obj;
+            });
+
             // set the ranges
-            const x = d3.scaleTime().range([0, width]).domain([start, end]);
-            const y = d3.scaleLinear().range([height, 0]).domain([0, d3.max(json, (d) => d[value])]);
+            const count = data.length;
+            if (count == 0) {
+                console.log(`No data: ${json.length} -> ${count}`);
+                return;
+            }
+
+            const x = d3.scaleTime().range([0, width]).domain([data[0][key], data[count - 1][key]]);
+            const y = d3.scaleLinear().range([height, 0]).domain([d3.min(data, d => d[value]), d3.max(data, d => d[value])]);
 
             // define the line
             var line = d3.line()
-                .x((d, i) => x(new Date(+start + d[key] * window)))
+                .x((d) => x(new Date(d[key])))
                 .y((d) => y(d[value]));
 
             // append the svg obgect to the body of the page
-            // appends a 'group' element to 'svg'
-            // moves the 'group' element to the top left margin
             var svg = area.append("svg")
                 .attr("width", width + margin.left + margin.right)
                 .attr("height", height + margin.top + margin.bottom)
@@ -258,17 +271,14 @@ export class Charts {
 
             // Add the valueline path.
             svg.append("path")
-                .data([json])
+                .data([data])
                 .attr("class", "line")
                 .attr("d", line);
 
             // Add the X Axis
             svg.append("g")
                 .attr("transform", `translate(0, ${height})`)
-                .call(
-                    d3.axisBottom(x)
-                    .ticks(ts)
-                    .tickFormat(tf));
+                .call(d3.axisBottom(x));
 
             // Add the Y Axis
             svg.append("g").call(d3.axisLeft(y));

@@ -193,6 +193,13 @@ bool IngestSpec::loadKafka() noexcept {
     // update time range before adding the row to the batch
     // get time column value
     size_t time = row.readLong(Table::TIME_COLUMN);
+
+    // TODO(cao) - Kafka may produce NULL row due to corruption or exception
+    // ideally we can handle nulls in our system, however, let's skip null row for now.
+    if (time == 0) {
+      continue;
+    }
+
     if (time < lowTime) {
       lowTime = time;
     }
