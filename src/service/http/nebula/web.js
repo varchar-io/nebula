@@ -42,13 +42,15 @@ const initTable = (table, callback) => {
             const ms = Math.round(reply.getMemsize() / 10000000) / 100;
             const mints = reply.getMintime() * 1000;
             const maxts = reply.getMaxtime() * 1000;
+            const midts = Math.round((mints + maxts) / 2);
 
             stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${formatTime(mints)}, Max T: ${formatTime(maxts)}]`);
 
             // set up datetime picker for start and end dates
             const dto = {
                 enableTime: true,
-                defaultDate: "today",
+                allowInput: true,
+                defaultDate: midts,
                 minDate: mints,
                 maxDate: maxts
             };
@@ -374,48 +376,54 @@ const execute = () => {
         ds('#table_content').html("");
 
         const result = ds('#qr');
-        if (err !== null) {
-            result.text("Error code: " + err);
-        } else if (reply == null) {
+
+        if (reply == null) {
             result.text("Failed to get reply");
-        } else {
-            const stats = reply.getStats();
-            const json = JSON.parse(NebulaClient.bytes2utf8(reply.getData()));
-            result.text(`[query: error=${stats.getError()}, latency=${stats.getQuerytimems()}ms, rows=${json.length}]`);
+            return;
+        }
 
-            // get display option
-            if (json.length > 0) {
-                const draw = () => {
-                    const charts = new Charts();
-                    // enum value are number and switch/case are strong typed match
-                    const display = +$$('#display');
-                    const keys = extractXY(json, q);
-                    switch (display) {
-                        case NebulaClient.DisplayType.SAMPLES:
-                        case NebulaClient.DisplayType.TABLE:
-                            charts.displayTable(json);
-                            break;
-                        case NebulaClient.DisplayType.TIMELINE:
-                            const WINDOW_KEY = '_window_';
-                            const start = new Date($$('#start'));
-                            charts.displayTimeline(json, WINDOW_KEY, keys.m, +start);
-                            break;
-                        case NebulaClient.DisplayType.BAR:
-                            charts.displayBar(json, keys.d, keys.m);
-                            break;
-                        case NebulaClient.DisplayType.PIE:
-                            charts.displayPie(json, keys.d, keys.m);
-                            break;
-                        case NebulaClient.DisplayType.LINE:
-                            charts.displayLine(json, keys.m, () => (d, i) => json[i][keys.d]);
-                            break;
-                    }
-                };
+        const stats = reply.getStats();
+        result.text(`[query: error=${stats.getError()}, latency=${stats.getQuerytimems()} ms]`);
+        if (err !== null) {
+            return;
+        }
 
-                // draw and redraw on window resize
-                draw();
-                $(window).on("resize", draw);
-            }
+        // JSON result
+        const json = JSON.parse(NebulaClient.bytes2utf8(reply.getData()));
+        result.text(`[time: ${stats.getQuerytimems()} ms, rows: ${json.length}]`);
+
+        // get display option
+        if (json.length > 0) {
+            const draw = () => {
+                const charts = new Charts();
+                // enum value are number and switch/case are strong typed match
+                const display = +$$('#display');
+                const keys = extractXY(json, q);
+                switch (display) {
+                    case NebulaClient.DisplayType.SAMPLES:
+                    case NebulaClient.DisplayType.TABLE:
+                        charts.displayTable(json);
+                        break;
+                    case NebulaClient.DisplayType.TIMELINE:
+                        const WINDOW_KEY = '_window_';
+                        const start = new Date($$('#start'));
+                        charts.displayTimeline(json, WINDOW_KEY, keys.m, +start);
+                        break;
+                    case NebulaClient.DisplayType.BAR:
+                        charts.displayBar(json, keys.d, keys.m);
+                        break;
+                    case NebulaClient.DisplayType.PIE:
+                        charts.displayPie(json, keys.d, keys.m);
+                        break;
+                    case NebulaClient.DisplayType.LINE:
+                        charts.displayLine(json, keys.d, keys.m);
+                        break;
+                }
+            };
+
+            // draw and redraw on window resize
+            draw();
+            $(window).on("resize", draw);
         }
     });
 };

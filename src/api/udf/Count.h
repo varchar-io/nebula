@@ -29,6 +29,7 @@ namespace udf {
 template <nebula::type::Kind KIND>
 class Count : public CommonUDAF<KIND> {
   using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
+  static constexpr NativeType S_VALUE = NativeType();
 
 public:
   // for count, we don't need evaluate inner expr
@@ -45,6 +46,11 @@ public:
                          return ov + nv;
                        }) {}
   virtual ~Count() = default;
+
+  // Override run method to not evaluate the field value since we don't need the value itself
+  inline virtual NativeType run(nebula::execution::eval::EvalContext&, bool&) const override {
+    return S_VALUE;
+  }
 };
 
 template <>

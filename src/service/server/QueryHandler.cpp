@@ -174,9 +174,11 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     // we have minimum size of window as 1 second to be enforced
     // so if buckets is smaller than range (seconds), we use each range as
     auto range = req.end() - req.start();
+    N_ENSURE_GT(range, 0, "timeline requires end time greater than start time");
+
     int32_t window = (int32_t)req.window();
     auto buckets = window == 0 ? FLAGS_AUTO_WINDOW_SIZE : range / window;
-    if (buckets > range) {
+    if (buckets == 0 || buckets > range) {
       buckets = range;
     }
 

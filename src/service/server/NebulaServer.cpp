@@ -229,7 +229,7 @@ void RunServer() {
   nebula::ingest::SpecRepo specRepo;
 
   // start node sync to sync all node's states and tasks
-  auto nsync = nebula::service::server::NodeSync::async(v1Service.pool(), specRepo, FLAGS_NODE_SYNC_INTERVAL);
+  // auto nsync = nebula::service::server::NodeSync::async(v1Service.pool(), specRepo, FLAGS_NODE_SYNC_INTERVAL);
 
   // TODO (cao): start a thread to sync up with etcd setup for cluster info.
   // register cluster info, we're using two different time based scheduelr currently
@@ -239,10 +239,11 @@ void RunServer() {
   nebula::common::TaskScheduler taskScheduler;
 
   // having a local file system to detect change of cluster config
+  auto& pool = v1Service.pool();
   std::string confSignature;
   taskScheduler.setInterval(
     FLAGS_CLS_CONF_UPDATE_INTERVAL,
-    [&specRepo, &confSignature] {
+    [&pool, &specRepo, &confSignature] {
       // create a local file system cheaply
       auto fs = nebula::storage::makeFS("local");
 
@@ -272,7 +273,10 @@ void RunServer() {
         specRepo.assign(ci);
       }
 
-      // TODO(cao) - we should at the same time run GC to recycle stale data
+      {
+        // after spec repo refreshed
+        nebula::service::server::NodeSync::sync(pool, specRepo);
+      }
     });
 
   // NOTE that, this is blocking main thread to wait for server down
@@ -285,7 +289,7 @@ void RunServer() {
   server->Wait();
 
   // shut down node sync process
-  nsync->shutdown();
+  // nsync->shutdown();
 }
 
 int main(int argc, char** argv) {

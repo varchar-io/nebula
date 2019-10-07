@@ -56,6 +56,8 @@ enum class SpecState : char {
 
 // a ingest spec defines a task specification to ingest some data
 class IngestSpec : public nebula::common::Signable {
+  using BlockList = std::vector<nebula::execution::io::BatchBlock>;
+
 public:
   IngestSpec(
     nebula::meta::TableSpecPtr table,
@@ -139,7 +141,7 @@ public:
 
 private:
   // ingest a given local file (usually tmp file) into a list of blocks
-  std::vector<nebula::execution::io::BatchBlock> ingest(const std::string&) noexcept;
+  bool ingest(const std::string&, BlockList&) noexcept;
 
   // load swap
   bool loadSwap() noexcept;
@@ -151,7 +153,7 @@ private:
   bool loadKafka() noexcept;
 
   // load current spec as blocks
-  std::vector<nebula::execution::io::BatchBlock> load() noexcept;
+  bool load(BlockList&) noexcept;
 
 private:
   nebula::meta::TableSpecPtr table_;

@@ -101,7 +101,7 @@ folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
     auto status = stub->Query(&context, qp, &qr);
     if (status.ok()) {
       auto fb = BatchSerde::deserialize(&qr);
-      LOG(INFO) << "Received batch as number of rows: " << fb->size();
+      VLOG(1) << "Received batch as number of rows: " << fb->size();
 
       // update into current server block management
       p->setValue(fb);

@@ -33,6 +33,8 @@ class NodeSync {
 public:
   static std::shared_ptr<folly::FunctionScheduler> async(
     folly::ThreadPoolExecutor&, const nebula::ingest::SpecRepo&, size_t) noexcept;
+
+  static void sync(folly::ThreadPoolExecutor&, const nebula::ingest::SpecRepo&) noexcept;
 };
 
 } // namespace server

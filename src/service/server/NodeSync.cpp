@@ -44,6 +44,85 @@ using nebula::ingest::SpecRepo;
 using nebula::ingest::SpecState;
 using nebula::meta::ClusterInfo;
 
+void NodeSync::sync(
+  folly::ThreadPoolExecutor& pool,
+  const SpecRepo& specRepo) noexcept {
+  auto connector = std::make_shared<node::RemoteNodeConnector>(nullptr);
+  // TODO(cao) - here, we may have incurred too many communications between server and nodes.
+  // we should batch all requests for each node and communicate once.
+  // but assuming changes delta won't be large in small cluster, should be fast enough for now
+  const auto& ci = ClusterInfo::singleton();
+  const auto& bm = BlockManager::init();
+  auto nodesTalked = 0;
+
+  for (const auto& node : ci.nodes()) {
+    if (node.isActive()) {
+      // fetch node state in server
+      auto client = connector->makeClient(node, pool);
+
+      // extracting all expired spec from existing blocks on this node
+      // make a copy since it's possible to be removed.
+      BlockSet blocks = bm->all(node);
+
+      // recording expired block ID for given node
+      std::list<std::string> expired;
+      for (auto itr = blocks.begin(); itr != blocks.end(); ++itr) {
+        auto& sign = itr->signature();
+        if (specRepo.shouldExpire(sign.spec, itr->residence())) {
+          expired.push_back(sign.toString());
+        }
+      }
+
+      // sync expire task to node
+      const auto expireSize = expired.size();
+      if (expireSize > 0) {
+        Task t(TaskType::EXPIRATION, std::shared_ptr<Signable>(new BlockExpire(std::move(expired))));
+        TaskState state = client->task(t);
+        LOG(INFO) << fmt::format("Expire {0} blocks in node {1}: {2}", expireSize, node.server, (char)state);
+      }
+
+      // call node state with expired spec list
+      client->state();
+      nodesTalked++;
+    }
+  }
+
+  // after state update
+  bm->updateTableMetrics();
+
+  // iterate over all specs, if it needs to be process, process it
+  auto taskNotified = 0;
+  for (auto& spec : specRepo.specs()) {
+    auto& sp = spec.second;
+    if (sp->assigned() && sp->needSync()) {
+      taskNotified++;
+
+      // connect the node to sync the task over
+      auto client = connector->makeClient(sp->affinity(), pool);
+
+      // build a task out of this spec
+      Task t(TaskType::INGESTION, std::static_pointer_cast<Signable>(sp));
+      TaskState state = client->task(t);
+
+      // udpate spec state so that it won't be resent
+      if (state == TaskState::SUCCEEDED) {
+        sp->setState(SpecState::READY);
+      }
+
+      // TODO(cao) - what about if this task is failed?
+      // we can remove its assigned node and wait it to be reassin to different node for retry
+      // but what if it keeps failing? we need counter for it
+      if (state == TaskState::FAILED) {
+        LOG(INFO) << "Task failed: " << t.signature();
+      }
+    }
+  }
+
+  if (taskNotified > 0) {
+    LOG(INFO) << fmt::format("Communicated tasks {0} to nodes {1}.", taskNotified, nodesTalked);
+  }
+}
+
 std::shared_ptr<folly::FunctionScheduler> NodeSync::async(
   folly::ThreadPoolExecutor& pool,
   const SpecRepo& specRepo,
@@ -53,80 +132,9 @@ std::shared_ptr<folly::FunctionScheduler> NodeSync::async(
   auto fs = std::make_shared<folly::FunctionScheduler>();
 
   // having a none query node connector
-  auto connector = std::make_shared<node::RemoteNodeConnector>(nullptr);
   fs->addFunction(
-    [&pool, &specRepo, connector]() {
-      // TODO(cao) - here, we may have incurred too many communications between server and nodes.
-      // we should batch all requests for each node and communicate once.
-      // but assuming changes delta won't be large in small cluster, should be fast enough for now
-      const auto& ci = ClusterInfo::singleton();
-      const auto& bm = BlockManager::init();
-      auto nodesTalked = 0;
-
-      for (const auto& node : ci.nodes()) {
-        // fetch node state in server
-        auto client = connector->makeClient(node, pool);
-
-        // extracting all expired spec from existing blocks on this node
-        // make a copy since it's possible to be removed.
-        BlockSet blocks = bm->all(node);
-
-        // recording expired block ID for given node
-        std::list<std::string> expired;
-        for (auto itr = blocks.begin(); itr != blocks.end(); ++itr) {
-          auto& sign = itr->signature();
-          if (!specRepo.contains(sign.spec)) {
-            expired.push_back(sign.toString());
-          }
-        }
-
-        // sync expire task to node
-        const auto expireSize = expired.size();
-        if (expireSize > 0) {
-          Task t(TaskType::EXPIRATION, std::shared_ptr<Signable>(new BlockExpire(std::move(expired))));
-          TaskState state = client->task(t);
-          LOG(INFO) << fmt::format("Expire {0} blocks in node {1}: {2}", expireSize, node.server, (char)state);
-        }
-
-        // call node state with expired spec list
-        client->state();
-        nodesTalked++;
-      }
-
-      // after state update
-      bm->updateTableMetrics();
-
-      // iterate over all specs, if it needs to be process, process it
-      auto taskNotified = 0;
-      for (auto& spec : specRepo.specs()) {
-        auto& sp = spec.second;
-        if (sp->assigned() && sp->needSync()) {
-          taskNotified++;
-
-          // connect the node to sync the task over
-          auto client = connector->makeClient(sp->affinity(), pool);
-
-          // build a task out of this spec
-          Task t(TaskType::INGESTION, std::static_pointer_cast<Signable>(sp));
-          TaskState state = client->task(t);
-
-          // udpate spec state so that it won't be resent
-          if (state == TaskState::SUCCEEDED) {
-            sp->setState(SpecState::READY);
-          }
-
-          // TODO(cao) - what about if this task is failed?
-          // we can remove its assigned node and wait it to be reassin to different node for retry
-          // but what if it keeps failing? we need counter for it
-          if (state == TaskState::FAILED) {
-            LOG(INFO) << "Task failed: " << t.signature();
-          }
-        }
-      }
-
-      if (taskNotified > 0) {
-        LOG(INFO) << fmt::format("Communicated tasks {0} to nodes {1}.", taskNotified, nodesTalked);
-      }
+    [&pool, &specRepo]() {
+      sync(pool, specRepo);
     },
     std::chrono::milliseconds(intervalMs),
     "Node-Sync");

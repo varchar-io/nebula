@@ -116,7 +116,7 @@ bool IngestSpec::work() noexcept {
   return false;
 }
 
-std::vector<BatchBlock> IngestSpec::load() noexcept {
+bool IngestSpec::load(BlockList& blocks) noexcept {
   // TODO(cao) - columar format reader (parquet) should be able to
   // access cloud storage directly to save networkbandwidth, but right now
   // we only can download it to local temp file and read it
@@ -125,9 +125,14 @@ std::vector<BatchBlock> IngestSpec::load() noexcept {
   // id is the file path, copy it from s3 to a local folder
   std::string tmpFile = fs->copy(id_);
 
+  // there might be S3 error which returns tmpFile as empty
+  if (tmpFile.empty()) {
+    return false;
+  }
+
   // check if data blocks with the same ingest ID exists
   // since it is a swap loader, we will remove those blocks
-  std::vector<BatchBlock> blocks = this->ingest(tmpFile);
+  bool result = this->ingest(tmpFile, blocks);
 
   // NOTE: assuming tmp file is created by mkstemp API
   // we unlink it for os to recycle it (linux), ignoring the result
@@ -136,22 +141,29 @@ std::vector<BatchBlock> IngestSpec::load() noexcept {
 
   // swap each of the blocks into block manager
   // as long as they share the same table / spec
-  return blocks;
+  return result;
 }
 
 bool IngestSpec::loadSwap() noexcept {
   if (table_->source == DataSource::S3) {
+    // TODO(cao) - make a better size estimation to understand total blocks to have
+    std::vector<BatchBlock> blocks;
+    blocks.reserve(32);
+
     // load current
-    auto blocks = this->load();
-    auto bm = BlockManager::init();
-    for (BatchBlock& b : blocks) {
-      // remove blocks that shares the same spec / table
-      bm->removeSameSpec(b.signature());
+    auto result = this->load(blocks);
+    if (result) {
+      auto bm = BlockManager::init();
+      for (BatchBlock& b : blocks) {
+        // remove blocks that shares the same spec / table
+        bm->removeSameSpec(b.signature());
+      }
+
+      // move all new blocks in
+      bm->add(std::move(blocks));
     }
 
-    // move all new blocks in
-    bm->add(std::move(blocks));
-    return true;
+    return result;
   }
 
   return false;
@@ -159,12 +171,19 @@ bool IngestSpec::loadSwap() noexcept {
 
 bool IngestSpec::loadRoll() noexcept {
   if (table_->source == DataSource::S3) {
+    // TODO(cao) - make a better size estimation to understand total blocks to have
+    std::vector<BatchBlock> blocks;
+    blocks.reserve(32);
+
     // load current
-    auto blocks = this->load();
-    auto bm = BlockManager::init();
-    // move all new blocks in
-    bm->add(std::move(blocks));
-    return true;
+    auto result = this->load(blocks);
+    if (result) {
+      auto bm = BlockManager::init();
+      // move all new blocks in
+      bm->add(std::move(blocks));
+    }
+
+    return result;
   }
 
   return false;
@@ -272,7 +291,7 @@ private:
   const RowData* row_;
 };
 
-std::vector<BatchBlock> IngestSpec::ingest(const std::string& file) noexcept {
+bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   // TODO(cao) - support column selection in ingestion and expand time column
   // to other columns for simple transformation
   // but right now, we're expecting the same schema of data
@@ -345,7 +364,7 @@ std::vector<BatchBlock> IngestSpec::ingest(const std::string& file) noexcept {
     source = std::make_unique<ParquetReader>(file, schema);
   } else {
     LOG(ERROR) << "Unsupported file format: " << table_->format;
-    return {};
+    return false;
   }
 
   // limit at 1b on single host
@@ -353,10 +372,6 @@ std::vector<BatchBlock> IngestSpec::ingest(const std::string& file) noexcept {
   auto batch = std::make_shared<Batch>(*table, bRows);
   RowWrapperWithTime rw{ std::move(timeFunc) };
   std::pair<size_t, size_t> range{ std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
-
-  // TODO(cao) - make a better size estimation to understand total blocks to have
-  std::vector<BatchBlock> blocks;
-  blocks.reserve(32);
 
   // a lambda to build batch block
   auto makeBlock = [&table, &range, spec = id_](size_t bid, std::shared_ptr<Batch> b) {
@@ -406,7 +421,7 @@ std::vector<BatchBlock> IngestSpec::ingest(const std::string& file) noexcept {
   }
 
   // return all blocks built up so far
-  return blocks;
+  return true;
 }
 
 } // namespace ingest

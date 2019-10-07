@@ -59,8 +59,22 @@ public:
 
   // spec repo captures current snapshot of all specs
   // check given spec ID is in current snapshot or not
-  inline bool contains(const std::string& spec) const {
-    return specs_.find(spec) != specs_.end();
+  inline bool shouldExpire(const std::string& spec, const nebula::meta::NNode& node) const {
+    auto f = specs_.find(spec);
+    // not found
+    if (f == specs_.end()) {
+      return true;
+    }
+
+    // not in the same node
+    auto& sp = f->second;
+    auto& assignment = sp->affinity();
+    if (!assignment.equals(node)) {
+      LOG(INFO) << "Spec [" << spec << "] moves from " << node.server << " to " << assignment.server;
+      return true;
+    }
+
+    return false;
   }
 
 private:

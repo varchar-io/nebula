@@ -108,19 +108,7 @@ export class Charts {
             area.html("");
 
             // we limit to display 10 values only, long tail will be aggregated as others
-            json.sort((a, b) => {
-                return b[value] - a[value];
-            });
-
-            const top = 10;
-            if (json.length > top) {
-                json[top - 1][key] = 'others';
-                for (let i = top; i < json.length; ++i) {
-                    json[top - 1][value] += json[i][value];
-                }
-
-                json.length = top;
-            }
+            json.sort((a, b) => b[value] - a[value]);
 
             const w = area.node().scrollWidth;
             const h = 400;
@@ -162,7 +150,7 @@ export class Charts {
                 .text((d, i) => json[i][key]);
         };
 
-        this.displayLine = (json, value, format) => {
+        this.displayLine = (json, key, value) => {
             // clear the area first
             const area = ds('#show');
             area.html("");
@@ -174,25 +162,18 @@ export class Charts {
                 bottom: 20,
                 left: 60
             };
-            const tickWidth = 80;
 
             const width = area.node().scrollWidth - margin.left - margin.right;
             const height = 400 - margin.top - margin.bottom;
-            let ticks = Math.ceil(width / tickWidth);
-            let scale = Math.floor(json.length / ticks);
-            if (scale < 1) {
-                scale = 1;
-                ticks = json.length - 1;
-            }
-            console.log(`Total ticks: ${ticks} -> ${scale}`);
 
             // set the ranges
-            const x = d3.scaleLinear().range([0, width]).domain([0, json.length - 1]);
-            const y = d3.scaleLinear().range([height, 0]).domain([0, d3.max(json, (d) => d[value])]);
+            json.sort((a, b) => a[key] < b[key] ? -1 : 1);
+            const x = d3.scaleBand().range([0, width]).domain(json.map(e => e[key]));
+            const y = d3.scaleBand().range([0, height]).domain(json.map(e => +e[value]).sort((a, b) => b - a));
 
             // define the line
             var line = d3.line()
-                .x((d, i) => x(i))
+                .x((d) => x(d[key]))
                 .y((d) => y(d[value]));
 
             // append the svg obgect to the body of the page
@@ -213,10 +194,7 @@ export class Charts {
             // Add the X Axis
             svg.append("g")
                 .attr("transform", `translate(0, ${height})`)
-                .call(
-                    d3.axisBottom(x)
-                    .ticks(ticks)
-                    .tickFormat(format(scale)));
+                .call(d3.axisBottom(x));
 
             // Add the Y Axis
             svg.append("g").call(d3.axisLeft(y));

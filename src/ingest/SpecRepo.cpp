@@ -224,21 +224,24 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
     if (found == specs_.end()) {
       ++brandnew;
     } else {
+      auto prev = found->second;
+
+      // by default, we carry over existing spec's properties
+      const auto& node = prev->affinity();
+      specPtr->setAffinity(node);
+      specPtr->setState(prev->state());
+
       // TODO(cao) - use only size for the checker for now, may extend to other properties
       // this is an update case, otherwise, spec doesn't change, ignore it.
-      auto prev = found->second;
       if (specPtr->size() != prev->size()) {
         specPtr->setState(SpecState::RENEW);
-
-        // get existing assignment, keep the same affinity unless its a bad host
-        if (prev->assigned()) {
-          const auto& node = prev->affinity();
-          if (node.isActive()) {
-            specPtr->setAffinity(node);
-          }
-        }
-
         ++renew;
+      }
+
+      // if the node is not active, we may remove the affinity to allow new assignment
+      if (!node.isActive()) {
+        specPtr->setAffinity(NNode::invalid());
+        N_ENSURE(!specPtr->assigned(), "spec should not be assigned");
       }
     }
 
