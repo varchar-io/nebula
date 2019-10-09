@@ -206,16 +206,17 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     // timeline doesn't follow limit settings
     q->limit(buckets);
 
-    keys.push_back(1);
-  } else {
-    for (auto i = 0, size = req.dimension_size(); i < size; ++i) {
-      const auto& colName = req.dimension(i);
-      columns.push_back(colName);
-      fields.push_back(std::make_shared<ColumnExpression>(colName));
+    keys.push_back(columns.size());
+  }
 
-      // group by clause uses 1-based index
-      keys.push_back(i + 1);
-    }
+  // push other dimensions
+  for (auto i = 0, size = req.dimension_size(); i < size; ++i) {
+    const auto& colName = req.dimension(i);
+    columns.push_back(colName);
+    fields.push_back(std::make_shared<ColumnExpression>(colName));
+
+    // group by clause uses 1-based index
+    keys.push_back(columns.size());
   }
 
   for (auto i = 0, size = req.metric_size(); i < size; ++i) {

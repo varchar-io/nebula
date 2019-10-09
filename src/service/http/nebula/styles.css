@@ -125,8 +125,6 @@ tbody {
 /* LINE CHART STYLES */
 .line {
     fill: none;
-    stroke: steelblue;
-    stroke-width: 2px;
 }
 
 /* selectize styles */

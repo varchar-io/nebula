@@ -298,7 +298,7 @@ const execute = () => {
     }
 
     const p = JSON.parse(decodeURIComponent(h.substr(1)));
-    console.log(`Query: ${p}`);
+    console.log(`Nebula Query: ${JSON.stringify(p)}`);
 
     // URL decoding the string and json object parsing
     const q = new NebulaClient.QueryRequest();
@@ -390,7 +390,8 @@ const execute = () => {
 
         // JSON result
         const json = JSON.parse(NebulaClient.bytes2utf8(reply.getData()));
-        result.text(`[time: ${stats.getQuerytimems()} ms, rows: ${json.length}]`);
+        // TODO(cao): popuate scanned rows metric: rows: ${stats.getRowsscanned()}
+        result.text(`[query time: ${stats.getQuerytimems()} ms]`);
 
         // get display option
         if (json.length > 0) {
@@ -407,7 +408,22 @@ const execute = () => {
                     case NebulaClient.DisplayType.TIMELINE:
                         const WINDOW_KEY = '_window_';
                         const start = new Date($$('#start'));
-                        charts.displayTimeline(json, WINDOW_KEY, keys.m, +start);
+                        let data = {
+                            D: json
+                        };
+                        // with dimension
+                        if (keys.d && keys.d.length > 0) {
+                            const groupBy = (list, key) => {
+                                return list.reduce((rv, x) => {
+                                    (rv[x[key]] = rv[x[key]] || []).push(x);
+                                    return rv;
+                                }, {});
+                            };
+
+                            data = groupBy(json, keys.d);
+                        }
+
+                        charts.displayTimeline(data, WINDOW_KEY, keys.m, +start);
                         break;
                     case NebulaClient.DisplayType.BAR:
                         charts.displayBar(json, keys.d, keys.m);

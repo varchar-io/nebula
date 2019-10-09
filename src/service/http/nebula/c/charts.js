@@ -5,9 +5,34 @@ import {
 // define jquery style selector 
 const d3 = NebulaClient.d3;
 const ds = NebulaClient.d3.select;
+const color = (i) => d3.schemeCategory10[i % 10];
+const symbols = ["circle", "diamond", "square", "triangle-up", "triangle-down", "cross"];
+const symbol = (i) => d3.symbol().size(81).type(symbols[i % symbols.length]);
 
 export class Charts {
     constructor() {
+        // display a legend in given places
+        this.legend = (svg, px, py, names) => {
+            const legend = svg.selectAll("g.legend")
+                .data(names)
+                .enter()
+                .append("svg:g")
+                .attr("class", "legend")
+                .attr("transform", (d, i) => `translate(${px},${py + i * 20 + 20})`);
+
+            // make a matching color rect
+            legend.append("svg:rect")
+                .attr("width", 15)
+                .attr("height", 15)
+                .attr("fill", (d, i) => color(i));
+
+            legend.append("svg:text")
+                .attr("text-anchor", "left")
+                .attr("x", 18)
+                .attr("y", 15)
+                .text((d, i) => d);
+        };
+
         this.displayTable = (json) => {
             // Get Table headers and print 
             if (json.length > 0) {
@@ -113,7 +138,6 @@ export class Charts {
             const w = area.node().scrollWidth;
             const h = 400;
             const r = Math.min(w, h) / 2;
-            const color = (i) => d3.schemeCategory10[i % 10];
 
             const vis = area
                 .append("svg:svg")
@@ -134,20 +158,7 @@ export class Charts {
             // display legends 
             // place each legend on the right and bump each one down 15 pixels
             // the posiiton of translate is relative to its parent, so the delta is computed to the center of the pie
-            const legend = vis.selectAll("g.legend").data(pie).enter().append("svg:g").attr("class", "legend")
-                .attr("transform", (d, i) => `translate(${r+100},${-r + i * 20 + 20})`);
-
-            // make a matching color rect
-            legend.append("svg:rect")
-                .attr("width", 15)
-                .attr("height", 15)
-                .attr("fill", (d, i) => color(i));
-
-            legend.append("svg:text")
-                .attr("text-anchor", "left")
-                .attr("x", 18)
-                .attr("y", 15)
-                .text((d, i) => json[i][key]);
+            this.legend(vis, r + 100, -r, json.map(e => e[key]));
         };
 
         this.displayLine = (json, key, value) => {
@@ -200,7 +211,7 @@ export class Charts {
             svg.append("g").call(d3.axisLeft(y));
         };
 
-        this.displayTimeline = (json, key, value, start) => {
+        this.displayTimeline = (data, key, value, start) => {
             // clear the area first
             const area = ds('#show');
             area.html("");
@@ -216,30 +227,6 @@ export class Charts {
             const width = area.node().scrollWidth - margin.left - margin.right;
             const height = 400 - margin.top - margin.bottom;
 
-            // filter and sort by key, and map each key to time
-            // key is in seconds and start is in milliseconds
-            const data = json.filter(obj => +obj[value] > 0).sort((a, b) => a[key] - b[key]).map(e => {
-                let obj = {};
-                obj[key] = e[key] * 1000 + start;
-                obj[value] = +e[value];
-                return obj;
-            });
-
-            // set the ranges
-            const count = data.length;
-            if (count == 0) {
-                console.log(`No data: ${json.length} -> ${count}`);
-                return;
-            }
-
-            const x = d3.scaleTime().range([0, width]).domain([data[0][key], data[count - 1][key]]);
-            const y = d3.scaleLinear().range([height, 0]).domain([d3.min(data, d => d[value]), d3.max(data, d => d[value])]);
-
-            // define the line
-            var line = d3.line()
-                .x((d) => x(new Date(d[key])))
-                .y((d) => y(d[value]));
-
             // append the svg obgect to the body of the page
             var svg = area.append("svg")
                 .attr("width", width + margin.left + margin.right)
@@ -247,11 +234,56 @@ export class Charts {
                 .append("g")
                 .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-            // Add the valueline path.
-            svg.append("path")
-                .data([data])
-                .attr("class", "line")
-                .attr("d", line);
+            // figure x/y min/max from all sub set
+            const xmin = [];
+            const xmax = [];
+            const ymin = [];
+            const ymax = [];
+            const kds = {};
+            for (var k in data) {
+                const kd = data[k].sort((a, b) => a[key] - b[key]).map(e => {
+                    let obj = {};
+                    obj[key] = e[key] * 1000 + start;
+                    obj[value] = +e[value];
+                    return obj;
+                });
+
+                kds[k] = kd;
+                xmin.push(d3.min(kd, d => d[key]));
+                xmax.push(d3.max(kd, d => d[key]));
+                ymin.push(d3.min(kd, d => d[value]));
+                ymax.push(d3.max(kd, d => d[value]));
+            }
+
+            // define x and y values 
+            const x = d3.scaleTime().range([0, width]).domain([d3.min(xmin), d3.max(xmax)]);
+            const y = d3.scaleLinear().range([height, 0]).domain([d3.min(ymin), d3.max(ymax)]);
+
+            // define the line
+            var line = d3.line()
+                .x((d) => x(new Date(d[key])))
+                .y((d) => y(d[value]));
+
+            // draw each different line for each key in the data set
+            // we only provide 4 styles for now, see styles.css
+            let idx = 0;
+            for (var k in kds) {
+                // set the ranges
+                const kd = kds[k];
+                if (kd.length == 0) {
+                    continue;
+                }
+
+                // Add the line path.
+                svg.append("path")
+                    .data([kd])
+                    .attr("class", "line")
+                    .attr("stroke", color(idx++))
+                    .attr("d", line);
+            }
+
+            // put legend on the left top
+            this.legend(svg, margin.left, 0, Object.keys(kds));
 
             // Add the X Axis
             svg.append("g")
