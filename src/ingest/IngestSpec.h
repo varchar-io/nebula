@@ -74,16 +74,17 @@ public:
       size_{ size },
       state_{ state },
       mdate_{ date },
-      node_{ nebula::meta::NNode::invalid() } {}
+      node_{ nebula::meta::NNode::invalid() },
+      signature_{ fmt::format("{0}@{1}@{2}", table_->name, id_, size_) } {}
   virtual ~IngestSpec() = default;
 
   inline std::string toString() const {
     return fmt::format("[IS {0} - {1}]", version_, id_);
   }
 
-  virtual std::string signature() const override {
+  inline virtual std::string signature() const override {
     // TODO(cao) - use file+size as unique signature?
-    return fmt::format("{0}@{1}", id_, size_);
+    return signature_;
   }
 
   inline void setState(SpecState state) {
@@ -168,6 +169,10 @@ private:
 
   // node info if the spec has affinity on a node
   nebula::meta::NNode node_;
+
+  // global unique identifier.
+  // not like id which is unique for a given table
+  std::string signature_;
 };
 
 } // namespace ingest

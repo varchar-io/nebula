@@ -219,8 +219,8 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
   for (auto itr = specs.cbegin(), end = specs.cend(); itr != end; ++itr) {
     // check if we have this spec already?
     auto specPtr = (*itr);
-    const auto& id = specPtr->id();
-    auto found = specs_.find(id);
+    const auto& sign = specPtr->signature();
+    auto found = specs_.find(sign);
     if (found == specs_.end()) {
       ++brandnew;
     } else {
@@ -246,15 +246,18 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
     }
 
     // move to the next version
-    next.emplace(id, specPtr);
+    next.emplace(sign, specPtr);
   }
 
   // print out update stats
   if (brandnew > 0 || renew > 0) {
-    LOG(INFO) << "Updating " << specs.size() << " specs: brandnew =" << brandnew << ", renew=" << renew;
+    LOG(INFO) << "Updating " << specs.size()
+              << " specs: brandnew =" << brandnew
+              << ", renew=" << renew
+              << ", count=" << next.size();
 
     // let's swap with existing one
-    N_ENSURE_EQ(specs.size(), next.size(), "next version should have the expected size of items");
+    N_ENSURE_EQ(specs.size(), next.size(), "No duplicate specs allowed.");
     std::swap(specs_, next);
   }
 }

@@ -91,7 +91,7 @@ bool IngestSpec::work() noexcept {
   // TODO(cao) - refator this to have better hirachy for different ingest types.
   const auto& loader = table_->loader;
   if (loader == FLAGS_NTEST_LOADER) {
-    loadNebulaTestData(table_, id_);
+    loadNebulaTestData(table_, signature_);
     return true;
   }
 
@@ -233,8 +233,8 @@ bool IngestSpec::loadKafka() noexcept {
 
   // build a block and add it to block manager
   BlockManager::init()->add(
-    BlockLoader::from(BlockSignature{ table->name(), 0, lowTime, highTime, id_ },
-                      batch));
+    BlockLoader::from(
+      BlockSignature{ table->name(), 0, lowTime, highTime, signature_ }, batch));
 
   // iterate this read until it reaches end of the segment - blocking queue?
   return true;
@@ -374,7 +374,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   std::pair<size_t, size_t> range{ std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
 
   // a lambda to build batch block
-  auto makeBlock = [&table, &range, spec = id_](size_t bid, std::shared_ptr<Batch> b) {
+  auto makeBlock = [&table, &range, spec = signature_](size_t bid, std::shared_ptr<Batch> b) {
     return BlockLoader::from(
       // build up a block signature with table name, sequence and spec
       BlockSignature{

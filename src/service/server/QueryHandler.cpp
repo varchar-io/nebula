@@ -204,7 +204,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     fields.push_back(windowExpr);
 
     // timeline doesn't follow limit settings
-    q->limit(buckets);
+    q->limit(0);
 
     keys.push_back(columns.size());
   }

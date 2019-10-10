@@ -12,13 +12,16 @@ const symbol = (i) => d3.symbol().size(81).type(symbols[i % symbols.length]);
 export class Charts {
     constructor() {
         // display a legend in given places
-        this.legend = (svg, px, py, names) => {
+        this.legend = (svg, px, py, names, vertical = true) => {
             const legend = svg.selectAll("g.legend")
                 .data(names)
                 .enter()
                 .append("svg:g")
                 .attr("class", "legend")
-                .attr("transform", (d, i) => `translate(${px},${py + i * 20 + 20})`);
+                .attr("transform",
+                    (d, i) => vertical ?
+                    `translate(${px},${py + i * 20 + 20})` :
+                    `translate(${px + i*60},${py})`);
 
             // make a matching color rect
             legend.append("svg:rect")
@@ -283,7 +286,7 @@ export class Charts {
             }
 
             // put legend on the left top
-            this.legend(svg, margin.left, 0, Object.keys(kds));
+            this.legend(svg, margin.left, 0, Object.keys(kds), false);
 
             // Add the X Axis
             svg.append("g")

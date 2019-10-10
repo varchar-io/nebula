@@ -394,53 +394,56 @@ const execute = () => {
         result.text(`[query time: ${stats.getQuerytimems()} ms]`);
 
         // get display option
-        if (json.length > 0) {
-            const draw = () => {
-                const charts = new Charts();
-                // enum value are number and switch/case are strong typed match
-                const display = +$$('#display');
-                const keys = extractXY(json, q);
-                switch (display) {
-                    case NebulaClient.DisplayType.SAMPLES:
-                    case NebulaClient.DisplayType.TABLE:
-                        charts.displayTable(json);
-                        break;
-                    case NebulaClient.DisplayType.TIMELINE:
-                        const WINDOW_KEY = '_window_';
-                        const start = new Date($$('#start'));
-                        let data = {
-                            D: json
-                        };
-                        // with dimension
-                        if (keys.d && keys.d.length > 0) {
-                            const groupBy = (list, key) => {
-                                return list.reduce((rv, x) => {
-                                    (rv[x[key]] = rv[x[key]] || []).push(x);
-                                    return rv;
-                                }, {});
-                            };
-
-                            data = groupBy(json, keys.d);
-                        }
-
-                        charts.displayTimeline(data, WINDOW_KEY, keys.m, +start);
-                        break;
-                    case NebulaClient.DisplayType.BAR:
-                        charts.displayBar(json, keys.d, keys.m);
-                        break;
-                    case NebulaClient.DisplayType.PIE:
-                        charts.displayPie(json, keys.d, keys.m);
-                        break;
-                    case NebulaClient.DisplayType.LINE:
-                        charts.displayLine(json, keys.d, keys.m);
-                        break;
-                }
-            };
-
-            // draw and redraw on window resize
-            draw();
-            $(window).on("resize", draw);
+        if (json.length == 0) {
+            $('#show').html("<b>NO RESULTS.</b>");
+            return;
         }
+
+        const draw = () => {
+            const charts = new Charts();
+            // enum value are number and switch/case are strong typed match
+            const display = +$$('#display');
+            const keys = extractXY(json, q);
+            switch (display) {
+                case NebulaClient.DisplayType.SAMPLES:
+                case NebulaClient.DisplayType.TABLE:
+                    charts.displayTable(json);
+                    break;
+                case NebulaClient.DisplayType.TIMELINE:
+                    const WINDOW_KEY = '_window_';
+                    const start = new Date($$('#start'));
+                    let data = {
+                        default: json
+                    };
+                    // with dimension
+                    if (keys.d && keys.d.length > 0) {
+                        const groupBy = (list, key) => {
+                            return list.reduce((rv, x) => {
+                                (rv[x[key]] = rv[x[key]] || []).push(x);
+                                return rv;
+                            }, {});
+                        };
+
+                        data = groupBy(json, keys.d);
+                    }
+
+                    charts.displayTimeline(data, WINDOW_KEY, keys.m, +start);
+                    break;
+                case NebulaClient.DisplayType.BAR:
+                    charts.displayBar(json, keys.d, keys.m);
+                    break;
+                case NebulaClient.DisplayType.PIE:
+                    charts.displayPie(json, keys.d, keys.m);
+                    break;
+                case NebulaClient.DisplayType.LINE:
+                    charts.displayLine(json, keys.d, keys.m);
+                    break;
+            }
+        };
+
+        // draw and redraw on window resize
+        draw();
+        $(window).on("resize", draw);
     });
 };
 
