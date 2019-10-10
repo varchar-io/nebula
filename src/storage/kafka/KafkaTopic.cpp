@@ -19,6 +19,8 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include "common/Evidence.h"
+
 /**
  * Kafka topic wrapping topic metadata store.
  */
@@ -84,7 +86,8 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
   }
 
   // save metadata info
-  auto partitions = metadata->topics()->at(0)->partitions();
+  auto topicMetadata = metadata->topics()->at(0);
+  auto partitions = topicMetadata->partitions();
   if (partitions->size() == 0) {
     LOG(ERROR) << "Kafka: topic has no partitions.";
     return segments;
@@ -103,15 +106,21 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
 
   for (auto part : pids) {
     // create partition pointing to a specific time stamp
-    auto p = RdKafka::TopicPartition::create(topic_, part, timeMs);
-    std::vector<RdKafka::TopicPartition*> ps{ p };
-    consumer->assign(ps);
-    consumer->offsetsForTimes(ps, timeoutMs_);
+    auto p = std::unique_ptr<RdKafka::TopicPartition>(
+      RdKafka::TopicPartition::create(topic_, part, timeMs));
+    std::vector<RdKafka::TopicPartition*> ps{ p.get() };
+    if (consumer->assign(ps) != RdKafka::ERR_NO_ERROR) {
+      LOG(ERROR) << "Kafka: partition assignment failed.";
 
-    // part_list_print(consumer, p);
+      return segments;
+    }
+
+    auto err = consumer->offsetsForTimes(ps, timeoutMs_);
     auto startOffset = p->offset();
-    consumer->unassign();
-    delete p;
+    if (err != RdKafka::ERR_NO_ERROR) {
+      VLOG(1) << "Kafka: failed to call offset for time: " << timeMs << ", err=" << err;
+      startOffset = -1;
+    }
 
     // get high end
     int64_t lowOffset = -1;
@@ -123,6 +132,26 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
       continue;
     }
 
+    // if the broker doesn't support offsetsForTimes, we have to assuming
+    if (startOffset == -1) {
+      // p->set_offset(lowOffset);
+      // auto msg = std::unique_ptr<RdKafka::Message>(consumer->consume(timeoutMs_));
+      // auto lowTimems = (size_t)msg->timestamp().timestamp;
+
+      // // [low....start....high]
+      // auto sizeRange = highOffset - lowOffset;
+      // auto timeRange = nebula::common::Evidence::unix_timestamp() * 1000 - lowTimems;
+      // startOffset = (timeMs - lowTimems) * sizeRange / timeRange + lowOffset;
+      // LOG(INFO) << "Time range=" << timeRange
+      //           << ", size range=" << sizeRange
+      //           << ", low offset=" << lowOffset
+      //           << ", high offset=" << highOffset
+      //           << ", low timems=" << lowTimems
+      //           << ", payload=" << msg->len()
+      //           << ", calculated offset=" << startOffset;
+      startOffset = lowOffset;
+    }
+
     // we use this range [startOffset, highOffset] to pick the latest range [start, end)
     // any future updates will cover uncovered ranges
     auto start = startOffset / width;
@@ -130,6 +159,9 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
     while (start < end) {
       segments.emplace_back(part, width * start++, width);
     }
+
+    // unassign
+    consumer->unassign();
   }
 
   // close the consumer

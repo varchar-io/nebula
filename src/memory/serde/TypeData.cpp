@@ -15,6 +15,8 @@
  */
 
 #include "TypeData.h"
+
+#include <folly/Conv.h>
 #include <gflags/gflags.h>
 
 // initialize data page for each type with heuristic assumptions.
@@ -36,24 +38,33 @@ namespace serde {
 
 using nebula::meta::Column;
 
-#define TYPE_DATA_CONSTR(TYPE, SLICE_PAGE)                                   \
+// convert string to void* with nullptr
+void* void_any(const std::string&) {
+  return nullptr;
+}
+
+#define TYPE_DATA_CONSTR(TYPE, SLICE_PAGE, CONV)                             \
   template <>                                                                \
   TYPE::TypeDataImpl(const Column& column, size_t batchSize)                 \
     : slice_{ (size_t)SLICE_PAGE }, bf_{ nullptr } {                         \
     if (column.withBloomFilter && Scalar) {                                  \
       bf_ = std::make_unique<nebula::common::BloomFilter<NType>>(batchSize); \
     }                                                                        \
+                                                                             \
+    if (column.defaultValue.size() > 0) {                                    \
+      default_ = CONV(column.defaultValue);                                  \
+    }                                                                        \
   }
 
-TYPE_DATA_CONSTR(BoolData, FLAGS_BOOL_PAGE_SIZE)
-TYPE_DATA_CONSTR(ByteData, FLAGS_BYTE_PAGE_SIZE)
-TYPE_DATA_CONSTR(ShortData, FLAGS_SHORT_PAGE_SIZE)
-TYPE_DATA_CONSTR(IntData, FLAGS_INT_PAGE_SIZE)
-TYPE_DATA_CONSTR(LongData, FLAGS_LONG_PAGE_SIZE)
-TYPE_DATA_CONSTR(FloatData, FLAGS_REAL_PAGE_SIZE)
-TYPE_DATA_CONSTR(DoubleData, FLAGS_REAL_PAGE_SIZE)
-TYPE_DATA_CONSTR(StringData, FLAGS_BINARY_PAGE_SIZE)
-TYPE_DATA_CONSTR(EmptyData, FLAGS_EMPTY_PAGE_SIZE)
+TYPE_DATA_CONSTR(BoolData, FLAGS_BOOL_PAGE_SIZE, folly::to<NType>)
+TYPE_DATA_CONSTR(ByteData, FLAGS_BYTE_PAGE_SIZE, folly::to<NType>)
+TYPE_DATA_CONSTR(ShortData, FLAGS_SHORT_PAGE_SIZE, folly::to<NType>)
+TYPE_DATA_CONSTR(IntData, FLAGS_INT_PAGE_SIZE, folly::to<NType>)
+TYPE_DATA_CONSTR(LongData, FLAGS_LONG_PAGE_SIZE, folly::to<NType>)
+TYPE_DATA_CONSTR(FloatData, FLAGS_REAL_PAGE_SIZE, folly::to<NType>)
+TYPE_DATA_CONSTR(DoubleData, FLAGS_REAL_PAGE_SIZE, folly::to<NType>)
+TYPE_DATA_CONSTR(StringData, FLAGS_BINARY_PAGE_SIZE, )
+TYPE_DATA_CONSTR(EmptyData, FLAGS_EMPTY_PAGE_SIZE, void_any)
 
 #undef TYPE_DATA_CONSTR
 
@@ -153,6 +164,23 @@ TYPE_PROBABLY_PROXY(float, fd_)
 TYPE_PROBABLY_PROXY(double, dd_)
 
 #undef TYPE_PROBABLY_PROXY
+
+#define TYPE_DEFAULT_PROXY(TYPE, OBJ)        \
+  template <>                                \
+  TYPE TypeDataProxy::defaultValue() const { \
+    return OBJ->defaultValue();              \
+  }
+
+TYPE_DEFAULT_PROXY(bool, bd_)
+TYPE_DEFAULT_PROXY(int8_t, btd_)
+TYPE_DEFAULT_PROXY(int16_t, sd_)
+TYPE_DEFAULT_PROXY(int32_t, id_)
+TYPE_DEFAULT_PROXY(int64_t, ld_)
+TYPE_DEFAULT_PROXY(float, fd_)
+TYPE_DEFAULT_PROXY(double, dd_)
+TYPE_DEFAULT_PROXY(std::string_view, std_)
+
+#undef TYPE_DEFAULT_PROXY
 
 #define TYPE_READ_PROXY(TYPE, OBJ)                  \
   template <>                                       \

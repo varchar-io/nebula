@@ -45,6 +45,7 @@ div .text,
 
 hr {
     border-top: dotted 1px;
+    margin: 10pt 0;
 }
 
 #display {
@@ -125,6 +126,18 @@ tbody {
 /* LINE CHART STYLES */
 .line {
     fill: none;
+}
+
+.calendar {
+    display: inline-block;
+    width: 20pt;
+    height: 20pt;
+    vertical-align: middle;
+}
+
+.lbl {
+    display: inline-block;
+    width: 100pt;
 }
 
 /* selectize styles */

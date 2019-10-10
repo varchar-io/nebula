@@ -46,7 +46,7 @@ static void sigterm(int) {
 }
 
 static const auto BROKERS = "<brokers>";
-static const auto TOPIC = "<topic>";
+static const auto TOPIC = "topic";
 
 class ExampleEventCb : public RdKafka::EventCb {
 public:
@@ -384,26 +384,61 @@ TEST(KafkaTest, TestKafkaSegmentSerde) {
   // EXPECT_EQ(seg, seg2);
 }
 
-TEST(KafkaTest, DISABLED_TestConsumeSpecificSegment) {
+TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(
+    "<brokers>", "<topic>");
+
+  // 10 hours ago
+  auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 2;
+  auto segments = topic->segmentsByTimestamp(tenHr * 1000, 5000);
+  N_ENSURE(segments.size() > 0, "more than 0 segments");
+  LOG(INFO) << "Generated " << segments.size() << " segments. Pick first one to read";
+
   nebula::meta::Serde serde;
   serde.protocol = "binary";
-  serde.cmap = { { "id", 1 }, { "referer", 3 }, { "country", 6 } };
+  serde.cmap = { { "_time_", 1 },
+                 { "userId", 3001 },
+                 { "magicType", 3003 },
+                 { "statusCode", 4002 },
+                 { "count", 4001 },
+                 { "error", 4003 } };
   nebula::meta::ColumnProps cp;
   nebula::meta::TimeSpec ts;
   ts.type = nebula::meta::TimeType::CURRENT;
 
   auto table = std::make_shared<nebula::meta::TableSpec>(
-    TOPIC, 1000, 100, "ROW<id:string, referer:string, country:string>",
-    nebula::meta::DataSource::KAFKA, "Roll", BROKERS, "",
+    "<topic>", 1000, 100, "ROW<userId:long, magicType:short, statusCode:byte, count:int, error:string>",
+    nebula::meta::DataSource::KAFKA, "Roll", "<brokers>", "",
     "thrift", serde, cp, ts);
 
-  nebula::storage::kafka::KafkaSegment seg{ 4, 7550000, 50000 };
-  nebula::storage::kafka::KafkaReader reader(table, seg);
-  EXPECT_EQ(reader.size(), seg.size);
-  while (reader.hasNext()) {
-    auto& row = reader.next();
-    LOG(INFO) << "Timestamp:" << row.readLong(nebula::meta::Table::TIME_COLUMN);
+  auto count = 0;
+  for (auto& seg : segments) {
+    if (count++ > 1) {
+      break;
+    }
+
+    nebula::storage::kafka::KafkaReader reader(table, seg);
+    LOG(INFO) << "Message count=" << reader.size() << " for segment=" << seg.id();
+
+#define NULL_OR_VALUE(COL, F)               \
+  if (row.isNull(COL)) {                    \
+    LOG(INFO) << COL << ": NULL";           \
+  } else {                                  \
+    LOG(INFO) << COL << ": " << row.F(COL); \
   }
+
+    while (reader.hasNext()) {
+      auto& row = reader.next();
+      NULL_OR_VALUE(nebula::meta::Table::TIME_COLUMN, readLong)
+      NULL_OR_VALUE("userId", readLong)
+      NULL_OR_VALUE("magicType", readShort)
+      NULL_OR_VALUE("statusCode", readByte)
+      NULL_OR_VALUE("count", readInt)
+      NULL_OR_VALUE("error", readString)
+    }
+  }
+
+#undef NULL_OR_VALUE
 }
 
 } // namespace test

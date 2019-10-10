@@ -30,6 +30,7 @@ enum TaskState : int8_t {
   WAITING = 'W',
   PROCESSING = 'P',
   FAILED = 'F',
+  QUEUE = 'Q',
   SUCCEEDED = 'S'
 };
 

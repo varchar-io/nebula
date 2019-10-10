@@ -17,7 +17,8 @@ target_link_libraries(${NEBULA_MEMORY}
     PUBLIC ${NEBULA_COMMON}
     PUBLIC ${NEBULA_TYPE}
     PUBLIC ${NEBULA_SURFACE}
-    PUBLIC ${NEBULA_META}   )
+    PUBLIC ${NEBULA_META}
+    PUBLIC ${FOLLY_LIBRARY})
 
 # build test binary
 add_executable(MemoryTests 

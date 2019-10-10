@@ -327,8 +327,12 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     std::vector<flatbuffers::Offset<ColumnProp>> colProps;
     colProps.reserve(numCols);
     for (auto& itr : table->columnProps) {
+      auto& cp = itr.second;
       colProps.push_back(
-        CreateColumnProp(mb, mb.CreateString(itr.first), itr.second.withBloomFilter, itr.second.withDict));
+        CreateColumnProp(mb, mb.CreateString(itr.first),
+                         cp.withBloomFilter,
+                         cp.withDict,
+                         mb.CreateString(cp.defaultValue)));
     }
     auto fbColProps = mb.CreateVector<flatbuffers::Offset<ColumnProp>>(colProps);
 
@@ -416,7 +420,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     auto colProps = it->column_props();
     for (auto itr = colProps->begin(); itr != colProps->end(); ++itr) {
       // adding all properties here
-      props[itr->name()->str()] = Column{ itr->bf(), itr->dict() };
+      props[itr->name()->str()] = Column{ itr->bf(), itr->dict(), itr->dv()->str() };
     }
 
     // build serde

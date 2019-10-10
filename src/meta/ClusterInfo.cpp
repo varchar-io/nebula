@@ -101,7 +101,10 @@ Column col(const YAML::Node& settings) {
   bool d = false;
   EVAL_SETTING(dict, d, bool)
 
-  return Column{ bf, d };
+  std::string dv;
+  EVAL_SETTING(default_value, dv, std::string)
+
+  return Column{ bf, d, std::move(dv) };
 
 #undef EVAL_SETTING
 }
@@ -150,7 +153,7 @@ void ClusterInfo::load(const std::string& file) {
     const auto& node = nodes[i]["node"];
 
     // if this is an existing node, and we may want to check its state
-    NNode nn = {NRole::NODE, node["host"].as<std::string>(), node["port"].as<size_t>()};
+    NNode nn = { NRole::NODE, node["host"].as<std::string>(), node["port"].as<size_t>() };
     auto existing = nodes_.find(nn);
     if (existing != nodes_.end()) {
       nn.state = existing->state;

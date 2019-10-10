@@ -110,27 +110,33 @@ tables:
   ## to indicating its a kafka data source
   k.<topic>:
     max-mb: 200000
-    max-hr: 72
+    max-hr: 12
     # all kafka schema will have column name postfixed by field ID
     # TODO(cao): in the future, we can have separate thrift schema
-    schema: "ROW<referer:string, ip:string, ua:string, country:string>"
+    schema: "ROW<userId:long, magicType:short, statusCode:byte, objectCount:int>"
     data: kafka
     topic: <topic>
     loader: Roll
-    source: <broker addr:port>
+    source: <brokers>
     backup: s3://nebula/n105/
     format: thrift
     serde:
       protocol: binary
       cmap:
-        referer: 3
-        ua: 4
-        ip: 5
-        country: 6
+        # TODO(cao): this temporary hack to work around nested thrift definition
+        # we're using 1K to separate two levels asssuming no thrift definition has more than 1K fields
+        # in reverse order, such as 1003 => (field 3 -> field 1)
+        _time_: 1
+        userId: 3001
+        magicType: 3003
+        statusCode: 4002
+        objectCount: 4001
     columns:
-      ua:
-        dict: true
-      country:
-        dict: true
+      userId:
+        bloom_filter: true
+      statusCode:
+        default_value: 0
+      objectCount:
+        default_value: 0
     time:
       type: current

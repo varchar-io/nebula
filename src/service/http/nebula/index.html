@@ -26,9 +26,19 @@
                 <button id="btn">Soar</button>
             </div>
             <hr />
-            <div>Time Start: <input type="text" id="start" class="selectize-input" value="2019-09-01"></div>
-            <div>Time End: <input type="text" id="end" class="selectize-input" value="2019-09-15"></div>
-            <div>Window: <select id="window">
+            <div>
+                <label class="lbl">Time Start:</label>
+                <input type="text" id="start">
+                <a id="startc"><img src="f/ct.png" class="calendar"></a>
+            </div>
+            <div>
+                <label class="lbl">Time End:</label>
+                <input type="text" id="end">
+                <a id="endc"><img src="f/ct.png" class="calendar"></a>
+            </div>
+            <div>
+                <label class="lbl">Timeline Window:</label>
+                <select id="window">
                     <option value="0">Auto</option>
                     <option value="60">1 Minute</option>
                     <option value="3600">1 Hour</option>
@@ -38,16 +48,21 @@
                 </select>
             </div>
             <hr />
-            <div id="dwrapper"></div>
-            <div> Metric:
+            <div>
+                <label class="lbl">Dimensions:</label>
+                <div id="dwrapper"></div>
+
+                <label class="lbl">Metric:</label>
                 <select id="ru"></select>
                 <select id="mcolumns"></select>
             </div>
             <hr />
-            <div> Order:
+            <div>
+                <label class="lbl">Order:</label>
                 <select id="ob"></select>
             </div>
-            <div> Limit:
+            <div>
+                <label class="lbl">Limit:</label>
                 <select id="limit">
                     <option value="10">10</option>
                     <option value="20">20</option>
@@ -57,7 +72,8 @@
                 </select>
             </div>
             <hr />
-            <div> Filter:
+            <div>
+                <label class="lbl">Filters:</label>
                 <select id="fcolumns"></select>
                 <select id="fop"></select>
                 <div class="text">

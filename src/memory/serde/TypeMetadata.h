@@ -49,7 +49,8 @@ public:
           std::make_unique<CompoundItems>()
       },
       hashItems_{ column.withDict ? std::make_unique<HashItems>() : nullptr },
-      dict_{ column.withDict ? std::make_unique<Dictionary>() : nullptr } {
+      dict_{ column.withDict ? std::make_unique<Dictionary>() : nullptr },
+      default_{ column.defaultValue.size() > 0 } {
     if (offsetSize_ != nullptr) {
       // first item always equals 0
       offsetSize_->reserve(N_ITEMS);
@@ -64,7 +65,16 @@ public:
   }
 
   inline bool isNull(size_t index) {
+    // column/node with default value will never be null
+    if (default_) {
+      return false;
+    }
+
     return nulls_.contains(index);
+  }
+
+  inline bool isRealNull(size_t index) const {
+    return default_ && nulls_.contains(index);
   }
 
   void setOffsetSize(size_t index, IndexType items) {
@@ -135,6 +145,10 @@ public:
     hashItems_ = nullptr;
   }
 
+  inline bool hasDefault() const {
+    return default_;
+  }
+
 private:
   // store all null positions
   // call runOptimize() to compress the bitmap when finalizing.
@@ -160,6 +174,10 @@ private:
 
   // dictionary link one index to another index which has the value
   std::unique_ptr<Dictionary> dict_;
+
+  // indicate if this column has default value setting
+  // if yes, it will never be NULL, default value will be returned instead of NULLs
+  bool default_;
 };
 
 } // namespace serde

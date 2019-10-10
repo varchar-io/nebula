@@ -40,12 +40,16 @@ public:
   virtual Column column(const std::string& col) const noexcept override {
     if (col == "id") {
       // enable bloom filter on id column
-      return Column{ true, false };
+      return Column{ true, false, "" };
     }
 
     if (col == "event") {
       // enable bloom filter on id column
-      return Column{ false, true };
+      return Column{ false, true, "" };
+    }
+
+    if (col == "value") {
+      return Column{ false, false, "23" };
     }
 
     return Table::column(col);

@@ -110,10 +110,17 @@ public:
 
   bool probably(NType) const;
 
+  NType defaultValue() const {
+    return default_;
+  }
+
 private:
   // memory chunk managed by paged slice
   nebula::common::PagedSlice slice_;
   std::unique_ptr<nebula::common::BloomFilter<NType>> bf_;
+
+  // default value of this data node
+  NType default_;
 };
 
 /**
@@ -148,6 +155,9 @@ public:
 
   template <typename T>
   bool probably(T) const;
+
+  template <typename T>
+  T defaultValue() const;
 
 public:
   inline size_t size() const {

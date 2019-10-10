@@ -42,12 +42,16 @@ public:
       table_{ table },
       segment_{ std::move(segment) },
       timeoutMs_{ timeoutMs },
+      includeTime_{ false },
       row_{ SLICE_SIZE } {
 
     // reverse mapping of name -> id
     const auto& cmap = table_->serde.cmap;
     for (auto itr = cmap.begin(); itr != cmap.end(); ++itr) {
       fields_.emplace(itr->second, itr->first);
+      if (itr->first == nebula::meta::Table::TIME_COLUMN) {
+        includeTime_ = true;
+      }
     }
 
     // load all desired messages through this consumer
@@ -84,6 +88,7 @@ private:
   nebula::meta::TableSpecPtr table_;
   KafkaSegment segment_;
   size_t timeoutMs_;
+  bool includeTime_;
 
   // queue of messages, when reader starts it will pumping messages into this queue
   std::vector<std::unique_ptr<RdKafka::Message>> messages_;

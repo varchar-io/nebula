@@ -40,23 +40,37 @@ const initTable = (table, callback) => {
             const bc = reply.getBlockcount();
             const rc = Math.round(reply.getRowcount() / 10000) / 100;
             const ms = Math.round(reply.getMemsize() / 10000000) / 100;
-            const mints = reply.getMintime() * 1000;
+            const mints = reply.getMintime() * 1000 + 1;
             const maxts = reply.getMaxtime() * 1000;
-            const midts = Math.round((mints + maxts) / 2);
 
             stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${formatTime(mints)}, Max T: ${formatTime(maxts)}]`);
 
-            // set up datetime picker for start and end dates
-            const dto = {
+
+            const fpcs = $("#start").flatpickr({
                 enableTime: true,
                 allowInput: true,
-                defaultDate: midts,
+                clickOpens: false,
+                defaultDate: mints,
                 minDate: mints,
                 maxDate: maxts
-            };
+            });
+            // hook calendar click event
+            $('#startc').on("click", () => {
+                fpcs.toggle();
+            });
 
-            $("#start").flatpickr(dto);
-            $("#end").flatpickr(dto);
+            const fpce = $("#end").flatpickr({
+                enableTime: true,
+                allowInput: true,
+                clickOpens: false,
+                defaultDate: maxts,
+                minDate: mints,
+                maxDate: maxts
+            });
+            // hook calendar click event
+            $('#endc').on("click", () => {
+                fpce.toggle();
+            });
 
             // populate dimension columns
             const dimensions = reply.getDimensionList().filter((v) => v !== '_time_');
@@ -64,7 +78,7 @@ const initTable = (table, callback) => {
             const all = dimensions.concat(metrics);
             let rollups = Object.keys(NebulaClient.Rollup);
 
-            $('#dwrapper').html("Dimension: <select id=\"dcolumns\" multiple></select>");
+            $('#dwrapper').html("<select id=\"dcolumns\" multiple></select>");
             ds('#dcolumns')
                 .html("")
                 .selectAll("option")

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <chrono>
+#include <cmath>
 #include <ctime>
 #include <functional>
 #include <glog/logging.h>
@@ -41,6 +42,9 @@ private:
 public: /** only static methods */
   static constexpr auto HOUR_SECONDS = 3600;
   static constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
+  static constexpr auto NANO_BASE = 1000'000'000'000'000'000;
+  static constexpr auto MICRO_BASE = 1000'000'000'000'000;
+  static constexpr auto MILLI_BASE = 1000'000'000'000;
 
   inline static size_t ticks() {
     return std::chrono::system_clock::now().time_since_epoch().count();
@@ -50,6 +54,25 @@ public: /** only static methods */
     return std::chrono::duration_cast<std::chrono::seconds>(
              std::chrono::system_clock::now().time_since_epoch())
       .count();
+  }
+
+  //  no matter it is nano, micro, milli, or seconds, convert to seconds
+
+  static int64_t to_seconds(int64_t timestamp) {
+    if (timestamp / NANO_BASE > 0L) {
+      return timestamp / 1000'000'000;
+    }
+
+    if (timestamp / MICRO_BASE > 0L) {
+      return timestamp / 1000'000;
+    }
+
+    if (timestamp / MILLI_BASE > 0L) {
+      return timestamp / 1000;
+    }
+
+    // assume seconds
+    return timestamp;
   }
 
   // given date time string and parsing pattern, return GMT unix time stamp

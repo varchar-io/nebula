@@ -76,11 +76,11 @@ public:
 
   // All intrefaces - string type has RVO, copy elision optimization
   bool isNull(const std::string& field) const override {
-    return field == "items" && items_.size() == 0;
+    return (field == "items" && items_.size() == 0) || (field == "value" && byte_ % 2 == 0);
   }
 
   bool isNull(IndexType index) const override {
-    return index == 3 && items_.size() == 0;
+    return (index == 3 && items_.size() == 0) || (index == 5 && byte_ % 2 == 0);
   }
 
   bool readBool(const std::string&) const override {

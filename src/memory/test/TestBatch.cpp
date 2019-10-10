@@ -216,6 +216,48 @@ TEST(BatchTest, TestStringDictionary) {
   LOG(INFO) << "Verified total rows: " << count;
 }
 
+TEST(BatchTest, TestDefaultValue) {
+  nebula::meta::TestTable test;
+  int32_t count = 1000;
+
+  // need some stable data set to write out and can be verified
+  Batch batch(test, count);
+
+  // use the specified seed so taht the data can repeat
+  std::vector<nebula::surface::StaticRow> rows;
+  // fill rows, even values will be null for "value" column
+  // and it has default value as "23"
+  for (int32_t i = 0; i < count; ++i) {
+    nebula::surface::StaticRow row{ i,
+                                    i,
+                                    "events",
+                                    nullptr,
+                                    false,
+                                    (char)(i % 32) };
+    batch.add(row);
+  }
+
+  // check this batch has bloom filter on ID
+  // assuming no false positive on this individual value
+  // if the test becomes unstable, we can change the test
+  auto accessor = batch.makeAccessor();
+  for (auto i = 0; i < count; ++i) {
+    const auto& row = accessor->seek(i);
+    EXPECT_FALSE(row.isNull("value"));
+
+    auto b = row.readByte("value");
+    int8_t expected = (int8_t)(i % 32);
+
+    // even value will become default value
+    // LOG(INFO) << "Value: " << (int)b;
+    if (expected % 2 == 0) {
+      EXPECT_EQ(b, 23);
+    } else {
+      EXPECT_EQ(b, expected);
+    }
+  }
+}
+
 } // namespace test
 } // namespace memory
 } // namespace nebula

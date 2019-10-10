@@ -108,12 +108,11 @@ void NodeSync::sync(
       if (state == TaskState::SUCCEEDED) {
         sp->setState(SpecState::READY);
       }
-
       // TODO(cao) - what about if this task is failed?
       // we can remove its assigned node and wait it to be reassin to different node for retry
       // but what if it keeps failing? we need counter for it
-      if (state == TaskState::FAILED) {
-        LOG(INFO) << "Task failed: " << t.signature();
+      else if (state == TaskState::FAILED || state == TaskState::QUEUE) {
+        LOG(WARNING) << "Task " << t.signature() << " state: " << (char)state;
       }
     }
   }

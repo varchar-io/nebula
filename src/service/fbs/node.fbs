@@ -73,6 +73,8 @@ table ColumnProp {
   bf: bool;
   // enable dictionary
   dict: bool;
+  // default value when input is NULL
+  dv: string;
 }
 
 table ColumnMap {

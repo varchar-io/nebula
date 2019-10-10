@@ -15,7 +15,9 @@
  */
 
 #include "DataNode.h"
+
 #include "common/Hash.h"
+#include "common/Likely.h"
 
 /**
  * A data node holds real memory data for each node in the schema tree
@@ -300,10 +302,13 @@ size_t DataNode::append(const nebula::surface::RowData& row) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define TYPE_READ_DELEGATE(TYPE)      \
-  template <>                         \
-  TYPE DataNode::read(size_t index) { \
-    return data_->read<TYPE>(index);  \
+#define TYPE_READ_DELEGATE(TYPE)              \
+  template <>                                 \
+  TYPE DataNode::read(size_t index) {         \
+    if (UNLIKELY(meta_->isRealNull(index))) { \
+      return data_->defaultValue<TYPE>();     \
+    }                                         \
+    return data_->read<TYPE>(index);          \
   }
 
 TYPE_READ_DELEGATE(bool)
@@ -316,6 +321,10 @@ TYPE_READ_DELEGATE(double)
 
 template <>
 std::string_view DataNode::read(size_t index) {
+  if (meta_->isRealNull(index)) {
+    return data_->defaultValue<std::string_view>();
+  }
+
   // if with dictionary, we need to check
   // whether this points to another index so using offsetSize
   // instead of offsetSizeDirect

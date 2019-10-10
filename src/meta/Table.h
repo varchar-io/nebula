@@ -38,14 +38,19 @@ using nebula::type::Schema;
  * Define column properties that fetched from meta data system
  */
 struct Column {
-  explicit Column(bool bf = false, bool d = false)
-    : withBloomFilter{ bf }, withDict{ d } {}
+  explicit Column(bool bf = false, bool d = false, const std::string& dv = "")
+    : withBloomFilter{ bf }, withDict{ d }, defaultValue{ dv } {}
 
   // by default, we don't build bloom filter
   bool withBloomFilter;
 
   // by default, we turn on dictionay for strings
   bool withDict;
+
+  // specify a default value in string
+  // empty means no default value,
+  // with saying that, we're not support string type with empty stirng as default value
+  std::string defaultValue;
 };
 
 using ColumnProps = std::unordered_map<std::string, Column>;

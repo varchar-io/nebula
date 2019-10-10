@@ -89,7 +89,7 @@ TaskState TaskExecutor::enqueue(const Task& task) {
   // if not found, we queue this task, and set its state as waiting
   if (queue_.isFull()) {
     VLOG(1) << "Queue is full, can not enqueue task at this moment. Q-size: " << queue_.capacity();
-    return TaskState::FAILED;
+    return TaskState::QUEUE;
   }
 
   // enqueue it for sure
