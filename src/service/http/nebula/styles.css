@@ -2,6 +2,10 @@ h1 {
     margin: 8pt;
 }
 
+a {
+    cursor: pointer;
+}
+
 h1 a {
     color: inherit;
     text-decoration: none;
@@ -13,6 +17,12 @@ div {
 
 .message {
     color: red;
+}
+
+.message a {
+    color: blue;
+    font-style: italic;
+    font: caption;
 }
 
 .main {
@@ -31,6 +41,12 @@ div {
     display: table-cell;
     word-break: break-word;
     padding: 4pt 8pt;
+}
+
+#sandance {
+    width: 100%;
+    height: 500pt;
+    border: none;
 }
 
 div .text,

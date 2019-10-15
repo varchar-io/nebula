@@ -25,6 +25,11 @@
                 <select id="display"></select>
                 <button id="btn">Soar</button>
             </div>
+            <div>
+                <label class="lbl">Visual:</label>
+                <label><input type="radio" id="vn" name="vis" value="n" checked>Nebula</label>
+                <label><input type="radio" id="vs" name="vis" value="s">Sand</label>
+            </div>
             <hr />
             <div>
                 <label class="lbl">Time Start:</label>
@@ -69,6 +74,8 @@
                     <option value="100">100</option>
                     <option value="200">200</option>
                     <option value="500">500</option>
+                    <option value="2000">2000</option>
+                    <option value="10000">10000</option>
                 </select>
             </div>
             <hr />
@@ -84,7 +91,11 @@
         <div class="right">
             <hr />
             <div id="qr" class="message"></div>
-            <div id='show'></div>
+            <div id='show'>
+            </div>
+            <div id="sdw" style="display:none">
+                <iframe id="sandance" src="d/sde.html"></iframe>
+            </div>
         </div>
     </div>
 </body>

@@ -11,6 +11,13 @@ const d3 = NebulaClient.d3;
 const ds = NebulaClient.d3.select;
 const $$ = (e) => $(e).val();
 
+// global value represents current data set
+let json = [];
+let newdata = false;
+
+// two calendar instances
+let fpcs, fpce;
+
 const serviceAddr = "{SERVER-ADDRESS}";
 const v1Client = new NebulaClient.V1Client(serviceAddr);
 
@@ -45,8 +52,7 @@ const initTable = (table, callback) => {
 
             stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${formatTime(mints)}, Max T: ${formatTime(maxts)}]`);
 
-
-            const fpcs = $("#start").flatpickr({
+            fpcs = $("#start").flatpickr({
                 enableTime: true,
                 allowInput: true,
                 clickOpens: false,
@@ -56,10 +62,10 @@ const initTable = (table, callback) => {
             });
             // hook calendar click event
             $('#startc').on("click", () => {
-                fpcs.toggle();
+                fpcs.open();
             });
 
-            const fpce = $("#end").flatpickr({
+            fpce = $("#end").flatpickr({
                 enableTime: true,
                 allowInput: true,
                 clickOpens: false,
@@ -69,7 +75,7 @@ const initTable = (table, callback) => {
             });
             // hook calendar click event
             $('#endc').on("click", () => {
-                fpce.toggle();
+                fpce.open();
             });
 
             // populate dimension columns
@@ -385,6 +391,7 @@ const execute = () => {
     }
 
     ds('#qr').text("soaring in nebula to land...");
+
     v1Client.query(q, {}, (err, reply) => {
         ds('#table_head').html("");
         ds('#table_content').html("");
@@ -403,15 +410,18 @@ const execute = () => {
         }
 
         // JSON result
-        const json = JSON.parse(NebulaClient.bytes2utf8(reply.getData()));
-        // TODO(cao): popuate scanned rows metric: rows: ${stats.getRowsscanned()}
-        result.text(`[query time: ${stats.getQuerytimems()} ms]`);
+        json = JSON.parse(NebulaClient.bytes2utf8(reply.getData()));
+        newdata = true;
 
         // get display option
         if (json.length == 0) {
+            // TODO(cao): popuate scanned rows metric: rows: ${stats.getRowsscanned()}
+            result.html(`[query time: ${stats.getQuerytimems()} ms]`);
             $('#show').html("<b>NO RESULTS.</b>");
             return;
         }
+
+        result.html(`[query time: ${stats.getQuerytimems()} ms]`);
 
         const draw = () => {
             const charts = new Charts();
@@ -462,6 +472,7 @@ const execute = () => {
 };
 
 ds('#btn').on("click", build);
+$("#sdw").hide();
 
 // hook up hash change event
 window.onhashchange = function () {
@@ -494,3 +505,36 @@ v1Client.tables(listReq, {}, (err, reply) => {
 
 // a pointer to latest dimensions selectize
 let $sdc = null;
+
+const vis = async (r) => {
+    // n=>nebula, s=>sanddance
+    const choice = r.target.value;
+    if (choice == 'n') {
+        $("#show").show();
+        $("#sdw").hide();
+    } else if (choice == 's') {
+        $("#show").hide();
+        $("#sdw").show();
+
+        // go with sanddance
+        if (newdata) {
+            if (json && json.length > 0) {
+                const sandance = () => {
+                    // TODO(cao): to use content window we have to use document.getElementById, not sure why
+                    const iframe = document.getElementById("sandance");
+                    const _post = m => iframe.contentWindow.postMessage(m, '*');
+                    return new Promise(resolve => {
+                        resolve(_post);
+                    });
+                };
+
+                // display an embeded explorer
+                (await sandance())(json);
+            }
+            newdata = false;
+        }
+    }
+};
+
+$("#vn").on("click", vis);
+$("#vs").on("click", vis);

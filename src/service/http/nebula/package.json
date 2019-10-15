@@ -14,7 +14,12 @@
     "webpack-cli": "^3.3.1",
     "webpack-node-externals": "^1.7.2",
     "serve-static": "^1.14.1",
-    "finalhandler": "^1.1.2"
+    "finalhandler": "^1.1.2",
+    "@deck.gl/core": "6.4",
+    "@deck.gl/layers": "6.4",
+    "luma.gl": "6.4",
+    "@msrvida/sanddance-explorer": "*",
+    "vega-lib": "^4.3.0"
   },
   "devDependencies": {
     "grunt": "^1.0.4"
