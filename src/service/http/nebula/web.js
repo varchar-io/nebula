@@ -6,8 +6,11 @@ import {
     Charts
 } from "/c/charts.min.js";
 
+import {
+    Constraints
+} from "/c/constraints.min.js";
+
 // define jquery style selector 
-const d3 = NebulaClient.d3;
 const ds = NebulaClient.d3.select;
 const $$ = (e) => $(e).val();
 
@@ -20,6 +23,9 @@ let fpcs, fpce;
 
 const serviceAddr = "{SERVER-ADDRESS}";
 const v1Client = new NebulaClient.V1Client(serviceAddr);
+
+// filters
+let filters;
 
 const formatTime = (unix) => {
     const date = new Date(unix);
@@ -115,16 +121,6 @@ const initTable = (table, callback) => {
                 .text(d => d)
                 .attr("value", d => d);
 
-            // populate all columns
-            ds('#fcolumns')
-                .html("")
-                .selectAll("option")
-                .data(all)
-                .enter()
-                .append('option')
-                .text(d => d)
-                .attr("value", d => d);
-
             // populate all display types
             ds('#display')
                 .html("")
@@ -134,23 +130,6 @@ const initTable = (table, callback) => {
                 .append('option')
                 .text(k => k.toLowerCase())
                 .attr("value", k => NebulaClient.DisplayType[k]);
-
-            // populate all operations
-            const om = {
-                EQ: "=",
-                NEQ: "!=",
-                MORE: ">",
-                LESS: "<",
-                LIKE: "like"
-            };
-            ds('#fop')
-                .html("")
-                .selectAll("option")
-                .data(Object.keys(NebulaClient.Operation))
-                .enter()
-                .append('option')
-                .text(k => om[k])
-                .attr("value", k => NebulaClient.Operation[k]);
 
             // roll up methods
             ds('#ru')
@@ -172,10 +151,9 @@ const initTable = (table, callback) => {
                 .text(k => k.toLowerCase())
                 .attr("value", k => NebulaClient.OrderType[k]);
 
-        }
-
-        if (callback) {
-            callback();
+            if (callback) {
+                callback(all);
+            }
         }
     });
 };
@@ -230,7 +208,7 @@ const build = () => {
         e: $$('#end'),
         fv: $$('#fvalue'),
         fo: $$('#fop'),
-        ff: $$("#fcolumns"),
+        ff: filters.expr(),
         ds: $$('#dcolumns'),
         w: $$("#window"),
         d: $$('#display'),
@@ -263,12 +241,10 @@ const restore = () => {
     const set = (N, V) => ds(N).property('value', V);
     if (p.t) {
         set('#tables', p.t);
-        initTable(p.t, () => {
+        initTable(p.t, (cols) => {
             // set other fields
             set('#start', p.s);
             set('#end', p.e);
-            set('#fop', p.fo);
-            set('#fcolumns', p.ff);
             set("#window", p.w);
             set('#display', p.d);
             set('#mcolumns', p.m);
@@ -276,32 +252,31 @@ const restore = () => {
             set('#ob', p.o);
             set('#limit', p.l);
 
-            // selectize init value
-            {
-                const fv = p.fv || [];
-                ds('#fvalue')
-                    .html("")
-                    .selectAll("option")
-                    .data(fv)
-                    .enter()
-                    .append('option')
-                    .text(d => d)
-                    .attr("value", d => d);
-                const $sdv = $('#fvalue').selectize({
-                    plugins: ['restore_on_backspace', 'remove_button'],
-                    persist: false,
-                    create: input => {
-                        return {
-                            value: input,
-                            text: input
-                        };
-                    }
-                });
-                $sdv[0].selectize.setValue(fv);
-                if ($sdc && p.ds) {
-                    $sdc[0].selectize.setValue(p.ds);
-                }
+            // set value of dimensions if there is one
+            if ($sdc && p.ds) {
+                $sdc[0].selectize.setValue(p.ds);
             }
+
+            // populate all operations
+            const om = {
+                EQ: "=",
+                NEQ: "!=",
+                MORE: ">",
+                LESS: "<",
+                LIKE: "like"
+            };
+
+            const ops = {};
+            for (var k in NebulaClient.Operation) {
+                let value = NebulaClient.Operation[k];
+                ops[value] = om[k];
+            }
+
+            // TODO(cao): due to protobuf definition, we can't build nested group.
+            // Should update to support it, then we can turn this flag to true
+            // create a filter
+            filters = new Constraints(false, "filters", cols, ops, p.ff);
+
             // the URL needs to be executed
             execute();
         });
@@ -327,16 +302,34 @@ const execute = () => {
     q.setEnd(seconds(p.e));
 
     // the filter can be much more complex
-    // but now, it only take one filter
-    const fvalue = p.fv;
-    if (fvalue.length > 0) {
-        const p2 = new NebulaClient.Predicate();
-        p2.setColumn(p.ff);
-        p2.setOp(p.fo);
-        p2.setValueList(fvalue);
-        const filter = new NebulaClient.PredicateAnd();
-        filter.setExpressionList([p2]);
-        q.setFiltera(filter);
+    if (p.ff) {
+        // all rules under this group
+        const rules = p.ff.r;
+        if (rules && rules.length > 0) {
+            const predicates = [];
+            $.each(rules, (i, r) => {
+                const pred = new NebulaClient.Predicate();
+                if (r.v && r.v.length > 0) {
+                    pred.setColumn(r.c);
+                    pred.setOp(r.o);
+                    pred.setValueList(r.v);
+                    predicates.push(pred);
+                }
+            });
+
+
+            if (predicates.length > 0) {
+                if (p.ff.l === "AND") {
+                    const filter = new NebulaClient.PredicateAnd();
+                    filter.setExpressionList(predicates);
+                    q.setFiltera(filter);
+                } else if (p.ff.l === "OR") {
+                    const filter = new NebulaClient.PredicateOr();
+                    filter.setExpressionList(predicates);
+                    q.setFiltero(filter);
+                }
+            }
+        }
     }
 
     // set dimension

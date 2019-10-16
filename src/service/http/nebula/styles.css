@@ -1,5 +1,6 @@
 h1 {
     margin: 8pt;
+    text-align: center;
 }
 
 a {
@@ -35,6 +36,13 @@ div {
     display: table-cell;
     border-right: #888 1px dotted;
     padding: 4pt 8pt;
+}
+
+#dwrapper {
+    display: inline-block;
+    vertical-align: middle;
+    width: 200pt;
+    margin: 0 5pt;
 }
 
 .right {
@@ -154,6 +162,43 @@ tbody {
 .lbl {
     display: inline-block;
     width: 100pt;
+}
+
+/** styles for constraints */
+.crule .values {
+    display: inline-block;
+    vertical-align: middle;
+    width: 100pt;
+}
+
+.del {
+    color: red;
+}
+
+.cgroup input[type=radio] {
+    font: icon;
+}
+
+.cgroup select {
+    margin: 0;
+}
+
+.del,
+.addr,
+.addg {
+    padding: 0 8pt;
+    font: icon;
+    margin: 0 4pt;
+}
+
+.addr,
+.addg {
+    color: green;
+}
+
+.indent {
+    margin-left: 8pt;
+    border-left: 1px dotted;
 }
 
 /* selectize styles */

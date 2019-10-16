@@ -78,6 +78,8 @@ enum Operation {
   LIKE = 4;
 }
 
+// TODO(cao): reference Constraints.js for GROUP/RULE generation to build predicates tree
+// Current definition only supports one group basically. (nested groups)
 // NOTE - based on the code generation rule, we don't put plural term for repeated field
 // so the method will like add_value rather than add_values
 // Based on column type - the value will be converted from string always

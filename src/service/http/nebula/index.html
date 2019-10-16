@@ -25,11 +25,6 @@
                 <select id="display"></select>
                 <button id="btn">Soar</button>
             </div>
-            <div>
-                <label class="lbl">Visual:</label>
-                <label><input type="radio" id="vn" name="vis" value="n" checked>Nebula</label>
-                <label><input type="radio" id="vs" name="vis" value="s">Sand</label>
-            </div>
             <hr />
             <div>
                 <label class="lbl">Time Start:</label>
@@ -81,15 +76,15 @@
             <hr />
             <div>
                 <label class="lbl">Filters:</label>
-                <select id="fcolumns"></select>
-                <select id="fop"></select>
-                <div class="text">
-                    <select id="fvalue" multiple></select>
-                </div>
+                <div id="filters"></div>
             </div>
         </div>
         <div class="right">
-            <hr />
+            <div>
+                <label class="lbl">Visual:</label>
+                <label><input type="radio" id="vn" name="vis" value="n" checked>Nebula</label>
+                <label><input type="radio" id="vs" name="vis" value="s">Sand</label>
+            </div>
             <div id="qr" class="message"></div>
             <div id='show'>
             </div>
