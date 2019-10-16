@@ -21,6 +21,7 @@
 #include <sstream>
 
 #include "common/Errors.h"
+#include "meta/TableSpec.h"
 
 /**
  * Kafka topic wrapping topic metadata store.
@@ -61,9 +62,11 @@ class KafkaTopic {
 public:
   KafkaTopic(const std::string& brokers,
              const std::string& topic,
+             const nebula::meta::KafkaSerde& serde,
              size_t timeoutMs = 5000)
     : brokers_{ brokers },
       topic_{ topic },
+      serde_{ serde },
       timeoutMs_{ timeoutMs },
       conf_{ nullptr },
       tconf_{ nullptr } {
@@ -94,6 +97,7 @@ private:
 private:
   std::string brokers_;
   std::string topic_;
+  nebula::meta::KafkaSerde serde_;
   size_t timeoutMs_;
 
   std::unique_ptr<RdKafka::Conf> conf_;

@@ -425,7 +425,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
 
     // build serde
     auto serde = it->serde();
-    nebula::meta::Serde sd;
+    nebula::meta::KafkaSerde sd;
     sd.protocol = serde->protocol()->str();
     auto cmap = serde->column_map();
     for (auto itr = cmap->begin(); itr != cmap->end(); ++itr) {

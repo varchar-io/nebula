@@ -57,7 +57,6 @@ using nebula::storage::CsvReader;
 using nebula::storage::ParquetReader;
 using nebula::storage::kafka::KafkaReader;
 using nebula::storage::kafka::KafkaSegment;
-using nebula::storage::kafka::KafkaTopic;
 using nebula::surface::RowCursor;
 using nebula::surface::RowData;
 using nebula::type::LongType;

@@ -121,6 +121,7 @@ tables:
   #   backup: s3://nebula/n105/
   #   format: thrift
   #   serde:
+  #     retention: 90000
   #     protocol: binary
   #     cmap:
   #       # TODO(cao): this temporary hack to work around nested thrift definition

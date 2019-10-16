@@ -46,7 +46,7 @@ static void sigterm(int) {
 }
 
 static const auto BROKERS = "<brokers>";
-static const auto TOPIC = "topic";
+static const auto TOPIC = "<topic>";
 
 class ExampleEventCb : public RdKafka::EventCb {
 public:
@@ -318,7 +318,8 @@ TEST(KafkaTest, DISABLED_TestLibKafkaConsumer) {
 }
 
 TEST(KafkaTest, DISABLED_TestKafkaTopic) {
-  nebula::storage::kafka::KafkaTopic topic(BROKERS, TOPIC);
+  nebula::meta::KafkaSerde serde;
+  nebula::storage::kafka::KafkaTopic topic(BROKERS, TOPIC, serde);
 
   // 10 hours ago
   auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 10;
@@ -331,7 +332,10 @@ TEST(KafkaTest, DISABLED_TestKafkaTopic) {
 }
 
 TEST(KafkaTest, DISABLED_TestKafkaReader) {
-  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, TOPIC);
+  nebula::meta::KafkaSerde serde;
+  serde.protocol = "binary";
+  serde.cmap = { { "id", 1 }, { "referer", 3 }, { "country", 6 } };
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, TOPIC, serde);
 
   // 10 hours ago
   auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 10;
@@ -339,9 +343,6 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
   N_ENSURE(segments.size() > 0, "more than 0 segments");
   LOG(INFO) << "Generated " << segments.size() << " segments. Pick first one to read";
 
-  nebula::meta::Serde serde;
-  serde.protocol = "binary";
-  serde.cmap = { { "id", 1 }, { "referer", 3 }, { "country", 6 } };
   nebula::meta::ColumnProps cp;
   nebula::meta::TimeSpec ts;
   ts.type = nebula::meta::TimeType::CURRENT;
@@ -385,16 +386,7 @@ TEST(KafkaTest, TestKafkaSegmentSerde) {
 }
 
 TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
-  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(
-    "<brokers>", "<topic>");
-
-  // 10 hours ago
-  auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 2;
-  auto segments = topic->segmentsByTimestamp(tenHr * 1000, 5000);
-  N_ENSURE(segments.size() > 0, "more than 0 segments");
-  LOG(INFO) << "Generated " << segments.size() << " segments. Pick first one to read";
-
-  nebula::meta::Serde serde;
+  nebula::meta::KafkaSerde serde;
   serde.protocol = "binary";
   serde.cmap = { { "_time_", 1 },
                  { "userId", 3001 },
@@ -402,6 +394,15 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
                  { "statusCode", 4002 },
                  { "count", 4001 },
                  { "error", 4003 } };
+
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<brokers>", "<topic>", serde);
+
+  // 10 hours ago
+  auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 2;
+  auto segments = topic->segmentsByTimestamp(tenHr * 1000, 5000);
+  N_ENSURE(segments.size() > 0, "more than 0 segments");
+  LOG(INFO) << "Generated " << segments.size() << " segments. Pick first one to read";
+
   nebula::meta::ColumnProps cp;
   nebula::meta::TimeSpec ts;
   ts.type = nebula::meta::TimeType::CURRENT;
@@ -439,6 +440,19 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   }
 
 #undef NULL_OR_VALUE
+}
+
+TEST(KafkaTest, TestFetchConfig) {
+  nebula::meta::KafkaSerde serde;
+  serde.retention = 90000;
+  serde.size = 60000;
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<broker>>", "<topic>", serde);
+
+  // 1 hours ago
+  auto oneHr = nebula::common::Evidence::unix_timestamp() - 3600 * 1;
+  auto segments = topic->segmentsByTimestamp(oneHr * 1000, 5000);
+  N_ENSURE(segments.size() > 0, "more than 0 segments");
+  LOG(INFO) << "Generated " << segments.size() << " segments. Pick first one to read";
 }
 
 } // namespace test

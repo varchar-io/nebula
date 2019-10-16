@@ -30,7 +30,7 @@ namespace test {
 TEST(IngestTest, TestIngestSpec) {
   nebula::meta::TimeSpec ts;
   nebula::meta::ColumnProps cp;
-  nebula::meta::Serde sd;
+  nebula::meta::KafkaSerde sd;
   auto table = std::make_shared<nebula::meta::TableSpec>(
     "test", 1000, 10, "s3", nebula::meta::DataSource::S3,
     "swap", "s3://test", "s3://bak", "csv", sd, cp, ts);

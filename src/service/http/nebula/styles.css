@@ -12,10 +12,6 @@ h1 a {
     text-decoration: none;
 }
 
-div {
-    font-size: 1.1em;
-}
-
 .message {
     color: red;
 }
@@ -41,7 +37,7 @@ div {
 #dwrapper {
     display: inline-block;
     vertical-align: middle;
-    width: 200pt;
+    width: 220pt;
     margin: 0 5pt;
 }
 
@@ -76,12 +72,12 @@ hr {
     font-size: 1em;
     margin: 5pt;
     background: azure;
-    height: 2em;
 }
 
 select {
     font-size: 0.8em;
     margin: 0 5pt;
+    height: 2em;
 }
 
 input {
@@ -154,21 +150,25 @@ tbody {
 
 .calendar {
     display: inline-block;
-    width: 20pt;
-    height: 20pt;
+    width: 15pt;
+    height: 15pt;
     vertical-align: middle;
 }
 
 .lbl {
     display: inline-block;
-    width: 100pt;
+    width: 80pt;
 }
 
 /** styles for constraints */
+.crule .cols {
+    width: 70pt;
+}
+
 .crule .values {
     display: inline-block;
     vertical-align: middle;
-    width: 100pt;
+    width: 130pt;
 }
 
 .del {
@@ -295,7 +295,7 @@ tbody {
 
 .selectize-input {
     border: 1px solid #d0d0d0;
-    padding: 8px 8px;
+    padding: 4px;
     display: inline-block;
     width: 100%;
     overflow: hidden;

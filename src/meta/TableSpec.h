@@ -66,7 +66,13 @@ struct TimeSpec {
 };
 
 // serde info for some data format, such as thrift
-struct Serde {
+struct KafkaSerde {
+  // kafka topic retention of seconds
+  uint64_t retention = 0;
+
+  // size of each ingestion batch
+  uint64_t size = 0;
+
   // protocol - thrift has binary, or compact protocol
   // json may have bson variant
   std::string protocol;
@@ -96,7 +102,7 @@ struct TableSpec {
   // data format
   std::string format;
   // Serde of the data
-  Serde serde;
+  KafkaSerde serde;
   // column properties
   ColumnProps columnProps;
   // time spec to generate time value
@@ -104,7 +110,7 @@ struct TableSpec {
 
   TableSpec(std::string n, size_t mm, size_t mh, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak,
-            std::string f, Serde sd, ColumnProps cp, TimeSpec ts)
+            std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts)
     : name{ std::move(n) },
       max_mb{ mm },
       max_hr{ mh },

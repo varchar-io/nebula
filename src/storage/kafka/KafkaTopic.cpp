@@ -104,6 +104,11 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
   // delete metadata object and return
   delete metadata;
 
+  // overwrite width if this topic specified size
+  if (serde_.size > 0) {
+    width = serde_.size;
+  }
+
   for (auto part : pids) {
     // create partition pointing to a specific time stamp
     auto p = std::unique_ptr<RdKafka::TopicPartition>(
@@ -134,22 +139,19 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
 
     // if the broker doesn't support offsetsForTimes, we have to assuming
     if (startOffset == -1) {
-      // p->set_offset(lowOffset);
-      // auto msg = std::unique_ptr<RdKafka::Message>(consumer->consume(timeoutMs_));
-      // auto lowTimems = (size_t)msg->timestamp().timestamp;
-
-      // // [low....start....high]
-      // auto sizeRange = highOffset - lowOffset;
-      // auto timeRange = nebula::common::Evidence::unix_timestamp() * 1000 - lowTimems;
-      // startOffset = (timeMs - lowTimems) * sizeRange / timeRange + lowOffset;
-      // LOG(INFO) << "Time range=" << timeRange
-      //           << ", size range=" << sizeRange
-      //           << ", low offset=" << lowOffset
-      //           << ", high offset=" << highOffset
-      //           << ", low timems=" << lowTimems
-      //           << ", payload=" << msg->len()
-      //           << ", calculated offset=" << startOffset;
+      // try to use serde retention in seconds
+      // to estimate the range of offsets.
       startOffset = lowOffset;
+      if (serde_.retention > 0) {
+        auto retentionMs = serde_.retention * 1000.0;
+        auto timeRange = (nebula::common::Evidence::unix_timestamp() * 1000 - timeMs);
+        startOffset = highOffset - (timeRange / retentionMs) * (highOffset - lowOffset);
+        LOG(INFO) << "Estimate start offset by retention: " << serde_.retention
+                  << ", start=" << startOffset
+                  << ", low=" << lowOffset
+                  << ", high=" << highOffset
+                  << ", timems=" << timeRange;
+      }
     }
 
     // we use this range [startOffset, highOffset] to pick the latest range [start, end)

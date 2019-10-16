@@ -158,7 +158,7 @@ void genKafkaSpec(const std::string& version,
   // visit each partition of the topic and figure out range for each spec
   // stream is different as static file, to make it reproducible, we need
   // a stable spec generation based on offsets, every N (eg. 10K) records per spec
-  KafkaTopic topic(table->location, table->name, FLAGS_KAFKA_TIMEOUT_MS);
+  KafkaTopic topic(table->location, table->name, table->serde, FLAGS_KAFKA_TIMEOUT_MS);
 
   // set start time
   const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * HOUR_SECONDS);

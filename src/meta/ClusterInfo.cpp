@@ -121,10 +121,20 @@ std::unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
   return props;
 }
 
-Serde asSerde(const YAML::Node& node) {
-  Serde serde;
+KafkaSerde asSerde(const YAML::Node& node) {
+  KafkaSerde serde;
   if (node) {
     serde.protocol = node["protocol"].as<std::string>();
+    auto retention = node["retention"];
+    if (retention) {
+      serde.retention = retention.as<uint64_t>();
+    }
+
+    auto size = node["size"];
+    if (size) {
+      serde.size = size.as<uint64_t>();
+    }
+
     auto maps = node["cmap"];
     if (maps) {
       for (YAML::const_iterator it = maps.begin(); it != maps.end(); ++it) {
