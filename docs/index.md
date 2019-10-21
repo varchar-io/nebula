@@ -98,6 +98,9 @@ This raw draw shows the flow of query execution
   - Please refer related posts (future links) about the details of Nebula compute style for best speed.
 
 ### UDF
+
+Nebula supports two types of UDFs.
+
 - Built-in UDFs: universal common UDFs are supported natively, these includes but not limited to
   - Basic Aggregations: COUNT, SUM, AVG
   - Top: Min, Max
@@ -108,6 +111,8 @@ This raw draw shows the flow of query execution
   - V8 engine integration.
   - Generic row orientied interface to produce new columns.
   - User can edit these type of UDF as part of thier interactive queries.
+
+
   ```js
     const my_udf = (row) => {
       // extract values
@@ -186,7 +191,97 @@ Here is a list of encodings available for data.
 
 
 # Ingestion
-(Placeholder: Data Ingestion)
+
+Theoridically, any readable data with schema defined can be ingested by Nebula.
+And it is Nebula's goal to cover as many type of data sources as possible to make itself as real data gateway.
+
+However, Nebula curently focus on two different data sources
+1. Static Data (Hive Data)
+2. Realtime Data (Kafka Logs)
+
+To illustrate how to configure new data source in Nebula, here are some examples:
+
+```yaml
+  # single data source swapable when udpates
+  nebula.table1:
+    max-mb: 40000
+    max-hr: 0
+    schema: "ROW<signature:string, user_id:long, comments:string, created_at:string>"
+    data: s3
+    loader: Swap
+    source: s3://<bucket>/nebula/comments/
+    backup: s3://nebula/n101/
+    format: csv | parquet
+    columns:
+      user_id:
+        bloom_filter: true
+      pin_signature:
+        bloom_filter: true
+    time:
+      type: column
+      column: created_at
+      pattern: "%Y-%m-%d %H:%M:%S"
+
+  # rolling data source day by day
+  nebula.table2:
+    max-mb: 200000
+    max-hr: 48
+    schema: "ROW<id:long, user_id:long, link_domain:string, title:string, details:string, signature:string>"
+    data: s3
+    loader: Roll
+    source: s3://<bucket>/nebula/messages/cd=%7Bdate%7D
+    backup: s3://nebula/n103/
+    format: parquet
+    columns:
+      id:
+        bloom_filter: true
+      user_id:
+        bloom_filter: true
+      link_domain:
+        dict: true
+    time:
+      type: macro
+      pattern: date
+
+  # Kafka streams with maximum time to keep
+  k.<topic>:
+    max-mb: 200000
+    max-hr: 12
+    schema: "ROW<userId:long, type:short, statusCode:byte, objectCount:int>"
+    data: kafka
+    topic: <topic>
+    loader: Roll
+    source: <brokers>
+    backup: s3://nebula/n105/
+    format: thrift
+    serde:
+      retention: 90000
+      protocol: binary
+      cmap:
+        _time_: 1
+        userId: 3001
+        type: 3003
+        statusCode: 4002
+        objectCount: 4001
+    columns:
+      userId:
+        bloom_filter: true
+      statusCode:
+        default_value: 0
+      objectCount:
+        default_value: 0
+    time:
+      type: current
+```
+
+In Nebula, Ingestion system can run in separate mode which is responsible to deliver data into backup space specified by each table.
+Nebula query system will sync data through metadata system.
+
+Another mode supported by Nebula is mixed ingestion and query system in the same deployment.
+Howeer, in this case, ingestion tasks share the same compute resources with query system, hence they are in lower priority than query workload.
+
+The latter option is usually used for small use cases who don't want multiple cluster setup.
+Ingestion system has its own challenges independently from query system. Please refer related posts (future links) to look deeper in this space.
 
 # Cluster Management
 (Placehodler: ETCD/ZOOKEEPER/NATIVE)
