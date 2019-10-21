@@ -30,9 +30,28 @@ To fit Nebula into the most common big data system, it could be partially illust
 > It operates as plugin model with a common interface. 
 
 ### Column Level Access Control
+
+Nebula data gateway requires user principal or access token to query Nebula service interface. The engine itself connects with customized authorization engine to retrieve access rules to decide reactions (pass, reject, masking, repalcement) on given actions (read/write on columns). 
+
+This provides a unified way to control data access in a fine-grained granularity.
+
 ### Data Anonymization
+
+Reacting to retention policy of specific data, organizaitons which conduct online business are usually required to manage data properly so that they are following users' intention of how their data could be used. Anonymization is one approach to remove specific information but leaving statistical data for ML or analytics purpose.
+
 ### Data Masking
+
+Lots of times, depending on access rules, not like anonymizaiton on data in storage itself, we want to replace hide or replace values of a specific column, we adopt masking techniques to fully or partially return data in acceptable format without change storage, some examples:
+
+| Example Column | Return Values  |
+|:--------------|:----------------|
+| email         | xxx@gmail.com |
+| phone         | 206-556-****  |
+| password      | NULL          |
+
 ### Data Encryption
+Data encryption is one option to allow people to access data with access key. 
+This could be widely used by situations where rules engine is missing configured but allow anybody who has specific access token to access some columns.
 
 ## Query System
 At the topmost layer, Nebula provide a SQL like DSL API for client to build up queries.
@@ -57,21 +76,72 @@ const auto query = table(tbl, ms)
 ```
 
 ### Query Execution
-(Placeholder)
+
+As we see how data is organized in nebula, we can quickly understand how query is executed, Nebula is a block-based data management system. 
+Hence a block is not only the smallest chunk of data, it is also the smallest unit in compute parallism. 
+
 - Execution Model
+  - Fan-out execution to nodes according to planning on metadata. 
+  - Partial aggregation at node level
+  - Global aggregation at query level
+
+This raw draw shows the flow of query execution
+![Query Execution Flow](query.png)
+
 - CPU cache friendly memory management
+  - Please refer related posts (future links) about the Nebula memory managment for its advantage on speed-up query.
+
+
 - Vectorization and SIMD
+  - Nebula embraces fully vectorization computing and SIMD instructions.
+  - This is benefiting from its flexible memory format from ROW orientation to pure columnar orientation.
+  - Please refer related posts (future links) about the details of Nebula compute style for best speed.
 
 ### UDF
-- built-in UDFs
-- user-provded Javascript based UDF
-  - V8 engine integration
+- Built-in UDFs: universal common UDFs are supported natively, these includes but not limited to
+  - Basic Aggregations: COUNT, SUM, AVG
+  - Top: Min, Max
+  - Percentiles: Px (P25, P50, P90, P99, etc.)
+  - Cardinality: NDV (dictinct values), 
+  - Others. (Please refer future Nebula Doc for details)
+- User-provded Javascript Based UDF
+  - V8 engine integration.
+  - Generic row orientied interface to produce new columns.
+  - User can edit these type of UDF as part of thier interactive queries.
+  ```js
+    const my_udf = (row) => {
+      // extract values
+      let yValue = row.getString("column_y");
+      if(yValue == "abc"){
+        yValue = "NN";
+      }else if(yValue == "xyz"){
+        yValue = "NNNN";
+      }
+
+      // produce new columns
+      return {
+        "ncolumn_1": row.getInt("column_x") * 20,
+        "ncolumn_2": yValue
+      };
+    };
+
+  ```
 
 
 ### Visualization
+Nebula provides its own UI besides its API to provide tools for users to explore and visualize the data for meanings.
+In addition to the native visualizaiton methods such as 
+- Timeline
+- Table
+- Common charts like Bar, Pie, Line
+
+Nebual also allows plugging different visualization engine to visualize query results, one outstanding example is Sanddance open sourced by Microsoft.
 
 ### JOIN  
-(future plan)
+
+> Nebula doesn't support common JOIN as it is designed as storage layer rather than a generic compute engine.
+> However, some special super fast JOIN nebula considers to support in the future, such as Partitioned Hash Join.
+> (We will update this section when related work is initialized.)
 
 ## Streaming Interface
 Nebula supports streaming data over gRPC/HTTP2 stack of given query in below format
@@ -90,6 +160,14 @@ Non-leaf nodes represents compound types such as struct, list and map.
 This type system is compatible with hadoop supported data schemas.
 ![Nebula Type Tree](type.png)
 ![Nebula Block Memory Layout Example](mem.png)
+
+### Schema Evolution & Backward Compability
+Nebula supports compatible schema evolution. This is achieved by two design options
+- Every block has its own schema. When a block generated, it will produce a schema based on data and table schema definiton.
+- Table schema evolution: a table schema can change time by time, however any changes/updates needs to backward compatible. These changes are legal
+  - Appending new columns
+  - Update columns with compatible types (e.g narrow numbers -> wide numbers, floats -> doubles)
+- Query system will do best effort to match query schema with block schema, if no compatible data found, NULLs (or default values) will likely be replacement.
 
 
 ## Metadata System
