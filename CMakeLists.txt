@@ -293,19 +293,6 @@ add_executable(MainTest src/main.cpp)
 # install it into local bin folder
 install(TARGETS MainTest DESTINATION bin)
 
-# include google test module and build tests executable
-enable_testing()
-add_executable(tests test/usegtest.cpp)
-target_link_libraries(tests 
-    ${FOLLY_LIBRARY}
-    ${GTEST_LIBRARY} 
-    ${GMOCK_LIBRARY} 
-    ${GTEST_MAIN_LIBRARY})
-
-# so that "make test" will execute all tests 
-include(GoogleTest)
-gtest_discover_tests(tests TEST_LIST ALL)
-
 # a command to install clang-format - not related to build
 # execute_process(COMMAND npm install clang-format)
 

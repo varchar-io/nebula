@@ -21,7 +21,9 @@ let newdata = false;
 // two calendar instances
 let fpcs, fpce;
 
-const serviceAddr = "{SERVER-ADDRESS}";
+// TODO(cao): this has assumption web server living together with nebula server/envoy
+// before we replace "{SERVER-ADDRESS}" in build phase, not good for docker image repo
+const serviceAddr = `${window.location.protocol}//${window.location.hostname}:8080`;
 const v1Client = new NebulaClient.V1Client(serviceAddr);
 
 // filters

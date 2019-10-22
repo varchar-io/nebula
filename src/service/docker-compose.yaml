@@ -35,8 +35,6 @@ services:
     build:
       context: ./
       dockerfile: ./http/web.Dockerfile
-      args:
-        SERVER: http://dev-shawncao:8080
     image: nebula/web
     ports:
       - "8088:8088"

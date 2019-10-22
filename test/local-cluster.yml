@@ -1,0 +1,26 @@
+version: 1.0
+
+# server configs
+server:
+  anode: false
+
+# will be provided by enviroment
+nodes:
+  - node:
+      host: <ip-address>
+      port: 9199
+
+tables:
+  nebula.test:
+    max-mb: 10000
+    max-hr: 240
+    schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    data: custom
+    loader: NebulaTest
+    source: ""
+    backup: s3://nebula/n100/
+    format: none
+    time:
+      type: static
+      # get it from linux by "date +%s"
+      value: 1565994194

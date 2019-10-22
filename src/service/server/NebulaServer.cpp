@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <cstdlib>
 #include <fmt/format.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -208,6 +209,16 @@ class EchoServiceImpl final : public Echo::Service {
 } // namespace service
 } // namespace nebula
 
+std::string LoadClusterConfig() {
+  // NCONF is one enviroment variable to overwrite cluster config in the runtime
+  if (const char* nConf = std::getenv("NCONF")) {
+    return nConf;
+  }
+
+  // reading it from gflags which is usually passed through docker build
+  return FLAGS_CLS_CONF;
+}
+
 // NOTE: main function can't be placed inside a namespace
 // Otherwise you may get undefined symbol "_main" error in link
 void RunServer() {
@@ -248,15 +259,18 @@ void RunServer() {
       auto fs = nebula::storage::makeFS("local");
 
       // load config into cluster info
-      auto fi = fs->info(FLAGS_CLS_CONF);
+      const auto conf = LoadClusterConfig();
+      auto fi = fs->info(conf);
       auto sign = fi.signature();
       if (sign != confSignature) {
+        LOG(INFO) << "Loading nebula cluster config: " << conf;
+
         // update the sign
         confSignature = sign;
 
         // load the new conf
         auto& ci = nebula::meta::ClusterInfo::singleton();
-        ci.load(FLAGS_CLS_CONF);
+        ci.load(conf);
 
         // TODO(cao) - how to support table schema/column props evolution?
         nebula::execution::meta::TableService::singleton()->enroll(ci);

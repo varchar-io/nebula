@@ -24,7 +24,7 @@ ENV NS_ADDR=${NS_ADDR}
 ARG SERVER
 
 # replace the server endpoint 
-RUN sed -i "s|{SERVER-ADDRESS}|${SERVER}|g" /etc/web/nebula/web.min.js
+# RUN sed -i "s|{SERVER-ADDRESS}|${SERVER}|g" /etc/web/nebula/web.min.js
 
 EXPOSE ${NODE_PORT}
 CMD ["node", "node.js"]

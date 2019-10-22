@@ -1,0 +1,30 @@
+version: '3'
+services:
+  node:
+    image: caoxhua/nebula.node
+    ports:
+      - "9199:9199"
+    cap_add:
+      - ALL
+  server:
+    image: caoxhua/nebula.server
+    ports:
+      - "9190:9190"
+    volumes: 
+      - ./local-cluster.yml:/etc/nebula/configs/local-cluster.yml
+    environment: 
+      - NCONF=/etc/nebula/configs/local-cluster.yml
+    links:
+      - node
+  envoy:
+    image: caoxhua/nebula.envoy
+    ports:
+      - "8080:8080"
+    links:
+      - server
+  web:
+    image: caoxhua/nebula.web
+    ports:
+      - "8088:8088"
+    links:
+      - envoy
