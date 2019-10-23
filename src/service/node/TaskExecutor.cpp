@@ -22,6 +22,7 @@
 #include "ingest/IngestSpec.h"
 
 DEFINE_uint32(TASK_QUEUE_SIZE, 5000, "task queue size for bounded queue");
+DEFINE_int32(TASK_PRIORITY, -1, "0 is medium priority");
 
 /**
  * Define node server that does the work as nebula server asks.
@@ -42,7 +43,7 @@ TaskExecutor& TaskExecutor::singleton() {
   return executor;
 }
 
-void TaskExecutor::process(std::function<void()> shutdown) {
+void TaskExecutor::process(std::function<void()> shutdown, folly::ThreadPoolExecutor& pool) {
   // process all items in sequence
   while (!queue_.isEmpty()) {
     Task* task = queue_.frontPtr();
@@ -61,11 +62,13 @@ void TaskExecutor::process(std::function<void()> shutdown) {
       }
     }
 
-    // process this task
-    bool result = process(*task);
-
-    // mark the task state based on processing result
-    state_[sign] = result ? TaskState::SUCCEEDED : TaskState::FAILED;
+    // process this task in async way
+    // if the task failed, the task state may stay as "PROCESSING" forever.
+    pool.addWithPriority(
+      [this, s = std::move(sign), t = *task]() {
+        setState(s, process(t) ? TaskState::SUCCEEDED : TaskState::FAILED);
+      },
+      FLAGS_TASK_PRIORITY);
 
     // remove this task from queue
     queue_.popFront();

@@ -16,7 +16,9 @@
 #pragma once
 
 #include <folly/ProducerConsumerQueue.h>
+#include <folly/executors/ThreadPoolExecutor.h>
 #include <unordered_set>
+
 #include "common/Task.h"
 
 /**
@@ -39,12 +41,17 @@ public:
   static TaskExecutor& singleton();
 
 public:
-  void process(std::function<void()>);
+  void process(std::function<void()>, folly::ThreadPoolExecutor&);
 
   nebula::common::TaskState enqueue(const nebula::common::Task&);
 
 private:
   bool process(const nebula::common::Task&);
+
+  inline void setState(const std::string& sign, nebula::common::TaskState state) noexcept {
+    std::lock_guard<std::mutex> guard(stateLock_);
+    state_[sign] = state;
+  }
 
 private:
   // TODO(cao): this is a quick shortcut implementation

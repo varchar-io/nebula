@@ -223,10 +223,11 @@ void RunServer() {
     // shut down server
     server->Shutdown();
   };
+
   taskScheduler.setInterval(
     1000,
-    [shutdownHandler] {
-      nebula::service::node::TaskExecutor::singleton().process(shutdownHandler);
+    [shutdownHandler, &priorityPool = node.pool()] {
+      nebula::service::node::TaskExecutor::singleton().process(shutdownHandler, priorityPool);
     });
 
   // NOTE that, this is blocking main thread to wait for server down

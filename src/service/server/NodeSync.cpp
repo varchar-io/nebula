@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 
+#include "common/Evidence.h"
 #include "execution/BlockManager.h"
 #include "ingest/BlockExpire.h"
 #include "meta/ClusterInfo.h"
@@ -33,6 +34,7 @@ namespace nebula {
 namespace service {
 namespace server {
 
+using nebula::common::Evidence;
 using nebula::common::Signable;
 using nebula::common::Task;
 using nebula::common::TaskState;
@@ -43,22 +45,31 @@ using nebula::ingest::BlockExpire;
 using nebula::ingest::SpecRepo;
 using nebula::ingest::SpecState;
 using nebula::meta::ClusterInfo;
+using nebula::meta::NNode;
 
 void NodeSync::sync(
   folly::ThreadPoolExecutor& pool,
-  const SpecRepo& specRepo) noexcept {
+  SpecRepo& specRepo) noexcept {
+  const Evidence::Duration duration;
   auto connector = std::make_shared<node::RemoteNodeConnector>(nullptr);
   // TODO(cao) - here, we may have incurred too many communications between server and nodes.
   // we should batch all requests for each node and communicate once.
   // but assuming changes delta won't be large in small cluster, should be fast enough for now
   const auto& ci = ClusterInfo::singleton();
   const auto& bm = BlockManager::init();
+
+  // take data specs snapshot
+  specRepo.refresh(ci);
+
+  // do the spec assignment
   auto nodesTalked = 0;
 
-  for (const auto& node : ci.nodes()) {
+  std::vector<NNode> nodes;
+  for (auto& node : ci.nodes()) {
     if (node.isActive()) {
       // fetch node state in server
       auto client = connector->makeClient(node, pool);
+      client->state();
 
       // extracting all expired spec from existing blocks on this node
       // make a copy since it's possible to be removed.
@@ -66,11 +77,17 @@ void NodeSync::sync(
 
       // recording expired block ID for given node
       std::list<std::string> expired;
+      size_t memorySize = 0;
       for (auto itr = blocks.begin(); itr != blocks.end(); ++itr) {
         auto& sign = itr->signature();
-        if (specRepo.shouldExpire(sign.spec, itr->residence())) {
+        // assign existing spec, expire it if not assigned
+        if (!specRepo.assign(sign.spec, itr->residence())) {
           expired.push_back(sign.toString());
         }
+
+        // TODO(cao): use memory size rather than data raw size
+        // accumulate memory usage for this node
+        memorySize += itr->state().rawSize;
       }
 
       // sync expire task to node
@@ -82,13 +99,26 @@ void NodeSync::sync(
       }
 
       // call node state with expired spec list
-      client->state();
       nodesTalked++;
+
+      // push a node with a size
+      NNode n{ node };
+      n.size = memorySize;
+      nodes.push_back(std::move(n));
     }
   }
 
   // after state update
   bm->updateTableMetrics();
+
+  // assign unassigned specs
+  // assign each spec to a node if it needs to be processed
+  // TODO(cao) - build resource constaints here to reach a balance
+  // for now, we just spin new specs into nodes with lower memory size
+  std::sort(nodes.begin(), nodes.end(), [](auto& n1, auto& n2) {
+    return n1.size - n2.size;
+  });
+  specRepo.assign(nodes);
 
   // iterate over all specs, if it needs to be process, process it
   auto taskNotified = 0;
@@ -118,14 +148,14 @@ void NodeSync::sync(
   }
 
   if (taskNotified > 0) {
-    LOG(INFO) << fmt::format("Communicated tasks {0} to nodes {1}.", taskNotified, nodesTalked);
+    LOG(INFO) << "Communicated tasks=" << taskNotified
+              << " to nodes=" << nodesTalked
+              << " using ms=" << duration.elapsedMs();
   }
 }
 
 std::shared_ptr<folly::FunctionScheduler> NodeSync::async(
-  folly::ThreadPoolExecutor& pool,
-  const SpecRepo& specRepo,
-  size_t intervalMs) noexcept {
+  folly::ThreadPoolExecutor& pool, SpecRepo& specRepo, size_t intervalMs) noexcept {
 
   // schedule the function every 5 seconds
   auto fs = std::make_shared<folly::FunctionScheduler>();

@@ -277,18 +277,7 @@ void RunServer() {
       }
 
       {
-        // no matter if cluster config changes, regen specss
-        auto& ci = nebula::meta::ClusterInfo::singleton();
-
-        // refresh data specs
-        specRepo.refresh(ci);
-
-        // do the spec assignment
-        specRepo.assign(ci);
-      }
-
-      {
-        // after spec repo refreshed
+        // sync cluster state
         nebula::service::server::NodeSync::sync(pool, specRepo);
       }
     });

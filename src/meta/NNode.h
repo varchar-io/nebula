@@ -49,8 +49,23 @@ struct NNode {
   size_t port;
   NState state;
 
+  // data size on the node
+  size_t size;
+
   NNode(NRole r, std::string h, size_t p)
-    : role{ r }, server{ std::move(h) }, port{ p }, state{ NState::ACTIVE } {}
+    : role{ r }, server{ std::move(h) }, port{ p }, state{ NState::ACTIVE }, size{ 0 } {}
+
+  NNode(const NNode& n)
+    : role{ n.role }, server{ n.server }, port{ n.port }, state{ n.state }, size{ n.size } {}
+
+  NNode& operator=(const NNode& n) noexcept {
+    role = n.role;
+    server = n.server;
+    port = n.port;
+    state = n.state;
+    size = n.size;
+    return *this;
+  }
 
   inline std::string toString() const {
     return fmt::format("{0}:{1}", server, port);

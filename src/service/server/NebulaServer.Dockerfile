@@ -16,4 +16,4 @@ COPY ./gen/nebula/NebulaServer /etc/nebula/NebulaServer
 COPY ./gen/nebula/configs/cluster.yml /etc/nebula/configs/cluster.yml
 RUN chmod +x /etc/nebula/NebulaServer
 
-CMD ["/etc/nebula/NebulaServer", "--CLS_CONF", "/etc/nebula/configs/cluster.yml", "--CLS_CONF_UPDATE_INTERVAL", "30000"]
+CMD ["/etc/nebula/NebulaServer", "--CLS_CONF", "/etc/nebula/configs/cluster.yml", "--CLS_CONF_UPDATE_INTERVAL", "10000"]

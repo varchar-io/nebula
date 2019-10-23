@@ -50,7 +50,7 @@ constexpr auto HOUR_SECONDS = 3600;
 constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
 
 // generate a list of ingestion spec based on cluster info
-void SpecRepo::refresh(const ClusterInfo& ci) {
+void SpecRepo::refresh(const ClusterInfo& ci) noexcept {
   // we only support adding new spec to the repo
   // if a spec is already in repo, we skip it
   // for some use case such as data refresh, it will have the same signature
@@ -86,7 +86,7 @@ void genSpecPerFile(const TableSpecPtr& table,
                     const std::string& version,
                     const std::vector<FileInfo>& files,
                     std::vector<std::shared_ptr<IngestSpec>>& specs,
-                    size_t macroDate) {
+                    size_t macroDate) noexcept {
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
     if (!itr->isDir) {
       // generate a ingest spec from given file info
@@ -106,7 +106,7 @@ void genSpecPerFile(const TableSpecPtr& table,
 //  2. each file name will be used as identifier and timestamp will distinguish different data
 void genSpecs4Swap(const std::string& version,
                    const TableSpecPtr& table,
-                   std::vector<std::shared_ptr<IngestSpec>>& specs) {
+                   std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   if (table->source == DataSource::S3) {
     // parse location to get protocol, domain/bucket, path
     auto sourceInfo = nebula::storage::parse(table->location);
@@ -120,12 +120,12 @@ void genSpecs4Swap(const std::string& version,
     return;
   }
 
-  throw NException("only s3 supported for now");
+  LOG(WARNING) << "only s3 supported for now";
 }
 
 void genSpecs4Roll(const std::string& version,
                    const TableSpecPtr& table,
-                   std::vector<std::shared_ptr<IngestSpec>>& specs) {
+                   std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   if (table->source == DataSource::S3) {
     // parse location to get protocol, domain/bucket, path
     auto sourceInfo = nebula::storage::parse(table->location);
@@ -149,12 +149,12 @@ void genSpecs4Roll(const std::string& version,
     return;
   }
 
-  throw NException("only s3 supported for now");
+  LOG(WARNING) << "only s3 supported for now";
 }
 
 void genKafkaSpec(const std::string& version,
                   const TableSpecPtr& table,
-                  std::vector<std::shared_ptr<IngestSpec>>& specs) {
+                  std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   // visit each partition of the topic and figure out range for each spec
   // stream is different as static file, to make it reproducible, we need
   // a stable spec generation based on offsets, every N (eg. 10K) records per spec
@@ -174,7 +174,7 @@ void genKafkaSpec(const std::string& version,
 void SpecRepo::process(
   const std::string& version,
   const TableSpecPtr& table,
-  std::vector<std::shared_ptr<IngestSpec>>& specs) {
+  std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   // specialized loader handling - nebula test set identified by static time provided
   if (table->loader == "NebulaTest") {
     // single spec for nebula test loader
@@ -203,11 +203,11 @@ void SpecRepo::process(
     return;
   }
 
-  throw NException(fmt::format("Unsupported loader: {0} for table {1}",
-                               table->loader, table->toString()));
+  LOG(WARNING) << fmt::format("Unsupported loader: {0} for table {1}",
+                              table->loader, table->toString());
 }
 
-void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
+void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   // next version of all specs
   std::unordered_map<std::string, SpecPtr> next;
   next.reserve(specs.size());
@@ -241,7 +241,6 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
       // if the node is not active, we may remove the affinity to allow new assignment
       if (!node.isActive()) {
         specPtr->setAffinity(NNode::invalid());
-        N_ENSURE(!specPtr->assigned(), "spec should not be assigned");
       }
     }
 
@@ -257,18 +256,38 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) {
               << ", count=" << next.size();
 
     // let's swap with existing one
-    N_ENSURE_EQ(specs.size(), next.size(), "No duplicate specs allowed.");
+    if (specs.size() != next.size()) {
+      LOG(WARNING) << "No duplicate specs allowed.";
+    }
+
     std::swap(specs_, next);
   }
 }
 
-void SpecRepo::assign(const ClusterInfo& ci) {
-  // assign each spec to a node if it needs to be processed
-  // TODO(cao) - build resource constaints here to reach a balance
-  // for now, we just round robin to spin into each slot
-  const NNodeSet& ns = ci.nodes();
-  const std::vector<NNode> nodes(ns.begin(), ns.end());
+bool SpecRepo::assign(const std::string& spec, const nebula::meta::NNode& node) noexcept {
+  auto f = specs_.find(spec);
+  // not found
+  if (f == specs_.end()) {
+    return false;
+  }
 
+  // not in the same node
+  auto& sp = f->second;
+  if (!sp->assigned()) {
+    sp->setAffinity(node);
+    return true;
+  }
+
+  auto& assignment = sp->affinity();
+  if (!assignment.equals(node)) {
+    LOG(INFO) << "Spec [" << spec << "] moves from " << node.server << " to " << assignment.server;
+    return false;
+  }
+
+  return true;
+}
+
+void SpecRepo::assign(const std::vector<NNode>& nodes) noexcept {
   // we're looking for a stable assignmet, given the same set of nodes
   // this order is most likely having stable order
   // std::sort(nodes.begin(), nodes.end(), [](auto& n1, auto& n2) {
@@ -276,7 +295,11 @@ void SpecRepo::assign(const ClusterInfo& ci) {
   // });
   const auto size = nodes.size();
 
-  N_ENSURE_GT(size, 0, "No nodes to assign nebula spec");
+  if (size == 0) {
+    LOG(WARNING) << "No nodes to assign nebula specs.";
+    return;
+  }
+
   size_t idx = 0;
 
   // for each spec
@@ -299,7 +322,7 @@ void SpecRepo::assign(const ClusterInfo& ci) {
         idx = (idx + 1) % size;
         if (idx == startId) {
           LOG(ERROR) << "No active node found to assign spec.";
-          throw NException("No active nodes in nebula.");
+          return;
         }
       }
     }

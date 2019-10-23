@@ -47,42 +47,26 @@ public:
   virtual ~SpecRepo() = default;
 
   // refresh spec repo based on cluster configs
-  void refresh(const nebula::meta::ClusterInfo&);
+  void refresh(const nebula::meta::ClusterInfo&) noexcept;
 
   // this method can be sub-routine of refresh
-  void assign(const nebula::meta::ClusterInfo&);
+  void assign(const std::vector<nebula::meta::NNode>&) noexcept;
 
   // expose all current specs in repo
   inline const auto& specs() const {
     return specs_;
   }
 
-  // spec repo captures current snapshot of all specs
-  // check given spec ID is in current snapshot or not
-  inline bool shouldExpire(const std::string& spec, const nebula::meta::NNode& node) const {
-    auto f = specs_.find(spec);
-    // not found
-    if (f == specs_.end()) {
-      return true;
-    }
-
-    // not in the same node
-    auto& sp = f->second;
-    auto& assignment = sp->affinity();
-    if (!assignment.equals(node)) {
-      LOG(INFO) << "Spec [" << spec << "] moves from " << node.server << " to " << assignment.server;
-      return true;
-    }
-
-    return false;
-  }
+  // try to assign a node to a spec
+  // assign the spec for given node
+  bool assign(const std::string& spec, const nebula::meta::NNode& node) noexcept;
 
 private:
   // process a table spec and generate all specs into the given specs container
-  void process(const std::string&, const nebula::meta::TableSpecPtr&, std::vector<SpecPtr>&);
+  void process(const std::string&, const nebula::meta::TableSpecPtr&, std::vector<SpecPtr>&) noexcept;
 
   // update the snapshot of new spec list into spec repo
-  void update(const std::vector<SpecPtr>&);
+  void update(const std::vector<SpecPtr>&) noexcept;
 
 private:
   std::unordered_map<std::string, SpecPtr> specs_;
