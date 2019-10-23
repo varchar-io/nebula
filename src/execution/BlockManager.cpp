@@ -256,5 +256,34 @@ size_t BlockManager::removeSameSpec(const nebula::meta::BlockSignature& bs) {
   return count;
 }
 
+void BlockManager::updateTableMetrics() {
+  // remove existing states
+  TableStates states;
+  NodeSpecs specs;
+
+  // go through all blocks and do the aggregation again
+  for (auto i = blocks_.begin(); i != blocks_.end(); ++i) {
+    collectBlockMetrics(*i, states);
+  }
+
+  // go through all nodes's block set
+  for (auto n = remotes_.begin(); n != remotes_.end(); ++n) {
+    std::unordered_set<std::string> specSet;
+    const auto& bs = n->second;
+    for (auto i = bs.begin(); i != bs.end(); ++i) {
+      collectBlockMetrics(*i, states);
+      specSet.emplace(i->spec());
+    }
+
+    // set the spec set to the current node
+    specs.emplace(n->first, specSet);
+  }
+
+  // TODO(cao) - update table states_ for those entry changes, otherwise, keep it no change.
+  // do atomic swap?
+  std::swap(states, tableStates_);
+  std::swap(specs, specs_);
+}
+
 } // namespace execution
 } // namespace nebula

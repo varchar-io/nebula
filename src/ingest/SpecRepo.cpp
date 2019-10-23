@@ -271,13 +271,14 @@ bool SpecRepo::assign(const std::string& spec, const nebula::meta::NNode& node) 
     return false;
   }
 
-  // not in the same node
+  // reuse the same node for the same spec
   auto& sp = f->second;
   if (!sp->assigned()) {
     sp->setAffinity(node);
     return true;
   }
 
+  // not in the same node
   auto& assignment = sp->affinity();
   if (!assignment.equals(node)) {
     LOG(INFO) << "Spec [" << spec << "] moves from " << node.server << " to " << assignment.server;

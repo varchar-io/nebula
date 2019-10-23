@@ -48,13 +48,13 @@ RdKafka::KafkaConsumer* KafkaProvider::getConsumer(const std::string& brokers) {
   }
 
   // set up gzip
-  SET_KEY_VALUE_CHECK("compression.codec", "gzip")
+  SET_KEY_VALUE_CHECK("compression.codec", "snappy")
 
   // set brokers
   SET_KEY_VALUE_CHECK("metadata.broker.list", brokers)
 
   // set group id anyways even we don't use consumer group at all
-  SET_KEY_VALUE_CHECK("group.id", "consumer_per_thread_per_brokers");
+  SET_KEY_VALUE_CHECK("group.id", "nebula.kafka");
 
   // const auto INTEGER_MAX = std::to_string(std::numeric_limits<int32_t>::max());
   SET_KEY_VALUE_CHECK("max.poll.interval.ms", "86400000");

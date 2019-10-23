@@ -34,9 +34,22 @@ namespace aws {
 
 static constexpr auto S3_LIST_NO_LIMIT = std::numeric_limits<int>::max();
 
-std::vector<FileInfo> S3::list(const std::string& prefix) {
-  Aws::S3::S3Client client;
+// share the same client across threads
+const Aws::S3::S3Client& s3client() {
+  static Aws::SDKOptions options;
+  static std::atomic<bool> initialized = false;
+  if (!initialized) {
+    Aws::InitAPI(options);
+    initialized = true;
+  }
 
+  static Aws::Client::ClientConfiguration conf;
+  conf.maxConnections = std::thread::hardware_concurrency();
+  static const Aws::S3::S3Client S3C{ conf };
+  return S3C;
+}
+
+std::vector<FileInfo> S3::list(const std::string& prefix) {
   // token for continuation
   Aws::String token;
   std::vector<FileInfo> objects;
@@ -55,7 +68,7 @@ std::vector<FileInfo> S3::list(const std::string& prefix) {
     }
 
     // work on the outcome
-    auto outcome = client.ListObjectsV2(listReq);
+    auto outcome = s3client().ListObjectsV2(listReq);
     if (!outcome.IsSuccess()) {
       LOG(ERROR) << fmt::format("Error listing prefix {0}: {1}", prefix, outcome.GetError().GetMessage());
       return {};
@@ -89,13 +102,12 @@ std::vector<FileInfo> S3::list(const std::string& prefix) {
 }
 
 void S3::read(const std::string& prefix, const std::string& key) {
-  Aws::S3::S3Client client;
   Aws::S3::Model::GetObjectRequest objReq;
   objReq.SetBucket(this->bucket_);
   objReq.SetKey(key);
 
   // Get the object
-  auto outcome = client.GetObject(objReq);
+  auto outcome = s3client().GetObject(objReq);
   if (!outcome.IsSuccess()) {
     LOG(ERROR) << fmt::format("Error listing prefix {0}: {1}", prefix, outcome.GetError().GetMessage());
     return;
@@ -112,14 +124,15 @@ void S3::read(const std::string& prefix, const std::string& key) {
 }
 
 std::string S3::copy(const std::string& key) {
+  std::lock_guard<std::mutex> lock(s3s_);
+
   // Set up the request
-  Aws::S3::S3Client client;
   Aws::S3::Model::GetObjectRequest objReq;
   objReq.SetBucket(this->bucket_);
   objReq.SetKey(key);
 
   // Get the object
-  auto result = client.GetObject(objReq);
+  auto result = s3client().GetObject(objReq);
   if (result.IsSuccess()) {
     // Get an Aws::IOStream reference to the retrieved file
     auto& retrieved = result.GetResultWithOwnership().GetBody();

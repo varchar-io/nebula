@@ -47,6 +47,7 @@ using BlockSet = std::unordered_set<io::BatchBlock, Hash, Equal>;
 
 class BlockManager {
   using TableStates = std::unordered_map<std::string, std::tuple<size_t, size_t, size_t, size_t, size_t>>;
+  using NodeSpecs = std::unordered_map<nebula::meta::NNode, std::unordered_set<std::string>, nebula::meta::NodeHash, nebula::meta::NodeEqual>;
 
 public:
   BlockManager(BlockManager&) = delete;
@@ -109,30 +110,23 @@ public:
     return tables;
   }
 
-  void updateTableMetrics() {
-    // remove existing states
-    TableStates states;
-
-    // go through all blocks and do the aggregation again
-    for (auto i = blocks_.begin(); i != blocks_.end(); ++i) {
-      collectBlockMetrics(*i, states);
-    }
-
-    // go through all nodes's block set
-    for (auto n = remotes_.begin(); n != remotes_.end(); ++n) {
-      const auto& bs = n->second;
-      for (auto i = bs.begin(); i != bs.end(); ++i) {
-        collectBlockMetrics(*i, states);
-      }
-    }
-
-    // TODO(cao) - update table states_ for those entry changes, otherwise, keep it no change.
-    // do atomic swap?
-    std::swap(states, tableStates_);
-  }
+  // update table metrics
+  void updateTableMetrics();
 
   // remove blocks that share the spec of given block signature
   size_t removeSameSpec(const nebula::meta::BlockSignature&);
+
+  // has spec in node
+  bool hasSpec(const nebula::meta::NNode& node, const std::string& spec) {
+    auto entry = specs_.find(node);
+    if (entry != specs_.end()) {
+      auto& set = entry->second;
+      auto item = set.find(spec);
+      return item != set.end();
+    }
+
+    return false;
+  }
 
 private:
   // table: <block count, row count, raw size, min time, max time>
@@ -143,6 +137,9 @@ private:
 
   // meta data for remote blocks
   std::unordered_map<nebula::meta::NNode, BlockSet, nebula::meta::NodeHash, nebula::meta::NodeEqual> remotes_;
+
+  // node to spec set (by spec signature) mapping, updated by udpate table metrics
+  NodeSpecs specs_;
 
 private:
   static std::mutex smux;

@@ -17,6 +17,8 @@
 #pragma once
 
 #include <aws/core/Aws.h>
+#include <mutex>
+
 #include "common/Errors.h"
 #include "storage/NFileSystem.h"
 
@@ -28,13 +30,8 @@ namespace storage {
 namespace aws {
 class S3 : public NFileSystem {
 public:
-  S3(const std::string& bucket) : bucket_{ bucket } {
-    options_.loggingOptions.logLevel = Aws::Utils::Logging::LogLevel::Info;
-    Aws::InitAPI(options_);
-  }
-  virtual ~S3() {
-    Aws::ShutdownAPI(options_);
-  }
+  S3(const std::string& bucket) : bucket_{ bucket } {}
+  virtual ~S3() = default;
 
 public:
   // list prefix or objects under the given prefix
@@ -61,8 +58,11 @@ public:
   virtual std::string copy(const std::string&) override;
 
 private:
-  Aws::SDKOptions options_;
   std::string bucket_;
+
+  // TODO(cao): client configuration retry?
+  // S3 will crash you if requests concurrently, likely rate limit is implemented.
+  std::mutex s3s_;
 };
 } // namespace aws
 } // namespace storage

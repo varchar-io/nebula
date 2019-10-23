@@ -64,8 +64,10 @@ void NodeSync::sync(
   // do the spec assignment
   auto nodesTalked = 0;
 
+  const auto& clusterNodes = ci.nodes();
   std::vector<NNode> nodes;
-  for (auto& node : ci.nodes()) {
+  nodes.reserve(clusterNodes.size());
+  for (const auto& node : clusterNodes) {
     if (node.isActive()) {
       // fetch node state in server
       auto client = connector->makeClient(node, pool);
@@ -116,7 +118,7 @@ void NodeSync::sync(
   // TODO(cao) - build resource constaints here to reach a balance
   // for now, we just spin new specs into nodes with lower memory size
   std::sort(nodes.begin(), nodes.end(), [](auto& n1, auto& n2) {
-    return n1.size - n2.size;
+    return n1.size < n2.size;
   });
   specRepo.assign(nodes);
 
@@ -124,25 +126,33 @@ void NodeSync::sync(
   auto taskNotified = 0;
   for (auto& spec : specRepo.specs()) {
     auto& sp = spec.second;
-    if (sp->assigned() && sp->needSync()) {
-      taskNotified++;
-
-      // connect the node to sync the task over
-      auto client = connector->makeClient(sp->affinity(), pool);
-
-      // build a task out of this spec
-      Task t(TaskType::INGESTION, std::static_pointer_cast<Signable>(sp));
-      TaskState state = client->task(t);
-
-      // udpate spec state so that it won't be resent
-      if (state == TaskState::SUCCEEDED) {
-        sp->setState(SpecState::READY);
+    if (sp->assigned()) {
+      // TODO(cao): handle node reset event. SpecRepo needs to reset spec state if a node reset
+      // if assigned to a node, but the node doesn't have the spec, we reset the spec state to
+      if (!bm->hasSpec(sp->affinity(), sp->signature())) {
+        sp->setState(SpecState::RENEW);
       }
-      // TODO(cao) - what about if this task is failed?
-      // we can remove its assigned node and wait it to be reassin to different node for retry
-      // but what if it keeps failing? we need counter for it
-      else if (state == TaskState::FAILED || state == TaskState::QUEUE) {
-        LOG(WARNING) << "Task " << t.signature() << " state: " << (char)state;
+
+      if (sp->needSync()) {
+        taskNotified++;
+
+        // connect the node to sync the task over
+        auto client = connector->makeClient(sp->affinity(), pool);
+
+        // build a task out of this spec
+        Task t(TaskType::INGESTION, std::static_pointer_cast<Signable>(sp));
+        TaskState state = client->task(t);
+
+        // udpate spec state so that it won't be resent
+        if (state == TaskState::SUCCEEDED) {
+          sp->setState(SpecState::READY);
+        }
+        // TODO(cao) - what about if this task is failed?
+        // we can remove its assigned node and wait it to be reassin to different node for retry
+        // but what if it keeps failing? we need counter for it
+        else if (state == TaskState::FAILED || state == TaskState::QUEUE) {
+          LOG(WARNING) << "Task " << t.signature() << " state: " << (char)state;
+        }
       }
     }
   }

@@ -58,9 +58,21 @@ struct NNode {
   NNode(const NNode& n)
     : role{ n.role }, server{ n.server }, port{ n.port }, state{ n.state }, size{ n.size } {}
 
+  NNode(NNode&& n)
+    : role{ n.role }, server{ std::move(n.server) }, port{ n.port }, state{ n.state }, size{ n.size } {}
+
   NNode& operator=(const NNode& n) noexcept {
     role = n.role;
     server = n.server;
+    port = n.port;
+    state = n.state;
+    size = n.size;
+    return *this;
+  }
+
+  NNode& operator=(NNode&& n) noexcept {
+    role = n.role;
+    server = std::move(n.server);
     port = n.port;
     state = n.state;
     size = n.size;
