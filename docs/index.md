@@ -215,7 +215,7 @@ To illustrate how to configure new data source in Nebula, here are some examples
     columns:
       user_id:
         bloom_filter: true
-      pin_signature:
+      signature:
         bloom_filter: true
     time:
       type: column

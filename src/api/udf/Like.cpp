@@ -18,6 +18,9 @@
 
 /**
  * Define expressions used in the nebula DSL.
+ * Please use other UDF (special cases) for performance if possible: 
+ *  PREFIX
+ *  CONTAINS
  */
 namespace nebula {
 namespace api {
@@ -29,15 +32,13 @@ bool match(const char* sp, const size_t ss, size_t si,
     char ch = *(pp + pi);
 
     // if not %, source has to match this
-    if (ch != '%') {
-      char sch = *(sp + si);
-      if (ch != sch) {
+    if (LIKELY(ch != '%')) {
+      if (ch != *(sp + si)) {
         return false;
       }
 
       // move both source and pattern
-      si++;
-      pi++;
+      ++si;
     } else {
       // if current is a matcher char. it can match anything in source
       size_t pos = si + 1;
@@ -48,12 +49,12 @@ bool match(const char* sp, const size_t ss, size_t si,
           return true;
         }
 
-        pos++;
+        ++pos;
       }
-
-      // none of above try find a match
-      return false;
     }
+
+    // if reaching here, so far we can match, even a % may not match anything.
+    ++pi;
   }
 
   // when pattern is all done, can't have remaining source for a match

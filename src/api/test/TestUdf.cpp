@@ -47,6 +47,12 @@ TEST(UDFTest, TestNot) {
 
 TEST(UDFTest, TestLike) {
   std::vector<std::tuple<std::string, std::string, bool>> data{
+    { "a", "a%", true },
+    { "a", "%a%", true },
+    { "a", "%a", true },
+    { "abc", "abc%", true },
+    { "abc", "%abc%", true },
+    { "abc", "%abc", true },
     { "abcdefg", "abc%", true },
     { "Shawn says hi", "%says%", true },
     { "long time no see", "%see", true },
@@ -54,7 +60,8 @@ TEST(UDFTest, TestLike) {
     { "nebula is awesome", "nebula%", true },
     { "hi there ", "%i th%", true },
     { "hi there ", "i th%", false },
-    { "hi there", "%there", true }
+    { "hi there", "%there", true },
+    { "easy dessert pizza recipe", "%recipe%", true }
   };
   nebula::surface::MockRowData row;
   nebula::execution::eval::EvalContext ctx;

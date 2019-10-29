@@ -9,7 +9,8 @@ SET(KAFKA_OPTS
   -DCMAKE_BUILD_TYPE=Release
   -DRDKAFKA_BUILD_STATIC=1
   -DENABLE_LZ4_EXT=OFF
-  -DWITH_SSL=OFF)
+  -DWITH_SSL=OFF
+  -DWITH_SASL=OFF)
 ExternalProject_Add(Kafka
   PREFIX kafka
   GIT_REPOSITORY https://github.com/edenhill/librdkafka.git

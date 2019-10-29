@@ -11,7 +11,7 @@ server:
 # will be provided by enviroment
 nodes:
   - node:
-      host: 10.1.179.237
+      host: <hostname / ip>
       port: 9199
 
 tables:

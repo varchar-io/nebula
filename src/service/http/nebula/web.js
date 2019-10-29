@@ -55,8 +55,8 @@ const initTable = (table, callback) => {
             const bc = reply.getBlockcount();
             const rc = Math.round(reply.getRowcount() / 10000) / 100;
             const ms = Math.round(reply.getMemsize() / 10000000) / 100;
-            const mints = reply.getMintime() * 1000 + 1;
-            const maxts = reply.getMaxtime() * 1000;
+            const mints = reply.getMintime() * 1000;
+            const maxts = reply.getMaxtime() * 1000 + 1;
 
             stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${formatTime(mints)}, Max T: ${formatTime(maxts)}]`);
 

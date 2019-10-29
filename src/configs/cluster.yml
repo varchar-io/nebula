@@ -11,7 +11,7 @@ server:
 # will be provided by enviroment
 nodes:
   - node:
-      host: 10.1.179.237
+      host: <hostname | ip>
       port: 9199
 
 tables:
@@ -31,80 +31,22 @@ tables:
       # get it from linux by "date +%s"
       value: 1565994194
 
-  # pin.comments:
-  #   max-mb: 40000
+  # <table name>:
+  #   max-mb: 10000
   #   max-hr: 0
-  #   schema: "ROW<pin_signature:string, user_id:long, comments:string, created_at:string>"
+  #   schema: "ROW<annotation:string, language:string>"
   #   data: s3
   #   loader: Swap
-  #   source: s3://<bucket>/nebula/pin_comments/
-  #   backup: s3://nebula/n101/
-  #   format: csv
-  #   columns:
-  #     user_id:
-  #       bloom_filter: true
-  #     pin_signature:
-  #       bloom_filter: true
-  #   time:
-  #     type: column
-  #     column: created_at
-  #     pattern: "%Y-%m-%d %H:%M:%S"
-
-  # pin.signatures:
-  #   max-mb: 40000
-  #   max-hr: 0
-  #   schema: "ROW<pin_signature:string, pin_id:long>"
-  #   data: s3
-  #   loader: Swap
-  #   source: s3://<bucket>/nebula/pin_signatures/
-  #   backup: s3://nebula/n102/
-  #   format: csv
-  #   columns:
-  #     pin_signature:
-  #       bloom_filter: true
-  #     pin_id:
-  #       bloom_filter: true
-  #   time:
-  #     type: current
-
-  # pin.pins:
-  #   max-mb: 200000
-  #   max-hr: 48
-  #   schema: "ROW<id:long, user_id:long, link_domain:string, title:string, details:string, image_signature:string>"
-  #   data: s3
-  #   loader: Roll
-  #   source: s3://<bucket>/nebula/pin_pins/cd=%7Bdate%7D
-  #   backup: s3://nebula/n103/
+  #   source: s3://bucket/path
+  #   backup: s3://nebula/n107/
   #   format: parquet
   #   columns:
-  #     id:
-  #       bloom_filter: true
-  #     user_id:
-  #       bloom_filter: true
-  #     link_domain:
-  #       dict: true
-  #   time:
-  #     type: macro
-  #     pattern: date
-
-  # s3.prefix:
-  #   max-mb: 200000
-  #   max-hr: 0
-  #   schema: "ROW<prefix:string, operation_type:string, requests:long, size:long>"
-  #   data: s3
-  #   loader: Swap
-  #   source: s3://<bucket>/nebula/s3_pfx/
-  #   backup: s3://nebula/n104/
-  #   format: parquet
-  #   columns:
-  #     prefix:
-  #       dict: true
-  #     operation_type:
+  #     language:
   #       dict: true
   #   time:
   #     type: static
   #     # date +%s --date='2019-09-10'
-  #     value: 1568073600
+  #     value: 1571875200
 
   ## all kafka table name will start with "k." followed by topic name
   ## to indicating its a kafka data source
