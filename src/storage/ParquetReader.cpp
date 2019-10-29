@@ -67,6 +67,8 @@ const RowData& ParquetReader::next() {
     // bool, int, long, float, double, string
     switch (info.kind) {
       TRANSFER_FROM_PARQUET(bool, BOOLEAN, BoolReader)
+      // a bit obsecure: use int32 reader and data type to read SMALL int
+      TRANSFER_FROM_PARQUET(int32_t, SMALLINT, Int32Reader)
       TRANSFER_FROM_PARQUET(int32_t, INTEGER, Int32Reader)
       TRANSFER_FROM_PARQUET(int64_t, BIGINT, Int64Reader)
       TRANSFER_FROM_PARQUET(float, REAL, FloatReader)

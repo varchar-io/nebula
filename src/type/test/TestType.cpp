@@ -368,6 +368,31 @@ TEST(ParameterPacksTest, SimpleExample) {
   EXPECT_EQ(v[2], 5);
 }
 
+TEST(TypeTest, TestConvertibility) {
+  auto v = nebula::type::TypeConvertible<Kind::INVALID, Kind::BOOLEAN>::convertible;
+  EXPECT_FALSE(v);
+  v = nebula::type::TypeConvertible<Kind::BOOLEAN, Kind::INTEGER>::convertible;
+  EXPECT_FALSE(v);
+  v = nebula::type::TypeConvertible<Kind::TINYINT, Kind::SMALLINT>::convertible;
+  EXPECT_TRUE(v);
+  v = nebula::type::TypeConvertible<Kind::TINYINT, Kind::TINYINT>::convertible;
+  EXPECT_TRUE(v);
+
+  // test convertible from
+  EXPECT_FALSE(nebula::type::ConvertibleFrom<Kind::TINYINT>::convertibleFrom(Kind::BOOLEAN));
+  EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::BIGINT>::convertibleFrom(Kind::SMALLINT));
+  EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::INTEGER>::convertibleFrom(Kind::SMALLINT));
+  EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::BIGINT>::convertibleFrom(Kind::BIGINT));
+  EXPECT_FALSE(nebula::type::ConvertibleFrom<Kind::VARCHAR>::convertibleFrom(Kind::BIGINT));
+  EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::VARCHAR>::convertibleFrom(Kind::VARCHAR));
+  EXPECT_FALSE(nebula::type::ConvertibleFrom<Kind::ARRAY>::convertibleFrom(Kind::VARCHAR));
+  EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::ARRAY>::convertibleFrom(Kind::ARRAY));
+  EXPECT_FALSE(nebula::type::ConvertibleFrom<Kind::MAP>::convertibleFrom(Kind::BIGINT));
+  EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::MAP>::convertibleFrom(Kind::MAP));
+  EXPECT_FALSE(nebula::type::ConvertibleFrom<Kind::STRUCT>::convertibleFrom(Kind::BOOLEAN));
+  EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::STRUCT>::convertibleFrom(Kind::STRUCT));
+}
+
 } // namespace test
 } // namespace type
 } // namespace nebula

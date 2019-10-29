@@ -328,6 +328,71 @@ public:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+// define if a type can be safely converted to another
+template <Kind from, Kind to>
+struct TypeConvertible {
+  static constexpr bool convertible = false;
+};
+
+#define DEFINE_TYPE_CONVERTIBILITY(FROM, TO, ANSWER) \
+  template <>                                        \
+  struct TypeConvertible<Kind::FROM, Kind::TO> {     \
+    static constexpr bool convertible = ANSWER;      \
+  };
+
+// define all traits for each KIND, we don't have examples for compound types here
+// since they requires runtime composition with child types
+DEFINE_TYPE_CONVERTIBILITY(TINYINT, SMALLINT, true)
+DEFINE_TYPE_CONVERTIBILITY(TINYINT, INTEGER, true)
+DEFINE_TYPE_CONVERTIBILITY(TINYINT, BIGINT, true)
+DEFINE_TYPE_CONVERTIBILITY(SMALLINT, INTEGER, true)
+DEFINE_TYPE_CONVERTIBILITY(SMALLINT, BIGINT, true)
+DEFINE_TYPE_CONVERTIBILITY(INTEGER, BIGINT, true)
+DEFINE_TYPE_CONVERTIBILITY(REAL, DOUBLE, true)
+
+// always legal to conert itself to itself
+DEFINE_TYPE_CONVERTIBILITY(BOOLEAN, BOOLEAN, true)
+DEFINE_TYPE_CONVERTIBILITY(TINYINT, TINYINT, true)
+DEFINE_TYPE_CONVERTIBILITY(SMALLINT, SMALLINT, true)
+DEFINE_TYPE_CONVERTIBILITY(INTEGER, INTEGER, true)
+DEFINE_TYPE_CONVERTIBILITY(BIGINT, BIGINT, true)
+DEFINE_TYPE_CONVERTIBILITY(REAL, REAL, true)
+DEFINE_TYPE_CONVERTIBILITY(DOUBLE, DOUBLE, true)
+DEFINE_TYPE_CONVERTIBILITY(VARCHAR, VARCHAR, true)
+DEFINE_TYPE_CONVERTIBILITY(ARRAY, ARRAY, true)
+DEFINE_TYPE_CONVERTIBILITY(MAP, MAP, true)
+DEFINE_TYPE_CONVERTIBILITY(STRUCT, STRUCT, true)
+
+#undef DEFINE_TYPE_CONVERTIBILITY
+
+#define DYNAMIC_CONVERTIBILITY_CHECK(FROM)               \
+  case Kind::FROM: {                                     \
+    return TypeConvertible<Kind::FROM, to>::convertible; \
+  }
+
+template <Kind to>
+struct ConvertibleFrom {
+  static bool convertibleFrom(Kind kind) {
+    switch (kind) {
+      DYNAMIC_CONVERTIBILITY_CHECK(BOOLEAN)
+      DYNAMIC_CONVERTIBILITY_CHECK(TINYINT)
+      DYNAMIC_CONVERTIBILITY_CHECK(SMALLINT)
+      DYNAMIC_CONVERTIBILITY_CHECK(INTEGER)
+      DYNAMIC_CONVERTIBILITY_CHECK(BIGINT)
+      DYNAMIC_CONVERTIBILITY_CHECK(REAL)
+      DYNAMIC_CONVERTIBILITY_CHECK(DOUBLE)
+      DYNAMIC_CONVERTIBILITY_CHECK(VARCHAR)
+      DYNAMIC_CONVERTIBILITY_CHECK(ARRAY)
+      DYNAMIC_CONVERTIBILITY_CHECK(MAP)
+      DYNAMIC_CONVERTIBILITY_CHECK(STRUCT)
+    default: return false;
+    }
+  }
+};
+
+#undef DYNAMIC_CONVERTIBILITY_CHECK
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename T>
 struct TypeDetect {};
 

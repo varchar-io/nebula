@@ -64,11 +64,14 @@ public:
     // set total rows as
     size_ = this->meta_->num_rows();
 
-#define PTYPE_CONV_CASE_VALIDATION(PT, NT)                                               \
-  case parquet::Type::type::PT: {                                                        \
-    this->columns_[cname] = { i, nebula::type::Kind::NT, nullptr };                      \
-    N_ENSURE(kind == nebula::type::Kind::NT, "unexpected desired type to read parquet"); \
-    break;                                                                               \
+#define PTYPE_CONV_CASE_VALIDATION(PT, NT)                                                               \
+  case parquet::Type::type::PT: {                                                                        \
+    this->columns_[cname] = { i, kind, nullptr };                                                        \
+    auto typeSafetyCheck = nebula::type::ConvertibleFrom<nebula::type::Kind::NT>::convertibleFrom(kind); \
+    if (!typeSafetyCheck) {                                                                              \
+      throw NException(fmt::format("Type mismatch from {0} to {1}.", kind, nebula::type::Kind::NT));     \
+    }                                                                                                    \
+    break;                                                                                               \
   }
 
     // TODO(cao) - note that, schema is a tree we need comprehensive conversion

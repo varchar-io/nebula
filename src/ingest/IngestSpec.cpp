@@ -312,10 +312,16 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   case TimeType::COLUMN: {
     const auto& ts = table_->timeSpec;
     // TODO(cao) - currently only support string column with time pattern
-    // we should be able to support other types such as column is number
-    timeFunc = [&ts](const RowData* r) {
-      return Evidence::time(r->readString(ts.colName), ts.pattern);
-    };
+    // and unix time stamp value as bigint if pattern is absent.
+    // ts.pattern is required: time string pattern or special value such as UNIXTIME
+    constexpr auto UNIX_TS = "UNIXTIME";
+    if (ts.pattern == UNIX_TS) {
+      timeFunc = [&ts](const RowData* r) { return r->readLong(ts.colName); };
+    } else {
+      timeFunc = [&ts](const RowData* r) {
+        return Evidence::time(r->readString(ts.colName), ts.pattern);
+      };
+    }
     break;
   }
   case TimeType::MACRO: {
