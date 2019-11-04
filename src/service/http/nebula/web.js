@@ -25,20 +25,12 @@ let fpcs, fpce;
 // before we replace "{SERVER-ADDRESS}" in build phase, not good for docker image repo
 const serviceAddr = `${window.location.protocol}//${window.location.hostname}:8080`;
 const v1Client = new NebulaClient.V1Client(serviceAddr);
+const timeCol = "_time_";
+const charts = new Charts();
+const formatTime = charts.formatTime;
 
 // filters
 let filters;
-
-const formatTime = (unix) => {
-    const date = new Date(unix);
-    const y = date.getFullYear();
-    // month is 0-based index
-    const m = date.getMonth() + 1;
-    const d = date.getDate();
-    const h = `${date.getHours()}`.padStart(2, 0);
-    const mi = `${date.getMinutes()}`.padStart(2, 0);
-    return `${y}-${m}-${d} ${h}:${mi}`;
-};
 
 const initTable = (table, callback) => {
     const req = new NebulaClient.TableStateRequest();
@@ -87,8 +79,8 @@ const initTable = (table, callback) => {
             });
 
             // populate dimension columns
-            const dimensions = reply.getDimensionList().filter((v) => v !== '_time_');
-            let metrics = reply.getMetricList().filter((v) => v !== '_time_');
+            const dimensions = reply.getDimensionList().filter((v) => v !== timeCol);
+            let metrics = reply.getMetricList().filter((v) => v !== timeCol);
             const all = dimensions.concat(metrics);
             let rollups = Object.keys(NebulaClient.Rollup);
 
@@ -335,7 +327,11 @@ const execute = () => {
     }
 
     // set dimension
-    q.setDimensionList(p.ds);
+    const dimensions = p.ds;
+    if (p.d == NebulaClient.DisplayType.SAMPLES) {
+        dimensions.unshift(timeCol);
+    }
+    q.setDimensionList(dimensions);
 
 
     // set query type and window
@@ -419,7 +415,6 @@ const execute = () => {
         result.html(`[query time: ${stats.getQuerytimems()} ms]`);
 
         const draw = () => {
-            const charts = new Charts();
             // enum value are number and switch/case are strong typed match
             const display = +$$('#display');
             const keys = extractXY(json, q);

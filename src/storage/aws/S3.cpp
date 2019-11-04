@@ -135,7 +135,15 @@ std::string S3::copy(const std::string& key) {
   auto result = s3client().GetObject(objReq);
   if (result.IsSuccess()) {
     // Get an Aws::IOStream reference to the retrieved file
-    auto& retrieved = result.GetResultWithOwnership().GetBody();
+    auto content = std::move(result.GetResultWithOwnership());
+
+    // the object has no data
+    if (content.GetContentLength() == 0) {
+      LOG(WARNING) << "Seen an empty file: " << key;
+      return {};
+    }
+
+    auto& retrieved = content.GetBody();
 
     // construct a tmp file name from std io lib
     // local file name tmeplate to copy data into
@@ -146,6 +154,12 @@ std::string S3::copy(const std::string& key) {
     // create an out stream and copy data from S3 stream to it
     std::ofstream output(tmpFile, std::ios::binary);
     output << retrieved.rdbuf();
+
+    // if nothing output - empty file
+    if (output.tellp() == 0) {
+      LOG(WARNING) << "Seen an empty file: " << key;
+      return {};
+    }
 
     // return a copy of file
     return tmpFile;

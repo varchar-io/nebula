@@ -10,6 +10,8 @@ const serviceAddr = process.env.NS_ADDR || "dev-shawncao:9190";
 const comments_table = "pin.comments";
 const pins_table = "pin.pins";
 const signatures_table = "pin.signatures";
+const advertisers_table = "advertisers";
+const advertisers_spend_table = "advertisers.spend";
 const client = NebulaClient.qc(serviceAddr);
 const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
 const error = (msg) => {
@@ -28,7 +30,29 @@ const error = (msg) => {
  * limit: 1000
  * res: http response
  */
-const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, res) => {
+class Handler {
+    constructor() {
+        this.response = null;
+        this.onError = (err) => {
+            this.response.write(error(`${err}`));
+            this.response.end();
+        };
+        this.onNull = () => {
+            this.response.write(error("Failed to get reply"));
+            this.response.end();
+        };
+        this.onSuccess = (data) => {
+            this.response.write(data);
+            this.response.end();
+        };
+        this.endWithMessage = (message) => {
+            this.response.write(error(message));
+            this.response.end();
+        }
+    }
+};
+
+const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, handler) => {
     const req = new NebulaClient.QueryRequest();
     req.setTable(table);
     req.setStart(seconds(start));
@@ -38,7 +62,7 @@ const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, res) 
     const p2 = new NebulaClient.Predicate();
     p2.setColumn(fc);
     p2.setOp(op);
-    p2.setValueList([fv]);
+    p2.setValueList(Array.isArray(fv) ? fv : [fv]);
     const filter = new NebulaClient.PredicateAnd();
     filter.setExpressionList([p2]);
     req.setFiltera(filter);
@@ -60,21 +84,20 @@ const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, res) 
     // do the query
     client.query(req, {}, (err, reply) => {
         if (err !== null) {
-            res.write(error(`${err}`));
-        } else if (reply == null) {
-            res.write(error("Failed to get reply"));
-        } else {
-            res.write(NebulaClient.bytes2utf8(reply.getData()));
+            return handler.onError(err);
         }
 
-        res.end();
+        if (reply == null) {
+            return handler.onNull();
+        }
+        return handler.onSuccess(NebulaClient.bytes2utf8(reply.getData()));
     });
 };
 
 /**
  * Count pins per domain given time range with filter 
  */
-const getPinsPerDomainWithKey = (q, res) => {
+const getPinsPerDomainWithKey = (q, handler) => {
     console.log(`querying pins for details like ${q.key}`);
     if (q.key) {
         // build metrics
@@ -90,102 +113,216 @@ const getPinsPerDomainWithKey = (q, res) => {
         query(pins_table, q.start, q.end, "details", "4", `%${q.key}%`,
             ["_time_", "link_domain"],
             [m], o,
-            q.limit || 10000, res);
+            q.limit || 10000, handler);
         return;
     }
 
-    res.write(error("Missing key."));
-    res.end();
+    handler.endWithMessage("Missing key");
 };
 
 /**
  * get all comments for given user id
  */
-const getCommentsByUserId = (q, res) => {
+const getCommentsByUserId = (q, handler) => {
     console.log(`querying comments for user_id=${q.user_id}`);
     if (q.user_id) {
         // search user Id
         query(comments_table, q.start, q.end, "user_id", "0", q.user_id,
             ["_time_", "pin_signature", "comments"],
             [], null,
-            q.limit || 100, res);
+            q.limit || 100, handler);
         return;
     }
 
-    res.write(error("Missing user_id."));
-    res.end();
+    handler.endWithMessage("Missing user_id.");
 };
 
 /**
  * get all comments for given pin id
  */
-const getCommentsByPinSignature = (q, res) => {
+const getCommentsByPinSignature = (q, handler) => {
     console.log(`querying comments for pin_signature=${q.pin_signature}`);
     if (q.pin_signature) {
         // search pin Id
         query(comments_table, q.start, q.end, "pin_signature", "0", q.pin_signature,
             ["_time_", "user_id", "comments"],
             [], null,
-            q.limit || 100, res);
+            q.limit || 100, handler);
         return;
     }
 
-    res.write(error("Missing pin_signature."));
-    res.end();
+    handler.endWithMessage("Missing pin_signature.");
 };
 
 /**
  * get all pins for given pin signature
  */
-const getPinsBySignature = (q, res) => {
+const getPinsBySignature = (q, handler) => {
     console.log(`querying comments for pin_signature=${q.pin_signature}`);
     if (q.pin_signature) {
         // search pin Id
         query(signatures_table, q.start, q.end, "pin_signature", "0", q.pin_signature,
             ["pin_id"],
             [], null,
-            q.limit || 100, res);
+            q.limit || 100, handler);
         return;
     }
 
-    res.write(error("Missing pin_signature."));
-    res.end();
+    handler.endWithMessage("Missing pin_signature.");
 };
 
 /**
  * get signature for given pin
  */
-const getSignatureByPin = (q, res) => {
+const getSignatureByPin = (q, handler) => {
     console.log(`querying comments for pin_id=${q.pin_id}`);
     if (q.pin_id) {
         // search pin Id
         query(signatures_table, q.start, q.end, "pin_id", "0", q.pin_id,
             ["pin_signature"],
             [], null,
-            q.limit || 100, res);
+            q.limit || 100, handler);
         return;
     }
 
-    res.write(error("Missing pin_id."));
-    res.end();
+    handler.endWithMessage("Missing pin_id.");
 };
 
 /**
  * get all comments for given pin id
  */
-const getCommentsByPattern = (q, res) => {
+const getCommentsByPattern = (q, handler) => {
     console.log(`querying comments for comments like ${q.pattern}`);
     if (q.pattern) {
         // search comments like
         query(comments_table, q.start, q.end, "comments", "4", q.pattern,
             ["_time_", "user_id", "pin_signature", "comments"],
             [], null,
-            q.limit || 100, res);
+            q.limit || 100, handler);
         return;
     }
 
-    res.write(error("Missing pattern."));
-    res.end();
+    handler.endWithMessage("Missing pattern.");
+};
+
+/**
+ * get all advertisers matching given key
+ */
+const getAdvertisersMatchingKey = (q, handler) => {
+    console.log(`querying advertisers for name like ${q.key}`);
+    if (q.key && q.key.length > 1) {
+        // search advertisers by keyword
+        query(advertisers_table, q.start, q.end, "name", "4", `%${q.key}%`,
+            ["id", "name", "active", "country"],
+            [], null,
+            q.limit || 1000, handler);
+        return;
+    }
+
+    handler.endWithMessage("Missing key.");
+};
+
+/**
+ * get spend of each advertiser
+ */
+const getAdvertisersSpend = (q, handler) => {
+    console.log(`querying advertisers spend`);
+    if (q.ids && q.ids.length > 0) {
+        // expect an JSON array
+        const idArray = JSON.parse(q.ids);
+        if (idArray && idArray.length > 0) {
+            // build metrics sum(spend)
+            const m = new NebulaClient.Metric();
+            m.setColumn("spend");
+            m.setMethod(0);
+
+            // order by sum(spend) desc
+            const o = new NebulaClient.Order();
+            o.setColumn("spend");
+            o.setType(1);
+
+            // search advertisers id list = > "id in [id1, id2, ...]"
+            query(advertisers_spend_table, q.start, q.end, "id", "0", `${idArray}`,
+                ["id"],
+                [m], o,
+                q.limit || 1000, handler);
+            return;
+        }
+    }
+
+    handler.endWithMessage("Missing id list.");
+};
+
+/**
+ * get advertisers with spend by given key
+ */
+const getAdvertisersWithSpendByKey = (q, handler) => {
+    console.log(`querying advertisers for name like ${q.key}`);
+    if (q.key && q.key.length > 1) {
+        const MAX_ITEMS = 1000;
+        // search advertisers by keyword
+        // set handler to do the second query
+        const tempHandler = new Handler();
+
+        // share the same resposne stream
+        tempHandler.response = handler.response;
+        tempHandler.onSuccess = (dataStr) => {
+            const data = JSON.parse(dataStr);
+            const idArray = data.map(e => e['id']);
+            // query all spend for this id list
+            // build metrics sum(spend)
+            const m = new NebulaClient.Metric();
+            m.setColumn("spend");
+            m.setMethod(0);
+
+            // order by sum(spend) desc
+            const o = new NebulaClient.Order();
+            o.setColumn("spend");
+            o.setType(1);
+
+            // search advertisers id list = > "id in [id1, id2, ...]"
+            const spendHandler = new Handler();
+            // share the same response handler
+            spendHandler.response = handler.response;
+            spendHandler.onSuccess = (spendStr) => {
+                const spend = JSON.parse(spendStr);
+                // set spend data to each data item if not 
+                // convert this spend array to key-value dictionary
+                const spendMap = {};
+                for (var i = 0; i < spend.length; ++i) {
+                    var item = spend[i];
+                    spendMap[item.id] = item['spend.sum'];
+                }
+
+                // for all data items, 
+                for (var i = 0; i < data.length; ++i) {
+                    var obj = data[i];
+                    if (obj.id in spendMap) {
+                        obj['spend'] = spendMap[obj.id];
+                    } else {
+                        // no spend, assign 0 to it.
+                        obj['spend'] = 0;
+                    }
+                }
+
+                // write data out like normal
+                handler.onSuccess(JSON.stringify(data));
+            };
+
+            query(advertisers_spend_table, q.start, q.end, "id", "0", idArray,
+                ["id"],
+                [m], o,
+                q.limit || MAX_ITEMS, spendHandler);
+        };
+
+        query(advertisers_table, q.start, q.end, "name", "4", `%${q.key}%`,
+            ["id", "name", "active", "country"],
+            [], null,
+            q.limit || MAX_ITEMS, tempHandler);
+        return;
+    }
+
+    handler.endWithMessage("Missing key.");
 };
 
 /**
@@ -201,7 +338,10 @@ const api_handlers = {
     "comments_by_pattern": getCommentsByPattern,
     "pins_by_signature": getPinsBySignature,
     "signature_of_pin": getSignatureByPin,
-    "keyed_pins_per_domain": getPinsPerDomainWithKey
+    "keyed_pins_per_domain": getPinsPerDomainWithKey,
+    "keyed_advertisers": getAdvertisersMatchingKey,
+    "advertisers_spend": getAdvertisersSpend,
+    "keyed_advertisers_with_spend": getAdvertisersWithSpendByKey
 };
 
 /**
@@ -256,8 +396,15 @@ http.createServer(async function (req, res) {
             if (!q.start || !q.end) {
                 res.write(error(`start and end dates required for every api: ${q.api}`));
             } else {
-                api_handlers[q.api](q, res);
-                return;
+                try {
+                    // build a handler 
+                    const handler = new Handler();
+                    handler.response = res;
+                    api_handlers[q.api](q, handler);
+                    return;
+                } catch (e) {
+                    res.write(error(`api ${q.api} handler exception: ${e}`));
+                }
             }
         } else {
             res.write(error(`API not found: ${q.api}`));

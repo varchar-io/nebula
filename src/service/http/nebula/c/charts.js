@@ -8,11 +8,25 @@ const ds = NebulaClient.d3.select;
 const color = (i) => d3.schemeCategory10[i % 10];
 const symbols = ["circle", "diamond", "square", "triangle-up", "triangle-down", "cross"];
 const symbol = (i) => d3.symbol().size(81).type(symbols[i % symbols.length]);
+const isTime = (c) => c === "_time_";
+const pad2 = (v) => `${v}`.padStart(2, 0);
 
 export class Charts {
     constructor() {
+        this.formatTime = (unix_ms) => {
+            const date = new Date(unix_ms);
+            const y = date.getFullYear();
+            // month is 0-based index
+            const m = pad2(date.getMonth() + 1);
+            const d = pad2(date.getDate());
+            const h = pad2(date.getHours())
+            const mi = pad2(date.getMinutes());
+            return `${y}-${m}-${d} ${h}:${mi}`;
+        };
+
         // display a legend in given places
-        this.legend = (svg, px, py, names, vertical = true) => {
+        this.legend = (svg, px, py, names, width = 0, vertical = true) => {
+            const span = (width > 0 && names.length > 0) ? (width / (names.length)) : 60;
             const legend = svg.selectAll("g.legend")
                 .data(names)
                 .enter()
@@ -20,8 +34,8 @@ export class Charts {
                 .attr("class", "legend")
                 .attr("transform",
                     (d, i) => vertical ?
-                    `translate(${px},${py + i * 20 + 20})` :
-                    `translate(${px + i*60},${py})`);
+                    `translate(${px}, ${py + i * 20 + 20})` :
+                    `translate(${px + i*span}, ${py})`);
 
             // make a matching color rect
             legend.append("svg:rect")
@@ -48,7 +62,13 @@ export class Charts {
                 // append header
                 const keys = Object.keys(json[0]);
                 const width = Math.round(100 / keys.length);
-                ds('#table_head').selectAll("th").data(keys).enter().append('th').attr("width", `${width}%`).text(d => d);
+                ds('#table_head')
+                    .selectAll("th")
+                    .data(keys)
+                    .enter()
+                    .append('th')
+                    .attr("width", `${width}%`)
+                    .text(d => isTime(d) ? "[time]" : d);
 
                 // Get table body and print 
                 ds('#table_content').selectAll('tr').data(json).enter().append('tr')
@@ -57,7 +77,7 @@ export class Charts {
                         return keys.map((column) => {
                             return {
                                 column: column,
-                                value: row[column]
+                                value: isTime(column) ? this.formatTime(row[column] * 1000) : row[column]
                             };
                         });
                     })
@@ -286,7 +306,7 @@ export class Charts {
             }
 
             // put legend on the left top
-            this.legend(svg, margin.left, 0, Object.keys(kds), false);
+            this.legend(svg, margin.left, 0, Object.keys(kds), width, false);
 
             // Add the X Axis
             svg.append("g")

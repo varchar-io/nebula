@@ -166,10 +166,11 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
   // If this is a timeline query, we only build time as dimension ignoring any any pre-set dimensions
   const auto isTimeline = req.display() == DisplayType::TIMELINE;
-  if (isTimeline) {
-    const auto& column = Table::TIME_COLUMN;
+  const auto& timeColumn = Table::TIME_COLUMN;
 
-    columns.push_back(column);
+  // handle query schema for timeline
+  if (isTimeline) {
+    columns.push_back(timeColumn);
 
     // we have minimum size of window as 1 second to be enforced
     // so if buckets is smaller than range (seconds), we use each range as
@@ -195,7 +196,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     } else {
       int64_t beginTime = (int64_t)req.start();
       // divided by window to get the bucket and times window to get a time point
-      auto expr = ((col(column) - beginTime) / window * window).as(Table::WINDOW_COLUMN);
+      auto expr = ((col(timeColumn) - beginTime) / window * window).as(Table::WINDOW_COLUMN);
       windowExpr = std::make_shared<decltype(expr)>(expr);
     }
 
@@ -229,6 +230,9 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
   q->select(fields).groupby(keys);
 
   // build sorting and limit/top property
+  // TODO(cao): BUG investigation - turn on sort by 1 field on samples
+  // serialization will be broken, why?
+  // const auto isSamples = req.display() == DisplayType::SAMPLES;
   if (isTimeline) {
     // timeline always sort by time window as first column
     q->sortby({ 1 });
