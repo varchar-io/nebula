@@ -408,40 +408,47 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     CHAIN_AND_RET                                   \
   }
 
+  // Optimization:
+  // like expression can be fall back to "starts" if the pattern satisfy it
+#define BUILD_LIKE(CS)                                               \
+  static constexpr char matcher = '%';                               \
+  const auto& pattern = predValue;                                   \
+  size_t pos = 0;                                                    \
+  auto cursor = pattern.cbegin();                                    \
+  auto end = pattern.cend();                                         \
+  while (cursor < end) {                                             \
+    if (*cursor == matcher) {                                        \
+      break;                                                         \
+    }                                                                \
+                                                                     \
+    ++pos;                                                           \
+    ++cursor;                                                        \
+  }                                                                  \
+                                                                     \
+  if (pos == pattern.size() - 1) {                                   \
+    auto exp = starts(columnExpression, pattern.substr(0, pos), CS); \
+    CHAIN_AND_RET                                                    \
+  }                                                                  \
+                                                                     \
+  auto exp = like(columnExpression, pattern, CS);                    \
+  CHAIN_AND_RET
+
   switch (pop) {
     BUILD_LOGICAL_CASE(EQ, ==)
     BUILD_LOGICAL_CASE(NEQ, !=)
     BUILD_LOGICAL_CASE(MORE, >)
     BUILD_LOGICAL_CASE(LESS, <)
   case Operation::LIKE: {
-    // Optimization:
-    // like expression can be fall back to "starts" if the pattern satisfy it
-    static constexpr char matcher = '%';
-    const auto& pattern = predValue;
-    size_t pos = 0;
-    auto cursor = pattern.cbegin();
-    auto end = pattern.cend();
-    while (cursor < end) {
-      if (*cursor == matcher) {
-        break;
-      }
-
-      ++pos;
-      ++cursor;
-    }
-
-    // matcher is only at last position
-    if (pos == pattern.size() - 1) {
-      auto exp = starts(columnExpression, pattern.substr(0, pos));
-      CHAIN_AND_RET
-    }
-
-    auto exp = like(columnExpression, pattern);
-    CHAIN_AND_RET
+    BUILD_LIKE(true)
+  }
+  case Operation::ILIKE: {
+    BUILD_LIKE(false)
   }
   default:
     throw NException("Nebula predicate operation not supported yet");
   }
+
+#undef BUILD_LIKE
 #undef BUILD_LOGICAL_CASE
 }
 

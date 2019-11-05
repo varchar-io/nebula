@@ -257,7 +257,8 @@ const restore = () => {
                 NEQ: "!=",
                 MORE: ">",
                 LESS: "<",
-                LIKE: "like"
+                LIKE: "like",
+                ILIKE: "ilike"
             };
 
             const ops = {};

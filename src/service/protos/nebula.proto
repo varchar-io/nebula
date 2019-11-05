@@ -76,6 +76,7 @@ enum Operation {
   MORE = 2;
   LESS = 3;
   LIKE = 4;
+  ILIKE = 5;
 }
 
 // TODO(cao): reference Constraints.js for GROUP/RULE generation to build predicates tree

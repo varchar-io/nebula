@@ -36,19 +36,21 @@ public:
   Prefix(
     const std::string& name,
     std::unique_ptr<nebula::execution::eval::ValueEval> expr,
-    const std::string& prefix)
+    const std::string& prefix,
+    bool caseSensitive = true)
     : UdfPrefixBase(
         name,
         std::move(expr),
-        [prefix](const ExprType& source, bool& valid) -> ReturnType {
+        [prefix, caseSensitive](const ExprType& source, bool& valid) -> ReturnType {
           if (valid) {
             const auto prefixSize = prefix.size();
             if (source.size() < prefixSize) {
               return false;
             }
 
+            bool (*eqf)(char a, char b) = caseSensitive ? &eq : &ieq;
             for (size_t i = 0; i < prefixSize; ++i) {
-              if (source.at(i) != prefix.at(i)) {
+              if (!(*eqf)(source.at(i), prefix.at(i))) {
                 return false;
               }
             }

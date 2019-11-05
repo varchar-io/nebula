@@ -27,6 +27,16 @@ namespace nebula {
 namespace api {
 namespace udf {
 
+// char equals
+inline bool eq(char a, char b) {
+  return a == b;
+}
+
+// char equlas ignoring case
+inline bool ieq(char a, char b) {
+  return a == b || std::tolower(a) == std::tolower(b);
+}
+
 // UDAF - a common pattern RK=return kind, EK = expression kind
 template <nebula::type::Kind RK, nebula::type::Kind EK>
 class CommonUDF : public nebula::execution::eval::UDF<RK> {

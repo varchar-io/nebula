@@ -25,15 +25,20 @@
 namespace nebula {
 namespace api {
 namespace udf {
+
 bool match(const char* sp, const size_t ss, size_t si,
-           const char* pp, const size_t ps, size_t pi) {
+           const char* pp, const size_t ps, size_t pi,
+           bool cs) {
+  // function pointer defition
+  bool (*eqf)(char a, char b) = cs ? &eq : &ieq;
+
   // when pattern still have words
   while (pi < ps) {
     char ch = *(pp + pi);
 
     // if not %, source has to match this
     if (LIKELY(ch != '%')) {
-      if (ch != *(sp + si)) {
+      if (!(*eqf)(ch, *(sp + si))) {
         return false;
       }
 
@@ -45,7 +50,7 @@ bool match(const char* sp, const size_t ss, size_t si,
 
       // assuming this % match current char in source
       while (pos <= ss) {
-        if (match(sp, ss, pos, pp, ps, pi + 1)) {
+        if (match(sp, ss, pos, pp, ps, pi + 1, cs)) {
           return true;
         }
 

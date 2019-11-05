@@ -94,15 +94,15 @@ static UDFExpression<nebula::execution::eval::UDFType::SUM> sum(const T& expr) {
 }
 
 template <typename T>
-static LikeExpression like(const T& expr, const std::string& pattern) {
+static LikeExpression like(const T& expr, const std::string& pattern, bool caseSensitive = true) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return LikeExpression(std::shared_ptr<Expression>(new T(expr)), pattern);
+  return LikeExpression(std::shared_ptr<Expression>(new T(expr)), pattern, caseSensitive);
 }
 
 template <typename T>
-static PrefixExpression starts(const T& expr, const std::string& prefix) {
+static PrefixExpression starts(const T& expr, const std::string& prefix, bool caseSensitive = true) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return PrefixExpression(std::shared_ptr<Expression>(new T(expr)), prefix);
+  return PrefixExpression(std::shared_ptr<Expression>(new T(expr)), prefix, caseSensitive);
 }
 
 template <typename T, typename U>

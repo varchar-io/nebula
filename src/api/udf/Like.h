@@ -31,18 +31,22 @@ namespace udf {
 // It only accepts % as pattern matcher
 // when pattern see %, treat it as macro, no escape support here.
 bool match(const char* sp, const size_t ss, size_t si,
-           const char* pp, const size_t ps, size_t pi);
+           const char* pp, const size_t ps, size_t pi,
+           bool caseSensitive = true);
 
 using UdfLikeBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR>;
 class Like : public UdfLikeBase {
 public:
-  Like(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr, const std::string& pattern)
+  Like(const std::string& name,
+       std::unique_ptr<nebula::execution::eval::ValueEval> expr,
+       const std::string& pattern,
+       bool caseSensitive = true)
     : UdfLikeBase(
         name,
         std::move(expr),
-        [pattern](const ExprType& source, bool& valid) -> ReturnType {
+        [pattern, caseSensitive](const ExprType& source, bool& valid) -> ReturnType {
           if (valid) {
-            return match(source.data(), source.size(), 0, pattern.data(), pattern.size(), 0);
+            return match(source.data(), source.size(), 0, pattern.data(), pattern.size(), 0, caseSensitive);
           }
 
           return false;

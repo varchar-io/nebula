@@ -102,6 +102,9 @@ struct ExpressionData {
 
   // extra customized info
   std::string custom;
+
+  // extra flag
+  bool flag;
 };
 
 // NOTE:

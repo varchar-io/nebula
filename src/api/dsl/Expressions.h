@@ -530,8 +530,8 @@ protected:
 using LikeBase = BoolUDF<nebula::execution::eval::UDFType::LIKE>;
 class LikeExpression : public LikeBase {
 public:
-  LikeExpression(std::shared_ptr<Expression> left, const std::string& pattern)
-    : LikeBase(left), pattern_{ pattern } {}
+  LikeExpression(std::shared_ptr<Expression> left, const std::string& pattern, bool caseSensitive = true)
+    : LikeBase(left), pattern_{ pattern }, caseSensitive_{ caseSensitive } {}
 
 public:
   ALL_LOGICAL_OPS()
@@ -541,24 +541,26 @@ public:
     return nebula::api::udf::UDFFactory::createUDF<
       nebula::execution::eval::UDFType::LIKE,
       nebula::type::Kind::BOOLEAN,
-      nebula::type::Kind::VARCHAR>(expr_, pattern_);
+      nebula::type::Kind::VARCHAR>(expr_, pattern_, caseSensitive_);
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
     auto data = LikeBase::serialize();
     data->custom = pattern_;
+    data->flag = caseSensitive_;
     return data;
   }
 
 private:
   std::string pattern_;
+  bool caseSensitive_;
 };
 
 using PrefixBase = BoolUDF<nebula::execution::eval::UDFType::PREFIX>;
 class PrefixExpression : public PrefixBase {
 public:
-  PrefixExpression(std::shared_ptr<Expression> left, const std::string& prefix)
-    : PrefixBase(left), prefix_{ prefix } {}
+  PrefixExpression(std::shared_ptr<Expression> left, const std::string& prefix, bool caseSensitive = true)
+    : PrefixBase(left), prefix_{ prefix }, caseSensitive_{ caseSensitive } {}
 
 public:
   ALL_LOGICAL_OPS()
@@ -568,17 +570,19 @@ public:
     return nebula::api::udf::UDFFactory::createUDF<
       nebula::execution::eval::UDFType::PREFIX,
       nebula::type::Kind::BOOLEAN,
-      nebula::type::Kind::VARCHAR>(expr_, prefix_);
+      nebula::type::Kind::VARCHAR>(expr_, prefix_, caseSensitive_);
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
     auto data = PrefixBase::serialize();
     data->custom = prefix_;
+    data->flag = caseSensitive_;
     return data;
   }
 
 private:
   std::string prefix_;
+  bool caseSensitive_;
 };
 
 using InBase = BoolUDF<nebula::execution::eval::UDFType::IN>;

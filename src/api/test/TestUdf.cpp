@@ -79,6 +79,40 @@ TEST(UDFTest, TestLike) {
   }
 }
 
+TEST(UDFTest, TestILike) {
+  std::vector<std::tuple<std::string, std::string, bool>> data{
+    { "a", "A%", true },
+    { "a", "%A%", true },
+    { "a", "%A", true },
+    { "abc", "aBc%", true },
+    { "abc", "%abC%", true },
+    { "abc", "%abc", true },
+    { "abcdefg", "AbC%", true },
+    { "Shawn says hi", "%saYs%", true },
+    { "long time no see", "%sEe", true },
+    { "nebula is cool", "%iS", false },
+    { "nebula is awesome", "nEbUla%", true },
+    { "hi there ", "%i Th%", true },
+    { "hi there ", "i tH%", false },
+    { "hi there", "%thEre", true },
+    { "easy dessert pizza recipe", "%rEcIpe%", true }
+  };
+  nebula::surface::MockRowData row;
+  nebula::execution::eval::EvalContext ctx;
+  ctx.reset(row);
+
+  for (const auto& item : data) {
+    const auto& s = std::get<0>(item);
+    const auto& p = std::get<1>(item);
+    auto r = std::get<2>(item);
+    LOG(INFO) << "Match " << s << " with " << p << " is " << r;
+    auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
+    nebula::api::udf::Like l("l", c->asEval(), p, false);
+    bool valid = true;
+    EXPECT_EQ(l.eval(ctx, valid), r);
+  }
+}
+
 TEST(UDFTest, TestPrefix) {
   std::vector<std::tuple<std::string, std::string, bool>> data{
     { "abcdefg", "abc", true },
@@ -101,6 +135,30 @@ TEST(UDFTest, TestPrefix) {
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
     nebula::api::udf::Prefix prefix("p", c->asEval(), p);
+    bool valid = true;
+    EXPECT_EQ(prefix.eval(ctx, valid), r);
+  }
+}
+
+TEST(UDFTest, TestIPrefix) {
+  std::vector<std::tuple<std::string, std::string, bool>> data{
+    { "Abcdefg", "aBc", true },
+    { "Shawn says hi", "Says", false },
+    { "loNg tiMe no see", "lonG tIme", true },
+    { "NebUla is awesome", "neBulA", true },
+    { "Hi there", "hI tHere", true }
+  };
+  nebula::surface::MockRowData row;
+  nebula::execution::eval::EvalContext ctx;
+  ctx.reset(row);
+
+  for (const auto& item : data) {
+    const auto& s = std::get<0>(item);
+    const auto& p = std::get<1>(item);
+    auto r = std::get<2>(item);
+    LOG(INFO) << "Match " << s << " with " << p << " is " << r;
+    auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
+    nebula::api::udf::Prefix prefix("p", c->asEval(), p, false);
     bool valid = true;
     EXPECT_EQ(prefix.eval(ctx, valid), r);
   }

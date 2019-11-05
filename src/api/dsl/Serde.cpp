@@ -82,6 +82,8 @@ std::string ser(const ExpressionData& data) {
     json.Int(static_cast<int>(data.u_type));
     addstring(json, "inner", ser(*data.inner));
     addstring(json, "custom", data.custom);
+    json.Key("flag");
+    json.Bool(data.flag);
     break;
   }
 
@@ -173,15 +175,15 @@ std::shared_ptr<Expression> a_expr(const std::string& alias, ArthmeticOp op, std
 
 #undef ARTH_FORM
 
-std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::shared_ptr<Expression> inner, const std::string& custom) {
+std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::shared_ptr<Expression> inner, const std::string& custom, bool flag) {
   // like, prefix
   switch (ut) {
   case UDFType::LIKE: {
-    return as(alias, std::make_shared<LikeExpression>(inner, custom));
+    return as(alias, std::make_shared<LikeExpression>(inner, custom, flag));
   }
 
   case UDFType::PREFIX: {
-    return as(alias, std::make_shared<PrefixExpression>(inner, custom));
+    return as(alias, std::make_shared<PrefixExpression>(inner, custom, flag));
   }
 
   case UDFType::IN: {
@@ -281,7 +283,8 @@ std::shared_ptr<Expression> Serde::deserialize(const std::string& data) {
     return u_expr(alias,
                   static_cast<UDFType>(document["udf"].GetInt()),
                   deserialize(document["inner"].GetString()),
-                  document["custom"].GetString());
+                  document["custom"].GetString(),
+                  document["flag"].GetBool());
   }
   default:
     throw NException("Not recognized expression!");

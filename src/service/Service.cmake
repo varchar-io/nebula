@@ -200,9 +200,11 @@ add_custom_target(nebula_web_client ALL
 # inside the client.js logic, it will call into 8080 port for data request through envoy proxy
 # envoy proxy will contact 9190 port where is the real server for response.
 # to run the web server, first we pack all js file into a single one
+# we need to refresh web tier whenever protobuf definition changes between web an server.
 # here we are using webpack:
-# $ npm install (based on package.json - can be reused for all service)
-# $ npx webpack client.js
+# $ ~nebula/src/service/http/nebula > npm install (based on package.json - can be reused for all service)
+# $ ~nebula/src/service/http/nebula > npx webpack
+# $ in web/main.js, prepend "export" in it to export NebulaClient.
 
 # build test binary
 add_executable(ServiceTests 
