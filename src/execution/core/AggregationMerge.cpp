@@ -48,6 +48,39 @@ using nebula::surface::RowData;
 using nebula::type::Kind;
 using nebula::type::Schema;
 
+// TODO(cao): This callback lambda can be saved by integrate merge function
+UpdateCallbackType updateCallback(const std::unordered_set<size_t>& keys,
+                                  const std::vector<std::unique_ptr<ValueEval>>& fields) {
+#define P_FIELD_UPDATE(KIND)                                                                                                                              \
+  case Kind::KIND: {                                                                                                                                      \
+    using UT = UDAF<Kind::KIND>;                                                                                                                          \
+    *static_cast<UT::StoreType*>(value) = static_cast<UT&>(*fields.at(column)).merge(*static_cast<UT::StoreType*>(ov), *static_cast<UT::StoreType*>(nv)); \
+    return true;                                                                                                                                          \
+  }
+
+  return [&keys, &fields](size_t column, Kind kind, void* ov, void* nv, void* value) {
+    // we don't update keys since they are the same
+    if (keys.find(column) != keys.end()) {
+      return false;
+    }
+
+    // others are aggregation fields - aka, they are UDAF
+    switch (kind) {
+      P_FIELD_UPDATE(BOOLEAN)
+      P_FIELD_UPDATE(TINYINT)
+      P_FIELD_UPDATE(SMALLINT)
+      P_FIELD_UPDATE(INTEGER)
+      P_FIELD_UPDATE(REAL)
+      P_FIELD_UPDATE(BIGINT)
+      P_FIELD_UPDATE(DOUBLE)
+      P_FIELD_UPDATE(INT128)
+    default:
+      throw NException("Aggregation merge on non-primitive types");
+    }
+  };
+#undef P_FIELD_UPDATE
+}
+
 RowCursorPtr merge(
   folly::ThreadPoolExecutor&,
   const Schema schema,
@@ -63,28 +96,8 @@ RowCursorPtr merge(
   }
 
   if (hasAggregation) {
-#define P_FIELD_UPDATE(KIND, TYPE)                                                                                \
-  case Kind::KIND: {                                                                                              \
-    auto p = static_cast<TYPE*>(value);                                                                           \
-    *p = static_cast<UDAF<Kind::KIND>&>(*fields[column]).merge(*static_cast<TYPE*>(ov), *static_cast<TYPE*>(nv)); \
-    return true;                                                                                                  \
-  }
-
-    auto update = [&fields](size_t column, Kind kind, void* ov, void* nv, void* value) {
-      // others are aggregation fields - aka, they are UDAF
-      switch (kind) {
-        P_FIELD_UPDATE(BOOLEAN, bool)
-        P_FIELD_UPDATE(TINYINT, int8_t)
-        P_FIELD_UPDATE(SMALLINT, int16_t)
-        P_FIELD_UPDATE(INTEGER, int32_t)
-        P_FIELD_UPDATE(REAL, float)
-        P_FIELD_UPDATE(BIGINT, int64_t)
-        P_FIELD_UPDATE(DOUBLE, double)
-      default:
-        throw NException("Aggregation not supporting non-primitive types");
-      }
-    };
-#undef P_FIELD_UPDATE
+    std::unordered_set<size_t> kset(keys.begin(), keys.end());
+    auto update = updateCallback(kset, fields);
 
     // if it is aggregation, we're sure the data cursor will be hash flat.
     // So that we can do this multi-fold pass

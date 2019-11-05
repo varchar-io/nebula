@@ -434,8 +434,8 @@ TEST(CommonTest, TestInt128) {
   int128_t z1 = z + 1;
 
   // test out int128 features
-  EXPECT_EQ(low64(z1), 0);
-  EXPECT_EQ(high64(z1), 1);
+  EXPECT_EQ(low64<int64_t>(z1), 0);
+  EXPECT_EQ(high64<int64_t>(z1), 1);
 
   EXPECT_TRUE(z1 > z);
   auto z2 = z1 >> 64;
@@ -467,13 +467,119 @@ TEST(CommonTest, TestInt128) {
   EXPECT_TRUE(zn < 0);
 
   // by default converting to uint64
-  EXPECT_EQ(low64(zn), delta);
-  EXPECT_EQ(high64(zn), UINT64_MAX);
+  EXPECT_EQ(low64<int64_t>(zn), delta);
+  EXPECT_EQ(high64<int64_t>(zn), UINT64_MAX);
 
   // for signed int64, it is a negative value
   EXPECT_EQ(low64<int64_t>(zn), delta);
   EXPECT_EQ(high64<int64_t>(zn), -1);
   LOG(INFO) << "zn=" << zn;
+
+  // test value increment on different section
+  {
+    int128_t parts = 0;
+    int64_t sum = 0;
+    int64_t count = 1000;
+    for (int64_t i = 0; i < count; ++i) {
+      high64_add(parts, i);
+      sum += i;
+      low64_add(parts, 1);
+    }
+
+    EXPECT_EQ(high64<int64_t>(parts), sum);
+    EXPECT_EQ(low64<int64_t>(parts), count);
+  }
+
+  {
+    // pointer has type, which impacts the address incremental
+    int128_t parts = 0;
+    double sum = 0;
+    int64_t count = 1000;
+    for (int64_t i = 0; i < count; ++i) {
+      high64_add(parts, i * 1.1);
+      sum += i * 1.1;
+      low64_add(parts, 1);
+    }
+
+    EXPECT_EQ(high64<double>(parts), sum);
+    EXPECT_EQ(low64<int64_t>(parts), count);
+  }
+
+  // test raw operations on bytes
+  {
+    int128_t i128 = { 0 };
+    // WRONG: auto addr = &i128;
+    // addr + 1 will translate into add 16 bytes (size of *ptr)
+    auto addr = reinterpret_cast<int8_t*>(&i128);
+    LOG(INFO) << "i128 address=" << addr << ": " << i128;
+    for (int i = 0; i < 16; i++) {
+      LOG(INFO) << addr + i << ": byte=" << (int)*(addr + i);
+    }
+
+    int64_t* low = reinterpret_cast<int64_t*>(addr);
+    // because of low is 8 bytes
+    int64_t* high = low + 1;
+    int64_t sum = 0;
+    int64_t count = 0;
+    LOG(INFO) << "low=" << *low
+              << ", high=" << *high
+              << ", sum=" << sum
+              << ", count=" << count;
+
+    for (int i = 0; i < 1111; ++i) {
+      *high += i;
+      *low += 1;
+
+      sum += i;
+      count += 1;
+    }
+
+    LOG(INFO) << "low=" << *low
+              << ", high=" << *high
+              << ", sum=" << sum
+              << ", count=" << count;
+
+    union U {
+      int128_t a;
+      int8_t b[16];
+    };
+
+    U u = { 0 };
+    LOG(INFO) << "value=" << *reinterpret_cast<int64_t*>(u.b + 8);
+    for (int i = 0; i < 16; i++) {
+      LOG(INFO) << "byte=" << (int)u.b[i];
+    }
+  }
+
+  {
+    // test raw operations on bytes for double
+    int128_t i128 = { 0 };
+    auto addr = reinterpret_cast<int8_t*>(&i128);
+    int64_t* low = reinterpret_cast<int64_t*>(addr);
+    // addr is byte pointer, so +8 will move 8 bytes
+    double* high = reinterpret_cast<double*>(addr + 8);
+
+    double sum = 0;
+    int64_t count = 0;
+    LOG(INFO) << "low=" << *low
+              << ", high=" << *high
+              << ", sum=" << sum
+              << ", count=" << count;
+
+    for (int i = 0; i < 1111; ++i) {
+      *high += i * 1.3;
+      *low += 1;
+
+      sum += i * 1.3;
+      count += 1;
+    }
+
+    LOG(INFO) << "int128=" << i128
+              << ", low=" << *low
+              << ", high=" << *high
+              << ", sum=" << sum
+              << ", count=" << count;
+  }
 }
 
 } // namespace test

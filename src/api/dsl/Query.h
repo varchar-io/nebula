@@ -18,7 +18,7 @@
 
 #include <glog/logging.h>
 #include "Expressions.h"
-#include "api/udf/MyUdf.h"
+#include "api/udf/Not.h"
 #include "common/Cursor.h"
 #include "execution/ExecutionPlan.h"
 #include "meta/MetaService.h"

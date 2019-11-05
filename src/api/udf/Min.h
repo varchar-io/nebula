@@ -26,19 +26,15 @@ namespace nebula {
 namespace api {
 namespace udf {
 
-// UDAF - max
+// UDAF - min
 template <nebula::type::Kind KIND>
 class Min : public CommonUDAF<KIND> {
-  using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
-
 public:
+  using NativeType = typename CommonUDAF<KIND>::NativeType;
   Min(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
     : CommonUDAF<KIND>(
         name,
         std::move(expr),
-        [](NativeType ov, NativeType nv) {
-          return std::min<NativeType>(ov, nv);
-        },
         [](NativeType ov, NativeType nv) {
           return std::min<NativeType>(ov, nv);
         }) {}

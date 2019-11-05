@@ -177,6 +177,10 @@ public:
     return cursor_ - start;
   }
 
+  inline bool hasKey(const std::string& key) const noexcept {
+    return meta_.find(key) != meta_.end();
+  }
+
 public:
 #define INTERFACE_IMPL(RT, NAME) \
   virtual RT NAME(const std::string&) const override;

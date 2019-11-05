@@ -16,6 +16,7 @@
 
 #include "BlockExecutor.h"
 #include <unordered_set>
+#include "AggregationMerge.h"
 #include "execution/eval/UDF.h"
 #include "memory/keyed/HashFlat.h"
 
@@ -51,16 +52,11 @@ void BlockExecutor::compute() {
   const auto& fields = plan_.fields();
   const auto& filter = plan_.filter();
 
-#define AGG_FIELD_UPDATE(KIND, TYPE)                                                                                                        \
-  case Kind::KIND: {                                                                                                                        \
-    *static_cast<TYPE*>(value) = static_cast<UDAF<Kind::KIND>&>(*fields[column]).compute(*static_cast<TYPE*>(ov), *static_cast<TYPE*>(nv)); \
-    return true;                                                                                                                            \
-  }
-
   // build context and computed row associated with this context
   EvalContext ctx(plan_.cacheEval());
   ComputedRow cr(plan_.outputSchema(), ctx, fields);
   result_ = std::make_unique<HashFlat>(plan_.outputSchema(), k);
+  auto update = updateCallback(keys, fields);
 
   for (size_t i = 0, size = data_.getRows(); i < size; ++i) {
     ctx.reset(accessor->seek(i));
@@ -74,28 +70,8 @@ void BlockExecutor::compute() {
     }
 
     // flat compute every new value of each field and set to corresponding column in flat
-    result_->update(cr, [&fields, &keys](size_t column, Kind kind, void* ov, void* nv, void* value) {
-      // we don't update keys since they are the same
-      if (keys.find(column) != keys.end()) {
-        return false;
-      }
-
-      // others are aggregation fields - aka, they are UDAF
-      switch (kind) {
-        AGG_FIELD_UPDATE(BOOLEAN, bool)
-        AGG_FIELD_UPDATE(TINYINT, int8_t)
-        AGG_FIELD_UPDATE(SMALLINT, int16_t)
-        AGG_FIELD_UPDATE(INTEGER, int32_t)
-        AGG_FIELD_UPDATE(REAL, float)
-        AGG_FIELD_UPDATE(BIGINT, int64_t)
-        AGG_FIELD_UPDATE(DOUBLE, double)
-      default:
-        throw NException("Aggregation not supporting non-primitive types");
-      }
-    });
+    result_->update(cr, update);
   }
-
-#undef AGG_FIELD_UPDATE
 
   // after the compute flat should contain all the data we need.
   index_ = 0;

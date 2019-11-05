@@ -14,22 +14,21 @@
  * limitations under the License.
  */
 
-#include "UDFFactory.h"
+#pragma once
+
+#include "execution/ExecutionPlan.h"
+#include "surface/DataSurface.h"
 
 /**
- * Create UDF/UDAF object based on parameters
+ * A logic wrapper to return top sort cursors when sorting and limiting are present
  */
 namespace nebula {
-namespace api {
-namespace udf {
+namespace execution {
+namespace core {
 
-// FULL specialization is not template any more, the definition should come to cpp file
-template <>
-typename std::unique_ptr<nebula::execution::eval::UDF<TypeKind::BOOLEAN>>
-  UDFFactory::createUDF<UDFKind::NOT, TypeKind::BOOLEAN, TypeKind::INVALID>(std::shared_ptr<nebula::api::dsl::Expression> expr) {
-  return std::make_unique<Not>(nebula::execution::eval::UdfTraits<UDFKind::NOT>::Name, expr->asEval());
-}
+// global phase will need to finalize some columns when fetching data
+nebula::surface::RowCursorPtr finalize(nebula::surface::RowCursorPtr, const FinalPhase&);
 
-} // namespace udf
-} // namespace api
+} // namespace core
+} // namespace execution
 } // namespace nebula

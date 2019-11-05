@@ -58,12 +58,11 @@ public:
   using AggFunction = std::function<int32_t(int32_t, int32_t)>;
   TestUdaf()
     : UDAF<nebula::type::Kind::INTEGER>("TestExec",
+                                        nebula::execution::eval::constant(1),
+                                        {},
                                         [](int32_t a, int32_t b) { return a + b; },
-                                        [](int32_t a, int32_t b) { return a + b; }) {}
+                                        {}) {}
   virtual ~TestUdaf() = default;
-  virtual int32_t run(EvalContext&, bool&) const override {
-    return 1;
-  }
 };
 
 TEST(ExecutionTest, TestRowCursorSerde) {

@@ -45,7 +45,7 @@ LOGICAL_OP_STRING(<=, LE)
 
 #undef LOGICAL_OP_STRING
 
-TreeNode ColumnExpression::type(const Table& table) {
+TypeInfo ColumnExpression::type(const Table& table) {
   // look up the table schema to deduce the table
   const auto& schema = table.schema();
   TreeNode nodeType;
@@ -54,8 +54,8 @@ TreeNode ColumnExpression::type(const Table& table) {
   });
 
   N_ENSURE_NOT_NULL(nodeType, fmt::format("column not found: {0}", column_));
-  kind_ = TypeBase::k(nodeType);
-  return typeCreate(kind_, alias_);
+  type_ = TypeInfo{ TypeBase::k(nodeType) };
+  return type_;
 }
 
 // convert to value eval
@@ -65,7 +65,7 @@ TreeNode ColumnExpression::type(const Table& table) {
   }
 
 std::unique_ptr<ValueEval> ColumnExpression::asEval() const {
-  auto k = kind();
+  auto k = typeInfo().native;
   if (UNLIKELY(k == Kind::INVALID)) {
     throw NException("Please call type() first to evalue the schema before convert to value eval tree");
   }

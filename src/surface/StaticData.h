@@ -66,8 +66,16 @@ private:
 
 class StaticRow : public RowData {
 public:
-  StaticRow(int64_t t, int i, std::string_view s, std::unique_ptr<ListData> list, bool f, char b, int128_t i128)
-    : time_{ t }, id_{ i }, event_{ s }, flag_{ f }, byte_{ b }, i128_{ i128 } {
+  StaticRow(
+    int64_t t,
+    int i,
+    std::string_view s,
+    std::unique_ptr<ListData> list,
+    bool f,
+    char b,
+    int128_t i128,
+    double d)
+    : time_{ t }, id_{ i }, event_{ s }, flag_{ f }, byte_{ b }, i128_{ i128 }, d_{ d } {
     if (list != nullptr) {
       items_.reserve(list->getItems());
       for (size_t k = 0; k < items_.capacity(); ++k) {
@@ -125,6 +133,14 @@ public:
     return time_;
   }
 
+  double readDouble(const std::string&) const override {
+    return d_;
+  }
+
+  double readDouble(IndexType) const override {
+    return d_;
+  }
+
   int128_t readInt128(const std::string&) const override {
     return i128_;
   }
@@ -143,7 +159,6 @@ public:
 
   NOT_IMPL_FUNC(int16_t, readShort)
   NOT_IMPL_FUNC(float, readFloat)
-  NOT_IMPL_FUNC(double, readDouble)
   NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
 
 #undef NOT_IMPL_FUNC
@@ -156,6 +171,7 @@ private:
   bool flag_;
   char byte_;
   int128_t i128_;
+  double d_;
 };
 
 } // namespace surface

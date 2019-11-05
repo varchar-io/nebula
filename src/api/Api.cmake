@@ -7,10 +7,10 @@ add_library(${NEBULA_API} STATIC
     ${NEBULA_SRC}/api/dsl/Dsl.cpp
     ${NEBULA_SRC}/api/dsl/Expressions.cpp
     ${NEBULA_SRC}/api/dsl/Serde.cpp
+    ${NEBULA_SRC}/api/udf/Avg.cpp
     ${NEBULA_SRC}/api/udf/Count.cpp
     ${NEBULA_SRC}/api/udf/Like.cpp
-    ${NEBULA_SRC}/api/udf/Sum.cpp
-    ${NEBULA_SRC}/api/udf/UDFFactory.cpp)
+    ${NEBULA_SRC}/api/udf/Sum.cpp)
 target_link_libraries(${NEBULA_API}
     PUBLIC ${NEBULA_TYPE}
     PUBLIC ${NEBULA_COMMON}

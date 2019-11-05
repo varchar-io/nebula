@@ -27,33 +27,24 @@ namespace nebula {
 namespace api {
 namespace udf {
 
-// UDAF - a common pattern
+// UDAF - a common pattern for most UDAF which has its storage type same as native type
 template <nebula::type::Kind KIND>
 class CommonUDAF : public nebula::execution::eval::UDAF<KIND> {
-  using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
-  using AggFunc = std::function<NativeType(NativeType, NativeType)>;
-
 public:
+  using UDAFType = typename nebula::execution::eval::UDAF<KIND>;
+  using NativeType = typename UDAFType::NativeType;
+  using MergeFunction = typename UDAFType::MergeFunction;
   CommonUDAF(
     const std::string& name,
     std::unique_ptr<nebula::execution::eval::ValueEval> expr,
-    AggFunc&& cf,
-    AggFunc&& mf)
+    MergeFunction&& mf)
     : nebula::execution::eval::UDAF<KIND>(
-        fmt::format("{0}({1})", name, expr->signature()),
-        std::move(cf),
-        std::move(mf)),
-      expr_{ std::move(expr) } {}
+        name,
+        std::move(expr),
+        {},
+        std::move(mf),
+        {}) {}
   virtual ~CommonUDAF() = default;
-
-public:
-  // apply a row data to get result
-  virtual NativeType run(nebula::execution::eval::EvalContext& ctx, bool& valid) const override {
-    return expr_->eval<NativeType>(ctx, valid);
-  }
-
-private:
-  std::unique_ptr<nebula::execution::eval::ValueEval> expr_;
 };
 
 } // namespace udf

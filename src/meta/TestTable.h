@@ -34,7 +34,7 @@ public:
   TestTable() : Table(NAME) {
     // TODO(cao) - let's make date as a number
     schema_ = nebula::type::TypeSerializer::from(
-      "ROW<_time_: bigint, id:int, event:string, items:list<string>, flag:bool, value:tinyint, stamp:int128>");
+      "ROW<_time_: bigint, id:int, event:string, items:list<string>, flag:bool, value:tinyint, weight:double, stamp:int128>");
   }
 
   virtual Column column(const std::string& col) const noexcept override {

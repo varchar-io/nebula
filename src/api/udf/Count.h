@@ -28,18 +28,13 @@ namespace udf {
 // UDAF - count
 template <nebula::type::Kind KIND>
 class Count : public CommonUDAF<KIND> {
-  using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
-
 public:
+  using NativeType = typename CommonUDAF<KIND>::NativeType;
   // for count, we don't need evaluate inner expr
   // unless it's distinct a column, so we can safely replace it with a const expression with value 0
   Count(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval>)
     : CommonUDAF<KIND>(name,
                        nebula::execution::eval::constant(1),
-                       // block aggregate - count each item
-                       [](NativeType ov, NativeType) {
-                         return ov + 1;
-                       },
                        // partial aggregate - sum each count results
                        [](NativeType ov, NativeType nv) {
                          return ov + nv;

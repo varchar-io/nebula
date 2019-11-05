@@ -98,7 +98,8 @@ TEST(BatchTest, TestBatchRead) {
                      // row.isNull("items") ? nullptr : row.readList("items"),
                      row.readBool("flag"),
                      row.readByte("value"),
-                     row.readInt128("i128") });
+                     row.readInt128("i128"),
+                     row.readDouble("weight") });
   }
 
   // print single row as string.
@@ -166,6 +167,7 @@ TEST(BatchTest, TestBloomFilter) {
                                     nullptr,
                                     false,
                                     0,
+                                    0,
                                     0 };
     batch.add(row);
   }
@@ -204,7 +206,8 @@ TEST(BatchTest, TestStringDictionary) {
                                     nullptr,
                                     false,
                                     0,
-                                    large };
+                                    large,
+                                    1.1 };
     batch.add(row);
     rows.push_back(row);
   }
@@ -240,7 +243,8 @@ TEST(BatchTest, TestDefaultValue) {
                                     nullptr,
                                     false,
                                     (char)(i % 32),
-                                    128 };
+                                    128,
+                                    1.1 };
     batch.add(row);
   }
 

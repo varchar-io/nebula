@@ -28,7 +28,7 @@ using nebula::type::TreeNode;
 using nebula::type::TypeBase;
 using nebula::type::TypeTraits;
 
-TreeNode Expression::typeCreate(Kind kind, std::string& alias) {
+TreeNode Expression::typeCreate(Kind kind, const std::string& alias) {
 #define TYPE_CREATE_NODE(KIND, TYPE)              \
   case nebula::type::KIND: {                      \
     return nebula::type::TYPE::createTree(alias); \
@@ -82,9 +82,15 @@ TreeNode Expression::typeCreate(Kind kind, std::string& alias) {
 
 const arthmetic_forward::Map& arthmetic_forward::map() {
 
-#define MAP_K1_K2(OP, K1, K2, F)                          \
-  { std::make_tuple(ArthmeticOp::OP, Kind::K1, Kind::K2), \
-    nebula::execution::eval::F<TypeTraits<ArthmeticCombination::result(Kind::K1, Kind::K2)>::CppType, TypeTraits<Kind::K1>::CppType, TypeTraits<Kind::K2>::CppType> }
+#define MAP_K1_K2(OP, K1, K2, F)                                               \
+  {                                                                            \
+    std::make_tuple(ArthmeticOp::OP, Kind::K1, Kind::K2),                      \
+      nebula::execution::eval::F<                                              \
+        TypeTraits<ArthmeticCombination::result(Kind::K1, Kind::K2)>::CppType, \
+        TypeTraits<Kind::K1>::CppType,                                         \
+        TypeTraits<Kind::K2>::CppType>                                         \
+  }
+
 #define CROSS_COMBINE6(...) CROSS_COMBINE6_FOR(MAP_K1_K2, __VA_ARGS__)
 #define CROSS_COMBINE4(...) CROSS_COMBINE4_FOR(MAP_K1_K2, __VA_ARGS__)
 

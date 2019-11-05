@@ -107,6 +107,28 @@ struct ExpressionData {
   bool flag;
 };
 
+// a type info structure for all expressions
+struct TypeInfo {
+  // most of cases - expression has the same store type and final type
+  explicit TypeInfo(nebula::type::Kind k) : TypeInfo(k, k) {}
+
+  // some expressions will have different store and final type such as AVG UDAF expression
+  explicit TypeInfo(nebula::type::Kind n, nebula::type::Kind s)
+    : native{ n }, store{ s } {}
+
+  inline bool operator==(const TypeInfo& other) const {
+    return native == other.native && store == other.store;
+  }
+
+  // final type of given expression
+  // mapping to compute stage as global
+  nebula::type::Kind native;
+
+  // temporary type of given expression
+  // mapping to compute stage as block and node
+  nebula::type::Kind store;
+};
+
 // NOTE:
 // TODO(cao) - we put all these operator definitions in each concrete types
 // IS only because the THIS_TYPE resolusion
@@ -115,7 +137,7 @@ struct ExpressionData {
 // meaning we only need these operator defined in base expression.
 class Expression {
 public:
-  Expression() : alias_{}, kind_{ nebula::type::Kind::INVALID } {}
+  Expression() : alias_{}, type_{ nebula::type::Kind::INVALID } {}
   Expression(const Expression&) = default;
   Expression& operator=(const Expression&) = default;
   virtual ~Expression() = default;
@@ -123,7 +145,7 @@ public:
 public:
   // TODO(cao): need to rework to introduce context and visitor pattern
   // to deduce the type of this expression
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) = 0;
+  virtual TypeInfo type(const nebula::meta::Table& table) = 0;
   virtual bool isAgg() const = 0;
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const = 0;
   virtual std::vector<std::string> columnRefs() const {
@@ -141,8 +163,16 @@ public:
     return alias_;
   }
 
-  nebula::type::Kind kind() const {
-    return kind_;
+  TypeInfo typeInfo() const {
+    return type_;
+  }
+
+  inline nebula::type::TreeNode createNativeType() const {
+    return typeCreate(type_.native, alias_);
+  }
+
+  inline nebula::type::TreeNode createStoreType() const {
+    return typeCreate(type_.store, alias_);
   }
 
 protected:
@@ -150,13 +180,13 @@ protected:
     alias_ = a1.size() > 0 ? a1 : a2;
   }
 
-  static nebula::type::TreeNode typeCreate(nebula::type::Kind kind, std::string&);
+  static nebula::type::TreeNode typeCreate(nebula::type::Kind kind, const std::string&);
 
   // only one alias can be updated if client calls "as" multiple times
   std::string alias_;
 
   // set by type() method
-  nebula::type::Kind kind_;
+  TypeInfo type_;
 };
 
 // a constant expression has its result type defined as T

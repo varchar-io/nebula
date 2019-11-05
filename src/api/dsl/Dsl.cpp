@@ -71,6 +71,10 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // other basic validations
   // 1. groupby and sortby columns are based on index - they should be valid indices.
   // 2. limit should be always placed?
+  // update 11/13/2019:
+  // every expression can decide its temporary type and its final type.
+  // for example, avg temporary type is int128 or byte[16], but its final type ties to its own type.
+  // hence we are extending type method to return mutltiple types for forming schemas for different compute phases
 
   // fetch schema of the table first
   // validate
@@ -79,8 +83,14 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // build output schema tree
   const auto numOutputFields = this->selects_.size();
   N_ENSURE_GT(numOutputFields, 0, "at least one column select");
-  std::vector<TreeNode> children;
-  children.reserve(numOutputFields);
+
+  // temp nodes used for block/node computing phase
+  // final nodes used for global phase, and they may have different schemas
+  std::vector<TreeNode> finalNodes;
+  std::vector<TreeNode> tempNodes;
+  finalNodes.reserve(numOutputFields);
+  tempNodes.reserve(numOutputFields);
+  bool differentSchema = false;
 
   // aggColumns - agg column is marked as true, otherwise false
   std::vector<bool> aggColumns;
@@ -88,8 +98,17 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   size_t numAggColumns = 0;
 
   std::for_each(selects_.begin(), selects_.end(),
-                [&children, &aggColumns, &numAggColumns, this](const auto& itr) {
-                  children.push_back(itr->type(*table_));
+                [&finalNodes, &tempNodes, &aggColumns, &numAggColumns, &differentSchema,
+                 table = table_](const auto& itr) {
+                  // ensure this expression type is populated
+                  auto type = itr->type(*table);
+                  if (type.native != type.store) {
+                    differentSchema = true;
+                  }
+
+                  tempNodes.push_back(itr->createStoreType());
+                  finalNodes.push_back(itr->createNativeType());
+
                   auto isAgg = itr->isAgg();
                   aggColumns.push_back(isAgg);
                   if (isAgg) {
@@ -98,8 +117,15 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
                 });
 
   // create output schema
-  auto output = std::static_pointer_cast<RowType>(nebula::type::RowType::create("", children));
-  LOG(INFO) << "Query output schema: " << nebula::type::TypeSerializer::to(output) << " w/ agg columns: " << numAggColumns;
+  auto tempOutput = std::static_pointer_cast<RowType>(nebula::type::RowType::create("", tempNodes));
+  LOG(INFO) << "Query output schema: " << nebula::type::TypeSerializer::to(tempOutput) << " w/ agg columns: " << numAggColumns;
+
+  // if temp schema is different from the final schema
+  Schema output = nullptr;
+  if (differentSchema) {
+    output = std::static_pointer_cast<RowType>(nebula::type::RowType::create("", finalNodes));
+    LOG(INFO) << "Query final schema: " << nebula::type::TypeSerializer::to(output);
+  }
 
   // if we have aggregation
   const auto groupSize = groups_.size();
@@ -135,8 +161,9 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // filter by filter predicate, compute by keys: agg functions
   std::vector<std::unique_ptr<ValueEval>> fields;
   std::transform(selects_.begin(), selects_.end(), std::back_inserter(fields),
-                 [](std::shared_ptr<Expression> expr) -> std::unique_ptr<ValueEval> { return expr->asEval(); });
-  auto block = std::make_unique<BlockPhase>(schema, output);
+                 [](std::shared_ptr<Expression> expr)
+                   -> std::unique_ptr<ValueEval> { return expr->asEval(); });
+  auto block = std::make_unique<BlockPhase>(schema, tempOutput);
   filter_->type(*table_);
   // a query can have aggregation but no keys, such as "select count(1)"
   (*block)
@@ -149,11 +176,10 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
 
   // partial aggrgation, keys and agg methods
   auto node = std::make_unique<NodePhase>(std::move(block));
-  (*node)
-    .agg(numAggColumns, aggColumns);
+  (*node).agg(numAggColumns, aggColumns);
 
   // global aggregation, keys and agg methods
-  auto controller = std::make_unique<FinalPhase>(std::move(node));
+  auto controller = std::make_unique<FinalPhase>(std::move(node), output);
   (*controller)
     .agg(numAggColumns, aggColumns)
     .sort(zbSorts, sortType_ == SortType::DESC)
@@ -166,7 +192,8 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   LOG(INFO) << "Nodes to execute the query: " << nodeList.size();
 
   // make an execution plan from a few phases
-  return std::make_unique<ExecutionPlan>(std::move(controller), std::move(nodeList), output);
+  return std::make_unique<ExecutionPlan>(
+    std::move(controller), std::move(nodeList), differentSchema ? output : tempOutput);
 }
 
 } // namespace dsl

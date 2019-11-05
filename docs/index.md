@@ -132,6 +132,8 @@ Nebula supports two types of UDFs.
 
   ```
 
+Here is a [quick note](expression_udf_udaf.md) on UDF, UDAF and its design choices.
+
 
 ### Visualization
 Nebula provides its own UI besides its API to provide tools for users to explore and visualize the data for meanings.

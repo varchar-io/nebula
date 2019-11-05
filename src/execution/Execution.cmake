@@ -6,6 +6,7 @@ add_library(${NEBULA_EXEC} STATIC
     ${NEBULA_SRC}/execution/core/AggregationMerge.cpp    
     ${NEBULA_SRC}/execution/core/BlockExecutor.cpp    
     ${NEBULA_SRC}/execution/core/ComputedRow.cpp    
+    ${NEBULA_SRC}/execution/core/Finalize.cpp    
     ${NEBULA_SRC}/execution/core/NodeClient.cpp    
     ${NEBULA_SRC}/execution/core/NodeExecutor.cpp    
     ${NEBULA_SRC}/execution/core/ServerExecutor.cpp    

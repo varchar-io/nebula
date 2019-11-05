@@ -32,8 +32,7 @@ Count<Kind::VARCHAR>::Count(const std::string& name, std::unique_ptr<nebula::exe
                               std::move(expr),
                               [](VarcharNative, VarcharNative) -> VarcharNative {
                                 throw NException("sum string is not supported currently");
-                              },
-                              {}) {}
+                              }) {}
 
 } // namespace udf
 } // namespace api

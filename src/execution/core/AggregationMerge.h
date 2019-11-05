@@ -29,6 +29,10 @@ namespace nebula {
 namespace execution {
 namespace core {
 
+using UpdateCallbackType = std::function<bool(size_t column, nebula::type::Kind kind, void* ov, void* nv, void* value)>;
+UpdateCallbackType updateCallback(const std::unordered_set<size_t>&,
+                                  const std::vector<std::unique_ptr<nebula::execution::eval::ValueEval>>&);
+
 nebula::surface::RowCursorPtr merge(
   folly::ThreadPoolExecutor&,
   const nebula::type::Schema,

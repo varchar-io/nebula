@@ -277,6 +277,7 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
     BUILD_METRIC_CASE(MIN, min)
     BUILD_METRIC_CASE(COUNT, count)
     BUILD_METRIC_CASE(SUM, sum)
+    BUILD_METRIC_CASE(AVG, avg)
   default:
     throw NException("Rollup method not supported");
   }

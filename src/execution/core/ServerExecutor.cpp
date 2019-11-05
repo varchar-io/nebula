@@ -16,6 +16,7 @@
 
 #include "ServerExecutor.h"
 #include "AggregationMerge.h"
+#include "Finalize.h"
 #include "NodeConnector.h"
 #include "TopSort.h"
 #include "common/Folly.h"
@@ -61,21 +62,21 @@ RowCursorPtr ServerExecutor::execute(
   auto x = folly::collectAll(results).get();
 
   // only one result - don't need any aggregation or composite
+  const auto& phase = plan.fetch<PhaseType::GLOBAL>();
   if (x.size() == 1) {
     const auto& op = x.at(0);
     if (op.hasException() || !op.hasValue()) {
       return EmptyRowCursor::instance();
     }
 
-    return topSort(op.value(), plan);
+    return topSort(finalize(op.value(), phase), plan);
   }
 
   // multiple results
-  const auto& phase = plan.fetch<PhaseType::GLOBAL>();
   auto result = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAgg(), x);
 
   // apply sorting and limit if available
-  return topSort(result, plan);
+  return topSort(finalize(result, phase), plan);
 }
 
 } // namespace core

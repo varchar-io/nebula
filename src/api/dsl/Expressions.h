@@ -20,6 +20,7 @@
 #include <glog/logging.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+
 #include "Base.h"
 #include "api/udf/In.h"
 #include "api/udf/UDFFactory.h"
@@ -200,7 +201,7 @@ public: // all operations
     N_ENSURE(v2 != nullptr, "op2 value eval is null");
 
     // forward to the correct version of value eval creation
-    return arthmetic_forward()(op, op1_->kind(), op2_->kind(), std::move(v1), std::move(v2));
+    return arthmetic_forward()(op, op1_->typeInfo().native, op2_->typeInfo().native, std::move(v1), std::move(v2));
   }
 
   virtual std::vector<std::string> columnRefs() const override {
@@ -220,12 +221,15 @@ public: // all operations
     return merge;
   }
 
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
-    op1_->type(table);
-    op2_->type(table);
+  virtual TypeInfo type(const nebula::meta::Table& table) override {
+    auto opt1 = op1_->type(table);
+    auto opt2 = op2_->type(table);
 
-    kind_ = nebula::api::dsl::ArthmeticCombination::result(op1_->kind(), op2_->kind());
-    return typeCreate(kind_, alias_);
+    // arthmetic operation only cares native type
+    type_ = TypeInfo{
+      nebula::api::dsl::ArthmeticCombination::result(opt1.native, opt2.native)
+    };
+    return type_;
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
@@ -282,10 +286,10 @@ public: // all logical operations
     N_ENSURE(v2 != nullptr, "op2 value eval is null");
 
     // forward to the correct version of value eval creation
-    return logical_forward()(op, op1_->kind(), op2_->kind(), std::move(v1), std::move(v2));
+    return logical_forward()(op, op1_->typeInfo().native, op2_->typeInfo().native, std::move(v1), std::move(v2));
   }
 
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+  virtual TypeInfo type(const nebula::meta::Table& table) override {
     op1_->type(table);
     op2_->type(table);
 
@@ -295,8 +299,8 @@ public: // all logical operations
     validate(table);
 
     // logical expression will always in bool type
-    kind_ = nebula::type::Kind::BOOLEAN;
-    return nebula::type::BoolType::createTree(alias_);
+    type_ = TypeInfo{ nebula::type::Kind::BOOLEAN };
+    return type_;
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
@@ -309,9 +313,9 @@ public: // all logical operations
   }
 
 #define BOTH_OPRANDS_BOOL()                                                    \
-  N_ENSURE_EQ(op1_->kind(), nebula::type::Kind::BOOLEAN,                       \
+  N_ENSURE_EQ(op1_->typeInfo().native, nebula::type::Kind::BOOLEAN,            \
               "AND/OR operations requires bool typed left and right oprands"); \
-  N_ENSURE_EQ(op2_->kind(), nebula::type::Kind::BOOLEAN,                       \
+  N_ENSURE_EQ(op2_->typeInfo().native, nebula::type::Kind::BOOLEAN,            \
               "AND/OR operations requires bool typed left and right oprands");
 
   void validate(const nebula::meta::Table&) {
@@ -364,7 +368,7 @@ public: // all logical operations
   IS_AGG(false)
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override;
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override;
+  virtual TypeInfo type(const nebula::meta::Table& table) override;
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override;
   inline virtual std::vector<std::string> columnRefs() const override {
     return std::vector<std::string>{ column_ };
@@ -393,11 +397,10 @@ public:
     return nebula::execution::eval::constant(value_);
   }
 
-  virtual nebula::type::TreeNode type(const nebula::meta::Table&) override {
+  virtual TypeInfo type(const nebula::meta::Table&) override {
     // duduce from T to nebula::type::Type
-    auto node = nebula::type::TypeDetect<T>::type(alias_);
-    kind_ = nebula::type::TypeBase::k(node);
-    return node;
+    type_ = TypeInfo{ nebula::type::TypeDetect<T>::kind };
+    return type_;
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
@@ -431,46 +434,31 @@ public:
 
   IS_AGG(execution::eval::UdfTraits<UT>::UDAF)
 
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+  virtual TypeInfo type(const nebula::meta::Table& table) override {
     // always call inner_ type since it's going to change its state
-    inner_->type(table);
+    auto innerType = inner_->type(table);
 
     // if this UDF has pre-defined type, we don't need to get it from inner expression then
-    kind_ = execution::eval::UdfTraits<UT>::Type;
-    if (kind_ == nebula::type::Kind::INVALID) {
-      // inner type is
-      kind_ = inner_->kind();
+    type_ = TypeInfo{
+      execution::eval::udfKind<UT, false>(innerType.native),
+      execution::eval::udfKind<UT, true>(innerType.native),
+    };
 
-      // TODO(cao) - do some tweak on sum to aovid overflow.
-      // This can be done in user query side by providing type casing function.
-      // instead of changing types here, we can also allow user to do "sum(col("tinyint_col").cast(bigint))"
-      if constexpr (UT == nebula::execution::eval::UDFType::SUM) {
-        if (kind_ >= nebula::type::Kind::TINYINT && kind_ <= nebula::type::Kind::BIGINT) {
-          kind_ = nebula::type::Kind::BIGINT;
-        } else if (kind_ == nebula::type::Kind::REAL || kind_ == nebula::type::Kind::DOUBLE) {
-          kind_ = nebula::type::Kind::DOUBLE;
-        }
-      }
-    }
-
-    return typeCreate(kind_, alias_);
+    return type_;
   }
 
   inline virtual std::vector<std::string> columnRefs() const override {
     return inner_->columnRefs();
   }
 
-#define CASE_KIND_UDF(KIND)                         \
-  case nebula::type::Kind::KIND: {                  \
-    return nebula::api::udf::UDFFactory::createUDF< \
-      UT,                                           \
-      nebula::type::Kind::KIND,                     \
-      nebula::type::Kind::INVALID>(inner_);         \
+#define CASE_KIND_UDF(KIND)                                                               \
+  case nebula::type::Kind::KIND: {                                                        \
+    return nebula::api::udf::UDFFactory::createUDF<UT, nebula::type::Kind::KIND>(inner_); \
   }
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
     // based on type, create different UDAF object and pass it to UDF function wrapper
-    switch (kind_) {
+    switch (type_.native) {
       CASE_KIND_UDF(BOOLEAN)
       CASE_KIND_UDF(TINYINT)
       CASE_KIND_UDF(SMALLINT)
@@ -507,12 +495,12 @@ public:
 public:
   IS_AGG(execution::eval::UdfTraits<UDF>::UDAF)
 
-  virtual nebula::type::TreeNode type(const nebula::meta::Table& table) override {
+  virtual TypeInfo type(const nebula::meta::Table& table) override {
     expr_->type(table);
 
     // inner type is
-    kind_ = nebula::type::Kind::BOOLEAN;
-    return typeCreate(kind_, alias_);
+    type_ = TypeInfo{ nebula::type::Kind::BOOLEAN };
+    return type_;
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
@@ -540,7 +528,6 @@ public:
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
       nebula::execution::eval::UDFType::LIKE,
-      nebula::type::Kind::BOOLEAN,
       nebula::type::Kind::VARCHAR>(expr_, pattern_, caseSensitive_);
   }
 
@@ -569,7 +556,6 @@ public:
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
       nebula::execution::eval::UDFType::PREFIX,
-      nebula::type::Kind::BOOLEAN,
       nebula::type::Kind::VARCHAR>(expr_, prefix_, caseSensitive_);
   }
 
@@ -597,17 +583,11 @@ public:
   ALIAS()
 
   virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    if (in_) {
-      return nebula::api::udf::UDFFactory::createUDF<
-        nebula::execution::eval::UDFType::IN,
-        nebula::type::Kind::BOOLEAN,
-        nebula::type::TypeDetect<T>::kind>(expr_, values_);
-    } else {
-      return nebula::api::udf::UDFFactory::createUDF<
-        nebula::execution::eval::UDFType::IN,
-        nebula::type::Kind::BOOLEAN,
-        nebula::type::TypeDetect<T>::kind>(expr_, values_, false);
-    }
+    return in_ ?
+             nebula::api::udf::UDFFactory::createUDF<
+               nebula::execution::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, values_) :
+             nebula::api::udf::UDFFactory::createUDF<
+               nebula::execution::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, values_, false);
   }
 
 #define TYPE_BRANCH(CPP, FUNC)            \

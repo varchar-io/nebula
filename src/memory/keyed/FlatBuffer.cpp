@@ -137,6 +137,7 @@ size_t FlatBuffer::widthInMain(Kind kind) noexcept {
     SCALAR_WIDTH_DISTR(BIGINT)
     SCALAR_WIDTH_DISTR(REAL)
     SCALAR_WIDTH_DISTR(DOUBLE)
+    SCALAR_WIDTH_DISTR(INT128)
   case Kind::VARCHAR: {
     // 4 bytes offset + 4 bytes length
     return 8;
@@ -219,6 +220,7 @@ size_t FlatBuffer::appendList(Kind itemKind, std::unique_ptr<ListData> list) {
       SCALAR_DATA_DISTR(REAL, readFloat)
       SCALAR_DATA_DISTR(DOUBLE, readDouble)
       SCALAR_DATA_DISTR(VARCHAR, readString)
+      SCALAR_DATA_DISTR(INT128, readInt128)
     default:
       throw NException("other types not supported yet");
     }
@@ -321,6 +323,7 @@ Comparator FlatBuffer::genComparator(const nebula::type::TypeNode&, size_t i) no
     TYPE_COMPARE(BIGINT, int64_t)
     TYPE_COMPARE(REAL, int32_t)
     TYPE_COMPARE(DOUBLE, int64_t)
+    TYPE_COMPARE(INT128, int128_t)
   case Kind::VARCHAR: {
     // read the real data from data_
     // TODO(cao) - we don't need convert strings from bytes for hash
@@ -387,6 +390,7 @@ Hasher FlatBuffer::genHasher(const nebula::type::TypeNode&, size_t i) noexcept {
     TYPE_HASH(BIGINT, int64_t)
     TYPE_HASH(REAL, int32_t)
     TYPE_HASH(DOUBLE, int64_t)
+    TYPE_HASH(INT128, int128_t)
   case Kind::VARCHAR: {
     // read 4 bytes offset and 4 bytes length
     return [this, i](size_t row, size_t hash) {
@@ -450,6 +454,7 @@ Copier FlatBuffer::genCopier(const nebula::type::TypeNode&, size_t i) noexcept {
     UPDATE_COLUMN(i, BIGINT, int64_t)
     UPDATE_COLUMN(i, REAL, int32_t)
     UPDATE_COLUMN(i, DOUBLE, int64_t)
+    UPDATE_COLUMN(i, INT128, int128_t)
   default:
     return [i](size_t, size_t, const UpdateCallback&) {
       LOG(ERROR) << "This column can not be copy-updated: " << i;

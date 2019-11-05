@@ -194,8 +194,8 @@ TEST(ApiTest, TestExprValueEval) {
   // test UDF expression evaluation
   {
     auto udf = reverse(expr);
-    udf.type(*tbl);
-    EXPECT_EQ(udf.kind(), nebula::type::Kind::BOOLEAN);
+    auto type = udf.type(*tbl);
+    EXPECT_EQ(type.native, nebula::type::Kind::BOOLEAN);
     auto v3 = udf.asEval();
     auto colrefs = udf.columnRefs();
     EXPECT_EQ(colrefs.size(), 1);
@@ -213,8 +213,8 @@ TEST(ApiTest, TestExprValueEval) {
     LOG(INFO) << "test max UDAF";
     auto modexp = col("id") % 100;
     auto udaf = max(modexp);
-    udaf.type(*tbl);
-    EXPECT_EQ(udaf.kind(), nebula::type::Kind::INTEGER);
+    auto type = udaf.type(*tbl);
+    EXPECT_EQ(type.native, nebula::type::Kind::INTEGER);
     auto v4up = udaf.asEval();
     auto v4 = static_cast<nebula::execution::eval::UDAF<nebula::type::Kind::INTEGER>*>(v4up.get());
     auto udaf_colrefs = udaf.columnRefs();
@@ -225,15 +225,52 @@ TEST(ApiTest, TestExprValueEval) {
     bool valid = true;
     auto r1 = v4->eval(ctx, valid);
     auto r2 = v4->eval(ctx, valid);
-    r2 = v4->compute(r1, r2);
+    r2 = v4->merge(r1, r2);
     EXPECT_GE(r2, r1);
     auto r3 = v4->eval(ctx, valid);
-    r3 = v4->compute(r2, r3);
+    r3 = v4->merge(r2, r3);
     EXPECT_GE(r3, r2);
     auto r4 = v4->eval(ctx, valid);
-    r4 = v4->compute(r3, r4);
+    r4 = v4->merge(r3, r4);
     EXPECT_GE(r4, r3);
     LOG(INFO) << " 4 values: " << r1 << ", " << r2 << ", " << r3 << ", " << r4;
+  }
+
+  // test UDAF expression
+  {
+    LOG(INFO) << "test avg UDAF";
+    auto modexp = col("id") % 100;
+    auto udaf = avg(modexp);
+    auto type = udaf.type(*tbl);
+    EXPECT_EQ(type.native, nebula::type::Kind::INTEGER);
+    EXPECT_EQ(type.store, nebula::type::Kind::INT128);
+    auto v5up = udaf.asEval();
+    auto v5 = static_cast<nebula::execution::eval::UDAF<nebula::type::Kind::INTEGER,
+                                                        nebula::type::Kind::INT128>*>(v5up.get());
+    auto udaf_colrefs = udaf.columnRefs();
+    EXPECT_EQ(udaf_colrefs.size(), 1);
+    EXPECT_EQ(udaf_colrefs[0], "id");
+
+    // call evaluate multiple times and see max value out of
+    bool valid = true;
+    int64_t expected = 0;
+    int128_t sum = 0;
+    auto r1 = v5->eval(ctx, valid);
+    sum = v5->merge(sum, r1);
+    expected += nebula::common::high64<int64_t>(r1);
+    auto r2 = v5->eval(ctx, valid);
+    sum = v5->merge(sum, r2);
+    expected += nebula::common::high64<int64_t>(r2);
+    auto r3 = v5->eval(ctx, valid);
+    sum = v5->merge(sum, r3);
+    expected += nebula::common::high64<int64_t>(r3);
+    auto r4 = v5->eval(ctx, valid);
+    sum = v5->merge(sum, r4);
+    expected += nebula::common::high64<int64_t>(r4);
+
+    auto av = v5->finalize(sum);
+    expected /= 4;
+    EXPECT_EQ(av, expected);
   }
 }
 

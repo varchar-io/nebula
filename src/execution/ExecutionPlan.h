@@ -118,6 +118,10 @@ static constexpr auto indent4 = "    ";
 static constexpr auto bliteral = [](bool lv) { return lv ? "YES" : "NO"; };
 static constexpr auto join = [](const std::vector<size_t>& vector) {
   return std::accumulate(vector.begin(), vector.end(), std::string(""), [](const std::string& s, size_t x) {
+    if (s.empty()) {
+      return std::to_string(x);
+    }
+
     return fmt::format("{0}, {1}", s, x);
   });
 };
@@ -130,6 +134,10 @@ public:
     input_ = upstream_->outputSchema();
   }
   virtual ~ExecutionPhase() = default;
+
+  virtual nebula::type::Schema inputSchema() const {
+    return input_;
+  }
 
   virtual nebula::type::Schema outputSchema() const {
     return input_;
@@ -231,10 +239,6 @@ public:
     return hasAgg_;
   }
 
-  inline nebula::type::Schema inputSchema() const {
-    return input_;
-  }
-
 private:
   std::string table_;
   std::vector<std::unique_ptr<eval::ValueEval>> fields_;
@@ -299,7 +303,9 @@ private:
 template <>
 class Phase<PhaseType::GLOBAL> : public ExecutionPhase {
 public:
-  Phase(std::unique_ptr<ExecutionPhase> upstream) : ExecutionPhase(std::move(upstream)) {}
+  Phase(std::unique_ptr<ExecutionPhase> upstream, nebula::type::Schema output = nullptr)
+    : ExecutionPhase(std::move(upstream)),
+      output_{ output } {}
   virtual ~Phase() = default;
 
 public:
@@ -326,6 +332,11 @@ public:
 
   virtual void display() const override;
 
+  inline virtual nebula::type::Schema outputSchema() const override {
+    // same output or input
+    return output_ == nullptr ? input_ : output_;
+  }
+
   inline virtual PhaseType type() const override {
     return PhaseType::GLOBAL;
   }
@@ -350,6 +361,12 @@ public:
     return static_cast<const NodePhase&>(*upstream_).fields();
   }
 
+  // indicate if the phase has different input/output (data type)
+  // we will do a conversion using each field's finalize method
+  inline bool diffInputOutput() const {
+    return output_ != nullptr;
+  }
+
 private:
   std::vector<size_t> sorts_;
   // TODO(cao) - every sort column may have different order, single direction now
@@ -358,6 +375,7 @@ private:
   size_t numAgg_;
   std::vector<bool> aggCols_;
   std::vector<size_t> keys_;
+  nebula::type::Schema output_;
 };
 
 template <>

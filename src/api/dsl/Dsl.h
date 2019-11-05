@@ -17,9 +17,9 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include "Expressions.h"
 #include "Query.h"
-#include "api/udf/MyUdf.h"
 #include "common/Cursor.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/meta/TableService.h"
@@ -91,6 +91,12 @@ template <typename T>
 static UDFExpression<nebula::execution::eval::UDFType::SUM> sum(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
   return UDFExpression<nebula::execution::eval::UDFType::SUM>(std::shared_ptr<Expression>(new T(expr)));
+}
+
+template <typename T>
+static UDFExpression<nebula::execution::eval::UDFType::AVG> avg(const T& expr) {
+  // TODO(cao) - model UDAF/UDF with existing expression
+  return UDFExpression<nebula::execution::eval::UDFType::AVG>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>

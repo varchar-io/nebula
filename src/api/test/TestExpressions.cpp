@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "api/dsl/Serde.h"
@@ -26,8 +29,6 @@
 #include "execution/ExecutionPlan.h"
 #include "execution/eval/ValueEval.h"
 #include "execution/meta/TableService.h"
-#include "fmt/format.h"
-#include "gmock/gmock.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
@@ -101,7 +102,7 @@ TEST(ExpressionsTest, TestExpressionType) {
 
   // constant type
   nebula::api::dsl::ConstExpression<int> a(1);
-  auto K = [](const nebula::type::TreeNode& node) { return nebula::type::TypeBase::k(node); };
+  auto K = [](const nebula::api::dsl::TypeInfo& node) { return node.native; };
 
   EXPECT_EQ(K(a.type(*tbl)), nebula::type::INTEGER);
   LOG(INFO) << "PASS: constant expr";
@@ -315,7 +316,7 @@ TEST(ExpressionsTest, TestSerde) {
     // verify kind
     i1.type(*tbl);
     exp->type(*tbl);
-    EXPECT_EQ(exp->kind(), i1.kind());
+    EXPECT_EQ(exp->typeInfo(), i1.typeInfo());
 
     // verify value evaluation
     bool valid = true;
@@ -340,7 +341,7 @@ TEST(ExpressionsTest, TestSerde) {
     // verify kind
     s1.type(*tbl);
     exp->type(*tbl);
-    EXPECT_EQ(exp->kind(), s1.kind());
+    EXPECT_EQ(exp->typeInfo(), s1.typeInfo());
 
     // verify value evaluation
     bool valid = true;
@@ -366,7 +367,7 @@ TEST(ExpressionsTest, TestSerde) {
     // verify kind
     cid.type(*tbl);
     exp->type(*tbl);
-    EXPECT_EQ(exp->kind(), cid.kind());
+    EXPECT_EQ(exp->typeInfo(), cid.typeInfo());
 
     // verify value evaluation
     bool valid = true;
@@ -390,7 +391,7 @@ TEST(ExpressionsTest, TestSerde) {
     // verify kind
     cid.type(*tbl);
     exp->type(*tbl);
-    EXPECT_EQ(exp->kind(), cid.kind());
+    EXPECT_EQ(exp->typeInfo(), cid.typeInfo());
 
     // verify value evaluation
     bool valid = true;
@@ -416,7 +417,7 @@ TEST(ExpressionsTest, TestSerde) {
     // verify kind
     cid.type(*tbl);
     exp->type(*tbl);
-    EXPECT_EQ(exp->kind(), cid.kind());
+    EXPECT_EQ(exp->typeInfo(), cid.typeInfo());
 
     // verify value evaluation
     bool valid = true;
@@ -442,7 +443,7 @@ TEST(ExpressionsTest, TestSerde) {
     // verify kind
     cevent.type(*tbl);
     exp->type(*tbl);
-    EXPECT_EQ(exp->kind(), cevent.kind());
+    EXPECT_EQ(exp->typeInfo(), cevent.typeInfo());
 
     // verify value evaluation
     bool valid = true;
@@ -468,7 +469,7 @@ TEST(ExpressionsTest, TestSerde) {
     // verify kind
     cv.type(*tbl);
     exp->type(*tbl);
-    EXPECT_EQ(exp->kind(), cv.kind());
+    EXPECT_EQ(exp->typeInfo(), cv.typeInfo());
 
     // verify value evaluation
     bool valid = true;
@@ -494,7 +495,7 @@ TEST(ExpressionsTest, TestSerde) {
     // verify kind
     cl.type(*tbl);
     exp->type(*tbl);
-    EXPECT_EQ(exp->kind(), cl.kind());
+    EXPECT_EQ(exp->typeInfo(), cl.typeInfo());
 
     // verify value evaluation
     bool valid = true;
@@ -521,7 +522,7 @@ TEST(ExpressionsTest, TestSerde) {
     // verify kind
     ci.type(*tbl);
     exp->type(*tbl);
-    EXPECT_EQ(exp->kind(), ci.kind());
+    EXPECT_EQ(exp->typeInfo(), ci.typeInfo());
 
     // verify value evaluation
     bool valid = true;
