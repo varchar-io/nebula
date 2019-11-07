@@ -442,7 +442,7 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
 #undef NULL_OR_VALUE
 }
 
-TEST(KafkaTest, TestFetchConfig) {
+TEST(KafkaTest, DISABLED_TestFetchConfig) {
   nebula::meta::KafkaSerde serde;
   serde.retention = 90000;
   serde.size = 60000;

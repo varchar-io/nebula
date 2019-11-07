@@ -39,6 +39,7 @@ std::unique_ptr<TypeDataProxy> TypeDataFactory::createData(
     TYPE_DATA_PROXY(BIGINT, LongData)
     TYPE_DATA_PROXY(REAL, FloatData)
     TYPE_DATA_PROXY(DOUBLE, DoubleData)
+    TYPE_DATA_PROXY(INT128, Int128Data)
     TYPE_DATA_PROXY(VARCHAR, StringData)
     TYPE_DATA_PROXY(ARRAY, EmptyData)
     TYPE_DATA_PROXY(MAP, EmptyData)

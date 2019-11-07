@@ -63,6 +63,7 @@ TYPE_DATA_CONSTR(IntData, FLAGS_INT_PAGE_SIZE, folly::to<NType>)
 TYPE_DATA_CONSTR(LongData, FLAGS_LONG_PAGE_SIZE, folly::to<NType>)
 TYPE_DATA_CONSTR(FloatData, FLAGS_REAL_PAGE_SIZE, folly::to<NType>)
 TYPE_DATA_CONSTR(DoubleData, FLAGS_REAL_PAGE_SIZE, folly::to<NType>)
+TYPE_DATA_CONSTR(Int128Data, FLAGS_LONG_PAGE_SIZE, folly::to<NType>)
 TYPE_DATA_CONSTR(StringData, FLAGS_BINARY_PAGE_SIZE, )
 TYPE_DATA_CONSTR(EmptyData, FLAGS_EMPTY_PAGE_SIZE, void_any)
 
@@ -100,6 +101,7 @@ TYPE_PROBABLY(IntData, int32_t, LIKELY)
 TYPE_PROBABLY(LongData, int64_t, LIKELY)
 TYPE_PROBABLY(FloatData, float, UNLIKELY)
 TYPE_PROBABLY(DoubleData, double, UNLIKELY)
+TYPE_PROBABLY(Int128Data, int128_t, UNLIKELY)
 
 #undef TYPE_PROBABLY
 
@@ -126,6 +128,7 @@ TypeDataProxy::TypeDataProxy(PTypeData typeData)
   HOOK_CONCRETE(LongData, ld_)
   HOOK_CONCRETE(FloatData, fd_)
   HOOK_CONCRETE(DoubleData, dd_)
+  HOOK_CONCRETE(Int128Data, i128d_)
   HOOK_CONCRETE(StringData, std_)
 
   // void_ could be null if current data proxy is created for compound
@@ -146,6 +149,7 @@ TYPE_ADD_PROXY(int32_t, id_)
 TYPE_ADD_PROXY(int64_t, ld_)
 TYPE_ADD_PROXY(float, fd_)
 TYPE_ADD_PROXY(double, dd_)
+TYPE_ADD_PROXY(int128_t, i128d_)
 TYPE_ADD_PROXY(std::string_view, std_)
 #undef TYPE_ADD_PROXY
 
@@ -162,6 +166,7 @@ TYPE_PROBABLY_PROXY(int32_t, id_)
 TYPE_PROBABLY_PROXY(int64_t, ld_)
 TYPE_PROBABLY_PROXY(float, fd_)
 TYPE_PROBABLY_PROXY(double, dd_)
+TYPE_PROBABLY_PROXY(int128_t, i128d_)
 
 #undef TYPE_PROBABLY_PROXY
 
@@ -178,6 +183,7 @@ TYPE_DEFAULT_PROXY(int32_t, id_)
 TYPE_DEFAULT_PROXY(int64_t, ld_)
 TYPE_DEFAULT_PROXY(float, fd_)
 TYPE_DEFAULT_PROXY(double, dd_)
+TYPE_DEFAULT_PROXY(int128_t, i128d_)
 TYPE_DEFAULT_PROXY(std::string_view, std_)
 
 #undef TYPE_DEFAULT_PROXY
@@ -195,6 +201,7 @@ TYPE_READ_PROXY(int32_t, id_)
 TYPE_READ_PROXY(int64_t, ld_)
 TYPE_READ_PROXY(float, fd_)
 TYPE_READ_PROXY(double, dd_)
+TYPE_READ_PROXY(int128_t, i128d_)
 
 #undef TYPE_READ_PROXY
 

@@ -58,6 +58,7 @@ public:
   CONV_TYPE_INDEX(int64_t, readLong)
   CONV_TYPE_INDEX(float, readFloat)
   CONV_TYPE_INDEX(double, readDouble)
+  CONV_TYPE_INDEX(int128_t, readInt128)
 
   std::string_view readString(const std::string& field) const override {
     auto index = columnLookup_(field);

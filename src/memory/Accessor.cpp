@@ -55,6 +55,7 @@ READ_TYPE_BY_FIELD(int32_t, readInt)
 READ_TYPE_BY_FIELD(int64_t, readLong)
 READ_TYPE_BY_FIELD(float, readFloat)
 READ_TYPE_BY_FIELD(double, readDouble)
+READ_TYPE_BY_FIELD(int128_t, readInt128)
 READ_TYPE_BY_FIELD(std::string_view, readString)
 
 #undef READ_TYPE_BY_FIELD
@@ -98,6 +99,7 @@ READ_TYPE_BY_ENTRY(int32_t, readInt)
 READ_TYPE_BY_ENTRY(int64_t, readLong)
 READ_TYPE_BY_ENTRY(float, readFloat)
 READ_TYPE_BY_ENTRY(double, readDouble)
+READ_TYPE_BY_ENTRY(int128_t, readInt128)
 READ_TYPE_BY_ENTRY(std::string_view, readString)
 
 #undef READ_TYPE_BY_ENTRY

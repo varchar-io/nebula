@@ -62,9 +62,10 @@ enum class TokenType {
   TARRAY = 14,
   TMAP = 15,
   TSTRUCT = 16,
+  TINT128 = 17,
 
   // define a END token
-  END = 17
+  END = 99
 };
 
 struct Token {

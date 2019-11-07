@@ -65,6 +65,7 @@ using IntData = TypeDataImpl<nebula::type::Kind::INTEGER>;
 using LongData = TypeDataImpl<nebula::type::Kind::BIGINT>;
 using FloatData = TypeDataImpl<nebula::type::Kind::REAL>;
 using DoubleData = TypeDataImpl<nebula::type::Kind::DOUBLE>;
+using Int128Data = TypeDataImpl<nebula::type::Kind::INT128>;
 using StringData = TypeDataImpl<nebula::type::Kind::VARCHAR>;
 
 template <nebula::type::Kind KIND>
@@ -83,7 +84,8 @@ public:
     if (UNLIKELY(bf_ != nullptr)) {
       if (!bf_->add(value)) {
         bf_ = nullptr;
-        LOG(INFO) << "Failed to add value to bloom filter: " << size() << ", value=" << value << "type=" << nebula::type::TypeTraits<KIND>::name;
+        LOG(INFO) << "Failed to add value to bloom filter: " << size()
+                  << ",  type=" << nebula::type::TypeTraits<KIND>::name;
       }
     }
   }
@@ -182,6 +184,7 @@ private:
   LongData* ld_;
   FloatData* fd_;
   DoubleData* dd_;
+  Int128Data* i128d_;
   StringData* std_;
   std::function<void(IndexType)> void_;
   bool hasBf_;

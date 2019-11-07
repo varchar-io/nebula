@@ -30,9 +30,6 @@ namespace test {
 using nebula::memory::FlatRow;
 
 TEST(RowTest, TestFlatRow) {
-  // should be a covariant of TypeNode shared_ptr<RowType> -> shared_ptr<TypeBase>
-  // auto schema = TypeSerializer::from("ROW<id:int, items:list<string>, flag:bool>");
-
   // initialize a flat row with given schema
   FlatRow row(1024);
 
@@ -49,12 +46,14 @@ TEST(RowTest, TestFlatRow) {
     row.write("scores", longList);
     row.write("memo", "memo status");
     row.write("flag", true);
+    row.write("i128", int128_t(128));
 
     // row is ready to read now
     EXPECT_EQ(row.readBool("flag"), true);
     EXPECT_EQ(row.readInt("id"), 2);
     EXPECT_EQ(row.readString("name"), "nebula");
     EXPECT_EQ(row.readFloat("weight"), 23.5);
+    EXPECT_EQ(row.readInt128("i128"), 128);
 
     {
       auto list1 = row.readList("hobbies");

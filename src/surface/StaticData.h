@@ -25,6 +25,7 @@
  */
 namespace nebula {
 namespace surface {
+
 #define NOT_IMPL_FUNC(TYPE, NAME)       \
   TYPE NAME(IndexType) const override { \
     throw NException("x");              \
@@ -50,6 +51,7 @@ public:
   NOT_IMPL_FUNC(int64_t, readLong)
   NOT_IMPL_FUNC(float, readFloat)
   NOT_IMPL_FUNC(double, readDouble)
+  NOT_IMPL_FUNC(int128_t, readInt128)
 
 private:
   std::vector<std::string> data_;
@@ -64,8 +66,8 @@ private:
 
 class StaticRow : public RowData {
 public:
-  StaticRow(int64_t t, int i, std::string_view s, std::unique_ptr<ListData> list, bool f, char b)
-    : time_{ t }, id_{ i }, event_{ s }, flag_{ f }, byte_{ b } {
+  StaticRow(int64_t t, int i, std::string_view s, std::unique_ptr<ListData> list, bool f, char b, int128_t i128)
+    : time_{ t }, id_{ i }, event_{ s }, flag_{ f }, byte_{ b }, i128_{ i128 } {
     if (list != nullptr) {
       items_.reserve(list->getItems());
       for (size_t k = 0; k < items_.capacity(); ++k) {
@@ -123,6 +125,14 @@ public:
     return time_;
   }
 
+  int128_t readInt128(const std::string&) const override {
+    return i128_;
+  }
+
+  int128_t readInt128(IndexType) const override {
+    return i128_;
+  }
+
   std::unique_ptr<ListData> readList(const std::string&) const override {
     return items_.size() == 0 ? nullptr : std::make_unique<StaticList>(items_);
   }
@@ -145,6 +155,7 @@ private:
   std::vector<std::string> items_;
   bool flag_;
   char byte_;
+  int128_t i128_;
 };
 
 } // namespace surface

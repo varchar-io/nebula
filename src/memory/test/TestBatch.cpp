@@ -97,7 +97,8 @@ TEST(BatchTest, TestBatchRead) {
                      i % 3 != 0 ? nullptr : row.readList("items"),
                      // row.isNull("items") ? nullptr : row.readList("items"),
                      row.readBool("flag"),
-                     row.readByte("value") });
+                     row.readByte("value"),
+                     row.readInt128("i128") });
   }
 
   // print single row as string.
@@ -135,6 +136,7 @@ TEST(BatchTest, TestBatchRead) {
       const auto& r1 = rows[i];
       const auto& r2 = accessor->seek(i);
       EXPECT_EQ(line(r1), line(r2));
+      // EXPECT_EQ(r1.readInt128("i128"), r2.readInt128("i128"));
     }
 
     LOG(INFO) << "Verified total rows: " << count;
@@ -163,6 +165,7 @@ TEST(BatchTest, TestBloomFilter) {
                                     "events",
                                     nullptr,
                                     false,
+                                    0,
                                     0 };
     batch.add(row);
   }
@@ -193,13 +196,15 @@ TEST(BatchTest, TestStringDictionary) {
   rows.reserve(count);
 
   // fill rows
+  int128_t large = nebula::common::UINT128_LOW_MASK + 256;
   for (int32_t i = 0; i < count; ++i) {
     nebula::surface::StaticRow row{ i,
                                     i,
                                     "nebula",
                                     nullptr,
                                     false,
-                                    0 };
+                                    0,
+                                    large };
     batch.add(row);
     rows.push_back(row);
   }
@@ -211,6 +216,7 @@ TEST(BatchTest, TestStringDictionary) {
     const auto& r1 = rows[i];
     const auto& r2 = accessor->seek(i);
     EXPECT_EQ(r1.readString("event"), r2.readString("event"));
+    EXPECT_EQ(r1.readInt128("stamp"), r2.readInt128("stamp"));
   }
 
   LOG(INFO) << "Verified total rows: " << count;
@@ -233,7 +239,8 @@ TEST(BatchTest, TestDefaultValue) {
                                     "events",
                                     nullptr,
                                     false,
-                                    (char)(i % 32) };
+                                    (char)(i % 32),
+                                    128 };
     batch.add(row);
   }
 

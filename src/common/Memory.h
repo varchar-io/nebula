@@ -21,6 +21,7 @@
 
 #include "Errors.h"
 #include "Hash.h"
+#include "Int128.h"
 #include "Likely.h"
 
 // TODO(cao): import jemalloc for global new/delete allocation

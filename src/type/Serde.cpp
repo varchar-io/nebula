@@ -44,6 +44,7 @@ TokenType Token::lookup(const std::string& token) {
     { "FLOAT", TokenType::TREAL },
     { "DOUBLE", TokenType::TDOUBLE },
     { "DECIMAL", TokenType::TDOUBLE },
+    { "INT128", TokenType::TINT128 },
     { "VARCHAR", TokenType::TVARCHAR },
     { "STRING", TokenType::TVARCHAR },
     { "BINARY", TokenType::TVARCHAR },
@@ -238,6 +239,7 @@ std::shared_ptr<RowType> TypeSerializer::from(const std::string& text) {
         SCALAR_TYPE_CREATE(TSMALLINT, ShortType)
         SCALAR_TYPE_CREATE(TINTEGER, IntType)
         SCALAR_TYPE_CREATE(TBIGINT, LongType)
+        SCALAR_TYPE_CREATE(TINT128, Int128Type)
         SCALAR_TYPE_CREATE(TREAL, RealType)
         SCALAR_TYPE_CREATE(TDOUBLE, DoubleType)
         SCALAR_TYPE_CREATE(TVARCHAR, StringType)
@@ -294,6 +296,7 @@ std::string TypeSerializer::to(const std::shared_ptr<RowType> row) {
         DISPATCH_SCALAR(BIGINT, LongType)
         DISPATCH_SCALAR(REAL, RealType)
         DISPATCH_SCALAR(DOUBLE, DoubleType)
+        DISPATCH_SCALAR(INT128, Int128Type)
         DISPATCH_SCALAR(VARCHAR, StringType)
       case Kind::ARRAY: {
         N_ENSURE_EQ(children.size(), 1, "list type has single child");

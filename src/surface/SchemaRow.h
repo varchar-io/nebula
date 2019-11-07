@@ -65,6 +65,7 @@ public:
   COMPOSE(int64_t, readLong)
   COMPOSE(float, readFloat)
   COMPOSE(double, readDouble)
+  COMPOSE(int128_t, readInt128)
   COMPOSE(std::string_view, readString)
   COMPOSE(std::unique_ptr<nebula::surface::ListData>, readList)
   COMPOSE(std::unique_ptr<nebula::surface::MapData>, readMap)

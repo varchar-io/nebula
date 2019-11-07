@@ -41,6 +41,7 @@ READ_SCALAR(int32_t, readInt)
 READ_SCALAR(int64_t, readLong)
 READ_SCALAR(float, readFloat)
 READ_SCALAR(double, readDouble)
+READ_SCALAR(int128_t, readInt128)
 
 #undef READ_SCALAR
 
@@ -85,6 +86,7 @@ READ_SCALAR(int32_t, readInt)
 READ_SCALAR(int64_t, readLong)
 READ_SCALAR(float, readFloat)
 READ_SCALAR(double, readDouble)
+READ_SCALAR(int128_t, readInt128)
 
 #undef READ_SCALAR
 

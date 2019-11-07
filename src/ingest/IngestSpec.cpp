@@ -263,6 +263,7 @@ public:
   TRANSFER(std::string_view, readString)
   TRANSFER(float, readFloat)
   TRANSFER(double, readDouble)
+  TRANSFER(int128_t, readInt128)
   TRANSFER(std::unique_ptr<nebula::surface::ListData>, readList)
   TRANSFER(std::unique_ptr<nebula::surface::MapData>, readMap)
 

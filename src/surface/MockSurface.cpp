@@ -39,24 +39,35 @@ bool MockRowData::readBool(const std::string&) const {
   // half of trues
   return rand_() < 0.5;
 }
+
 int8_t MockRowData::readByte(const std::string&) const {
   return std::numeric_limits<int8_t>::max() * rand_();
 }
+
 int16_t MockRowData::readShort(const std::string&) const {
   return std::numeric_limits<int16_t>::max() * rand_();
 }
+
 int32_t MockRowData::readInt(const std::string&) const {
   return std::numeric_limits<int32_t>::max() * rand_();
 }
+
 int64_t MockRowData::readLong(const std::string&) const {
   return std::numeric_limits<int64_t>::max() * rand_();
 }
+
 float MockRowData::readFloat(const std::string&) const {
   return rand_();
 }
+
 double MockRowData::readDouble(const std::string&) const {
   return rand_();
 }
+
+int128_t MockRowData::readInt128(const std::string&) const {
+  return std::numeric_limits<int128_t>::max() * rand_();
+}
+
 std::string_view MockRowData::readString(const std::string&) const {
   return strings_.at(rand_() * strings_.size());
 }
@@ -82,24 +93,35 @@ bool MockRowData::readBool(IndexType) const {
   // half of trues
   return rand_() < 0.5;
 }
+
 int8_t MockRowData::readByte(IndexType) const {
   return std::numeric_limits<int8_t>::max() * rand_();
 }
+
 int16_t MockRowData::readShort(IndexType) const {
   return std::numeric_limits<int16_t>::max() * rand_();
 }
+
 int32_t MockRowData::readInt(IndexType) const {
   return std::numeric_limits<int32_t>::max() * rand_();
 }
+
 int64_t MockRowData::readLong(IndexType) const {
   return std::numeric_limits<int64_t>::max() * rand_();
 }
+
 float MockRowData::readFloat(IndexType) const {
   return rand_();
 }
+
 double MockRowData::readDouble(IndexType) const {
   return rand_();
 }
+
+int128_t MockRowData::readInt128(IndexType) const {
+  return std::numeric_limits<int128_t>::max() * rand_();
+}
+
 std::string_view MockRowData::readString(IndexType) const {
   return strings_.at(rand_() * strings_.size());
 }
@@ -145,6 +167,11 @@ float MockListData::readFloat(IndexType) const {
 double MockListData::readDouble(IndexType) const {
   return rand_();
 }
+
+int128_t MockListData::readInt128(IndexType) const {
+  return std::numeric_limits<int128_t>::max() * rand_();
+}
+
 std::string_view MockListData::readString(IndexType) const {
   return strings_.at(rand_() * strings_.size());
 }

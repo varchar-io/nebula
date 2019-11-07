@@ -25,6 +25,7 @@
 #include "common/Evidence.h"
 #include "common/Fold.h"
 #include "common/Hash.h"
+#include "common/Int128.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
 
@@ -163,6 +164,7 @@ TEST(CommonTest, TestSliceAndPagedSlice) {
   EXPECT_EQ(cursor, 8);
   cursor += slice.write(cursor, 8L);
   EXPECT_EQ(cursor, 16);
+
   cursor += slice.write(cursor, 3.2f);
   EXPECT_EQ(cursor, 20);
   cursor += slice.write(cursor, 6.4);
@@ -172,6 +174,10 @@ TEST(CommonTest, TestSliceAndPagedSlice) {
   auto str = "abcxyz";
   cursor += slice.write(cursor, str, std::strlen(str));
   EXPECT_EQ(cursor, 50);
+
+  int128_t i128 = 16;
+  cursor += slice.write(cursor, i128);
+  EXPECT_EQ(cursor, 66);
 
   // read all data written above
   EXPECT_EQ(slice.read<bool>(0), true);
@@ -183,6 +189,7 @@ TEST(CommonTest, TestSliceAndPagedSlice) {
   EXPECT_EQ(slice.read<double>(20), 6.4);
   EXPECT_EQ(slice.read<long double>(28), 8.9L);
   EXPECT_EQ(slice.read(44, 6), "abcxyz");
+  EXPECT_EQ(slice.read<int128_t>(50), i128);
 
   // write to position overflow sinle slice - paged slice will auto grow
   slice.write(1050, 1.0);
@@ -412,6 +419,58 @@ TEST(CommonTest, TestMultiFold) {
 
     EXPECT_EQ(values.at(0), sum);
   }
+}
+
+TEST(CommonTest, TestInt128) {
+  int128_t x = 128;
+  int128_t y = std::numeric_limits<__int128_t>::max();
+  EXPECT_TRUE(y > x);
+
+  y += 1;
+  EXPECT_TRUE(x > y);
+
+  int128_t z = UINT128_LOW_MASK;
+  int128_t z1 = z + 1;
+
+  // test out int128 features
+  EXPECT_EQ(low64(z1), 0);
+  EXPECT_EQ(high64(z1), 1);
+
+  EXPECT_TRUE(z1 > z);
+  auto z2 = z1 >> 64;
+  EXPECT_TRUE(z2 == 1);
+
+  // lower part is 12804 and high part is still 1
+  auto delta = 12804;
+  z1 += delta;
+
+  // try different types
+  EXPECT_EQ(low64<int64_t>(z1), delta);
+  EXPECT_EQ(high64<int64_t>(z1), 1);
+
+  EXPECT_EQ(low64<uint32_t>(z1), delta);
+  EXPECT_EQ(high64<uint32_t>(z1), 1);
+
+  EXPECT_EQ(low64<int32_t>(z1), delta);
+  EXPECT_EQ(high64<int32_t>(z1), 1);
+
+  EXPECT_EQ(low64<uint16_t>(z1), delta);
+  EXPECT_EQ(high64<uint16_t>(z1), 1);
+
+  EXPECT_EQ(low64<int16_t>(z1), delta);
+  EXPECT_EQ(high64<int16_t>(z1), 1);
+
+  // now I want to mask high part to turn it into a negative value
+  int128_t zn = z1 | UINT128_HIGH_MASK;
+  EXPECT_TRUE(zn < 0);
+
+  // by default converting to uint64
+  EXPECT_EQ(low64(zn), delta);
+  EXPECT_EQ(high64(zn), UINT64_MAX);
+
+  // for signed int64, it is a negative value
+  EXPECT_EQ(low64<int64_t>(zn), delta);
+  EXPECT_EQ(high64<int64_t>(zn), -1);
 }
 
 } // namespace test

@@ -145,6 +145,16 @@ size_t DataNode::append(double d) {
 }
 
 template <>
+size_t DataNode::append(int128_t i128) {
+  N_ENSURE(type_.k() == nebula::type::Int128Type::kind, "double type expected");
+
+  constexpr size_t size = nebula::type::Int128Type::width;
+  data_->add(cursorAndAdvance(), i128);
+
+  INCREMENT_RAW_SIZE_AND_RETURN()
+}
+
+template <>
 size_t DataNode::append(std::string_view str) {
   N_ENSURE(type_.k() == nebula::type::StringType::kind, "string type expected");
   // if current data node is enabled with dictionary.
@@ -200,6 +210,7 @@ size_t DataNode::append(const nebula::surface::ListData& list) {
     DISPATCH_KIND(BIGINT, lambda, child, list.readLong)
     DISPATCH_KIND(REAL, lambda, child, list.readFloat)
     DISPATCH_KIND(DOUBLE, lambda, child, list.readDouble)
+    DISPATCH_KIND(INT128, lambda, child, list.readInt128)
     DISPATCH_KIND(VARCHAR, lambda, child, list.readString)
   default:
     throw NException(fmt::format("Not supported type: {0}", TypeBase::kname(kind)));
@@ -276,6 +287,7 @@ size_t DataNode::append(const nebula::surface::RowData& row) {
       DISPATCH_KIND(size, BIGINT, child, row.readLong(name))
       DISPATCH_KIND(size, REAL, child, row.readFloat(name))
       DISPATCH_KIND(size, DOUBLE, child, row.readDouble(name))
+      DISPATCH_KIND(size, INT128, child, row.readInt128(name))
       DISPATCH_KIND(size, VARCHAR, child, row.readString(name))
     case Kind::ARRAY: {
       auto list = row.readList(name);
@@ -318,6 +330,7 @@ TYPE_READ_DELEGATE(int32_t)
 TYPE_READ_DELEGATE(int64_t)
 TYPE_READ_DELEGATE(float)
 TYPE_READ_DELEGATE(double)
+TYPE_READ_DELEGATE(int128_t)
 
 template <>
 std::string_view DataNode::read(size_t index) {

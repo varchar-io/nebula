@@ -96,6 +96,7 @@ public:
   int64_t readLong(const std::string& field) const override;
   float readFloat(const std::string& field) const override;
   double readDouble(const std::string& field) const override;
+  int128_t readInt128(const std::string& field) const override;
   std::string_view readString(const std::string& field) const override;
 
   // compound types
@@ -123,6 +124,7 @@ public:
   int64_t readLong(IndexType index) const override;
   float readFloat(IndexType index) const override;
   double readDouble(IndexType index) const override;
+  int128_t readInt128(IndexType index) const override;
   std::string_view readString(IndexType index) const override;
 
 private:

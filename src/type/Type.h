@@ -17,12 +17,14 @@
 #pragma once
 
 #include "Tree.h"
+#include "common/Int128.h"
 
 namespace nebula {
 namespace type {
 
 // All supported types in nebula
 // enum class is strong typed enum, lose the strong type
+// TODO(cao) - INT128 is used in storage only, not supported in expression.
 enum Kind {
   // scalar types are in range[1, 10]
   INVALID = 0,
@@ -33,8 +35,10 @@ enum Kind {
   BIGINT = 5,
   REAL = 6,
   DOUBLE = 7,
+  INT128 = 8,
   // var length types are in range [11, 20]
   VARCHAR = 11,
+
   // compound types are in range [21, 30]
   ARRAY = 21,
   MAP = 22,
@@ -65,6 +69,7 @@ using LongType = BigType;
 using RealType = Type<Kind::REAL>;
 using FloatType = RealType;
 using DoubleType = Type<Kind::DOUBLE>;
+using Int128Type = Type<Kind::INT128>;
 using VarcharType = Type<Kind::VARCHAR>;
 using StringType = VarcharType;
 using ArrayType = Type<Kind::ARRAY>;
@@ -109,6 +114,7 @@ DEFINE_TYPE_TRAITS(INTEGER, true, 4, int32_t)
 DEFINE_TYPE_TRAITS(BIGINT, true, 8, int64_t)
 DEFINE_TYPE_TRAITS(REAL, true, 4, float)
 DEFINE_TYPE_TRAITS(DOUBLE, true, 8, double)
+DEFINE_TYPE_TRAITS(INT128, true, 16, int128_t)
 DEFINE_TYPE_TRAITS(VARCHAR, true, 0, std::string_view)
 DEFINE_TYPE_TRAITS(ARRAY, false, 0, void*)
 DEFINE_TYPE_TRAITS(MAP, false, 0, void*)
@@ -137,6 +143,7 @@ public:
 
 public:
 #define KIND_NAME_DISPATCH(K) KIND_DISPATCH(K, name)
+
   static std::string kname(Kind kind) {
     switch (kind) {
       KIND_NAME_DISPATCH(BOOLEAN)
@@ -146,6 +153,7 @@ public:
       KIND_NAME_DISPATCH(BIGINT)
       KIND_NAME_DISPATCH(REAL)
       KIND_NAME_DISPATCH(DOUBLE)
+      KIND_NAME_DISPATCH(INT128)
       KIND_NAME_DISPATCH(VARCHAR)
       KIND_NAME_DISPATCH(ARRAY)
       KIND_NAME_DISPATCH(MAP)
@@ -154,6 +162,7 @@ public:
       throw NException("Unsupported type in kname.");
     }
   }
+
 #undef KIND_NAME_DISPATCH
 
   static constexpr bool isCompound(Kind kind) noexcept {
@@ -345,9 +354,13 @@ struct TypeConvertible {
 DEFINE_TYPE_CONVERTIBILITY(TINYINT, SMALLINT, true)
 DEFINE_TYPE_CONVERTIBILITY(TINYINT, INTEGER, true)
 DEFINE_TYPE_CONVERTIBILITY(TINYINT, BIGINT, true)
+DEFINE_TYPE_CONVERTIBILITY(TINYINT, INT128, true)
 DEFINE_TYPE_CONVERTIBILITY(SMALLINT, INTEGER, true)
 DEFINE_TYPE_CONVERTIBILITY(SMALLINT, BIGINT, true)
+DEFINE_TYPE_CONVERTIBILITY(SMALLINT, INT128, true)
 DEFINE_TYPE_CONVERTIBILITY(INTEGER, BIGINT, true)
+DEFINE_TYPE_CONVERTIBILITY(INTEGER, INT128, true)
+DEFINE_TYPE_CONVERTIBILITY(BIGINT, INT128, true)
 DEFINE_TYPE_CONVERTIBILITY(REAL, DOUBLE, true)
 
 // always legal to conert itself to itself
@@ -358,6 +371,7 @@ DEFINE_TYPE_CONVERTIBILITY(INTEGER, INTEGER, true)
 DEFINE_TYPE_CONVERTIBILITY(BIGINT, BIGINT, true)
 DEFINE_TYPE_CONVERTIBILITY(REAL, REAL, true)
 DEFINE_TYPE_CONVERTIBILITY(DOUBLE, DOUBLE, true)
+DEFINE_TYPE_CONVERTIBILITY(INT128, INT128, true)
 DEFINE_TYPE_CONVERTIBILITY(VARCHAR, VARCHAR, true)
 DEFINE_TYPE_CONVERTIBILITY(ARRAY, ARRAY, true)
 DEFINE_TYPE_CONVERTIBILITY(MAP, MAP, true)
@@ -381,6 +395,7 @@ struct ConvertibleFrom {
       DYNAMIC_CONVERTIBILITY_CHECK(BIGINT)
       DYNAMIC_CONVERTIBILITY_CHECK(REAL)
       DYNAMIC_CONVERTIBILITY_CHECK(DOUBLE)
+      DYNAMIC_CONVERTIBILITY_CHECK(INT128)
       DYNAMIC_CONVERTIBILITY_CHECK(VARCHAR)
       DYNAMIC_CONVERTIBILITY_CHECK(ARRAY)
       DYNAMIC_CONVERTIBILITY_CHECK(MAP)
@@ -421,6 +436,7 @@ DEFINE_TYPE_DETECT(int32_t, INTEGER, IntType, int32_t, 0)
 DEFINE_TYPE_DETECT(int64_t, BIGINT, LongType, int64_t, 0)
 DEFINE_TYPE_DETECT(float, REAL, FloatType, float, 0)
 DEFINE_TYPE_DETECT(double, DOUBLE, DoubleType, double, 0)
+DEFINE_TYPE_DETECT(int128_t, INT128, Int128Type, int128_t, 0)
 DEFINE_TYPE_DETECT(const char*, VARCHAR, StringType, std::string_view, "")
 DEFINE_TYPE_DETECT(char*, VARCHAR, StringType, std::string_view, "")
 DEFINE_TYPE_DETECT(std::string_view, VARCHAR, StringType, std::string_view, "")

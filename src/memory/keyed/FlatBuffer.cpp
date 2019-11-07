@@ -263,6 +263,7 @@ std::function<void(const RowData&)> FlatBuffer::genParser(const TypeNode& tn, si
     SCALAR_DATA_DISTR(BIGINT, readLong)
     SCALAR_DATA_DISTR(REAL, readFloat)
     SCALAR_DATA_DISTR(DOUBLE, readDouble)
+    SCALAR_DATA_DISTR(INT128, readInt128)
     SCALAR_DATA_DISTR(VARCHAR, readString)
 
   case Kind::ARRAY: {
@@ -627,6 +628,7 @@ READ_FIELD(int32_t, readInt)
 READ_FIELD(int64_t, readLong)
 READ_FIELD(float, readFloat)
 READ_FIELD(double, readDouble)
+READ_FIELD(int128_t, readInt128)
 
 #undef READ_FIELD
 
@@ -676,6 +678,7 @@ FORWARD_NAME_2_INDEX(int32_t, readInt)
 FORWARD_NAME_2_INDEX(int64_t, readLong)
 FORWARD_NAME_2_INDEX(float, readFloat)
 FORWARD_NAME_2_INDEX(double, readDouble)
+FORWARD_NAME_2_INDEX(int128_t, readInt128)
 FORWARD_NAME_2_INDEX(std::string_view, readString)
 FORWARD_NAME_2_INDEX(std::unique_ptr<nebula::surface::ListData>, readList)
 
@@ -697,6 +700,7 @@ READ_FIELD(int32_t, readInt)
 READ_FIELD(int64_t, readLong)
 READ_FIELD(float, readFloat)
 READ_FIELD(double, readDouble)
+READ_FIELD(int128_t, readInt128)
 
 #undef READ_FIELD
 

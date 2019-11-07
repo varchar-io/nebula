@@ -53,6 +53,7 @@ public:
   virtual int64_t readLong(const std::string& field) const override;
   virtual float readFloat(const std::string& field) const override;
   virtual double readDouble(const std::string& field) const override;
+  virtual int128_t readInt128(const std::string& field) const override;
   virtual std::string_view readString(const std::string& field) const override;
 
   // compound types
@@ -67,6 +68,7 @@ public:
   virtual int64_t readLong(IndexType index) const override;
   virtual float readFloat(IndexType index) const override;
   virtual double readDouble(IndexType index) const override;
+  virtual int128_t readInt128(IndexType index) const override;
   virtual std::string_view readString(IndexType index) const override;
 
   // compound types
@@ -112,6 +114,7 @@ public:
   int64_t readLong(IndexType index) const override;
   float readFloat(IndexType index) const override;
   double readDouble(IndexType index) const override;
+  int128_t readInt128(IndexType index) const override;
   std::string_view readString(IndexType index) const override;
 
 private:

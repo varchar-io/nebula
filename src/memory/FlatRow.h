@@ -189,6 +189,7 @@ public:
   INTERFACE_IMPL(int64_t, readLong)
   INTERFACE_IMPL(float, readFloat)
   INTERFACE_IMPL(double, readDouble)
+  INTERFACE_IMPL(int128_t, readInt128)
   INTERFACE_IMPL(std::string_view, readString)
   INTERFACE_IMPL(std::unique_ptr<nebula::surface::ListData>, readList)
   INTERFACE_IMPL(std::unique_ptr<nebula::surface::MapData>, readMap)
@@ -234,6 +235,7 @@ public:
   LIST_INTERFACE(int64_t, readLong)
   LIST_INTERFACE(float, readFloat)
   LIST_INTERFACE(double, readDouble)
+  LIST_INTERFACE(int128_t, readInt128)
   LIST_INTERFACE(std::string_view, readString)
 
 #undef LIST_INTERFACE

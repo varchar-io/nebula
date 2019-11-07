@@ -393,6 +393,24 @@ TEST(TypeTest, TestConvertibility) {
   EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::STRUCT>::convertibleFrom(Kind::STRUCT));
 }
 
+TEST(TypeTest, TestSchemaWithInt128) {
+  // test deserialization
+  auto schema = "STRUCT<f1:BIGINT,map:MAP<key:BIGINT, value:INT128>,list:ARRAY<item:INT128>,f4:INT128>";
+  auto type = TypeSerializer::from(schema);
+
+  EXPECT_EQ(type->size(), 4);
+
+  auto f1 = type->childType(0);
+  EXPECT_EQ(f1->name(), "f1");
+  EXPECT_EQ(f1->k(), nebula::type::Kind::BIGINT);
+
+  LOG(INFO) << "get map type";
+  MapType::PType map = type->childAt<MapType::PType>(1).value();
+  EXPECT_EQ(map->type, "MAP");
+  LOG(INFO) << "passed type check";
+  EXPECT_EQ(map->name(), "map");
+}
+
 } // namespace test
 } // namespace type
 } // namespace nebula

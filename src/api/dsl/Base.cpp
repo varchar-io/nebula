@@ -43,6 +43,7 @@ TreeNode Expression::typeCreate(Kind kind, std::string& alias) {
     TYPE_CREATE_NODE(BIGINT, LongType)
     TYPE_CREATE_NODE(REAL, FloatType)
     TYPE_CREATE_NODE(DOUBLE, DoubleType)
+    TYPE_CREATE_NODE(INT128, Int128Type)
     TYPE_CREATE_NODE(VARCHAR, StringType)
   default:
     throw NException(fmt::format("Not supported type {0}", TypeBase::kname(kind)));

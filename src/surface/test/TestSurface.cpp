@@ -66,6 +66,16 @@ TEST(SurfaceTest, TestSameMockDataWithSameSeed) {
   }
 }
 
+TEST(SurfaceTest, TestInt128Surface) {
+  const auto seed = Evidence::unix_timestamp();
+  nebula::surface::MockRowData mock1(seed);
+  nebula::surface::MockRowData mock2(seed);
+
+  for (auto i = 0; i < 1024; ++i) {
+    EXPECT_EQ(mock1.readInt128("b"), mock2.readInt128("b"));
+  }
+}
+
 } // namespace test
 } // namespace memory
 } // namespace nebula

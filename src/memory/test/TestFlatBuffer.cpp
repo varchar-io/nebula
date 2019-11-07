@@ -78,7 +78,8 @@ TEST(FlatBufferTest, TestFlatBufferWrite) {
                      i % 3 != 0 ? nullptr : row.readList("items"),
                      // row.isNull("items") ? nullptr : row.readList("items"),
                      row.readBool("flag"),
-                     row.readByte("value") });
+                     row.readByte("value"),
+                     row.readInt128("i128") });
   }
 
   LOG(INFO) << "Data was generated with seed: " << seed;
@@ -146,7 +147,7 @@ TEST(FlatBufferTest, TestSerde) {
   FlatBuffer fb(test.schema());
 
   // add some rows
-  constexpr auto rows2test = 201053;
+  constexpr auto rows2test = 21053;
   auto seed = Evidence::unix_timestamp();
   MockRowData row(seed);
 

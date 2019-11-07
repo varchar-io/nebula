@@ -18,8 +18,10 @@
 
 #include <cstdint>
 #include <string_view>
+
 #include "common/Cursor.h"
 #include "common/Errors.h"
+#include "common/Int128.h"
 
 /**
  * Define a Row data API to read data from
@@ -80,6 +82,7 @@ public:
   virtual int64_t readLong(const std::string& field) const = 0;
   virtual float readFloat(const std::string& field) const = 0;
   virtual double readDouble(const std::string& field) const = 0;
+  virtual int128_t readInt128(const std::string& field) const = 0;
   virtual std::string_view readString(const std::string& field) const = 0;
 
   // compound types
@@ -102,6 +105,7 @@ public:
   NOT_IMPL_FUNC(int64_t, readLong)
   NOT_IMPL_FUNC(float, readFloat)
   NOT_IMPL_FUNC(double, readDouble)
+  NOT_IMPL_FUNC(int128_t, readInt128)
   NOT_IMPL_FUNC(std::string_view, readString)
   NOT_IMPL_FUNC(std::unique_ptr<ListData>, readList)
   NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
@@ -127,6 +131,7 @@ public:
   virtual int64_t readLong(IndexType index) const = 0;
   virtual float readFloat(IndexType index) const = 0;
   virtual double readDouble(IndexType index) const = 0;
+  virtual int128_t readInt128(IndexType index) const = 0;
   virtual std::string_view readString(IndexType index) const = 0;
 
 private:
