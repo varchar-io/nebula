@@ -14,8 +14,13 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+#include "Test.hpp"
+
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "common/Cursor.h"
@@ -24,14 +29,10 @@
 #include "common/Folly.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
-#include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/meta/TableService.h"
-#include "fmt/format.h"
-#include "gmock/gmock.h"
 #include "meta/NBlock.h"
-#include "meta/TestTable.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "type/Serde.h"
@@ -43,35 +44,21 @@ namespace test {
 using namespace nebula::api::dsl;
 using nebula::common::Cursor;
 using nebula::common::Evidence;
-using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::meta::TableService;
-using nebula::meta::BlockSignature;
-using nebula::meta::TestTable;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
 TEST(ApiTest, TestMultipleBlocks) {
-  // load test data to run this query
-  auto bm = BlockManager::init();
-
-  // set up a start and end time for the data set in memory
-  int64_t start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
-  int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
-
-  // let's plan these many data std::thread::hardware_concurrency()
-  auto ms = TableService::singleton();
-  nebula::meta::TestTable testTable;
-  auto numBlocks = std::thread::hardware_concurrency();
-  auto window = (end - start) / numBlocks;
-  for (unsigned i = 0; i < numBlocks; i++) {
-    size_t begin = start + i * window;
-    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
-  }
+  auto data = genData();
 
   // query this table
-  const auto query = table(testTable.name(), ms)
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+  const auto query = table(tableName, ms)
                        .where(col("_time_") > start && col("_time_") < end && like(col("event"), "NN%"))
                        .select(
                          col("event"),
@@ -108,25 +95,14 @@ TEST(ApiTest, TestMultipleBlocks) {
 }
 
 TEST(ApiTest, TestStringEqEmpty) {
-  // load test data to run this query
-  auto bm = BlockManager::init();
-
-  // set up a start and end time for the data set in memory
-  int64_t start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
-  int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
-
-  // let's plan these many data std::thread::hardware_concurrency()
-  auto ms = TableService::singleton();
-  nebula::meta::TestTable testTable;
-  auto numBlocks = std::thread::hardware_concurrency();
-  auto window = (end - start) / numBlocks;
-  for (unsigned i = 0; i < numBlocks; i++) {
-    size_t begin = start + i * window;
-    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
-  }
+  auto data = genData();
 
   // query this table
-  const auto query = table(testTable.name(), ms)
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+  const auto query = table(tableName, ms)
                        .where(col("_time_") > start && col("_time_") < end && col("event") == "")
                        .select(
                          col("event"),
@@ -163,25 +139,14 @@ TEST(ApiTest, TestStringEqEmpty) {
 }
 
 TEST(ApiTest, TestBlockSkipByBloomfilter) {
-  // load test data to run this query
-  auto bm = BlockManager::init();
-
-  // set up a start and end time for the data set in memory
-  int64_t start = nebula::common::Evidence::time("2019-01-01", "%Y-%m-%d");
-  int64_t end = Evidence::time("2019-05-01", "%Y-%m-%d");
-
-  // let's plan these many data std::thread::hardware_concurrency()
-  auto ms = TableService::singleton();
-  nebula::meta::TestTable testTable;
-  auto numBlocks = std::thread::hardware_concurrency();
-  auto window = (end - start) / numBlocks;
-  for (unsigned i = 0; i < numBlocks; i++) {
-    size_t begin = start + i * window;
-    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
-  }
+  auto data = genData();
 
   // we know we don't have an id larger than this number, so the query should skip all blocks
-  const auto query = table(testTable.name(), ms)
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+  const auto query = table(tableName, ms)
                        .where(col("_time_") > start && col("_time_") < end && col("id") == 8989)
                        .select(
                          col("event"),
@@ -196,10 +161,6 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
 
   // print out the plan through logging
   plan->display();
-
-  // no block will be picked for this query
-  auto blocks = bm->query(testTable, *plan);
-  EXPECT_EQ(blocks.size(), 1);
 
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself

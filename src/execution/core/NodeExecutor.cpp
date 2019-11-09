@@ -103,7 +103,7 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
   auto merged = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAgg(), x);
 
   // if scale is 0 or this query has no limit on it
-  if (FLAGS_TOP_SORT_SCALE == 0 || phase.top() == 0) {
+  if (local_ || FLAGS_TOP_SORT_SCALE == 0 || phase.top() == 0) {
     return merged;
   }
 

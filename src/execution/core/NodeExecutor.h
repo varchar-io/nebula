@@ -33,14 +33,17 @@ namespace core {
 // This will sit behind the service interface and do the real work.
 class NodeExecutor {
 public:
-  NodeExecutor(const std::shared_ptr<BlockManager> blockManager)
-    : blockManager_{ blockManager } {}
+  NodeExecutor(const std::shared_ptr<BlockManager> blockManager, bool local = false)
+    : blockManager_{ blockManager }, local_{ local } {}
 
 public:
   nebula::surface::RowCursorPtr execute(folly::ThreadPoolExecutor&, const ExecutionPlan&);
 
 private:
   const std::shared_ptr<BlockManager> blockManager_;
+
+  // indicate current node executor is executing the plan with local memory (same process as server)
+  const bool local_;
 };
 } // namespace core
 } // namespace execution

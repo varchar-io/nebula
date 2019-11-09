@@ -15,6 +15,15 @@
  */
 
 #include "Errors.h"
+
+// If NDBG is defined by build, print call stack of each exception
+#ifdef NDBG
+#define BOOST_STACKTRACE_GNU_SOURCE_NOT_REQUIRED
+#define BOOST_STACKTRACE_USE_ADDR2LINE
+#include <boost/stacktrace.hpp>
+#include <glog/logging.h>
+#endif
+
 namespace nebula {
 namespace common {
 
@@ -25,6 +34,9 @@ NebulaException::NebulaException(const std::string& file,
                                  const std::string& msg)
   : format_{ fmt::format("[{0}:{1} at function {2}] Nebula Exception={3}: {4}",
                          file, line, method, expr, msg) } {
+#ifdef NDBG
+  LOG(INFO) << "Exception Call Stack: " << boost::stacktrace::stacktrace();
+#endif
 }
 } // namespace common
 } // namespace nebula

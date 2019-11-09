@@ -150,7 +150,7 @@ public:
   // It declares the method is not mark as const if we change the signature as
   // auto read(size_t position) -> typename std::enable_if<std::is_scalar<T>::value, T&>::type const {
   template <typename T>
-  typename std::enable_if<std::is_scalar<T>::value, T&>::type read(size_t position) const {
+  typename std::enable_if<std::is_scalar<T>::value, T>::type read(size_t position) const {
     constexpr size_t size = sizeof(T);
     N_ENSURE(position + size <= capacity(), "invalid position to read data");
 

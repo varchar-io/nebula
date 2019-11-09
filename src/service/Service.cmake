@@ -209,7 +209,8 @@ add_custom_target(nebula_web_client ALL
 # build test binary
 add_executable(ServiceTests 
   ${NEBULA_SRC}/service/test/TestQueryHandler.cpp
-  ${NEBULA_SRC}/service/test/TestQueryService.cpp)
+  ${NEBULA_SRC}/service/test/TestQueryService.cpp
+  ${NEBULA_SRC}/api/test/Test.cpp)
 target_link_libraries(ServiceTests 
   PRIVATE ${GLOG_LIBRARY}
   PRIVATE ${NEBULA_SERVICE}

@@ -33,7 +33,7 @@ folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
 
   // start to full fill the future
   pool_.add([&plan, &pool = pool_, p]() {
-    NodeExecutor nodeExec(BlockManager::init());
+    NodeExecutor nodeExec(BlockManager::init(), true);
     p->setValue(nodeExec.execute(pool, plan));
   });
 

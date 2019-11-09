@@ -136,7 +136,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_CXX_FLAGS ${NCFLAGS})
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -DNDBG")
 set(CMAKE_CXX_FLAGS_RELEASE ${NCFLAGS_RELEASE})
 
 # we use static link always
@@ -292,6 +292,9 @@ add_executable(MainTest src/main.cpp)
 
 # install it into local bin folder
 install(TARGETS MainTest DESTINATION bin)
+
+# enable testing so that we can run "make test"
+enable_testing()
 
 # a command to install clang-format - not related to build
 # execute_process(COMMAND npm install clang-format)

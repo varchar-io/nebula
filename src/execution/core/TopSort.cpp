@@ -82,7 +82,7 @@ RowCursorPtr topSort(RowCursorPtr input, const ExecutionPlan& plan, size_t scale
 #undef LESS_KIND_CASE
   }
 
-  return std::make_shared<TopRows>(input, phase.top() * scale, less);
+  return std::make_shared<TopRows>(input, phase.top() * scale, std::move(less));
 }
 
 } // namespace core

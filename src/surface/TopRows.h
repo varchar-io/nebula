@@ -31,14 +31,14 @@ class TopRows : public RowCursor {
 
 public:
   // top rows will pick sorted top N rows, if max is 0, it means we don't apply limit and return all
-  TopRows(const RowCursorPtr& rows, size_t max, const Less& less)
+  TopRows(const RowCursorPtr& rows, size_t max, Less less)
     : RowCursor(max == 0 ? rows->size() : std::min(max, rows->size())),
       heap_(rows->size()),
       rows_{ rows } {
     // build heap / priority queue
     if (less != nullptr) {
-      compare_ = [this, less](size_t left, size_t right) -> bool {
-        return less(rows_->item(left), rows_->item(right));
+      compare_ = [this, func = std::move(less)](size_t left, size_t right) -> bool {
+        return func(rows_->item(left), rows_->item(right));
       };
 
       // fill the vector with its index

@@ -26,6 +26,7 @@ target_link_libraries(${NEBULA_API}
 
 # build test binary
 add_executable(ApiTests 
+    ${NEBULA_SRC}/api/test/Test.cpp
     ${NEBULA_SRC}/api/test/TestApi.cpp
     ${NEBULA_SRC}/api/test/TestExpressions.cpp
     ${NEBULA_SRC}/api/test/TestQuery.cpp

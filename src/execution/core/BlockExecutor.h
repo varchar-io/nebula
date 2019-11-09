@@ -81,6 +81,7 @@ public:
     index_++;
     return samples_->next();
   }
+  
   inline virtual std::unique_ptr<nebula::surface::RowData> item(size_t index) const override {
     return samples_->item(index);
   }

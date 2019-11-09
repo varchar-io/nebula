@@ -16,6 +16,9 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
+#include "Test.hpp"
+
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
 #include "common/Cursor.h"
@@ -24,7 +27,6 @@
 #include "common/Folly.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
-#include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/eval/ValueEval.h"
@@ -32,7 +34,6 @@
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "meta/NBlock.h"
-#include "meta/TestTable.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "type/Serde.h"
@@ -43,20 +44,20 @@ namespace test {
 
 using namespace nebula::api::dsl;
 using nebula::common::Cursor;
-using nebula::execution::BlockManager;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::eval::EvalContext;
 using nebula::execution::meta::TableService;
-using nebula::meta::BlockSignature;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
 TEST(ApiTest, TestQueryStructure) {
-  auto tbl = "nebula.test";
-  // set up table for testing
+  auto data = genData();
+
+  // query this table
   auto ms = TableService::singleton();
-  const auto query = table(tbl, ms)
+  auto tableName = std::get<0>(data);
+  const auto query = table(tableName, ms)
                        .where(like(col("event"), "NN%"))
                        .select(
                          col("event"),
@@ -81,13 +82,6 @@ TEST(ApiTest, TestQueryStructure) {
   plan->display();
 
   nebula::common::Evidence::Duration tick;
-  // load test data to run this query
-  auto bm = BlockManager::init();
-  auto ptable = ms->query(tbl);
-
-  // ensure block 0 of the test table (load from storage if not in memory)
-  BlockSignature block{ ptable->name(), 0, 0, 0 };
-  bm->add(block);
 
   // execute a plan on a server: for demo, we run the server on localhost:9190
   LOG(INFO) << "Loaded 100K rows data using " << tick.elapsedMs() << " ms";
@@ -113,10 +107,12 @@ TEST(ApiTest, TestQueryStructure) {
 }
 
 TEST(ApiTest, TestSortingAndTop) {
-  auto tbl = "nebula.test";
-  // set up table for testing
+  auto data = genData();
+
+  // query this table
   auto ms = TableService::singleton();
-  const auto query = table(tbl, ms)
+  auto tableName = std::get<0>(data);
+  const auto query = table(tableName, ms)
                        .where(like(col("event"), "N%"))
                        .select(
                          col("event"),
@@ -130,11 +126,7 @@ TEST(ApiTest, TestSortingAndTop) {
                        .limit(5);
   // compile the query into an execution plan
   auto plan = query.compile();
-  // load test data to run this query
-  auto bm = BlockManager::init();
-  auto ptable = ms->query(tbl);
-  BlockSignature block{ ptable->name(), 0, 0, 0 };
-  bm->add(block);
+
   nebula::common::Evidence::Duration tick;
 
   // pass the query plan to a server to execute - usually it is itself
