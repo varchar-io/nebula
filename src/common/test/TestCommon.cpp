@@ -425,6 +425,7 @@ TEST(CommonTest, TestInt128) {
   int128_t x = 128;
   int128_t y = std::numeric_limits<__int128_t>::max();
   EXPECT_TRUE(y > x);
+  LOG(INFO) << "x=" << x << ", y=" << y;
 
   y += 1;
   EXPECT_TRUE(x > y);
@@ -439,6 +440,7 @@ TEST(CommonTest, TestInt128) {
   EXPECT_TRUE(z1 > z);
   auto z2 = z1 >> 64;
   EXPECT_TRUE(z2 == 1);
+  LOG(INFO) << "z=" << z << ", z1=" << z1 << ", z2=" << z2;
 
   // lower part is 12804 and high part is still 1
   auto delta = 12804;
@@ -471,6 +473,7 @@ TEST(CommonTest, TestInt128) {
   // for signed int64, it is a negative value
   EXPECT_EQ(low64<int64_t>(zn), delta);
   EXPECT_EQ(high64<int64_t>(zn), -1);
+  LOG(INFO) << "zn=" << zn;
 }
 
 } // namespace test

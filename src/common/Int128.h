@@ -46,5 +46,30 @@ inline T high64(const int128_t& v) {
   return static_cast<T>(v >> 64);
 }
 
+static std::string to_string(const int128_t& i) {
+  constexpr auto digits = "0123456789";
+  auto x = i < 0 ? -i : i;
+  char buffer[128];
+  char* ptr = std::end(buffer);
+  do {
+    --ptr;
+    *ptr = digits[x % 10];
+    x /= 10;
+  } while (x != 0);
+
+  // put the sign if negative value
+  if (i < 0) {
+    --ptr;
+    *ptr = '-';
+  }
+
+  auto size = std::end(buffer) - ptr;
+  return std::string(ptr, size);
+}
+
+inline std::ostream& operator<<(std::ostream& os, int128_t i) {
+  return os << to_string(i);
+}
+
 } // namespace common
 } // namespace nebula

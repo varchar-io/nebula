@@ -78,6 +78,7 @@ std::unique_ptr<ValueEval> ColumnExpression::asEval() const {
     KIND_CASE_VE(BIGINT, int64_t)
     KIND_CASE_VE(REAL, float)
     KIND_CASE_VE(DOUBLE, double)
+    KIND_CASE_VE(INT128, int128_t)
     KIND_CASE_VE(VARCHAR, std::string_view)
   default:
     // TODO(cao) - support list and map type for UDF to compute values on

@@ -21,6 +21,7 @@
 
 #include "api/dsl/Serde.h"
 #include "common/Evidence.h"
+#include "common/Int128.h"
 #include "execution/BlockManager.h"
 #include "execution/ExecutionPlan.h"
 #include "ingest/BlockExpire.h"
@@ -120,6 +121,18 @@ const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Sche
       jsonCalls.push_back([name, &json](const RowData& row) {
         json.Key(name);
         auto lv = std::to_string(row.readLong(name));
+        json.String(lv.data(), lv.size());
+      });
+      break;
+    }
+    case Kind::INT128: {
+      // TODO(cao) - we need better serializeation format exhcanging with WEB
+      // Due to JSON format on number - it can only have 16 significant digits
+      // for any long value having more than that will be round to 0 causing precision problem.
+      // So we serialize bigint into string
+      jsonCalls.push_back([name, &json](const RowData& row) {
+        json.Key(name);
+        auto lv = nebula::common::to_string(row.readInt128(name));
         json.String(lv.data(), lv.size());
       });
       break;

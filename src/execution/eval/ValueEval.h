@@ -237,6 +237,11 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
           return row.readDouble(name);
         }
 
+        if constexpr (std::is_same<T, int128_t>::value) {
+          NULL_CHECK(0)
+          return row.readInt128(name);
+        }
+
         if constexpr (std::is_same<T, std::string_view>::value) {
           NULL_CHECK("")
           return row.readString(name);
