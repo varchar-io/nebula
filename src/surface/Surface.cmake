@@ -3,9 +3,11 @@ set(NEBULA_SURFACE NSurface)
 # build nebula.surface library - data exchange surface API
 # target_include_directories(${NEBULA_SURFACE} INTERFACE src/surface)
 add_library(${NEBULA_SURFACE} STATIC 
-    ${NEBULA_SRC}/surface/MockSurface.cpp)
+    ${NEBULA_SRC}/surface/MockSurface.cpp
+    ${NEBULA_SRC}/surface/eval/EvalContext.cpp)
 target_link_libraries(${NEBULA_SURFACE}
     PUBLIC ${NEBULA_TYPE}
+    PUBLIC ${NEBULA_COMMON}
     PUBLIC ${FMT_LIBRARY})
 
 # build test binary

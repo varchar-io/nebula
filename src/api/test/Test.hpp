@@ -17,6 +17,7 @@
 #pragma once
 
 #include <mutex>
+#include <thread>
 
 namespace nebula {
 namespace api {
@@ -26,7 +27,7 @@ namespace test {
 std::mutex& sync_test_mutex();
 
 // generate data
-std::tuple<std::string, int64_t, int64_t> genData();
+std::tuple<std::string, int64_t, int64_t> genData(unsigned numBlocks = std::thread::hardware_concurrency());
 
 } // namespace test
 } // namespace api

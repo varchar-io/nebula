@@ -26,9 +26,9 @@
 #include "api/udf/UDFFactory.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
-#include "execution/eval/UDF.h"
-#include "execution/eval/ValueEval.h"
 #include "meta/Table.h"
+#include "surface/eval/UDF.h"
+#include "surface/eval/ValueEval.h"
 #include "type/Tree.h"
 
 /**
@@ -194,7 +194,7 @@ public: // all operations
 
   IS_AGG(false)
 
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     auto v1 = op1_->asEval();
     auto v2 = op2_->asEval();
     N_ENSURE(v1 != nullptr, "op1 value eval is null");
@@ -279,7 +279,7 @@ public: // all logical operations
   IS_AGG(false)
 
   // convert to value eval
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     auto v1 = op1_->asEval();
     auto v2 = op2_->asEval();
     N_ENSURE(v1 != nullptr, "op1 value eval is null");
@@ -367,7 +367,7 @@ public: // all logical operations
 
   IS_AGG(false)
 
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override;
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override;
   virtual TypeInfo type(const nebula::meta::Table& table) override;
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override;
   inline virtual std::vector<std::string> columnRefs() const override {
@@ -393,8 +393,8 @@ public:
   IS_AGG(false)
 
   // convert to value eval
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
-    return nebula::execution::eval::constant(value_);
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
+    return nebula::surface::eval::constant(value_);
   }
 
   virtual TypeInfo type(const nebula::meta::Table&) override {
@@ -420,7 +420,7 @@ private:
 // So here - we will implement this first. When necessary, we may want to introduce different expresssion type.
 // TODO(cao) - need rework this since we need to come up with a framework
 // to allow customized UDAFs to be plugged in
-template <nebula::execution::eval::UDFType UT>
+template <nebula::surface::eval::UDFType UT>
 class UDFExpression : public Expression {
 public:
   UDFExpression(std::shared_ptr<Expression> inner)
@@ -432,7 +432,7 @@ public:
 public:
   ALIAS()
 
-  IS_AGG(execution::eval::UdfTraits<UT>::UDAF)
+  IS_AGG(nebula::surface::eval::UdfTraits<UT>::UDAF)
 
   virtual TypeInfo type(const nebula::meta::Table& table) override {
     // always call inner_ type since it's going to change its state
@@ -440,8 +440,8 @@ public:
 
     // if this UDF has pre-defined type, we don't need to get it from inner expression then
     type_ = TypeInfo{
-      execution::eval::udfKind<UT, false>(innerType.native),
-      execution::eval::udfKind<UT, true>(innerType.native),
+      nebula::surface::eval::udfKind<UT, false>(innerType.native),
+      nebula::surface::eval::udfKind<UT, true>(innerType.native),
     };
 
     return type_;
@@ -456,7 +456,7 @@ public:
     return nebula::api::udf::UDFFactory::createUDF<UT, nebula::type::Kind::KIND>(inner_); \
   }
 
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     // based on type, create different UDAF object and pass it to UDF function wrapper
     switch (type_.native) {
       CASE_KIND_UDF(BOOLEAN)
@@ -486,14 +486,14 @@ protected:
   std::shared_ptr<Expression> inner_;
 };
 
-template <nebula::execution::eval::UDFType UDF>
+template <nebula::surface::eval::UDFType UDF>
 class BoolUDF : public Expression {
 public:
   BoolUDF(std::shared_ptr<Expression> expr)
     : expr_{ expr } {}
 
 public:
-  IS_AGG(execution::eval::UdfTraits<UDF>::UDAF)
+  IS_AGG(nebula::surface::eval::UdfTraits<UDF>::UDAF)
 
   virtual TypeInfo type(const nebula::meta::Table& table) override {
     expr_->type(table);
@@ -515,7 +515,7 @@ protected:
   std::shared_ptr<Expression> expr_;
 };
 
-using LikeBase = BoolUDF<nebula::execution::eval::UDFType::LIKE>;
+using LikeBase = BoolUDF<nebula::surface::eval::UDFType::LIKE>;
 class LikeExpression : public LikeBase {
 public:
   LikeExpression(std::shared_ptr<Expression> left, const std::string& pattern, bool caseSensitive = true)
@@ -525,9 +525,9 @@ public:
   ALL_LOGICAL_OPS()
   ALIAS()
 
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
-      nebula::execution::eval::UDFType::LIKE,
+      nebula::surface::eval::UDFType::LIKE,
       nebula::type::Kind::VARCHAR>(expr_, pattern_, caseSensitive_);
   }
 
@@ -543,7 +543,7 @@ private:
   bool caseSensitive_;
 };
 
-using PrefixBase = BoolUDF<nebula::execution::eval::UDFType::PREFIX>;
+using PrefixBase = BoolUDF<nebula::surface::eval::UDFType::PREFIX>;
 class PrefixExpression : public PrefixBase {
 public:
   PrefixExpression(std::shared_ptr<Expression> left, const std::string& prefix, bool caseSensitive = true)
@@ -553,9 +553,9 @@ public:
   ALL_LOGICAL_OPS()
   ALIAS()
 
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
-      nebula::execution::eval::UDFType::PREFIX,
+      nebula::surface::eval::UDFType::PREFIX,
       nebula::type::Kind::VARCHAR>(expr_, prefix_, caseSensitive_);
   }
 
@@ -571,7 +571,7 @@ private:
   bool caseSensitive_;
 };
 
-using InBase = BoolUDF<nebula::execution::eval::UDFType::IN>;
+using InBase = BoolUDF<nebula::surface::eval::UDFType::IN>;
 template <typename T>
 class InExpression : public InBase {
 public:
@@ -582,12 +582,12 @@ public:
   ALL_LOGICAL_OPS()
   ALIAS()
 
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const override {
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     return in_ ?
              nebula::api::udf::UDFFactory::createUDF<
-               nebula::execution::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, values_) :
+               nebula::surface::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, values_) :
              nebula::api::udf::UDFFactory::createUDF<
-               nebula::execution::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, values_, false);
+               nebula::surface::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, values_, false);
   }
 
 #define TYPE_BRANCH(CPP, FUNC)            \

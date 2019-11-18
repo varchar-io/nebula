@@ -17,10 +17,10 @@
 #include "Finalize.h"
 #include <gflags/gflags.h>
 
-#include "execution/eval/UDF.h"
 #include "memory/FlatRow.h"
 #include "surface/DataSurface.h"
 #include "surface/SchemaRow.h"
+#include "surface/eval/UDF.h"
 #include "type/Type.h"
 
 DEFINE_uint64(FOWARD_ROW_CACHE_SIZE,
@@ -34,13 +34,13 @@ namespace nebula {
 namespace execution {
 namespace core {
 
-using nebula::execution::eval::UDAF;
 using nebula::memory::FlatRow;
 using nebula::surface::IndexType;
 using nebula::surface::RowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::surface::SchemaRow;
+using nebula::surface::eval::UDAF;
 using nebula::type::Kind;
 using nebula::type::Schema;
 
@@ -138,7 +138,7 @@ public:
   ForwardRowCursor(RowCursorPtr inner,
                    Schema input,
                    Schema output,
-                   const std::vector<std::unique_ptr<eval::ValueEval>>& fields)
+                   const nebula::surface::eval::Fields& fields)
     : RowCursor(inner->size()),
       inner_{ inner },
       input_{ input },
@@ -176,13 +176,12 @@ private:
         N_ENSURE_EQ(iType, Kind::INT128, "support transform from int128 to other types only");
         // TODO(cao): ideally this should be a entry point for ValueEval - the base for all expressions
         // However, so far I don't see any cases more than UDAF could have this, so jump directly to it for now
-#define DISPATCH_TYPE_FROM_I128(K)                                                     \
-  case Kind::K: {                                                                      \
-    transformers_[i] = [this, i](const int128_t& v, void* t) {                         \
-      auto target = static_cast<nebula::type::TypeTraits<Kind::K>::CppType*>(t);       \
-      *target = static_cast<UDAF<Kind::K, Kind::INT128>&>(*fields_.at(i)).finalize(v); \
-    };                                                                                 \
-    break;                                                                             \
+#define DISPATCH_TYPE_FROM_I128(K)                                                                                        \
+  case Kind::K: {                                                                                                         \
+    transformers_[i] = [& udaf = static_cast<UDAF<Kind::K, Kind::INT128>&>(*fields_.at(i))](const int128_t& v, void* t) { \
+      *static_cast<nebula::type::TypeTraits<Kind::K>::CppType*>(t) = udaf.finalize(v);                                    \
+    };                                                                                                                    \
+    break;                                                                                                                \
   }
 
         switch (oType) {
@@ -204,7 +203,7 @@ private:
   RowCursorPtr inner_;
   Schema input_;
   Schema output_;
-  const std::vector<std::unique_ptr<eval::ValueEval>>& fields_;
+  const nebula::surface::eval::Fields& fields_;
   ForwardRowData row_;
   TransformerVector transformers_;
 };

@@ -21,25 +21,25 @@
 
 #include "execution/ExecutionPlan.h"
 #include "execution/core/BlockExecutor.h"
-#include "execution/eval/UDF.h"
-#include "execution/eval/ValueEval.h"
 #include "execution/serde/RowCursorSerde.h"
 #include "memory/Batch.h"
 #include "meta/TestTable.h"
 #include "surface/MockSurface.h"
+#include "surface/eval/UDF.h"
+#include "surface/eval/ValueEval.h"
 
 namespace nebula {
 namespace execution {
 namespace test {
 
 using nebula::execution::core::BlockExecutor;
-using nebula::execution::eval::column;
-using nebula::execution::eval::constant;
-using nebula::execution::eval::EvalContext;
-using nebula::execution::eval::UDAF;
 using nebula::memory::Batch;
 using nebula::surface::MockRowData;
 using nebula::surface::RowData;
+using nebula::surface::eval::column;
+using nebula::surface::eval::constant;
+using nebula::surface::eval::EvalContext;
+using nebula::surface::eval::UDAF;
 using nebula::type::TypeSerializer;
 
 TEST(ExecutionTest, TestOperator) {
@@ -58,7 +58,7 @@ public:
   using AggFunction = std::function<int32_t(int32_t, int32_t)>;
   TestUdaf()
     : UDAF<nebula::type::Kind::INTEGER>("TestExec",
-                                        nebula::execution::eval::constant(1),
+                                        nebula::surface::eval::constant(1),
                                         {},
                                         [](int32_t a, int32_t b) { return a + b; },
                                         {}) {}
@@ -92,7 +92,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
     auto outputSchema = TypeSerializer::from("ROW<id:int, event:string, flag:bool>");
     nebula::execution::BlockPhase plan(test.schema(), outputSchema);
 
-    std::vector<std::unique_ptr<eval::ValueEval>> selects;
+    nebula::surface::eval::Fields selects;
     selects.reserve(3);
     selects.push_back(column<int32_t>("id"));
     selects.push_back(column<std::string_view>("event"));
@@ -100,7 +100,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
     plan.scan(test.name())
       .compute(std::move(selects))
       .filter(constant<bool>(true))
-      .aggregate(false)
+      .aggregate(0, { false, false, false })
       .limit(size);
 
     auto cursor = nebula::execution::core::compute(batch, plan);
@@ -134,7 +134,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
     auto outputSchema = TypeSerializer::from("ROW<key:int, agg:int>");
     nebula::execution::BlockPhase plan(test.schema(), outputSchema);
 
-    std::vector<std::unique_ptr<eval::ValueEval>> selects;
+    nebula::surface::eval::Fields selects;
     selects.reserve(2);
     selects.push_back(constant<int32_t>(20));
     selects.push_back(std::make_unique<TestUdaf>());
@@ -142,7 +142,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       .compute(std::move(selects))
       .filter(constant<bool>(true))
       .keys({ 0 })
-      .aggregate(true);
+      .aggregate(1, { false, true });
 
     auto cursor = nebula::execution::core::compute(batch, plan);
     auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema);

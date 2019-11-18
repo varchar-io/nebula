@@ -23,7 +23,7 @@
  * Also it provides reference return rather than value return comparing to RowData interface. 
  */
 namespace nebula {
-namespace execution {
+namespace surface {
 namespace eval {
 
 // reset to a new row
@@ -39,7 +39,7 @@ void EvalContext::reset(const nebula::surface::RowData& row) {
 }
 
 template <>
-std::string_view EvalContext::eval(const nebula::execution::eval::ValueEval& ve, bool& valid) {
+std::string_view EvalContext::eval(const ValueEval& ve, bool& valid) {
   if (LIKELY(!cache_)) {
     return ve.eval<std::string_view>(*this, valid);
   }
@@ -75,5 +75,5 @@ std::string_view EvalContext::eval(const nebula::execution::eval::ValueEval& ve,
 }
 
 } // namespace eval
-} // namespace execution
+} // namespace surface
 } // namespace nebula

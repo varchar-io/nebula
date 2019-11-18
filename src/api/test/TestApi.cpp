@@ -29,13 +29,13 @@
 #include "common/Memory.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
-#include "execution/eval/ValueEval.h"
 #include "execution/meta/TableService.h"
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "meta/NBlock.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
+#include "surface/eval/ValueEval.h"
 #include "type/Serde.h"
 
 namespace nebula {
@@ -45,9 +45,9 @@ namespace test {
 using namespace nebula::api::dsl;
 using nebula::common::Cursor;
 using nebula::execution::core::ServerExecutor;
-using nebula::execution::eval::EvalContext;
 using nebula::execution::meta::TableService;
 using nebula::surface::RowData;
+using nebula::surface::eval::EvalContext;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
@@ -216,7 +216,7 @@ TEST(ApiTest, TestExprValueEval) {
     auto type = udaf.type(*tbl);
     EXPECT_EQ(type.native, nebula::type::Kind::INTEGER);
     auto v4up = udaf.asEval();
-    auto v4 = static_cast<nebula::execution::eval::UDAF<nebula::type::Kind::INTEGER>*>(v4up.get());
+    auto v4 = static_cast<nebula::surface::eval::UDAF<nebula::type::Kind::INTEGER>*>(v4up.get());
     auto udaf_colrefs = udaf.columnRefs();
     EXPECT_EQ(udaf_colrefs.size(), 1);
     EXPECT_EQ(udaf_colrefs[0], "id");
@@ -245,8 +245,8 @@ TEST(ApiTest, TestExprValueEval) {
     EXPECT_EQ(type.native, nebula::type::Kind::INTEGER);
     EXPECT_EQ(type.store, nebula::type::Kind::INT128);
     auto v5up = udaf.asEval();
-    auto v5 = static_cast<nebula::execution::eval::UDAF<nebula::type::Kind::INTEGER,
-                                                        nebula::type::Kind::INT128>*>(v5up.get());
+    auto v5 = static_cast<nebula::surface::eval::UDAF<nebula::type::Kind::INTEGER,
+                                                      nebula::type::Kind::INT128>*>(v5up.get());
     auto udaf_colrefs = udaf.columnRefs();
     EXPECT_EQ(udaf_colrefs.size(), 1);
     EXPECT_EQ(udaf_colrefs[0], "id");

@@ -28,10 +28,10 @@ using nebula::execution::BlockPhase;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::FinalPhase;
 using nebula::execution::NodePhase;
-using nebula::execution::eval::ValueEval;
 using nebula::meta::NNode;
 using nebula::meta::Table;
 using nebula::surface::RowData;
+using nebula::surface::eval::ValueEval;
 using nebula::type::RowType;
 using nebula::type::Schema;
 using nebula::type::TreeNode;
@@ -169,21 +169,17 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   (*block)
     .scan(table_->name())
     .filter(filter_->asEval())
-    .keys(zbKeys)
+    .keys(std::move(zbKeys))
     .compute(std::move(fields))
-    .limit(limit_)
-    .aggregate(numAggColumns > 0);
+    .aggregate(numAggColumns, std::move(aggColumns))
+    .sort(std::move(zbSorts), sortType_ == SortType::DESC)
+    .limit(limit_);
 
   // partial aggrgation, keys and agg methods
   auto node = std::make_unique<NodePhase>(std::move(block));
-  (*node).agg(numAggColumns, aggColumns);
 
   // global aggregation, keys and agg methods
-  auto controller = std::make_unique<FinalPhase>(std::move(node), output);
-  (*controller)
-    .agg(numAggColumns, aggColumns)
-    .sort(zbSorts, sortType_ == SortType::DESC)
-    .limit(limit_);
+  auto server = std::make_unique<FinalPhase>(std::move(node), output);
 
   //1. get total nodes that we will run the query, filter_ will help prune results
   auto nodeList = ms_->queryNodes(table_, [](const NNode&) { return true; });
@@ -193,7 +189,7 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
 
   // make an execution plan from a few phases
   return std::make_unique<ExecutionPlan>(
-    std::move(controller), std::move(nodeList), differentSchema ? output : tempOutput);
+    std::move(server), std::move(nodeList), differentSchema ? output : tempOutput);
 }
 
 } // namespace dsl

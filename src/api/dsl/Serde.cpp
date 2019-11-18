@@ -15,9 +15,11 @@
  */
 
 #include "Serde.h"
+
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+
 #include "Expressions.h"
 #include "type/Type.h"
 
@@ -25,7 +27,7 @@ namespace nebula {
 namespace api {
 namespace dsl {
 
-using nebula::execution::eval::UDFType;
+using nebula::surface::eval::UDFType;
 using nebula::type::TypeDetect;
 
 // helper method to add a json string field

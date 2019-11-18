@@ -18,10 +18,11 @@
 
 #include <numeric>
 #include <unordered_set>
+
 #include "common/Cursor.h"
-#include "eval/ValueEval.h"
 #include "meta/NNode.h"
 #include "surface/DataSurface.h"
+#include "surface/eval/ValueEval.h"
 #include "type/Type.h"
 
 /**
@@ -128,7 +129,7 @@ static constexpr auto join = [](const std::vector<size_t>& vector) {
 
 class ExecutionPhase {
 public:
-  ExecutionPhase(nebula::type::Schema input) : input_{ input }, upstream_{ nullptr }, limit_{ 0 } {}
+  ExecutionPhase(nebula::type::Schema input) : input_{ input }, upstream_{ nullptr } {}
   ExecutionPhase(std::unique_ptr<ExecutionPhase> upstream)
     : upstream_{ std::move(upstream) } {
     input_ = upstream_->outputSchema();
@@ -147,10 +148,6 @@ public:
     return *upstream_;
   }
 
-  inline size_t top() const {
-    return limit_;
-  }
-
   virtual void display() const = 0;
 
   virtual PhaseType type() const = 0;
@@ -158,7 +155,6 @@ public:
 protected:
   nebula::type::Schema input_;
   std::unique_ptr<ExecutionPhase> upstream_;
-  size_t limit_;
 };
 
 template <>
@@ -169,23 +165,23 @@ public:
   virtual ~Phase() = default;
 
 public:
-  Phase& scan(const std::string& tbl) {
-    table_ = tbl;
+  Phase& scan(const std::string& table) {
+    table_ = table;
     return *this;
   }
 
-  Phase& filter(std::unique_ptr<eval::ValueEval> f) {
-    filter_ = std::move(f);
+  Phase& filter(std::unique_ptr<nebula::surface::eval::ValueEval> filter) {
+    filter_ = std::move(filter);
     return *this;
   }
 
-  Phase& compute(std::vector<std::unique_ptr<eval::ValueEval>> s) {
-    fields_ = std::move(s);
+  Phase& compute(nebula::surface::eval::Fields fields) {
+    fields_ = std::move(fields);
     return *this;
   }
+  Phase& keys(std::vector<size_t> keys) {
 
-  Phase& keys(const std::vector<size_t>& keys) {
-    keys_ = keys;
+    keys_ = std::move(keys);
     return *this;
   }
 
@@ -194,11 +190,20 @@ public:
     return *this;
   }
 
-  Phase& aggregate(bool hasAgg) {
-    hasAgg_ = hasAgg;
+  Phase& aggregate(size_t numAggregates, std::vector<bool> aggregateMap) {
+    numAggregates_ = numAggregates;
+    aggregateMap_ = std::move(aggregateMap);
+    // cross check if the keys is expected based on aggCols - changed plan?
     return *this;
   }
 
+  Phase& sort(std::vector<size_t> sorts, bool desc) {
+    sorts_ = std::move(sorts);
+    desc_ = desc;
+    return *this;
+  }
+
+public:
   virtual nebula::type::Schema outputSchema() const override {
     return output_;
   }
@@ -209,7 +214,6 @@ public:
     return PhaseType::COMPUTE;
   }
 
-public:
   inline const std::string& table() const {
     return table_;
   }
@@ -218,12 +222,28 @@ public:
     return keys_;
   }
 
-  inline const std::vector<std::unique_ptr<eval::ValueEval>>& fields() const {
+  inline const nebula::surface::eval::Fields& fields() const {
     return fields_;
   }
 
-  inline const eval::ValueEval& filter() const {
+  inline bool isAggregateColumn(size_t index) const {
+    return aggregateMap_.at(index);
+  }
+
+  inline const nebula::surface::eval::ValueEval& filter() const {
     return *filter_;
+  }
+
+  inline const std::vector<size_t>& sorts() const {
+    return sorts_;
+  }
+
+  inline bool isDesc() const {
+    return desc_;
+  }
+
+  inline size_t top() const {
+    return limit_;
   }
 
   // decide if we want to cache expression evaluations
@@ -236,68 +256,77 @@ public:
   }
 
   inline bool hasAggregation() const {
-    return hasAgg_;
+    return numAggregates_ > 0;
   }
 
 private:
-  std::string table_;
-  std::vector<std::unique_ptr<eval::ValueEval>> fields_;
-  std::unique_ptr<eval::ValueEval> filter_;
-  std::vector<size_t> keys_;
-  bool hasAgg_;
   nebula::type::Schema input_;
   nebula::type::Schema output_;
+
+  std::string table_;
+  nebula::surface::eval::Fields fields_;
+  std::unique_ptr<nebula::surface::eval::ValueEval> filter_;
+  std::vector<size_t> keys_;
+
+  // aggregation properties
+  size_t numAggregates_;
+  std::vector<bool> aggregateMap_;
+
+  // sorting properties
+  std::vector<size_t> sorts_;
+  // TODO(cao) - every sort column may have different order, single direction now
+  bool desc_;
+
+  // results limitation
+  size_t limit_;
 };
 
 template <>
 class Phase<PhaseType::PARTIAL> : public ExecutionPhase {
 public:
   Phase(std::unique_ptr<ExecutionPhase> upstream)
-    : ExecutionPhase(std::move(upstream)), numAgg_{ 0 } {}
+    : ExecutionPhase(std::move(upstream)) {}
 
   virtual ~Phase() = default;
 
 public:
-  Phase& agg(size_t numAggColumns, const std::vector<bool>& aggColumns) {
-    // processing the partial plan based on block plan
-    const auto& bp = static_cast<const BlockPhase&>(*upstream_);
-    numAgg_ = numAggColumns;
-    aggCols_ = aggColumns;
-    keys_ = bp.keys();
-    // cross check if the keys is expected based on aggCols - changed plan?
-    return *this;
-  }
-
   virtual void display() const override;
   inline virtual PhaseType type() const override {
     return PhaseType::PARTIAL;
   }
 
-  inline bool hasAgg() const {
-    return numAgg_ > 0;
+  inline bool hasAggregation() const {
+    return static_cast<const BlockPhase&>(*upstream_).hasAggregation();
   }
 
   inline bool hasKeys() const {
     // select count(1) from t will not have key
-    return numAgg_ < aggCols_.size();
+    return !keys().empty();
   }
 
-  inline bool isAggCol(size_t index) const {
-    return aggCols_.at(index);
+  inline bool isAggregateColumn(size_t index) const {
+    return !static_cast<const BlockPhase&>(*upstream_).isAggregateColumn(index);
   }
 
   inline const std::vector<size_t>& keys() const {
-    return keys_;
+    return static_cast<const BlockPhase&>(*upstream_).keys();
   }
 
-  inline const std::vector<std::unique_ptr<eval::ValueEval>>& fields() const {
+  inline const nebula::surface::eval::Fields& fields() const {
     return static_cast<const BlockPhase&>(*upstream_).fields();
   }
 
-private:
-  size_t numAgg_;
-  std::vector<bool> aggCols_;
-  std::vector<size_t> keys_;
+  inline const std::vector<size_t>& sorts() const {
+    return static_cast<const BlockPhase&>(*upstream_).sorts();
+  }
+
+  inline bool isDesc() const {
+    return static_cast<const BlockPhase&>(*upstream_).isDesc();
+  }
+
+  inline size_t top() const {
+    return static_cast<const BlockPhase&>(*upstream_).top();
+  }
 };
 
 template <>
@@ -309,27 +338,6 @@ public:
   virtual ~Phase() = default;
 
 public:
-  Phase& agg(size_t numAggColumns, const std::vector<bool>& aggColumns) {
-    // processing the partial plan based on block plan
-    const auto& bp = static_cast<const NodePhase&>(*upstream_);
-    numAgg_ = numAggColumns;
-    aggCols_ = aggColumns;
-    keys_ = bp.keys();
-    // cross check if the keys is expected based on aggCols - changed plan?
-    return *this;
-  }
-
-  Phase& sort(const std::vector<size_t>& sorts, bool desc) {
-    sorts_ = sorts;
-    desc_ = desc;
-    return *this;
-  }
-
-  Phase& limit(size_t limit) {
-    limit_ = limit;
-    return *this;
-  }
-
   virtual void display() const override;
 
   inline virtual nebula::type::Schema outputSchema() const override {
@@ -342,23 +350,27 @@ public:
   }
 
   inline const std::vector<size_t>& sorts() const {
-    return sorts_;
+    return static_cast<const NodePhase&>(*upstream_).sorts();
   }
 
   inline bool isDesc() const {
-    return desc_;
+    return static_cast<const NodePhase&>(*upstream_).isDesc();
   }
 
-  inline bool hasAgg() const {
-    return numAgg_ > 0;
+  inline bool hasAggregation() const {
+    return static_cast<const NodePhase&>(*upstream_).hasAggregation();
   }
 
   inline const std::vector<size_t>& keys() const {
-    return keys_;
+    return static_cast<const NodePhase&>(*upstream_).keys();
   }
 
-  inline const std::vector<std::unique_ptr<eval::ValueEval>>& fields() const {
+  inline const nebula::surface::eval::Fields& fields() const {
     return static_cast<const NodePhase&>(*upstream_).fields();
+  }
+
+  inline size_t top() const {
+    return static_cast<const NodePhase&>(*upstream_).top();
   }
 
   // indicate if the phase has different input/output (data type)
@@ -368,13 +380,6 @@ public:
   }
 
 private:
-  std::vector<size_t> sorts_;
-  // TODO(cao) - every sort column may have different order, single direction now
-  bool desc_;
-
-  size_t numAgg_;
-  std::vector<bool> aggCols_;
-  std::vector<size_t> keys_;
   nebula::type::Schema output_;
 };
 

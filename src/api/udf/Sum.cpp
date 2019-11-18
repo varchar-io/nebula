@@ -26,7 +26,7 @@ using nebula::type::Kind;
 
 #define DO_NOT_SUPPORT(K)                                                                                                \
   template <>                                                                                                            \
-  Sum<Kind::K>::Sum(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)                   \
+  Sum<Kind::K>::Sum(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)                   \
     : CommonUDAF<Kind::K>(name,                                                                                          \
                           std::move(expr),                                                                               \
                           [](nebula::type::TypeTraits<Kind::K>::CppType,                                                 \

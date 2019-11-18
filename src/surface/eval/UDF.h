@@ -17,6 +17,7 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include "ValueEval.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
@@ -25,11 +26,10 @@
  * Define expressions used in the nebula DSL.
  */
 namespace nebula {
-namespace execution {
+namespace surface {
 namespace eval {
 
-#define TYPE_VALUE_EVAL_KIND(K) \
-  nebula::execution::eval::TypeValueEval<typename nebula::type::TypeTraits<K>::CppType>
+#define TYPE_VALUE_EVAL_KIND(K) TypeValueEval<typename nebula::type::TypeTraits<K>::CppType>
 
 // define an UDF interface
 template <nebula::type::Kind KIND>
@@ -42,6 +42,7 @@ public:
           // call the UDF to evalue the result
           return this->run(ctx, valid);
         },
+        {},
         {}) {}
   virtual ~UDF() = default;
 
@@ -67,7 +68,7 @@ public:
   using MergeFunction = std::function<StoreType(StoreType, StoreType)>;
   using FinalizeFunction = std::function<NativeType(StoreType)>;
   UDAF(const std::string& name,
-       std::unique_ptr<nebula::execution::eval::ValueEval> expr,
+       std::unique_ptr<ValueEval> expr,
        StoreFunction&& store,
        MergeFunction&& merge,
        FinalizeFunction&& finalize)
@@ -82,17 +83,12 @@ public:
             return store_(exprValue);
           }
         },
+        std::move(merge),
         {}),
       expr_{ std::move(expr) },
       store_{ std::move(store) },
-      merge_{ std::move(merge) },
       finalize_{ std::move(finalize) } {}
   virtual ~UDAF() = default;
-
-  // merge aggregation results
-  inline StoreType merge(StoreType ov, StoreType nv) {
-    return merge_(ov, nv);
-  }
 
   inline NativeType finalize(StoreType v) {
     if constexpr (STORE == KIND) {
@@ -103,9 +99,8 @@ public:
   }
 
 private:
-  std::unique_ptr<nebula::execution::eval::ValueEval> expr_;
+  std::unique_ptr<ValueEval> expr_;
   StoreFunction store_;
-  MergeFunction merge_;
   FinalizeFunction finalize_;
 };
 
@@ -310,5 +305,5 @@ nebula::type::Kind udfKind(nebula::type::Kind k) noexcept {
 #undef CASE_TYPE_KIND1
 
 } // namespace eval
-} // namespace execution
+} // namespace surface
 } // namespace nebula

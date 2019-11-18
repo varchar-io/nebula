@@ -17,7 +17,8 @@
 #pragma once
 
 #include <atomic>
-#include "execution/eval/UDF.h"
+
+#include "surface/eval/UDF.h"
 
 /**
  * Implement UDAF AVG, we will need both count and sum data maintained internally.
@@ -47,14 +48,14 @@ inline auto extract(const int128_t& v) ->
 
 // UDAF - avg
 template <nebula::type::Kind KIND>
-class Avg : public nebula::execution::eval::UDAF<KIND, nebula::execution::eval::UdfTraits<nebula::execution::eval::UDFType::AVG, KIND>::Store> {
+class Avg : public nebula::surface::eval::UDAF<KIND, nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::AVG, KIND>::Store> {
   static constexpr int64_t INT64_ONE = 1;
 
 public:
-  using BaseType = typename nebula::execution::eval::UDAF<KIND, nebula::execution::eval::UdfTraits<nebula::execution::eval::UDFType::AVG, KIND>::Store>;
+  using BaseType = typename nebula::surface::eval::UDAF<KIND, nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::AVG, KIND>::Store>;
   using NativeType = typename BaseType::NativeType;
   using StoreType = typename BaseType::StoreType;
-  Avg(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
+  Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : BaseType(name,
                std::move(expr),
                // compute method
@@ -94,16 +95,16 @@ private:
 };
 
 template <>
-Avg<nebula::type::Kind::INVALID>::Avg(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
+Avg<nebula::type::Kind::INVALID>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 template <>
-Avg<nebula::type::Kind::BOOLEAN>::Avg(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
+Avg<nebula::type::Kind::BOOLEAN>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 template <>
-Avg<nebula::type::Kind::VARCHAR>::Avg(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
+Avg<nebula::type::Kind::VARCHAR>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 template <>
-Avg<nebula::type::Kind::INT128>::Avg(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
+Avg<nebula::type::Kind::INT128>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 } // namespace udf
 } // namespace api

@@ -95,6 +95,22 @@ else()
 
     string(REPLACE ";" " " NCFLAGS "${LNCFLAGS}")
     # -Ofast vs -O3
+    # HashFlat.genCopier will crash by calling ValueEval.merge for int128 typed avg function
+    # I have spent much time to figure out why but no luck yet, need some more help in the future.
+    # optimizations working fine: -O0, -O1, -Os
+    # -O2, -O3, -Ofast will crash
+    # Perf Benchmark(6 tests): ./ApiTests --gtest_filter=ApiTest.*:-ApiTest.TestAvgAggregation
+    # interesting, by running an end2end query test, -O1 actually runs faster than -O2 on the same box.
+    # also try optimizations for size (Os)
+    # -O1: 800ms, 797ms, 807ms, 808ms, 801ms
+    # -O2: 892ms, 871ms, 898ms, 881ms, 871ms
+    # -O3: 608ms, 594ms, 605ms, 600ms, 599ms
+    # -Ofast: 596ms, 608ms, 596ms, 594ms, 603ms
+    # -Os: 861ms, 861ms, 865ms, 866ms, 843ms
+    # figure out flags differences between optimization level:
+    # dump flags for o1: gcc -O1 -Q --help=optimizers -xc - < /dev/null > o1.txt
+    # dump flags for o2: gcc -O2 -Q --help=optimizers -xc - < /dev/null > o2.txt
+    # diff them
     set(NCFLAGS_RELEASE "-Ofast -march=native")
   endif()
 endif()

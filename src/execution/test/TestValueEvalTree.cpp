@@ -18,8 +18,9 @@
 #include <glog/logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
 #include "common/Evidence.h"
-#include "execution/eval/ValueEval.h"
+#include "surface/eval/ValueEval.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 
@@ -28,15 +29,15 @@ namespace execution {
 namespace test {
 
 using nebula::common::Evidence;
-using nebula::execution::eval::column;
-using nebula::execution::eval::constant;
-using nebula::execution::eval::eq;
-using nebula::execution::eval::EvalContext;
-using nebula::execution::eval::gt;
-using nebula::execution::eval::TypeValueEval;
-using nebula::execution::eval::ValueEval;
+using nebula::surface::eval::column;
+using nebula::surface::eval::constant;
+using nebula::surface::eval::eq;
+using nebula::surface::eval::EvalContext;
+using nebula::surface::eval::gt;
+using nebula::surface::eval::TypeValueEval;
 using nebula::surface::MockRowData;
 using nebula::surface::RowData;
+using nebula::surface::eval::ValueEval;
 
 class MockRow : public nebula::surface::MockRowData {
 public:
@@ -58,28 +59,28 @@ TEST(ValueEvalTest, TestValueEval) {
   // int = 3 + col('a')
   EvalContext ctx;
   ctx.reset(row);
-  auto b1 = nebula::execution::eval::constant(ivalue);
+  auto b1 = nebula::surface::eval::constant(ivalue);
   bool valid = true;
   auto v1 = b1->eval<int>(ctx, valid);
   LOG(INFO) << "b1 eval: " << v1 << ", valid:" << valid;
   EXPECT_EQ(v1, ivalue);
 
-  auto b2 = nebula::execution::eval::column<int>("a");
+  auto b2 = nebula::surface::eval::column<int>("a");
 
   valid = true;
   auto v2 = b2->eval<int>(ctx, valid);
   LOG(INFO) << "b2 eval: " << v2;
   EXPECT_EQ(v1, v2);
 
-  auto b3 = nebula::execution::eval::add<int, int, int>(std::move(b1), std::move(b2));
+  auto b3 = nebula::surface::eval::add<int, int, int>(std::move(b1), std::move(b2));
   valid = true;
   auto sum = b3->eval<int>(ctx, valid);
   auto expected_sum = v1 + v2;
   LOG(INFO) << "b3 eval: " << sum;
   EXPECT_EQ(sum, expected_sum);
 
-  auto b4 = nebula::execution::eval::constant(ivalue);
-  auto b5 = nebula::execution::eval::lt<int, int>(std::move(b3), std::move(b4));
+  auto b4 = nebula::surface::eval::constant(ivalue);
+  auto b5 = nebula::surface::eval::lt<int, int>(std::move(b3), std::move(b4));
   valid = true;
   EXPECT_FALSE(b5->eval<bool>(ctx, valid));
 }
@@ -97,9 +98,9 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
     EvalContext ctx;
     ctx.reset(row);
 
-    auto b1 = nebula::execution::eval::constant(cvalue);
-    auto b2 = nebula::execution::eval::column<float>("x");
-    auto b3 = nebula::execution::eval::add<float, int, float>(std::move(b1), std::move(b2));
+    auto b1 = nebula::surface::eval::constant(cvalue);
+    auto b2 = nebula::surface::eval::column<float>("x");
+    auto b3 = nebula::surface::eval::add<float, int, float>(std::move(b1), std::move(b2));
     bool valid = true;
     float add = b3->eval<float>(ctx, valid);
     EXPECT_EQ(add, row.readFloat("x") + cvalue);
@@ -115,9 +116,9 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
 
     EvalContext ctx;
     ctx.reset(row);
-    auto b1 = nebula::execution::eval::constant(cvalue);
-    auto b2 = nebula::execution::eval::column<float>("y");
-    auto b3 = nebula::execution::eval::mul<float, int, float>(std::move(b1), std::move(b2));
+    auto b1 = nebula::surface::eval::constant(cvalue);
+    auto b2 = nebula::surface::eval::column<float>("y");
+    auto b3 = nebula::surface::eval::mul<float, int, float>(std::move(b1), std::move(b2));
     bool valid = true;
     float mul = b3->eval<float>(ctx, valid);
     EXPECT_EQ(mul, row.readFloat("y") * cvalue);
@@ -133,9 +134,9 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
 
     EvalContext ctx;
     ctx.reset(row);
-    auto b1 = nebula::execution::eval::constant(cvalue);
-    auto b2 = nebula::execution::eval::column<float>("z");
-    auto b3 = nebula::execution::eval::sub<float, int, float>(std::move(b1), std::move(b2));
+    auto b1 = nebula::surface::eval::constant(cvalue);
+    auto b2 = nebula::surface::eval::column<float>("z");
+    auto b3 = nebula::surface::eval::sub<float, int, float>(std::move(b1), std::move(b2));
     bool valid = true;
     float sub = b3->eval<float>(ctx, valid);
     EXPECT_EQ(sub, cvalue - row.readFloat("z"));
@@ -151,9 +152,9 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
 
     EvalContext ctx;
     ctx.reset(row);
-    auto b1 = nebula::execution::eval::constant(cvalue);
-    auto b2 = nebula::execution::eval::column<float>("d");
-    auto b3 = nebula::execution::eval::div<float, float, int>(std::move(b2), std::move(b1));
+    auto b1 = nebula::surface::eval::constant(cvalue);
+    auto b2 = nebula::surface::eval::column<float>("d");
+    auto b3 = nebula::surface::eval::div<float, float, int>(std::move(b2), std::move(b1));
     bool valid = true;
     float div = b3->eval<float>(ctx, valid);
     EXPECT_EQ(div, row.readFloat("d") / cvalue);
@@ -172,22 +173,22 @@ TEST(ValueEvalTest, TestValueEvalLogical) {
 
     EvalContext ctx;
     ctx.reset(row);
-    auto b1 = nebula::execution::eval::constant(cvalue);
-    auto b2 = nebula::execution::eval::column<float>("x");
-    auto b3 = nebula::execution::eval::mul<float, int, float>(std::move(b1), std::move(b2));
-    auto b4 = nebula::execution::eval::constant(32 * 33);
-    auto b5 = nebula::execution::eval::gt<float, int>(std::move(b3), std::move(b4));
+    auto b1 = nebula::surface::eval::constant(cvalue);
+    auto b2 = nebula::surface::eval::column<float>("x");
+    auto b3 = nebula::surface::eval::mul<float, int, float>(std::move(b1), std::move(b2));
+    auto b4 = nebula::surface::eval::constant(32 * 33);
+    auto b5 = nebula::surface::eval::gt<float, int>(std::move(b3), std::move(b4));
     bool valid = true;
     EXPECT_EQ(b5->eval<bool>(ctx, valid), false);
 
-    auto b6 = nebula::execution::eval::constant(true);
-    auto b7 = nebula::execution::eval::bor<bool, bool>(std::move(b5), std::move(b6));
-    auto b8 = nebula::execution::eval::constant(true);
-    auto b9 = nebula::execution::eval::eq<bool, bool>(std::move(b7), std::move(b8));
+    auto b6 = nebula::surface::eval::constant(true);
+    auto b7 = nebula::surface::eval::bor<bool, bool>(std::move(b5), std::move(b6));
+    auto b8 = nebula::surface::eval::constant(true);
+    auto b9 = nebula::surface::eval::eq<bool, bool>(std::move(b7), std::move(b8));
     valid = true;
     EXPECT_EQ(b9->eval<bool>(ctx, valid), true);
 
-    auto b10 = nebula::execution::eval::column<std::string_view>("s");
+    auto b10 = nebula::surface::eval::column<std::string_view>("s");
     valid = true;
     LOG(INFO) << "b10=" << b10->eval<std::string_view>(ctx, valid);
   }
@@ -204,12 +205,12 @@ TEST(ValueEvalTest, TestStringValues) {
   bool valid = true;
 
   {
-    auto b1 = nebula::execution::eval::constant("abcdef");
+    auto b1 = nebula::surface::eval::constant("abcdef");
     auto v1 = b1->eval<std::string_view>(ctx, valid);
     EXPECT_EQ(v1, "abcdef");
 
     valid = true;
-    auto b2 = nebula::execution::eval::column<std::string_view>("x");
+    auto b2 = nebula::surface::eval::column<std::string_view>("x");
     auto v2 = b2->eval<std::string_view>(ctx, valid);
     EXPECT_EQ(v2, c);
 
@@ -220,11 +221,11 @@ TEST(ValueEvalTest, TestStringValues) {
 
   {
     valid = true;
-    auto b1 = nebula::execution::eval::constant(c);
+    auto b1 = nebula::surface::eval::constant(c);
     EXPECT_EQ(b1->eval<std::string_view>(ctx, valid), c);
 
     valid = true;
-    auto b2 = nebula::execution::eval::column<std::string_view>("x");
+    auto b2 = nebula::surface::eval::column<std::string_view>("x");
     EXPECT_EQ(b2->eval<std::string_view>(ctx, valid), c);
 
     valid = true;
@@ -234,11 +235,11 @@ TEST(ValueEvalTest, TestStringValues) {
 
   {
     valid = true;
-    auto b1 = nebula::execution::eval::constant("abc");
+    auto b1 = nebula::surface::eval::constant("abc");
     EXPECT_EQ(b1->eval<std::string_view>(ctx, valid), "abc");
 
     valid = true;
-    auto b2 = nebula::execution::eval::column<std::string_view>("x");
+    auto b2 = nebula::surface::eval::column<std::string_view>("x");
     EXPECT_EQ(b2->eval<std::string_view>(ctx, valid), c);
 
     valid = true;
@@ -247,8 +248,8 @@ TEST(ValueEvalTest, TestStringValues) {
   }
 
   {
-    auto b1 = nebula::execution::eval::column<std::string_view>("x");
-    auto b2 = nebula::execution::eval::column<std::string_view>("x");
+    auto b1 = nebula::surface::eval::column<std::string_view>("x");
+    auto b2 = nebula::surface::eval::column<std::string_view>("x");
 
     valid = true;
     auto b3 = gt<std::string_view, std::string_view>(std::move(b1), std::move(b2));
@@ -258,11 +259,11 @@ TEST(ValueEvalTest, TestStringValues) {
 
 TEST(ValueEvalTest, TestEvaluationContext) {
   EvalContext context;
-  auto b1 = nebula::execution::eval::constant(2);
-  auto b2 = nebula::execution::eval::column<float>("x");
-  auto b3 = nebula::execution::eval::mul<float, int, float>(std::move(b1), std::move(b2));
-  auto b4 = nebula::execution::eval::constant(3);
-  auto b5 = nebula::execution::eval::gt<float, int>(std::move(b3), std::move(b4));
+  auto b1 = nebula::surface::eval::constant(2);
+  auto b2 = nebula::surface::eval::column<float>("x");
+  auto b3 = nebula::surface::eval::mul<float, int, float>(std::move(b1), std::move(b2));
+  auto b4 = nebula::surface::eval::constant(3);
+  auto b5 = nebula::surface::eval::gt<float, int>(std::move(b3), std::move(b4));
 
   {
     MockRow row;

@@ -20,9 +20,9 @@ namespace nebula {
 namespace api {
 namespace dsl {
 
-using nebula::execution::eval::column;
-using nebula::execution::eval::ValueEval;
 using nebula::meta::Table;
+using nebula::surface::eval::column;
+using nebula::surface::eval::ValueEval;
 using nebula::type::Kind;
 using nebula::type::TreeBase;
 using nebula::type::TreeNode;

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include "NodeClient.h"
 #include "NodeConnector.h"
 #include "common/Folly.h"

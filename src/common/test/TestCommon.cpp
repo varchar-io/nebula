@@ -359,7 +359,7 @@ TEST(CommonTest, TestOptionalPerf) {
 
   auto f2 = [](int i) -> std::optional<int> {
     if (i % 2 == 0) {
-      return {};
+      return std::nullopt;
     }
     return i + 1;
   };
@@ -423,6 +423,7 @@ TEST(CommonTest, TestMultiFold) {
 
 TEST(CommonTest, TestInt128) {
   int128_t x = 128;
+  LOG(INFO) << "is int128 scalar: " << std::is_scalar<int128_t>::value << ", size=" << sizeof(int128_t);
   int128_t y = std::numeric_limits<__int128_t>::max();
   EXPECT_TRUE(y > x);
   LOG(INFO) << "x=" << x << ", y=" << y;

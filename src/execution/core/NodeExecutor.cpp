@@ -21,8 +21,8 @@
 #include "AggregationMerge.h"
 #include "BlockExecutor.h"
 #include "TopSort.h"
-#include "execution/eval/UDF.h"
 #include "execution/meta/TableService.h"
+#include "surface/eval/UDF.h"
 
 DEFINE_uint64(TOP_SORT_SCALE,
               10,
@@ -100,14 +100,14 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
   // the results set from different block exeuction can be simply composite together
   // but the query needs to aggregate on keys, then we have to merge the results based on partial aggregatin plan
   const NodePhase& phase = plan.fetch<PhaseType::PARTIAL>();
-  auto merged = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAgg(), x);
+  auto merged = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAggregation(), x);
 
   // if scale is 0 or this query has no limit on it
   if (local_ || FLAGS_TOP_SORT_SCALE == 0 || phase.top() == 0) {
     return merged;
   }
 
-  return topSort(merged, plan, FLAGS_TOP_SORT_SCALE);
+  return topSort<>(merged, phase, FLAGS_TOP_SORT_SCALE);
 }
 
 } // namespace core

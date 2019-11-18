@@ -21,6 +21,7 @@
 
 #include "FlatBuffer.h"
 #include "surface/DataSurface.h"
+#include "surface/eval/ValueEval.h"
 
 namespace nebula {
 namespace memory {
@@ -30,27 +31,61 @@ namespace keyed {
 * And, hash flat will not allow duplicate keys in the data set.
 */
 
+// column comparator between two rows
+using Comparator = std::function<int32_t(size_t, size_t)>;
+
+// Hasher on one column of given row and base hash value
+using Hasher = std::function<size_t(size_t, size_t)>;
+
+// Copier on one column from given row1 to row2 which using external updater
+using Copier = std::function<void(size_t, size_t)>;
+
+struct ColOps {
+  explicit ColOps(Comparator c, Hasher h, Copier o)
+    : comparator{ std::move(c) },
+      hasher{ std::move(h) },
+      copier{ std::move(o) } {}
+
+  Comparator comparator;
+  Hasher hasher;
+  Copier copier;
+};
+
 class HashFlat : public FlatBuffer {
   // key is tuple of hash flat object, row id, row hash (by keys)
   using Key = std::tuple<HashFlat&, size_t, size_t>;
 
 public:
   HashFlat(const nebula::type::Schema schema,
-           const std::vector<size_t>& keys)
-    : FlatBuffer(schema), keys_{ keys } {
+           const std::vector<size_t>& keys,
+           const nebula::surface::eval::Fields& fields)
+    : FlatBuffer(schema), keys_{ keys.begin(), keys.end() }, fields_{ fields } {
     init();
   }
 
-  HashFlat(FlatBuffer* in, const std::vector<size_t>& keys)
-    : FlatBuffer(in->schema(), (NByte*)in->chunk()), keys_{ keys } {
+  HashFlat(FlatBuffer* in,
+           const std::vector<size_t>& keys,
+           const nebula::surface::eval::Fields& fields)
+    : FlatBuffer(in->schema(), (NByte*)in->chunk()),
+      keys_{ keys.begin(), keys.end() },
+      fields_{ fields } {
     init();
   }
 
   virtual ~HashFlat() = default;
 
+  // compute hash value of given row and column list
+  size_t hash(size_t rowId) const;
+
+  // check if two rows are equal to each other on given columns
+  bool equal(size_t row1, size_t row2) const;
+
+  // copy data of row1 into row2
+  bool copy(size_t row1, size_t row2);
+
   // update a row in hash flat, if same key existings, update the row and return true
   // otherwise we get a new row, return false
-  bool update(const nebula::surface::RowData&, const UpdateCallback&);
+  bool update(const nebula::surface::RowData&);
 
   struct Hash {
     inline size_t operator()(const Key& key) const noexcept {
@@ -63,19 +98,26 @@ public:
       // both keys have to coming from the same flat object
       auto& flat = std::get<0>(row1);
       // two rows equal if they have the same keys
-      return flat.equal(std::get<1>(row1), std::get<1>(row2), flat.keys_);
+      return flat.equal(std::get<1>(row1), std::get<1>(row2));
     }
   };
 
 private:
   void init();
+  Comparator genComparator(size_t) noexcept;
+  Hasher genHasher(size_t) noexcept;
+  Copier genCopier(size_t) noexcept;
 
 private:
-  std::vector<size_t> keys_;
-  std::vector<size_t> nonKeys_;
+  // referenced keys and fields for this hash flat
+  const std::unordered_set<size_t> keys_;
+  const nebula::surface::eval::Fields& fields_;
 
-  // rowHash_ is used to cache hash
-  // std::vector<size_t> rowHash_;
+  // computed non keys column index according to keys
+  std::unordered_set<size_t> values_;
+
+  // customized operations for each column
+  std::vector<ColOps> ops_;
 
   // TODO(cao):
   // build error Undefined symbols for architecture x86_64: "folly::f14::detail::F14LinkCheck

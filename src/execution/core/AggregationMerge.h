@@ -17,9 +17,8 @@
 #pragma once
 
 #include "common/Folly.h"
-#include "execution/eval/ValueEval.h"
-#include "memory/keyed/HashFlat.h"
 #include "surface/DataSurface.h"
+#include "surface/eval/ValueEval.h"
 #include "type/Type.h"
 
 /**
@@ -29,15 +28,11 @@ namespace nebula {
 namespace execution {
 namespace core {
 
-using UpdateCallbackType = std::function<bool(size_t column, nebula::type::Kind kind, void* ov, void* nv, void* value)>;
-UpdateCallbackType updateCallback(const std::unordered_set<size_t>&,
-                                  const std::vector<std::unique_ptr<nebula::execution::eval::ValueEval>>&);
-
 nebula::surface::RowCursorPtr merge(
   folly::ThreadPoolExecutor&,
   const nebula::type::Schema,
   const std::vector<size_t>&,
-  const std::vector<std::unique_ptr<nebula::execution::eval::ValueEval>>&,
+  const nebula::surface::eval::Fields&,
   const bool,
   const std::vector<folly::Try<nebula::surface::RowCursorPtr>>&);
 } // namespace core

@@ -17,8 +17,9 @@
 #pragma once
 
 #include <algorithm>
+
 #include "api/dsl/Base.h"
-#include "execution/eval/UDF.h"
+#include "surface/eval/UDF.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -29,16 +30,16 @@ namespace udf {
 
 // UDAF - a common pattern for most UDAF which has its storage type same as native type
 template <nebula::type::Kind KIND>
-class CommonUDAF : public nebula::execution::eval::UDAF<KIND> {
+class CommonUDAF : public nebula::surface::eval::UDAF<KIND> {
 public:
-  using UDAFType = typename nebula::execution::eval::UDAF<KIND>;
+  using UDAFType = typename nebula::surface::eval::UDAF<KIND>;
   using NativeType = typename UDAFType::NativeType;
   using MergeFunction = typename UDAFType::MergeFunction;
   CommonUDAF(
     const std::string& name,
-    std::unique_ptr<nebula::execution::eval::ValueEval> expr,
+    std::unique_ptr<nebula::surface::eval::ValueEval> expr,
     MergeFunction&& mf)
-    : nebula::execution::eval::UDAF<KIND>(
+    : nebula::surface::eval::UDAF<KIND>(
         name,
         std::move(expr),
         {},

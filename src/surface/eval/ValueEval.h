@@ -19,6 +19,7 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <unordered_map>
+
 #include "common/Cursor.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
@@ -29,7 +30,7 @@
  * Execution on each expression to get final value.
  */
 namespace nebula {
-namespace execution {
+namespace surface {
 namespace eval {
 class EvalContext;
 
@@ -67,6 +68,12 @@ public:
     return p->eval(ctx, valid);
   }
 
+  template <typename T>
+  inline T merge(T t1, T t2) const {
+    auto p = static_cast<const TypeValueEval<T>*>(this);
+    return p->merge(t1, t2);
+  }
+
   // identify a unique value evaluation object in given query context
   // TODO(cao) - consider using number instead for fast hashing
   inline const std::string_view signature() const {
@@ -76,6 +83,9 @@ public:
 protected:
   std::string sign_;
 };
+
+// define a global type to represent runtime fields in schema
+using Fields = std::vector<std::unique_ptr<ValueEval>>;
 
 class EvalContext {
 public:
@@ -90,7 +100,7 @@ public:
 
   // evaluate a value eval object in current context and return value reference.
   template <typename T>
-  T eval(const nebula::execution::eval::ValueEval& ve, bool& valid) {
+  T eval(const ValueEval& ve, bool& valid) {
     if (LIKELY(!cache_)) {
       return ve.eval<T>(*this, valid);
     }
@@ -138,9 +148,10 @@ private:
 };
 
 template <>
-std::string_view EvalContext::eval(const nebula::execution::eval::ValueEval& ve, bool& valid);
+std::string_view EvalContext::eval(const ValueEval& ve, bool& valid);
 
 // two utilities
+#define MT std::function<T(T, T)>
 #define OPT std::function<T(EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&)>
 #define OPT_LAMBDA(X)                                                                           \
   ([](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>& children, bool& valid) { \
@@ -152,9 +163,13 @@ class TypeValueEval : public ValueEval {
 public:
   TypeValueEval(
     const std::string& sign,
-    const OPT& op,
+    const OPT&& op,
+    const MT&& mt,
     std::vector<std::unique_ptr<ValueEval>> children)
-    : ValueEval(sign), op_{ op }, children_{ std::move(children) } {}
+    : ValueEval(sign),
+      op_{ std::move(op) },
+      mt_{ std::move(mt) },
+      children_{ std::move(children) } {}
 
   virtual ~TypeValueEval() = default;
 
@@ -162,8 +177,13 @@ public:
     return op_(ctx, this->children_, valid);
   }
 
+  inline T merge(T t1, T t2) const {
+    return mt_(t1, t2);
+  }
+
 private:
   OPT op_;
+  MT mt_;
   std::vector<std::unique_ptr<ValueEval>> children_;
 };
 
@@ -181,6 +201,7 @@ std::unique_ptr<ValueEval> constant(T v) {
       [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> ST {
         return v;
       },
+      {},
       {}));
 }
 
@@ -250,6 +271,7 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
         // TODO(cao): other types supported in DSL? for example: UDF on list or map
         throw NException("not supported template type");
       },
+      {},
       {}));
 }
 
@@ -282,6 +304,7 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
           }                                                                                       \
           return T(v1 SIGN v2);                                                                   \
         }),                                                                                       \
+        {},                                                                                       \
         std::move(branch)));                                                                      \
   }
 
@@ -318,6 +341,7 @@ ARTHMETIC_VE(mod, %)
           }                                                                                       \
           return v1 SIGN v2;                                                                      \
         }),                                                                                       \
+        {},                                                                                       \
         std::move(branch)));                                                                      \
   }
 
@@ -336,7 +360,8 @@ COMPARE_VE(bor, ||)
 
 #undef OPT_LAMBDA
 #undef OPT
+#undef MT
 
 } // namespace eval
-} // namespace execution
+} // namespace surface
 } // namespace nebula

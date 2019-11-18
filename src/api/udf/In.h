@@ -38,7 +38,7 @@ class In : public CommonUDF<nebula::type::Kind::BOOLEAN, KIND> {
 
 public:
   In(const std::string& name,
-     std::unique_ptr<nebula::execution::eval::ValueEval> expr,
+     std::unique_ptr<nebula::surface::eval::ValueEval> expr,
      const std::vector<ValueType>& values)
     : UdfInBase(
         name,
@@ -56,7 +56,7 @@ public:
       values_{ values } {}
 
   In(const std::string& name,
-     std::unique_ptr<nebula::execution::eval::ValueEval> expr,
+     std::unique_ptr<nebula::surface::eval::ValueEval> expr,
      const std::vector<ValueType>& values,
      bool in)
     : UdfInBase(name,

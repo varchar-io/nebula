@@ -43,14 +43,8 @@ FORWARD_EVAL_FIELD(int32_t, readInt)
 FORWARD_EVAL_FIELD(int64_t, readLong)
 FORWARD_EVAL_FIELD(float, readFloat)
 FORWARD_EVAL_FIELD(double, readDouble)
+FORWARD_EVAL_FIELD(int128_t, readInt128)
 FORWARD_EVAL_FIELD(std::string_view, readString)
-
-// FORWARD_EVAL_FIELD(int128_t, readInt128)
-int128_t ComputedRow::readInt128(IndexType index) const {
-  bool valid = true;
-  auto x = ctx_.eval<int128_t>(*fields_[index], valid);
-  return x;
-}
 
 #undef FORWARD_EVAL_FIELD
 

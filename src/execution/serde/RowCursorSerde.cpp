@@ -20,6 +20,7 @@
 
 #include "execution/core/BlockExecutor.h"
 #include "memory/keyed/FlatRowCursor.h"
+#include "type/Serde.h"
 
 /**
  * This header defines logic to convert a RowCursor to a serializable data format.
@@ -92,14 +93,13 @@ FlatBufferPtr asBuffer(nebula::surface::RowCursor& cursor, nebula::type::Schema 
   } else if (auto f = dynamic_cast<nebula::memory::keyed::FlatRowCursor*>(&cursor)) {
     return f->takeResult();
   } else {
-    LOG(INFO) << "Should not hit here: " << typeid(cursor).name();
     auto buffer = std::make_unique<nebula::memory::keyed::FlatBuffer>(schema);
     while (cursor.hasNext()) {
       buffer->add(cursor.next());
     }
 
     // move this buffer out
-    LOG(INFO) << "Serialized a cursor as flat buffer";
+    LOG(INFO) << "Serialized a cursor as flat buffer.";
     return buffer;
   }
 }

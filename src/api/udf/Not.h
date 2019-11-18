@@ -17,6 +17,7 @@
 #pragma once
 
 #include <fmt/format.h>
+
 #include "CommonUDF.h"
 
 /**
@@ -30,7 +31,7 @@ using UdfNotBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::BO
 class Not : public UdfNotBase {
 public:
   using NativeType = nebula::type::TypeTraits<nebula::type::Kind::BOOLEAN>::CppType;
-  Not(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
+  Not(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : UdfNotBase(
         name,
         std::move(expr),

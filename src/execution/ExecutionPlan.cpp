@@ -114,10 +114,11 @@ void Phase<PhaseType::GLOBAL>::display() const {
   LOG(INFO) << indent4 << "OUTPUT: " << TypeSerializer::to(outputSchema());
   LOG(INFO) << indent4 << "AGG: global";
   LOG(INFO) << indent4 << "Schema Convert: " << diffInputOutput();
-  const auto hasSort = sorts_.size() > 0;
+  const auto& s = sorts();
+  const auto hasSort = s.size() > 0;
   LOG(INFO) << indent4 << "SORT : " << bliteral(hasSort);
   if (LIKELY(hasSort)) {
-    LOG(INFO) << indent4 << indent4 << "KEYS: " << join(sorts_);
+    LOG(INFO) << indent4 << indent4 << "KEYS: " << join(s);
   }
 }
 

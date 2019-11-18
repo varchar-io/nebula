@@ -20,9 +20,10 @@
 #include <gflags/gflags.h>
 
 #include "common/Fold.h"
-#include "execution/eval/UDF.h"
 #include "execution/serde/RowCursorSerde.h"
 #include "memory/keyed/FlatRowCursor.h"
+#include "memory/keyed/HashFlat.h"
+#include "surface/eval/UDF.h"
 
 DEFINE_uint64(MULTI_FOLD_WIDTH, 1,
               "defines if we want fixed width for multi-fold passes."
@@ -38,48 +39,15 @@ namespace execution {
 namespace core {
 
 using nebula::common::CompositeCursor;
-using nebula::execution::eval::UDAF;
-using nebula::execution::eval::ValueEval;
 using nebula::memory::keyed::FlatRowCursor;
 using nebula::memory::keyed::HashFlat;
 using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
+using nebula::surface::eval::UDAF;
+using nebula::surface::eval::ValueEval;
 using nebula::type::Kind;
 using nebula::type::Schema;
-
-// TODO(cao): This callback lambda can be saved by integrate merge function
-UpdateCallbackType updateCallback(const std::unordered_set<size_t>& keys,
-                                  const std::vector<std::unique_ptr<ValueEval>>& fields) {
-#define P_FIELD_UPDATE(KIND)                                                                                                                              \
-  case Kind::KIND: {                                                                                                                                      \
-    using UT = UDAF<Kind::KIND>;                                                                                                                          \
-    *static_cast<UT::StoreType*>(value) = static_cast<UT&>(*fields.at(column)).merge(*static_cast<UT::StoreType*>(ov), *static_cast<UT::StoreType*>(nv)); \
-    return true;                                                                                                                                          \
-  }
-
-  return [&keys, &fields](size_t column, Kind kind, void* ov, void* nv, void* value) {
-    // we don't update keys since they are the same
-    if (keys.find(column) != keys.end()) {
-      return false;
-    }
-
-    // others are aggregation fields - aka, they are UDAF
-    switch (kind) {
-      P_FIELD_UPDATE(BOOLEAN)
-      P_FIELD_UPDATE(TINYINT)
-      P_FIELD_UPDATE(SMALLINT)
-      P_FIELD_UPDATE(INTEGER)
-      P_FIELD_UPDATE(REAL)
-      P_FIELD_UPDATE(BIGINT)
-      P_FIELD_UPDATE(DOUBLE)
-      P_FIELD_UPDATE(INT128)
-    default:
-      throw NException("Aggregation merge on non-primitive types");
-    }
-  };
-#undef P_FIELD_UPDATE
-}
 
 RowCursorPtr merge(
   folly::ThreadPoolExecutor&,
@@ -96,15 +64,12 @@ RowCursorPtr merge(
   }
 
   if (hasAggregation) {
-    std::unordered_set<size_t> kset(keys.begin(), keys.end());
-    auto update = updateCallback(kset, fields);
-
     // if it is aggregation, we're sure the data cursor will be hash flat.
     // So that we can do this multi-fold pass
     // transform folly tries into HashFlat
     // std::vector<std::unique_ptr<HashFlat>> blocks;
     // blocks.reserve(size);
-    auto hf = std::make_unique<HashFlat>(schema, keys);
+    auto hf = std::make_unique<HashFlat>(schema, keys, fields);
     for (auto it = sources.begin(); it < sources.end(); ++it) {
       // if the result is empty
       if (!it->hasValue()) {
@@ -114,7 +79,7 @@ RowCursorPtr merge(
       auto blockResult = it->value();
       while (blockResult->hasNext()) {
         const auto& row = blockResult->next();
-        hf->update(row, update);
+        hf->update(row);
       }
     }
 

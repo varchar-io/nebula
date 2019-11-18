@@ -152,14 +152,13 @@ public:
   template <typename T>
   typename std::enable_if<std::is_scalar<T>::value, T>::type read(size_t position) const {
     constexpr size_t size = sizeof(T);
-    N_ENSURE(position + size <= capacity(), "invalid position to read data");
+    N_ENSURE(position + size <= capacity(), "invalid position to read");
 
     return *reinterpret_cast<T*>(this->ptr_ + position);
   }
 
   std::string_view read(size_t position, size_t length) const {
-    N_ENSURE(position + length <= capacity(),
-             fmt::format("invalid position ({0}, {1}) to read data", position, length));
+    N_ENSURE(position + length <= capacity(), "invalid position read string");
 
     // build data using copy elision
     return std::string_view((char*)this->ptr_ + position, length);

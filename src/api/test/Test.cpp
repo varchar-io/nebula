@@ -34,7 +34,7 @@ std::mutex& sync_test_mutex() {
   return exclusive;
 }
 
-std::tuple<std::string, int64_t, int64_t> genData() {
+std::tuple<std::string, int64_t, int64_t> genData(unsigned numBlocks) {
   static std::tuple<std::string, int64_t, int64_t> data{ "", 0, 0 };
 
   // global mutex
@@ -52,7 +52,7 @@ std::tuple<std::string, int64_t, int64_t> genData() {
 
   // let's plan these many data std::thread::hardware_concurrency()
   nebula::meta::TestTable testTable;
-  auto numBlocks = std::thread::hardware_concurrency();
+
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;

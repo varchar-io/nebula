@@ -26,7 +26,7 @@ using nebula::type::Kind;
 
 #define DO_NOT_SUPPORT(K)                                                                              \
   template <>                                                                                          \
-  Avg<Kind::K>::Avg(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr) \
+  Avg<Kind::K>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr) \
     : Avg<Kind::K>::BaseType(                                                                          \
         name,                                                                                          \
         std::move(expr),                                                                               \

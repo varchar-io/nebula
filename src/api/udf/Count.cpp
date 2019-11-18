@@ -27,7 +27,7 @@ using nebula::type::Kind;
 using VarcharNative = nebula::type::TypeTraits<Kind::VARCHAR>::CppType;
 
 template <>
-Count<Kind::VARCHAR>::Count(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
+Count<Kind::VARCHAR>::Count(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
   : CommonUDAF<Kind::VARCHAR>(name,
                               std::move(expr),
                               [](VarcharNative, VarcharNative) -> VarcharNative {

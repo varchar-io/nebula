@@ -40,6 +40,7 @@ namespace node {
 using nebula::common::TaskState;
 using nebula::common::TaskType;
 using nebula::execution::BlockManager;
+using nebula::execution::PhaseType;
 using nebula::execution::core::NodeExecutor;
 using nebula::execution::io::BatchBlock;
 using nebula::memory::keyed::FlatBuffer;
@@ -116,8 +117,8 @@ grpc::Status NodeServerImpl::Query(
     // execute this plan and get results
     NodeExecutor executor(BlockManager::init());
     auto cursor = executor.execute(threadPool_, *plan);
-
-    const auto& buffer = nebula::execution::serde::asBuffer(*cursor, plan->getOutputSchema());
+    const auto& phase = plan->fetch<PhaseType::PARTIAL>();
+    const auto& buffer = nebula::execution::serde::asBuffer(*cursor, phase.outputSchema());
 
     // serialize row cursor back
     *batch = BatchSerde::serialize(*buffer);

@@ -183,7 +183,8 @@ TEST(ApiTest, TestAvgAggregation) {
                        .where(col("_time_") > start && col("_time_") < end)
                        .select(
                          col("event"),
-                         avg(col("value")).as("avg"))
+                         avg(col("value")).as("avg"),
+                         avg(col("weight")).as("davg"))
                        .groupby({ 1 })
                        .sortby({ 2 }, SortType::DESC)
                        .limit(10);
@@ -206,12 +207,13 @@ TEST(ApiTest, TestAvgAggregation) {
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
   LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << fmt::format("col: {0:20} | {1:12}", "event", "avg");
+  LOG(INFO) << fmt::format("col: {0:20} | {1:12} | {2:12}", "event", "v.avg", "w.avg");
   while (result->hasNext()) {
     const auto& row = result->next();
-    LOG(INFO) << fmt::format("row: {0:20} | {1:12}",
+    LOG(INFO) << fmt::format("row: {0:20} | {1:12} | {2:12}",
                              row.readString("event"),
-                             row.readByte("avg"));
+                             row.readByte("avg"),
+                             row.readDouble("davg"));
   }
 }
 

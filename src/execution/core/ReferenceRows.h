@@ -19,9 +19,9 @@
 #include "ComputedRow.h"
 #include "common/Cursor.h"
 #include "execution/ExecutionPlan.h"
-#include "execution/eval/ValueEval.h"
 #include "memory/Batch.h"
 #include "surface/DataSurface.h"
+#include "surface/eval/ValueEval.h"
 
 namespace nebula {
 namespace execution {
@@ -70,8 +70,8 @@ private:
   std::vector<size_t> rows_;
   const nebula::memory::Batch& data_;
   std::unique_ptr<nebula::memory::RowAccessor> accessor_;
-  nebula::execution::eval::EvalContext ctx_;
-  const eval::ValueEval& filter_;
+  nebula::surface::eval::EvalContext ctx_;
+  const nebula::surface::eval::ValueEval& filter_;
   ComputedRow runtime_;
 };
 

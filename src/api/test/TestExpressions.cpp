@@ -27,11 +27,11 @@
 #include "common/Likely.h"
 #include "common/Memory.h"
 #include "execution/ExecutionPlan.h"
-#include "execution/eval/ValueEval.h"
 #include "execution/meta/TableService.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
+#include "surface/eval/ValueEval.h"
 #include "type/Serde.h"
 
 namespace nebula {
@@ -155,7 +155,7 @@ TEST(ExpressionsTest, TestExpressionEval) {
 
     auto eval = idvalue.asEval();
     nebula::surface::MockRowData mr;
-    nebula::execution::eval::EvalContext ctx;
+    nebula::surface::eval::EvalContext ctx;
     ctx.reset(mr);
     bool valid = true;
     bool res = eval->eval<bool>(ctx, valid);
@@ -168,7 +168,7 @@ TEST(ExpressionsTest, TestExpressionEval) {
 
     auto eval = eventValue.asEval();
     nebula::surface::MockRowData mr;
-    nebula::execution::eval::EvalContext ctx;
+    nebula::surface::eval::EvalContext ctx;
     ctx.reset(mr);
     bool valid = true;
     bool res = eval->eval<bool>(ctx, valid);
@@ -235,7 +235,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
   // verify the mocked data has expected result
   EXPECT_EQ(rowData.readString("event"), "abcdefg");
 
-  nebula::execution::eval::EvalContext ctx;
+  nebula::surface::eval::EvalContext ctx;
   ctx.reset(rowData);
   // evaluate like
   {
@@ -296,7 +296,7 @@ public:
 TEST(ExpressionsTest, TestSerde) {
   auto ms = TableService::singleton();
   auto tbl = ms->query("nebula.test");
-  nebula::execution::eval::EvalContext ctx;
+  nebula::surface::eval::EvalContext ctx;
   MockRow3 rowData;
   EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
   EXPECT_CALL(rowData, readByte(testing::_)).WillRepeatedly(testing::Return(20));

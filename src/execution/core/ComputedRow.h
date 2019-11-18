@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include "execution/eval/ValueEval.h"
 #include "surface/SchemaRow.h"
+#include "surface/eval/ValueEval.h"
 
 namespace nebula {
 namespace execution {
@@ -32,8 +32,8 @@ class ComputedRow : public nebula::surface::SchemaRow {
 public:
   ComputedRow(
     const nebula::type::Schema& schema,
-    nebula::execution::eval::EvalContext& ctx,
-    const std::vector<std::unique_ptr<eval::ValueEval>>& fields)
+    nebula::surface::eval::EvalContext& ctx,
+    const nebula::surface::eval::Fields& fields)
     : SchemaRow(schema), ctx_{ ctx }, fields_{ fields } {}
   virtual ~ComputedRow() = default;
 
@@ -54,8 +54,8 @@ public:
   std::unique_ptr<nebula::surface::MapData> readMap(IndexType) const override;
 
 private:
-  nebula::execution::eval::EvalContext& ctx_;
-  const std::vector<std::unique_ptr<eval::ValueEval>>& fields_;
+  nebula::surface::eval::EvalContext& ctx_;
+  const nebula::surface::eval::Fields& fields_;
 
   // TODO(cao) - we have been struggling on whether to use std::optional as RowData interface
   // There are basically two situations for providing RowData interface:

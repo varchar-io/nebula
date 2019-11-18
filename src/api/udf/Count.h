@@ -32,9 +32,9 @@ public:
   using NativeType = typename CommonUDAF<KIND>::NativeType;
   // for count, we don't need evaluate inner expr
   // unless it's distinct a column, so we can safely replace it with a const expression with value 0
-  Count(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval>)
+  Count(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval>)
     : CommonUDAF<KIND>(name,
-                       nebula::execution::eval::constant(1),
+                       nebula::surface::eval::constant(1),
                        // partial aggregate - sum each count results
                        [](NativeType ov, NativeType nv) {
                          return ov + nv;
@@ -43,7 +43,8 @@ public:
 };
 
 template <>
-Count<nebula::type::Kind::VARCHAR>::Count(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
+Count<nebula::type::Kind::VARCHAR>::Count(
+  const std::string&, std::unique_ptr<nebula::surface::eval::ValueEval>);
 
 } // namespace udf
 } // namespace api

@@ -21,8 +21,8 @@
 #include <glog/logging.h>
 #include <unordered_map>
 #include "common/Errors.h"
-#include "execution/eval/UDF.h"
 #include "meta/Table.h"
+#include "surface/eval/UDF.h"
 #include "type/Tree.h"
 
 /**
@@ -97,7 +97,7 @@ struct ExpressionData {
   std::unique_ptr<ExpressionData> b_right;
 
   // UDF type
-  nebula::execution::eval::UDFType u_type;
+  nebula::surface::eval::UDFType u_type;
   std::unique_ptr<ExpressionData> inner;
 
   // extra customized info
@@ -147,7 +147,7 @@ public:
   // to deduce the type of this expression
   virtual TypeInfo type(const nebula::meta::Table& table) = 0;
   virtual bool isAgg() const = 0;
-  virtual std::unique_ptr<nebula::execution::eval::ValueEval> asEval() const = 0;
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const = 0;
   virtual std::vector<std::string> columnRefs() const {
     return {};
   };
@@ -240,9 +240,9 @@ public:
 struct arthmetic_forward {
   using Key = std::tuple<ArthmeticOp, nebula::type::Kind, nebula::type::Kind>;
   using Value = std::function<
-    std::unique_ptr<nebula::execution::eval::ValueEval>(
-      std::unique_ptr<nebula::execution::eval::ValueEval>,
-      std::unique_ptr<nebula::execution::eval::ValueEval>)>;
+    std::unique_ptr<nebula::surface::eval::ValueEval>(
+      std::unique_ptr<nebula::surface::eval::ValueEval>,
+      std::unique_ptr<nebula::surface::eval::ValueEval>)>;
   struct Hash {
     size_t operator()(const Key& k) const {
       return ((size_t)std::get<0>(k) << 32) | (std::get<1>(k) << 16) | (std::get<2>(k));
@@ -252,21 +252,21 @@ struct arthmetic_forward {
 
   static const Map& map();
 
-  std::unique_ptr<nebula::execution::eval::ValueEval> operator()(
+  std::unique_ptr<nebula::surface::eval::ValueEval> operator()(
     ArthmeticOp op,
     nebula::type::Kind k1,
     nebula::type::Kind k2,
-    std::unique_ptr<nebula::execution::eval::ValueEval> v1,
-    std::unique_ptr<nebula::execution::eval::ValueEval> v2);
+    std::unique_ptr<nebula::surface::eval::ValueEval> v1,
+    std::unique_ptr<nebula::surface::eval::ValueEval> v2);
 };
 
 ////////////////////////////////////////// FORWARD LOGI  //////////////////////////////////////////
 struct logical_forward {
   using Key = std::tuple<LogicalOp, nebula::type::Kind, nebula::type::Kind>;
   using Value = std::function<
-    std::unique_ptr<nebula::execution::eval::ValueEval>(
-      std::unique_ptr<nebula::execution::eval::ValueEval>,
-      std::unique_ptr<nebula::execution::eval::ValueEval>)>;
+    std::unique_ptr<nebula::surface::eval::ValueEval>(
+      std::unique_ptr<nebula::surface::eval::ValueEval>,
+      std::unique_ptr<nebula::surface::eval::ValueEval>)>;
   struct Hash {
     size_t operator()(const Key& k) const {
       return ((size_t)std::get<0>(k) << 32) | (std::get<1>(k) << 16) | (std::get<2>(k));
@@ -276,12 +276,12 @@ struct logical_forward {
 
   static const Map& map();
 
-  std::unique_ptr<nebula::execution::eval::ValueEval> operator()(
+  std::unique_ptr<nebula::surface::eval::ValueEval> operator()(
     LogicalOp op,
     nebula::type::Kind k1,
     nebula::type::Kind k2,
-    std::unique_ptr<nebula::execution::eval::ValueEval> v1,
-    std::unique_ptr<nebula::execution::eval::ValueEval> v2);
+    std::unique_ptr<nebula::surface::eval::ValueEval> v1,
+    std::unique_ptr<nebula::surface::eval::ValueEval> v2);
 };
 
 } // namespace dsl

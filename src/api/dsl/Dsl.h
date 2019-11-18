@@ -62,41 +62,41 @@ __attribute__((unused)) static ColumnExpression col(const std::string& column) {
 // a UDF/UDAF return type can be runtime determined
 // by default, max works for int type
 template <typename T>
-static UDFExpression<nebula::execution::eval::UDFType::MAX> max(const T& expr) {
+static UDFExpression<nebula::surface::eval::UDFType::MAX> max(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return UDFExpression<nebula::execution::eval::UDFType::MAX>(std::shared_ptr<Expression>(new T(expr)));
+  return UDFExpression<nebula::surface::eval::UDFType::MAX>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>
-static UDFExpression<nebula::execution::eval::UDFType::MIN> min(const T& expr) {
+static UDFExpression<nebula::surface::eval::UDFType::MIN> min(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return UDFExpression<nebula::execution::eval::UDFType::MIN>(std::shared_ptr<Expression>(new T(expr)));
+  return UDFExpression<nebula::surface::eval::UDFType::MIN>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>
-static UDFExpression<nebula::execution::eval::UDFType::COUNT> count(const T& expr) {
+static UDFExpression<nebula::surface::eval::UDFType::COUNT> count(const T& expr) {
   // TODO(cao) - we may support column expression as well for count
-  return UDFExpression<nebula::execution::eval::UDFType::COUNT>(std::shared_ptr<Expression>(new T(expr)));
+  return UDFExpression<nebula::surface::eval::UDFType::COUNT>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <>
-__attribute__((unused)) UDFExpression<nebula::execution::eval::UDFType::COUNT> count<int>(const int& expr) {
+__attribute__((unused)) UDFExpression<nebula::surface::eval::UDFType::COUNT> count<int>(const int& expr) {
   // TODO(cao) - we may support column expression as well for count
   auto c = std::make_shared<ConstExpression<int>>(expr);
   c->as("count");
-  return UDFExpression<nebula::execution::eval::UDFType::COUNT>(c);
+  return UDFExpression<nebula::surface::eval::UDFType::COUNT>(c);
 }
 
 template <typename T>
-static UDFExpression<nebula::execution::eval::UDFType::SUM> sum(const T& expr) {
+static UDFExpression<nebula::surface::eval::UDFType::SUM> sum(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return UDFExpression<nebula::execution::eval::UDFType::SUM>(std::shared_ptr<Expression>(new T(expr)));
+  return UDFExpression<nebula::surface::eval::UDFType::SUM>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>
-static UDFExpression<nebula::execution::eval::UDFType::AVG> avg(const T& expr) {
+static UDFExpression<nebula::surface::eval::UDFType::AVG> avg(const T& expr) {
   // TODO(cao) - model UDAF/UDF with existing expression
-  return UDFExpression<nebula::execution::eval::UDFType::AVG>(std::shared_ptr<Expression>(new T(expr)));
+  return UDFExpression<nebula::surface::eval::UDFType::AVG>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>
@@ -124,8 +124,8 @@ static InExpression<U> nin(const T& expr, const std::vector<U>& values) {
 // TODO(cao) - we should move UDF creation out of DSL as it's logical concept
 // follow example of UDAF to be consistent
 template <typename T>
-static UDFExpression<nebula::execution::eval::UDFType::NOT> reverse(const T& expr) {
-  return UDFExpression<nebula::execution::eval::UDFType::NOT>(std::shared_ptr<Expression>(new T(expr)));
+static UDFExpression<nebula::surface::eval::UDFType::NOT> reverse(const T& expr) {
+  return UDFExpression<nebula::surface::eval::UDFType::NOT>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>

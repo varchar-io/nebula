@@ -19,7 +19,7 @@
 #include "ComputedRow.h"
 #include "ReferenceRows.h"
 #include "execution/ExecutionPlan.h"
-#include "execution/eval/ValueEval.h"
+#include "surface/eval/ValueEval.h"
 #include "memory/Batch.h"
 #include "memory/keyed/HashFlat.h"
 #include "surface/DataSurface.h"

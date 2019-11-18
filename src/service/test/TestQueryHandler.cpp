@@ -267,7 +267,8 @@ TEST(ServiceTest, TestQuerySerde) {
                          col("flag"),
                          max(col("id") * 2).as("max_id"),
                          min(col("id") + 1).as("min_id"),
-                         count(1).as("count"))
+                         count(1).as("count"),
+                         avg(col("weight")).as("avg_weight"))
                        .groupby({ 1, 2 })
                        .sortby({ 5 }, SortType::DESC)
                        .limit(10);

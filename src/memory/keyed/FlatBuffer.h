@@ -85,33 +85,8 @@ struct RowProps {
   FlatColumnProps colProps;
 };
 
-// an update callback signature
-using UpdateCallback = std::function<bool(size_t, nebula::type::Kind, void*, void*, void*)>;
-
 // column parser to read data in from a row
 using Parser = std::function<void(const nebula::surface::RowData&)>;
-
-// column comparator between two rows
-using Comparator = std::function<int(size_t, size_t)>;
-
-// Hasher on one column of given row and base hash value
-using Hasher = std::function<size_t(size_t, size_t)>;
-
-// Copier on one column from given row1 to row2 which using external updater
-using Copier = std::function<void(size_t, size_t, const UpdateCallback&)>;
-
-struct ColOps {
-  explicit ColOps(Parser p, Comparator c, Hasher h, Copier o)
-    : parser{ std::move(p) },
-      comparator{ std::move(c) },
-      hasher{ std::move(h) },
-      copier{ std::move(o) } {}
-
-  Parser parser;
-  Comparator comparator;
-  Hasher hasher;
-  Copier copier;
-};
 
 class FlatBuffer {
 public:
@@ -135,15 +110,6 @@ public:
 
   // const version without internal cache
   const std::unique_ptr<nebula::surface::RowData> crow(size_t) const;
-
-  // compute hash value of given row and column list
-  size_t hash(size_t rowId, const std::vector<size_t>& cols) const;
-
-  // check if two rows are equal to each other on given columns
-  bool equal(size_t row1, size_t row2, const std::vector<size_t>& cols) const;
-
-  // copy data of row1 into row2
-  bool copy(size_t row1, size_t row2, const UpdateCallback& callback, const std::vector<size_t>& cols);
 
   inline auto getRows() const {
     return rows_.size();
@@ -186,11 +152,8 @@ private:
   void initSchema() noexcept;
 
   Parser genParser(const nebula::type::TypeNode&, size_t) noexcept;
-  Comparator genComparator(const nebula::type::TypeNode&, size_t) noexcept;
-  Hasher genHasher(const nebula::type::TypeNode&, size_t) noexcept;
-  Copier genCopier(const nebula::type::TypeNode&, size_t) noexcept;
 
-private:
+protected:
   // offset of last row used for supporting roll back
   std::tuple<size_t, size_t, size_t> last_;
 
@@ -215,7 +178,7 @@ private:
   std::vector<std::pair<nebula::type::Kind, size_t>> kw_;
 
   // parsers are function pointers to parse row data of each column
-  std::vector<ColOps> colOps_;
+  std::vector<Parser> parsers_;
 
   // number of columns - reduce func calls even they are inlined
   size_t numColumns_;

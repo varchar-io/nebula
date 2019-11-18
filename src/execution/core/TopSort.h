@@ -18,6 +18,7 @@
 
 #include "execution/ExecutionPlan.h"
 #include "surface/DataSurface.h"
+#include "surface/TopRows.h"
 
 /**
  * A logic wrapper to return top sort cursors when sorting and limiting are present
@@ -26,10 +27,63 @@ namespace nebula {
 namespace execution {
 namespace core {
 
+// SCALE is used to enlarge the final set in result, by default return whatever asked
+template <nebula::execution::PhaseType PT>
 nebula::surface::RowCursorPtr topSort(
-  nebula::surface::RowCursorPtr,
-  const ExecutionPlan&,
-  size_t scale = 1);
+  nebula::surface::RowCursorPtr input, const nebula::execution::Phase<PT>& phase, size_t scale = 1) {
+  // short circuit
+  if (input->size() == 0) {
+    return input;
+  }
+
+  // do the aggregation from all different nodes
+  // sort and top of results
+  auto schema = phase.outputSchema();
+  std::function<bool(const std::unique_ptr<nebula::surface::RowData>& left,
+                     const std::unique_ptr<nebula::surface::RowData>& right)>
+    less = nullptr;
+  const auto& sorts = phase.sorts();
+  if (sorts.size() > 0) {
+    N_ENSURE(sorts.size() == 1, "support single sorting column for now");
+    const auto& col = schema->childType(sorts[0]);
+    const auto kind = col->k();
+    const auto& name = col->name();
+
+// instead of assert, we torelate column not found for sorting
+#define LESS_KIND_CASE(K, F, OP)                                             \
+  case nebula::type::Kind::K: {                                              \
+    less = [&name](const std::unique_ptr<nebula::surface::RowData>& left,    \
+                   const std::unique_ptr<nebula::surface::RowData>& right) { \
+      return left->F(name) OP right->F(name);                                \
+    };                                                                       \
+    break;                                                                   \
+  }
+#define LESS_SWITCH_DESC(OP)                \
+  switch (kind) {                           \
+    LESS_KIND_CASE(BOOLEAN, readBool, OP)   \
+    LESS_KIND_CASE(TINYINT, readByte, OP)   \
+    LESS_KIND_CASE(SMALLINT, readShort, OP) \
+    LESS_KIND_CASE(INTEGER, readInt, OP)    \
+    LESS_KIND_CASE(BIGINT, readLong, OP)    \
+    LESS_KIND_CASE(REAL, readFloat, OP)     \
+    LESS_KIND_CASE(DOUBLE, readDouble, OP)  \
+    LESS_KIND_CASE(VARCHAR, readString, OP) \
+  default:                                  \
+    less = nullptr;                         \
+  }
+
+    if (phase.isDesc()) {
+      LESS_SWITCH_DESC(<)
+    } else {
+      LESS_SWITCH_DESC(>)
+    }
+
+#undef LESS_SWITCH_DESC
+#undef LESS_KIND_CASE
+  }
+
+  return std::make_shared<nebula::surface::TopRows>(input, phase.top() * scale, std::move(less));
+}
 
 } // namespace core
 } // namespace execution

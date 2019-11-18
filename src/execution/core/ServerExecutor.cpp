@@ -20,7 +20,7 @@
 #include "NodeConnector.h"
 #include "TopSort.h"
 #include "common/Folly.h"
-#include "execution/eval/UDF.h"
+#include "surface/eval/UDF.h"
 
 // maximum timeout in ms a query can best do
 DEFINE_uint64(RPC_TIMEOUT,
@@ -69,14 +69,14 @@ RowCursorPtr ServerExecutor::execute(
       return EmptyRowCursor::instance();
     }
 
-    return topSort(finalize(op.value(), phase), plan);
+    return topSort(finalize(op.value(), phase), phase);
   }
 
   // multiple results
-  auto result = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAgg(), x);
+  auto result = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAggregation(), x);
 
   // apply sorting and limit if available
-  return topSort(finalize(result, phase), plan);
+  return topSort(finalize(result, phase), phase);
 }
 
 } // namespace core

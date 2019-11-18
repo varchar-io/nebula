@@ -15,10 +15,12 @@
  */
 
 #include "BlockExecutor.h"
+
 #include <unordered_set>
+
 #include "AggregationMerge.h"
-#include "execution/eval/UDF.h"
 #include "memory/keyed/HashFlat.h"
+#include "surface/eval/UDF.h"
 
 /**
  * Nebula runtime / online meta data.
@@ -27,12 +29,9 @@ namespace nebula {
 namespace execution {
 namespace core {
 
-using nebula::execution::eval::EvalContext;
-using nebula::execution::eval::UDAF;
-using nebula::execution::eval::ValueEval;
 using nebula::memory::keyed::HashFlat;
 using nebula::surface::RowCursorPtr;
-using nebula::surface::RowData;
+using nebula::surface::eval::EvalContext;
 using nebula::type::Kind;
 
 RowCursorPtr compute(const nebula::memory::Batch& data, const nebula::execution::BlockPhase& plan) {
@@ -45,9 +44,6 @@ RowCursorPtr compute(const nebula::memory::Batch& data, const nebula::execution:
 
 void BlockExecutor::compute() {
   // process every single row and put result in HashFlat
-  const auto& k = plan_.keys();
-  std::unordered_set<size_t> keys(k.begin(), k.end());
-
   auto accessor = data_.makeAccessor();
   const auto& fields = plan_.fields();
   const auto& filter = plan_.filter();
@@ -55,8 +51,7 @@ void BlockExecutor::compute() {
   // build context and computed row associated with this context
   EvalContext ctx(plan_.cacheEval());
   ComputedRow cr(plan_.outputSchema(), ctx, fields);
-  result_ = std::make_unique<HashFlat>(plan_.outputSchema(), k);
-  auto update = updateCallback(keys, fields);
+  result_ = std::make_unique<HashFlat>(plan_.outputSchema(), plan_.keys(), fields);
 
   for (size_t i = 0, size = data_.getRows(); i < size; ++i) {
     ctx.reset(accessor->seek(i));
@@ -70,7 +65,7 @@ void BlockExecutor::compute() {
     }
 
     // flat compute every new value of each field and set to corresponding column in flat
-    result_->update(cr, update);
+    result_->update(cr);
   }
 
   // after the compute flat should contain all the data we need.

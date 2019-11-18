@@ -30,7 +30,7 @@ template <nebula::type::Kind KIND>
 class Sum : public CommonUDAF<KIND> {
 public:
   using NativeType = typename CommonUDAF<KIND>::NativeType;
-  Sum(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr)
+  Sum(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : CommonUDAF<KIND>(name,
                        std::move(expr),
                        [](NativeType ov, NativeType nv) {
@@ -40,16 +40,19 @@ public:
 };
 
 template <>
-Sum<nebula::type::Kind::INVALID>::Sum(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
+Sum<nebula::type::Kind::INVALID>::Sum(
+  const std::string&, std::unique_ptr<nebula::surface::eval::ValueEval>);
 
 template <>
-Sum<nebula::type::Kind::BOOLEAN>::Sum(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
+Sum<nebula::type::Kind::BOOLEAN>::Sum(
+  const std::string&, std::unique_ptr<nebula::surface::eval::ValueEval>);
 
 template <>
-Sum<nebula::type::Kind::VARCHAR>::Sum(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
+Sum<nebula::type::Kind::VARCHAR>::Sum(
+  const std::string&, std::unique_ptr<nebula::surface::eval::ValueEval>);
 
 template <>
-Sum<nebula::type::Kind::INT128>::Sum(const std::string& name, std::unique_ptr<nebula::execution::eval::ValueEval> expr);
+Sum<nebula::type::Kind::INT128>::Sum(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 } // namespace udf
 } // namespace api
