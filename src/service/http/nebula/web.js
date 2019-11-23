@@ -29,127 +29,160 @@ const timeCol = "_time_";
 const charts = new Charts();
 const formatTime = charts.formatTime;
 
+// arch mode indicates the web architecture mode
+// 1: v1 - web client will query nebula server directly
+// 2: v2 - web client will query nebula server through web API. 
+// In mode 2, we will need only single place for OAuth which is web (80).
+// and potentially close 8080 to public.
+let archMode = 2;
+
 // filters
 let filters;
 
-const initTable = (table, callback) => {
-    const req = new NebulaClient.TableStateRequest();
-    req.setTable(table);
+// a pointer to latest dimensions selectize
+let $sdc = null;
 
-    // call the service 
-    v1Client.state(req, {}, (err, reply) => {
-        const stats = ds('#stats');
-        if (err !== null) {
-            stats.text("Error code: " + err);
-        } else if (reply == null) {
-            stats.text("Failed to get reply");
-        } else {
-            const bc = reply.getBlockcount();
-            const rc = Math.round(reply.getRowcount() / 10000) / 100;
-            const ms = Math.round(reply.getMemsize() / 10000000) / 100;
-            const mints = reply.getMintime() * 1000;
-            const maxts = reply.getMaxtime() * 1000 + 1;
+const onTableState = (state, stats, callback) => {
+    const bc = state.bc;
+    const rc = Math.round(state.rc / 10000) / 100;
+    const ms = Math.round(state.ms / 10000000) / 100;
+    const mints = state.mt * 1000;
+    const maxts = state.xt * 1000 + 1;
 
-            stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${formatTime(mints)}, Max T: ${formatTime(maxts)}]`);
+    stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${formatTime(mints)}, Max T: ${formatTime(maxts)}]`);
 
-            fpcs = $("#start").flatpickr({
-                enableTime: true,
-                allowInput: true,
-                clickOpens: false,
-                defaultDate: mints,
-                minDate: mints,
-                maxDate: maxts
-            });
-            // hook calendar click event
-            $('#startc').on("click", () => {
-                fpcs.open();
-            });
-
-            fpce = $("#end").flatpickr({
-                enableTime: true,
-                allowInput: true,
-                clickOpens: false,
-                defaultDate: maxts,
-                minDate: mints,
-                maxDate: maxts
-            });
-            // hook calendar click event
-            $('#endc').on("click", () => {
-                fpce.open();
-            });
-
-            // populate dimension columns
-            const dimensions = reply.getDimensionList().filter((v) => v !== timeCol);
-            let metrics = reply.getMetricList().filter((v) => v !== timeCol);
-            const all = dimensions.concat(metrics);
-            let rollups = Object.keys(NebulaClient.Rollup);
-
-            $('#dwrapper').html("<select id=\"dcolumns\" multiple></select>");
-            ds('#dcolumns')
-                .html("")
-                .selectAll("option")
-                .data(all)
-                .enter()
-                .append('option')
-                .text(d => d)
-                .attr("value", d => d);
-            $sdc = $('#dcolumns').selectize({
-                plugins: ['restore_on_backspace', 'remove_button'],
-                persist: false
-            });
-
-            // if the table has no metrics column (no value columns)
-            // we only allow count on first column then
-            if (metrics.length == 0) {
-                metrics = [dimensions[0]];
-                rollups = ['COUNT'];
-            }
-
-            // populate metrics columns
-            ds('#mcolumns')
-                .html("")
-                .selectAll("option")
-                .data(metrics)
-                .enter()
-                .append('option')
-                .text(d => d)
-                .attr("value", d => d);
-
-            // populate all display types
-            ds('#display')
-                .html("")
-                .selectAll("option")
-                .data(Object.keys(NebulaClient.DisplayType))
-                .enter()
-                .append('option')
-                .text(k => k.toLowerCase())
-                .attr("value", k => NebulaClient.DisplayType[k]);
-
-            // roll up methods
-            ds('#ru')
-                .html("")
-                .selectAll("option")
-                .data(rollups)
-                .enter()
-                .append('option')
-                .text(k => k.toLowerCase())
-                .attr("value", k => NebulaClient.Rollup[k]);
-
-            // order type 
-            ds('#ob')
-                .html("")
-                .selectAll("option")
-                .data(Object.keys(NebulaClient.OrderType))
-                .enter()
-                .append('option')
-                .text(k => k.toLowerCase())
-                .attr("value", k => NebulaClient.OrderType[k]);
-
-            if (callback) {
-                callback(all);
-            }
-        }
+    fpcs = $("#start").flatpickr({
+        enableTime: true,
+        allowInput: true,
+        clickOpens: false,
+        defaultDate: mints,
+        minDate: mints,
+        maxDate: maxts
     });
+    // hook calendar click event
+    $('#startc').on("click", () => {
+        fpcs.open();
+    });
+
+    fpce = $("#end").flatpickr({
+        enableTime: true,
+        allowInput: true,
+        clickOpens: false,
+        defaultDate: maxts,
+        minDate: mints,
+        maxDate: maxts
+    });
+    // hook calendar click event
+    $('#endc').on("click", () => {
+        fpce.open();
+    });
+
+    // populate dimension columns
+    const dimensions = state.dl.filter((v) => v !== timeCol);
+    let metrics = state.ml.filter((v) => v !== timeCol);
+    const all = dimensions.concat(metrics);
+    let rollups = Object.keys(NebulaClient.Rollup);
+
+    $('#dwrapper').html("<select id=\"dcolumns\" multiple></select>");
+    ds('#dcolumns')
+        .html("")
+        .selectAll("option")
+        .data(all)
+        .enter()
+        .append('option')
+        .text(d => d)
+        .attr("value", d => d);
+    $sdc = $('#dcolumns').selectize({
+        plugins: ['restore_on_backspace', 'remove_button'],
+        persist: false
+    });
+
+    // if the table has no metrics column (no value columns)
+    // we only allow count on first column then
+    if (metrics.length == 0) {
+        metrics = [dimensions[0]];
+        rollups = ['COUNT'];
+    }
+
+    // populate metrics columns
+    ds('#mcolumns')
+        .html("")
+        .selectAll("option")
+        .data(metrics)
+        .enter()
+        .append('option')
+        .text(d => d)
+        .attr("value", d => d);
+
+    // populate all display types
+    ds('#display')
+        .html("")
+        .selectAll("option")
+        .data(Object.keys(NebulaClient.DisplayType))
+        .enter()
+        .append('option')
+        .text(k => k.toLowerCase())
+        .attr("value", k => NebulaClient.DisplayType[k]);
+
+    // roll up methods
+    ds('#ru')
+        .html("")
+        .selectAll("option")
+        .data(rollups)
+        .enter()
+        .append('option')
+        .text(k => k.toLowerCase())
+        .attr("value", k => NebulaClient.Rollup[k]);
+
+    // order type 
+    ds('#ob')
+        .html("")
+        .selectAll("option")
+        .data(Object.keys(NebulaClient.OrderType))
+        .enter()
+        .append('option')
+        .text(k => k.toLowerCase())
+        .attr("value", k => NebulaClient.OrderType[k]);
+
+    if (callback) {
+        callback(all);
+    }
+};
+
+const initTable = (table, callback) => {
+    const stats = ds('#stats');
+    if (archMode === 1) {
+        const req = new NebulaClient.TableStateRequest();
+        req.setTable(table);
+
+        // call the service 
+        v1Client.state(req, {}, (err, reply) => {
+
+            if (err !== null) {
+                stats.text("Error code: " + err);
+            } else if (reply == null) {
+                stats.text("Failed to get reply");
+            } else {
+                onTableState({
+                    bc: reply.getBlockcount(),
+                    rc: reply.getRowcount(),
+                    ms: reply.getMemsize(),
+                    mt: reply.getMintime(),
+                    xt: reply.getMaxtime(),
+                    dl: reply.getDimensionList(),
+                    ml: reply.getMetricList()
+                }, stats, callback);
+            }
+        });
+    } else if (archMode === 2) {
+        $.ajax({
+            url: "/?api=state&start=0&end=0&table=" + table
+        }).fail((err) => {
+            stats.text("Error: " + err);
+        }).done((data) => {
+            onTableState(data, stats, callback);
+        });
+    }
 };
 
 // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019] 
@@ -280,15 +313,32 @@ const restore = () => {
 
 const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
 
-const execute = () => {
-    // get parameters from URL
-    const h = hash();
-    if (!h || h.length <= 2) {
-        return;
+// extract X-Y for line charts based on json result and query object
+const extractXY = (json, q) => {
+    // extract X-Y (dimension - metric) columns to display
+    // TODO(cao) - revisit this if there are multiple X or multiple Y
+    const dims = q.getDimensionList();
+
+    // dumb version of first dimension and first metric 
+    let metric = "";
+    for (const key in json[0]) {
+        if (!dims.includes(key)) {
+            metric = key;
+        }
     }
 
-    const p = JSON.parse(decodeURIComponent(h.substr(1)));
-    console.log(`Nebula Query: ${JSON.stringify(p)}`);
+    return {
+        "d": dims[0],
+        "m": metric
+    };
+};
+
+const buildRequest = (queryStr) => {
+    const p = JSON.parse(decodeURIComponent(queryStr));
+    // switch between different arch mode
+    if (p.arch) {
+        archMode = parseInt(p.arch);
+    }
 
     // URL decoding the string and json object parsing
     const q = new NebulaClient.QueryRequest();
@@ -358,108 +408,123 @@ const execute = () => {
     // set limit
     q.setTop(p.l);
 
-    // do the query 
-    const extractXY = (json, q) => {
-        // extract X-Y (dimension - metric) columns to display
-        // TODO(cao) - revisit this if there are multiple X or multiple Y
-        const dims = q.getDimensionList();
+    return q;
+};
 
-        // dumb version of first dimension and first metric 
-        let metric = "";
-        for (const key in json[0]) {
-            if (!dims.includes(key)) {
-                metric = key;
-            }
+const onQueryResult = (q, r, msg) => {
+    if (r.error) {
+        msg.text(`[query: error=${r.error}, latency=${r.duration} ms]`);
+        return;
+    }
+
+    msg.html(`[query time: ${r.duration} ms]`);
+
+    // JSON result
+    json = JSON.parse(NebulaClient.bytes2utf8(r.data));
+    newdata = true;
+
+    // clear table data
+    ds('#table_head').html("");
+    ds('#table_content').html("");
+
+    // get display option
+    if (json.length == 0) {
+        // TODO(cao): popuate scanned rows metric: rows: ${stats.getRowsscanned()}
+        $('#show').html("<b>NO RESULTS.</b>");
+        return;
+    }
+
+    const draw = () => {
+        // enum value are number and switch/case are strong typed match
+        const display = +$$('#display');
+        const keys = extractXY(json, q);
+        switch (display) {
+            case NebulaClient.DisplayType.SAMPLES:
+            case NebulaClient.DisplayType.TABLE:
+                charts.displayTable(json);
+                break;
+            case NebulaClient.DisplayType.TIMELINE:
+                const WINDOW_KEY = '_window_';
+                const start = new Date($$('#start'));
+                let data = {
+                    default: json
+                };
+                // with dimension
+                if (keys.d && keys.d.length > 0) {
+                    const groupBy = (list, key) => {
+                        return list.reduce((rv, x) => {
+                            (rv[x[key]] = rv[x[key]] || []).push(x);
+                            return rv;
+                        }, {});
+                    };
+
+                    data = groupBy(json, keys.d);
+                }
+
+                charts.displayTimeline(data, WINDOW_KEY, keys.m, +start);
+                break;
+            case NebulaClient.DisplayType.BAR:
+                charts.displayBar(json, keys.d, keys.m);
+                break;
+            case NebulaClient.DisplayType.PIE:
+                charts.displayPie(json, keys.d, keys.m);
+                break;
+            case NebulaClient.DisplayType.LINE:
+                charts.displayLine(json, keys.d, keys.m);
+                break;
         }
-
-        return {
-            "d": dims[0],
-            "m": metric
-        };
     };
+
+    // draw and redraw on window resize
+    draw();
+    $(window).on("resize", draw);
+};
+
+const execute = () => {
+    // get parameters from URL
+    const h = hash();
+    if (!h || h.length <= 2) {
+        return;
+    }
 
     if (checkRequest()) {
         return;
     }
 
-    ds('#qr').text("soaring in nebula to land...");
+    // display message indicating processing
+    const msg = ds('#qr');
+    msg.text("soaring in nebula to land...");
 
-    v1Client.query(q, {}, (err, reply) => {
-        ds('#table_head').html("");
-        ds('#table_content').html("");
+    // build the request object
+    const queryStr = h.substr(1);
+    const q = buildRequest(queryStr);
 
-        const result = ds('#qr');
-
-        if (reply == null) {
-            result.text("Failed to get reply");
-            return;
-        }
-
-        const stats = reply.getStats();
-        result.text(`[query: error=${stats.getError()}, latency=${stats.getQuerytimems()} ms]`);
-        if (err !== null) {
-            return;
-        }
-
-        // JSON result
-        json = JSON.parse(NebulaClient.bytes2utf8(reply.getData()));
-        newdata = true;
-
-        // get display option
-        if (json.length == 0) {
-            // TODO(cao): popuate scanned rows metric: rows: ${stats.getRowsscanned()}
-            result.html(`[query time: ${stats.getQuerytimems()} ms]`);
-            $('#show').html("<b>NO RESULTS.</b>");
-            return;
-        }
-
-        result.html(`[query time: ${stats.getQuerytimems()} ms]`);
-
-        const draw = () => {
-            // enum value are number and switch/case are strong typed match
-            const display = +$$('#display');
-            const keys = extractXY(json, q);
-            switch (display) {
-                case NebulaClient.DisplayType.SAMPLES:
-                case NebulaClient.DisplayType.TABLE:
-                    charts.displayTable(json);
-                    break;
-                case NebulaClient.DisplayType.TIMELINE:
-                    const WINDOW_KEY = '_window_';
-                    const start = new Date($$('#start'));
-                    let data = {
-                        default: json
-                    };
-                    // with dimension
-                    if (keys.d && keys.d.length > 0) {
-                        const groupBy = (list, key) => {
-                            return list.reduce((rv, x) => {
-                                (rv[x[key]] = rv[x[key]] || []).push(x);
-                                return rv;
-                            }, {});
-                        };
-
-                        data = groupBy(json, keys.d);
-                    }
-
-                    charts.displayTimeline(data, WINDOW_KEY, keys.m, +start);
-                    break;
-                case NebulaClient.DisplayType.BAR:
-                    charts.displayBar(json, keys.d, keys.m);
-                    break;
-                case NebulaClient.DisplayType.PIE:
-                    charts.displayPie(json, keys.d, keys.m);
-                    break;
-                case NebulaClient.DisplayType.LINE:
-                    charts.displayLine(json, keys.d, keys.m);
-                    break;
+    if (archMode === 1) {
+        v1Client.query(q, {}, (err, reply) => {
+            if (reply == null || err) {
+                msg.text(`Failed to get reply: ${err}`);
+                return;
             }
-        };
 
-        // draw and redraw on window resize
-        draw();
-        $(window).on("resize", draw);
-    });
+            const stats = reply.getStats();
+            const r = {
+                error: stats.getError(),
+                duration: stats.getQuerytimems(),
+                data: reply.getData()
+            };
+
+            // display data
+            onQueryResult(q, r, msg);
+        });
+    } else if (archMode === 2) {
+        $.ajax({
+            url: "/?api=query&start=0&end=0&query=" + queryStr
+        }).fail((err) => {
+            msg.text("Error: " + err);
+        }).done((data) => {
+            onQueryResult(q, data, msg);
+        });
+    }
 };
 
 ds('#btn').on("click", build);
@@ -471,31 +536,41 @@ window.onhashchange = function () {
 };
 
 // load table list - maximum 100?
-const listReq = new NebulaClient.ListTables();
-listReq.setLimit(100);
-v1Client.tables(listReq, {}, (err, reply) => {
-    const stats = ds('#stats');
-    if (err !== null) {
-        stats.text(`RPC Error: ${err}`);
-        return;
-    }
-
-    const list = reply.getTableList().sort();
-    const options = ds('#tables').selectAll("option").data(list).enter().append('option');
+const onTableList = (tables) => {
+    const options = ds('#tables').selectAll("option").data(tables.sort()).enter().append('option');
     options.text(d => d).attr("value", d => d);
+    // restore the selection
+    restore();
+};
+$(() => {
+    const stats = ds('#stats');
+    if (archMode === 1) {
+        const listReq = new NebulaClient.ListTables();
+        listReq.setLimit(100);
+        v1Client.tables(listReq, {}, (err, reply) => {
+            if (err !== null) {
+                stats.text(`RPC Error: ${err}`);
+                return;
+            }
+
+            onTableList(reply.getTableList());
+        });
+    } else if (archMode === 2) {
+        $.ajax({
+            url: "/?api=tables&start=0&end=0"
+        }).fail((err) => {
+            stats.text("Error: " + err);
+        }).done((data) => {
+            onTableList(data);
+        });
+    }
 
     // if user change the table selection, initialize it again
     ds('#tables').on('change', () => {
         hash('n');
         restore();
     });
-
-    // restore the selection
-    restore();
 });
-
-// a pointer to latest dimensions selectize
-let $sdc = null;
 
 const vis = async (r) => {
     // n=>nebula, s=>sanddance

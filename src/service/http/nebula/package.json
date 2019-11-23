@@ -1,6 +1,11 @@
 {
   "name": "nebula-service",
   "version": "0.1.0",
+  "description": "nebula web service",
+  "repository": {
+    "url": "https://github.com/shawncao/nebula.git"
+  },
+  "license": "Apache-2.0",
   "dependencies": {
     "@grpc/proto-loader": "^0.3.0",
     "async": "^1.5.2",

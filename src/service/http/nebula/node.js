@@ -13,6 +13,7 @@ const signatures_table = "pin.signatures";
 const advertisers_table = "advertisers";
 const advertisers_spend_table = "advertisers.spend";
 const client = NebulaClient.qc(serviceAddr);
+const timeCol = "_time_";
 const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
 const error = (msg) => {
     return JSON.stringify({
@@ -257,8 +258,8 @@ const getAdvertisersSpend = (q, handler) => {
  * get advertisers with spend by given key
  */
 const getAdvertisersWithSpendByKey = (q, handler) => {
-    console.log(`querying advertisers for name like ${q.key}`);
-    if (q.key && q.key.length > 1) {
+    console.log(`querying advertisers for name like ${q.pattern}`);
+    if (q.pattern && q.pattern.length > 1) {
         const MAX_ITEMS = 1000;
         // search advertisers by keyword
         // set handler to do the second query
@@ -309,20 +310,22 @@ const getAdvertisersWithSpendByKey = (q, handler) => {
                 handler.onSuccess(JSON.stringify(data));
             };
 
-            query(advertisers_spend_table, q.start, q.end, "id", "0", idArray,
+            const sstart = q.sstart || q.start;
+            const send = q.send || q.end;
+            query(advertisers_spend_table, sstart, send, "id", "0", idArray,
                 ["id"],
                 [m], o,
                 q.limit || MAX_ITEMS, spendHandler);
         };
 
-        query(advertisers_table, q.start, q.end, "name", "4", `%${q.key}%`,
-            ["id", "name", "active", "country"],
+        query(advertisers_table, q.start, q.end, "name", "5", q.pattern,
+            ["id", "name", "active", "country", "owner_id", "billing_profile_id"],
             [], null,
             q.limit || MAX_ITEMS, tempHandler);
         return;
     }
 
-    handler.endWithMessage("Missing key.");
+    handler.endWithMessage("Missing pattern.");
 };
 
 /**
@@ -332,7 +335,149 @@ const listApi = (q) => {
     return JSON.stringify(Object.keys(api_handlers));
 };
 
+/** 
+ * get all available tables in nebula.
+ */
+const getTables = (q, handler) => {
+    const listReq = new NebulaClient.ListTables();
+    listReq.setLimit(100);
+    client.tables(listReq, {}, (err, reply) => {
+        if (err !== null) {
+            return handler.onError(err);
+        }
+
+        if (reply == null) {
+            return handler.onNull();
+        }
+        return handler.onSuccess(JSON.stringify(reply.getTableList()));
+    });
+};
+
+const getTableState = (q, handler) => {
+    const req = new NebulaClient.TableStateRequest();
+    req.setTable(q.table);
+    client.state(req, {}, (err, reply) => {
+        if (err !== null) {
+            return handler.onError(err);
+        }
+
+        if (reply == null) {
+            return handler.onNull();
+        }
+        return handler.onSuccess(JSON.stringify({
+            bc: reply.getBlockcount(),
+            rc: reply.getRowcount(),
+            ms: reply.getMemsize(),
+            mt: reply.getMintime(),
+            xt: reply.getMaxtime(),
+            dl: reply.getDimensionList(),
+            ml: reply.getMetricList()
+        }));
+    });
+}
+
+/**
+ * Generic web query routing.
+ * This supports invoking nebula service behind web server rather than from web client directly.
+ * Please refer two different modes on how to architecture web component in Nebula.
+ */
+const webq = (q, handler) => {
+    // the query object
+    // t: table
+    // s: start
+    // e: end
+    const p = JSON.parse(q.query);
+    const req = new NebulaClient.QueryRequest();
+    req.setTable(p.t);
+    req.setStart(seconds(p.s));
+    req.setEnd(seconds(p.e));
+
+    // the filter can be much more complex
+    if (p.ff) {
+        // all rules under this group
+        const rules = p.ff.r;
+        if (rules && rules.length > 0) {
+            const predicates = [];
+            rules.forEach(r => {
+                const pred = new NebulaClient.Predicate();
+                if (r.v && r.v.length > 0) {
+                    pred.setColumn(r.c);
+                    pred.setOp(r.o);
+                    pred.setValueList(r.v);
+                    predicates.push(pred);
+                }
+            });
+
+            if (predicates.length > 0) {
+                if (p.ff.l === "AND") {
+                    const filter = new NebulaClient.PredicateAnd();
+                    filter.setExpressionList(predicates);
+                    req.setFiltera(filter);
+                } else if (p.ff.l === "OR") {
+                    const filter = new NebulaClient.PredicateOr();
+                    filter.setExpressionList(predicates);
+                    req.setFiltero(filter);
+                }
+            }
+        }
+    }
+
+    // set dimension
+    const dimensions = p.ds;
+    if (p.d == NebulaClient.DisplayType.SAMPLES) {
+        dimensions.unshift(timeCol);
+    }
+    req.setDimensionList(dimensions);
+
+
+    // set query type and window
+    req.setDisplay(p.d);
+    req.setWindow(p.w);
+
+    // set metric for non-samples query 
+    // (use implicit type convert != instead of !==)
+    if (p.d != NebulaClient.DisplayType.SAMPLES) {
+        const m = new NebulaClient.Metric();
+        const mcol = p.m;
+        m.setColumn(mcol);
+        m.setMethod(p.r);
+        req.setMetricList([m]);
+
+        // set order on metric only means we don't order on samples for now
+        const o = new NebulaClient.Order();
+        o.setColumn(mcol);
+        o.setType(p.o);
+        req.setOrder(o);
+    }
+
+    // set limit
+    req.setTop(p.l);
+
+    client.query(req, {}, (err, reply) => {
+        if (err !== null) {
+            return handler.onError(err);
+        }
+
+        if (reply == null) {
+            return handler.onNull();
+        }
+        const stats = reply.getStats();
+        return handler.onSuccess(
+            JSON.stringify({
+                error: stats.getError(),
+                duration: stats.getQuerytimems(),
+                data: Array.from(reply.getData())
+            }));
+    });
+};
+
 const api_handlers = {
+    // system API supporting proxy query to nebula server
+    "tables": getTables,
+    "state": getTableState,
+    "query": webq,
+
+    // TODO(cao): move these customized API into a plugin module for extension
     "comments_by_userid": getCommentsByUserId,
     "comments_by_pinsignature": getCommentsByPinSignature,
     "comments_by_pattern": getCommentsByPattern,
@@ -381,12 +526,17 @@ const shutdown = () => {
 
 //create a server object listening at 80:
 http.createServer(async function (req, res) {
+    // log headers of current req
+    // console.log("headers of current request");
+    // console.log(JSON.stringify(req.headers));
+
     const q = url.parse(req.url, true).query;
     if (q.api) {
         res.writeHead(200, {
             'Content-Type': 'application/json'
         });
 
+        // routing generic query through web UI
         if (q.api === "list") {
             res.write(listApi(q));
         } else if (q.api === "nuclear") {
@@ -394,7 +544,7 @@ http.createServer(async function (req, res) {
         } else if (q.api in api_handlers) {
             // basic requirement
             if (!q.start || !q.end) {
-                res.write(error(`start and end dates required for every api: ${q.api}`));
+                res.write(error(`start and end time required for every api: ${q.api}`));
             } else {
                 try {
                     // build a handler 
