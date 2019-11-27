@@ -14,7 +14,7 @@ const advertisers_table = "advertisers";
 const advertisers_spend_table = "advertisers.spend";
 const client = NebulaClient.qc(serviceAddr);
 const timeCol = "_time_";
-const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
+const seconds = (ds) => new Date(ds).getUTCSeconds();
 const error = (msg) => {
     return JSON.stringify({
         "error": msg
