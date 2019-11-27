@@ -13,14 +13,15 @@ const pad2 = (v) => `${v}`.padStart(2, 0);
 
 export class Charts {
     constructor() {
+        // using UTC time as backend using unix time stamp
         this.formatTime = (unix_ms) => {
             const date = new Date(unix_ms);
-            const y = date.getFullYear();
+            const y = date.getUTCFullYear();
             // month is 0-based index
-            const m = pad2(date.getMonth() + 1);
-            const d = pad2(date.getDate());
-            const h = pad2(date.getHours())
-            const mi = pad2(date.getMinutes());
+            const m = pad2(date.getUTCMonth() + 1);
+            const d = pad2(date.getUTCDate());
+            const h = pad2(date.getUTCHours())
+            const mi = pad2(date.getUTCMinutes());
             return `${y}-${m}-${d} ${h}:${mi}`;
         };
 

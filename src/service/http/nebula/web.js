@@ -46,10 +46,10 @@ const onTableState = (state, stats, callback) => {
     const bc = state.bc;
     const rc = Math.round(state.rc / 10000) / 100;
     const ms = Math.round(state.ms / 10000000) / 100;
-    const mints = state.mt * 1000;
-    const maxts = state.xt * 1000 + 1;
+    const mints = formatTime(state.mt * 1000);
+    const maxts = formatTime(state.xt * 1000 + 1);
 
-    stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${formatTime(mints)}, Max T: ${formatTime(maxts)}]`);
+    stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${mints}, Max T: ${maxts}]`);
 
     fpcs = $("#start").flatpickr({
         enableTime: true,
