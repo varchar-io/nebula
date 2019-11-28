@@ -23,8 +23,9 @@ const error = (msg) => {
 
 // TODO(cao): these should go more flexible way to figure user info after auth
 // Right now, it is only one example way.
-const UserHeader = "X-FORWARDED-USER";
-const GroupHeader = "X-FORWARDED-GROUPS";
+const AuthHeader = "authorization";
+const UserHeader = "x-forwarded-user";
+const GroupHeader = "x-forwarded-groups";
 /**
  * Query API
  * start: 2019-04-01
@@ -352,6 +353,7 @@ const userInfo = (q, h) => {
 
     if (UserHeader in h) {
         info.auth = 1;
+        info.authorization = h[AuthHeader];
         info.user = h[UserHeader];
         info.groups = h[GroupHeader];
     }

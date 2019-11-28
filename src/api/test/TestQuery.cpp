@@ -68,7 +68,8 @@ TEST(ApiTest, TestMultipleBlocks) {
                        .limit(10);
 
   // compile the query into an execution plan
-  auto plan = query.compile();
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan = query.compile(ctx);
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -112,7 +113,8 @@ TEST(ApiTest, TestStringEqEmpty) {
                        .limit(10);
 
   // compile the query into an execution plan
-  auto plan = query.compile();
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan = query.compile(ctx);
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -156,7 +158,8 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
                        .limit(10);
 
   // compile the query into an execution plan
-  auto plan = query.compile();
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan = query.compile(ctx);
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -190,7 +193,8 @@ TEST(ApiTest, TestAvgAggregation) {
                        .limit(10);
 
   // compile the query into an execution plan
-  auto plan = query.compile();
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan = query.compile(ctx);
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -214,6 +218,56 @@ TEST(ApiTest, TestAvgAggregation) {
                              row.readString("event"),
                              row.readByte("avg"),
                              row.readDouble("davg"));
+  }
+}
+
+TEST(ApiTest, TestAccessControl) {
+  auto data = genData();
+
+  // we know we don't have an id larger than this number, so the query should skip all blocks
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+  const auto query = table(tableName, ms)
+                       .where(col("_time_") > start && col("_time_") < end)
+                       .select(
+                         col("event"),
+                         col("value"),
+                         col("weight"))
+                       .limit(10);
+
+  // compile the query into an execution plan
+  // test table require nebula_users to read event column, refer TestTable.h
+  QueryContext ctx{ "nebula", { "nebula_guest" } };
+  auto plan = query.compile(ctx);
+  plan->setWindow({ start, end });
+
+  // print out the plan through logging
+  plan->display();
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+
+  // query should have results
+  EXPECT_EQ(result->size(), 10);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << fmt::format("col: {0:20} | {1:12} | {2:12}", "event", "value", "weight");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+
+    // expect event to be masked
+    auto event = row.readString("event");
+    EXPECT_EQ(event, "***");
+    LOG(INFO) << fmt::format("row: {0:20} | {1:12} | {2:12}",
+                             event,
+                             row.readByte("value"),
+                             row.readDouble("weight"));
   }
 }
 

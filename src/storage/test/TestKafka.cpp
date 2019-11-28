@@ -345,12 +345,13 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
 
   nebula::meta::ColumnProps cp;
   nebula::meta::TimeSpec ts;
+  nebula::meta::AccessSpec as;
   ts.type = nebula::meta::TimeType::CURRENT;
 
   auto table = std::make_shared<nebula::meta::TableSpec>(
     TOPIC, 1000, 100, "ROW<id:string, referer:string, country:string>",
     nebula::meta::DataSource::KAFKA, "Roll", BROKERS, "",
-    "thrift", serde, cp, ts);
+    "thrift", serde, cp, ts, as);
 
   const auto& seg = segments.front();
   nebula::storage::kafka::KafkaReader reader(table, seg);
@@ -405,12 +406,13 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
 
   nebula::meta::ColumnProps cp;
   nebula::meta::TimeSpec ts;
+  nebula::meta::AccessSpec as;
   ts.type = nebula::meta::TimeType::CURRENT;
 
   auto table = std::make_shared<nebula::meta::TableSpec>(
     "<topic>", 1000, 100, "ROW<userId:long, magicType:short, statusCode:byte, count:int, error:string>",
     nebula::meta::DataSource::KAFKA, "Roll", "<brokers>", "",
-    "thrift", serde, cp, ts);
+    "thrift", serde, cp, ts, as);
 
   auto count = 0;
   for (auto& seg : segments) {

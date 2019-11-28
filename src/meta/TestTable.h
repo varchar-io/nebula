@@ -37,23 +37,32 @@ public:
       "ROW<_time_: bigint, id:int, event:string, items:list<string>, flag:bool, value:tinyint, weight:double, stamp:int128>");
   }
 
-  virtual Column column(const std::string& col) const noexcept override {
+  virtual const Column& column(const std::string& col) const noexcept override {
     if (col == "id") {
       // enable bloom filter on id column
-      return Column{ true, false, "" };
+      static const Column COL_ID{ true, false, "", {} };
+      return COL_ID;
     }
 
     if (col == "event") {
-      // enable bloom filter on id column
-      return Column{ false, true, "" };
+      // place an access rule on event column requiring user to be in nebula_users to read
+      static const Column COL_EVENT{
+        false,
+        true,
+        "",
+        { AccessRule{ AccessType::READ, { "nebula_users" }, ActionType::MASK } }
+      };
+      return COL_EVENT;
     }
 
     if (col == "value") {
-      return Column{ false, false, "23" };
+      static const Column COL_VALUE{ false, false, "23", {} };
+      return COL_VALUE;
     }
 
     if (col == "stamp") {
-      return Column{ false, false, "128" };
+      static const Column COL_STAMP{ false, false, "128", {} };
+      return COL_STAMP;
     }
 
     return Table::column(col);

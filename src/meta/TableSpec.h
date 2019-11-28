@@ -107,10 +107,12 @@ struct TableSpec {
   ColumnProps columnProps;
   // time spec to generate time value
   TimeSpec timeSpec;
+  // access spec
+  AccessSpec accessSpec;
 
   TableSpec(std::string n, size_t mm, size_t mh, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak,
-            std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts)
+            std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts, AccessSpec as)
     : name{ std::move(n) },
       max_mb{ mm },
       max_hr{ mh },
@@ -122,7 +124,8 @@ struct TableSpec {
       format{ std::move(f) },
       serde{ std::move(sd) },
       columnProps{ std::move(cp) },
-      timeSpec{ std::move(ts) } {}
+      timeSpec{ std::move(ts) },
+      accessSpec{ std::move(as) } {}
 
   inline std::string toString() const {
     // table name @ location - format: time
@@ -143,7 +146,7 @@ struct TableSpec {
     }
 
     // build up a new table from this spec
-    return std::make_shared<Table>(name, schemaPtr, columnProps);
+    return std::make_shared<Table>(name, schemaPtr, columnProps, accessSpec);
   }
 };
 

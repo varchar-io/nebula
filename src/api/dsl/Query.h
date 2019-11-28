@@ -17,6 +17,8 @@
 #pragma once
 
 #include <glog/logging.h>
+
+#include "Context.h"
 #include "Expressions.h"
 #include "api/udf/Not.h"
 #include "common/Cursor.h"
@@ -26,7 +28,7 @@
 #include "surface/DataSurface.h"
 
 /**
- * Define DSL methods.
+ * Define query strucuture.
  */
 namespace nebula {
 namespace api {
@@ -101,7 +103,7 @@ public:
 
 public:
   // compile the query into an execution plan
-  std::unique_ptr<nebula::execution::ExecutionPlan> compile() const;
+  std::unique_ptr<nebula::execution::ExecutionPlan> compile(const QueryContext&) const;
 
 public:
   // table identifier

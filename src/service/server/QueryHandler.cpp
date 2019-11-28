@@ -47,6 +47,7 @@ using nebula::api::dsl::LogicalExpression;
 using nebula::api::dsl::LogicalOp;
 using nebula::api::dsl::nin;
 using nebula::api::dsl::Query;
+using nebula::api::dsl::QueryContext;
 using nebula::api::dsl::SortType;
 using nebula::api::dsl::starts;
 using nebula::api::dsl::table;
@@ -72,7 +73,9 @@ std::unique_ptr<ExecutionPlan> QueryHandler::compile(
   // 2. build query out of the request
   std::unique_ptr<ExecutionPlan> plan = nullptr;
   try {
-    auto plan = query->compile();
+    // TODO(cao): replace with real user credential
+    QueryContext ctx{ "nebula", { "nebula_users" } };
+    auto plan = query->compile(ctx);
 
     // set time window in query plan
     plan->setWindow(window);

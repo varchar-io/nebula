@@ -65,6 +65,54 @@ DataSource asDataSource(const std::string& data) {
   throw NException("Misconfigured data source");
 }
 
+AccessType asAccessType(const std::string& name) {
+  if (name == "read") return AccessType::READ;
+  if (name == "aggregation") return AccessType::AGGREGATION;
+  if (name == "write") return AccessType::WRITE;
+  return AccessType::UNKNOWN;
+}
+
+ActionType asActionType(const YAML::Node& node) {
+  if (node) {
+    auto action = node.as<std::string>();
+    if (action == "deny") return ActionType::DENY;
+    if (action == "mask") return ActionType::MASK;
+  }
+
+  // any mis-configured action will grant as pass
+  return ActionType::PASS;
+}
+
+// read defined access rules from table config
+// example:
+// access:
+//    read:
+//      groups:
+//      action:
+std::vector<AccessRule> asAccessRules(const YAML::Node& node) {
+  if (node) {
+    std::vector<AccessRule> rules;
+    rules.reserve(3);
+    // for all access type
+    for (YAML::const_iterator it = node.begin(); it != node.end(); ++it) {
+      auto atype = it->first.as<std::string>();
+      const auto& settings = it->second;
+      const auto& gtag = settings["groups"];
+      std::vector<std::string> groups;
+      if (gtag) {
+        groups = gtag.as<std::vector<std::string>>();
+      }
+      const auto& atag = settings["action"];
+      rules.emplace_back(asAccessType(atype), groups, asActionType(atag));
+    }
+
+    return rules;
+  }
+
+  // no rules defined
+  return {};
+}
+
 TimeSpec asTimeSpec(const YAML::Node& node) {
   auto timeType = node["type"].as<std::string>();
   if (timeType == "static") {
@@ -104,11 +152,19 @@ Column col(const YAML::Node& settings) {
   std::string dv;
   EVAL_SETTING(default_value, dv, std::string)
 
-  return Column{ bf, d, std::move(dv) };
+  // if access spec defined
+  const auto& access = settings["access"];
+  AccessSpec as;
+  if (access) {
+    as = asAccessRules(access);
+  }
+
+  return Column{ bf, d, std::move(dv), std::move(as) };
 
 #undef EVAL_SETTING
 }
 
+// read column properties definition from table config
 std::unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
   // iterate over each column
   ColumnProps props;
@@ -210,7 +266,8 @@ void ClusterInfo::load(const std::string& file) {
       td["format"].as<std::string>(),
       asSerde(td["serde"]),
       asColumnProps(td["columns"]),
-      asTimeSpec(td["time"])));
+      asTimeSpec(td["time"]),
+      asAccessRules(td["access"])));
   }
 
   // swap with new table set

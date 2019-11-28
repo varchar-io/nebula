@@ -17,7 +17,9 @@
 #pragma once
 
 #include <unordered_map>
+#include <unordered_set>
 
+#include "Access.h"
 #include "common/Errors.h"
 #include "type/Type.h"
 
@@ -38,8 +40,8 @@ using nebula::type::Schema;
  * Define column properties that fetched from meta data system
  */
 struct Column {
-  explicit Column(bool bf = false, bool d = false, const std::string& dv = "")
-    : withBloomFilter{ bf }, withDict{ d }, defaultValue{ dv } {}
+  explicit Column(bool bf = false, bool d = false, const std::string& dv = "", std::vector<AccessRule> rls = {})
+    : withBloomFilter{ bf }, withDict{ d }, defaultValue{ dv }, rules{ std::move(rls) } {}
 
   // by default, we don't build bloom filter
   bool withBloomFilter;
@@ -51,6 +53,9 @@ struct Column {
   // empty means no default value,
   // with saying that, we're not support string type with empty stirng as default value
   std::string defaultValue;
+
+  // access rules
+  std::vector<AccessRule> rules;
 };
 
 using ColumnProps = std::unordered_map<std::string, Column>;
@@ -58,9 +63,9 @@ using ColumnProps = std::unordered_map<std::string, Column>;
 class Table {
 public:
   Table(const std::string& name) : Table(name, nullptr) {}
-  Table(const std::string& name, Schema schema) : Table(name, schema, {}) {}
-  Table(const std::string& name, Schema schema, ColumnProps columns)
-    : name_{ name }, schema_{ schema }, columns_{ std::move(columns) } {
+  Table(const std::string& name, Schema schema) : Table(name, schema, {}, {}) {}
+  Table(const std::string& name, Schema schema, ColumnProps columns, AccessSpec rules)
+    : name_{ name }, schema_{ schema }, columns_{ std::move(columns) }, rules_{ std::move(rules) } {
     // TODO(cao) - load table properties from meta data service
     loadTable();
   }
@@ -92,14 +97,24 @@ public:
   }
 
   // retrieve all column meta data by its name
-  virtual Column column(const std::string& col) const noexcept {
+  virtual const Column& column(const std::string& col) const noexcept {
     auto column = columns_.find(col);
     if (column != columns_.end()) {
       return column->second;
     }
 
-    return Column{};
+    static const Column EMPTY{};
+    return EMPTY;
   }
+
+  // TODO(cao): this may need refactoring to be a generic interface out of table class.
+  // but right now, we're assuming we can make the decision through table object
+  // This API will decide action type for given security groups and column
+  // If column name is not given, it operates table level check
+  virtual ActionType checkAccess(
+    AccessType,
+    const std::unordered_set<std::string>&,
+    const std::string& col = "") const;
 
 protected:
   // table name is global unique, but it can be organized by some namespace style naming convention
@@ -107,6 +122,9 @@ protected:
   std::string name_;
   Schema schema_;
   ColumnProps columns_;
+
+  // access rules, can be empty
+  std::vector<AccessRule> rules_;
 
 private:
   void loadTable();

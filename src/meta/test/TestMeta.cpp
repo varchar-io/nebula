@@ -80,6 +80,66 @@ TEST(MetaTest, TestClusterConfigLoad) {
   }
 }
 
+TEST(MetaTest, TestAccessRules) {
+  auto schema = nebula::type::TypeSerializer::from(
+    "ROW<_time_: bigint, id:int, event:string, email:string, fund:bigint>");
+
+  // column level access control - mask email when user is not in the group of pii_sg
+  ColumnProps columnProps;
+  columnProps["email"] = Column{
+    false,
+    false,
+    "*@*",
+    { AccessRule{ AccessType::READ, { "pii_sg" }, ActionType::MASK } }
+  };
+  columnProps["fund"] = Column{
+    false,
+    false,
+    "0",
+    { AccessRule{ AccessType::READ, { "pii_sg" }, ActionType::DENY } }
+  };
+
+  // no table level access control, pass empty {} access rules
+  nebula::meta::Table test{
+    "pii_table",
+    schema,
+    columnProps,
+    {}
+  };
+
+  // assume user has two normal groups
+  std::unordered_set<std::string> groups;
+  groups.emplace("eng", "ads");
+
+  // run check access function to ensure it works as expected
+#define TEST_COL_READ_ACCESS(COL, EXPECT) \
+  EXPECT_EQ(test.checkAccess(AccessType::READ, groups, COL), ActionType::EXPECT);
+
+  // 1. table access - pass
+  EXPECT_EQ(test.checkAccess(AccessType::READ, groups), ActionType::PASS);
+
+  // 2. column id access - pass
+  TEST_COL_READ_ACCESS("id", PASS)
+
+  // 3. column event access - pass
+  TEST_COL_READ_ACCESS("event", PASS)
+
+  // 4. column email access - mask
+  TEST_COL_READ_ACCESS("email", MASK)
+
+  // 5. column fund access - deny
+  TEST_COL_READ_ACCESS("fund", DENY)
+
+  // now, let's put this user into pii_sg group and run the test again
+  groups.emplace("pii_sg");
+  TEST_COL_READ_ACCESS("id", PASS)
+  TEST_COL_READ_ACCESS("event", PASS)
+  TEST_COL_READ_ACCESS("email", PASS)
+  TEST_COL_READ_ACCESS("fund", PASS)
+
+#undef TEST_COL_READ_ACCESS
+}
+
 } // namespace test
 } // namespace meta
 } // namespace nebula

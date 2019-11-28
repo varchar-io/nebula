@@ -28,6 +28,8 @@ using nebula::execution::BlockPhase;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::FinalPhase;
 using nebula::execution::NodePhase;
+using nebula::meta::AccessType;
+using nebula::meta::ActionType;
 using nebula::meta::NNode;
 using nebula::meta::Table;
 using nebula::surface::RowData;
@@ -63,7 +65,7 @@ std::vector<std::shared_ptr<Expression>> Query::preprocess(
 }
 
 // execute current query to get result list
-std::unique_ptr<ExecutionPlan> Query::compile() const {
+std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
   // compile the query into an execution plan
   // a valid query (single data source query - no join support at the moment) should be
   // 1. aggregation query, should have more than 1 UDAF in selects
@@ -75,6 +77,12 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // every expression can decide its temporary type and its final type.
   // for example, avg temporary type is int128 or byte[16], but its final type ties to its own type.
   // hence we are extending type method to return mutltiple types for forming schemas for different compute phases
+
+  // table level access check
+  N_ENSURE(qc.isAuth(), "Nebula requires authentication to execute query");
+  if (table_->checkAccess(AccessType::READ, qc.groups()) != ActionType::PASS) {
+    throw NException("The user has no permission to query the table");
+  }
 
   // fetch schema of the table first
   // validate
@@ -97,24 +105,77 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   aggColumns.reserve(numOutputFields);
   size_t numAggColumns = 0;
 
-  std::for_each(selects_.begin(), selects_.end(),
-                [&finalNodes, &tempNodes, &aggColumns, &numAggColumns, &differentSchema,
-                 table = table_](const auto& itr) {
-                  // ensure this expression type is populated
-                  auto type = itr->type(*table);
-                  if (type.native != type.store) {
-                    differentSchema = true;
-                  }
+  // make a copy of selects in case any change is needed
+  std::vector<std::shared_ptr<Expression>> selects;
+  selects.reserve(numOutputFields);
 
-                  tempNodes.push_back(itr->createStoreType());
-                  finalNodes.push_back(itr->createNativeType());
+  // process each select item
+  for (auto& itr : selects_) {
+    // ensure this expression type is populated
+    auto type = itr->type(*table_);
+    if (type.native != type.store) {
+      differentSchema = true;
+    }
 
-                  auto isAgg = itr->isAgg();
-                  aggColumns.push_back(isAgg);
-                  if (isAgg) {
-                    numAggColumns += 1;
-                  }
-                });
+    tempNodes.push_back(itr->createStoreType());
+    finalNodes.push_back(itr->createNativeType());
+
+    auto isAgg = itr->isAgg();
+    aggColumns.push_back(isAgg);
+    if (isAgg) {
+      numAggColumns += 1;
+    }
+
+    // check column level access
+    auto crefs = itr->columnRefs();
+    ActionType action = ActionType::PASS;
+    std::string rejectColumn;
+    if (isAgg) {
+      // for aggregation function, we do not do any mask
+      for (const auto& c : crefs) {
+        if (table_->checkAccess(AccessType::AGGREGATION, qc.groups(), c) != ActionType::PASS) {
+          throw NException("The user has no permission to aggregate this column");
+        }
+      }
+    } else {
+
+      for (const auto& c : crefs) {
+        auto check = table_->checkAccess(AccessType::READ, qc.groups(), c);
+        if (check > action) {
+          action = check;
+          rejectColumn = c;
+        }
+      }
+    }
+
+    // take action based on action result of access check
+    if (action == ActionType::PASS) {
+      selects.push_back(itr);
+    } else if (action == ActionType::MASK) {
+#define MASK_TYPE(K, V)                                                 \
+  case nebula::type::Kind::K: {                                         \
+    using X = nebula::type::TypeTraits<nebula::type::Kind::K>::CppType; \
+    auto exp = std::make_shared<ConstExpression<X>>((X)V);              \
+    exp->as(itr->alias());                                              \
+    selects.push_back(exp);                                             \
+    break;                                                              \
+  }
+      switch (type.native) {
+        MASK_TYPE(BOOLEAN, false)
+        MASK_TYPE(TINYINT, 0)
+        MASK_TYPE(SMALLINT, 0)
+        MASK_TYPE(INTEGER, 0)
+        MASK_TYPE(BIGINT, 0)
+        MASK_TYPE(REAL, 0)
+        MASK_TYPE(DOUBLE, 0)
+        MASK_TYPE(VARCHAR, "***")
+      default: throw NException("type not supported in masking");
+      }
+#undef MASK_TYPE
+    } else {
+      throw NException(fmt::format("You have no permission to access column: {0}", rejectColumn));
+    }
+  }
 
   // create output schema
   auto tempOutput = std::static_pointer_cast<RowType>(nebula::type::RowType::create("", tempNodes));
@@ -160,7 +221,7 @@ std::unique_ptr<ExecutionPlan> Query::compile() const {
   // x y, max(z)
   // filter by filter predicate, compute by keys: agg functions
   std::vector<std::unique_ptr<ValueEval>> fields;
-  std::transform(selects_.begin(), selects_.end(), std::back_inserter(fields),
+  std::transform(selects.begin(), selects.end(), std::back_inserter(fields),
                  [](std::shared_ptr<Expression> expr)
                    -> std::unique_ptr<ValueEval> { return expr->asEval(); });
   auto block = std::make_unique<BlockPhase>(schema, tempOutput);

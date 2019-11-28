@@ -272,7 +272,8 @@ TEST(ServiceTest, TestQuerySerde) {
                        .groupby({ 1, 2 })
                        .sortby({ 5 }, SortType::DESC)
                        .limit(10);
-  auto plan1 = query.compile();
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan1 = query.compile(ctx);
   plan1->setWindow({ start, end });
 
   // pass the query plan to a server to execute - usually it is itself
@@ -324,7 +325,9 @@ TEST(ServiceTest, TestDataSerde) {
                        .groupby({ 1, 2 })
                        .sortby({ 5 }, SortType::DESC)
                        .limit(10);
-  auto plan1 = query.compile();
+
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan1 = query.compile(ctx);
   plan1->setWindow({ start, end });
 
   // pass the query plan to a server to execute - usually it is itself

@@ -39,6 +39,7 @@ namespace base {
 
 using nebula::api::dsl::Expression;
 using nebula::api::dsl::Query;
+using nebula::api::dsl::QueryContext;
 using nebula::api::dsl::Serde;
 using nebula::api::dsl::SortType;
 using nebula::common::Pool;
@@ -52,6 +53,7 @@ using nebula::ingest::IngestSpec;
 using nebula::ingest::SpecState;
 using nebula::memory::keyed::FlatBuffer;
 using nebula::memory::keyed::FlatRowCursor;
+using nebula::meta::AccessSpec;
 using nebula::meta::Column;
 using nebula::meta::ColumnProps;
 using nebula::meta::DataSource;
@@ -265,7 +267,8 @@ std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(
   auto query = QuerySerde::deserialize(ms, msg);
 
   LOG(INFO) << "compile query";
-  auto plan = query.compile();
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan = query.compile(ctx);
 
   // set a few other properties associated with execution plan
   auto p = msg->GetRoot();
@@ -436,6 +439,12 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
       props[itr->name()->str()] = Column{ itr->bf(), itr->dict(), itr->dv()->str() };
     }
 
+    // build access rules
+    // TODO(cao): currently we don't serde acccess spec to nodes
+    // because all access control happens at server right now.
+    // This behavior may change in the future when a dedicated node assigned to client for streaming.
+    AccessSpec as;
+
     // build serde
     auto serde = it->serde();
     nebula::meta::KafkaSerde sd;
@@ -460,7 +469,8 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
                                              it->format()->str(),
                                              std::move(sd),
                                              std::move(props),
-                                             std::move(time));
+                                             std::move(time),
+                                             std::move(as));
 
     auto is = std::make_shared<IngestSpec>(
       table,

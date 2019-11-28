@@ -29,11 +29,12 @@ namespace test {
 
 TEST(IngestTest, TestIngestSpec) {
   nebula::meta::TimeSpec ts;
+  nebula::meta::AccessSpec as;
   nebula::meta::ColumnProps cp;
   nebula::meta::KafkaSerde sd;
   auto table = std::make_shared<nebula::meta::TableSpec>(
     "test", 1000, 10, "s3", nebula::meta::DataSource::S3,
-    "swap", "s3://test", "s3://bak", "csv", sd, cp, ts);
+    "swap", "s3://test", "s3://bak", "csv", sd, cp, ts, as);
   nebula::ingest::IngestSpec spec(table, "1.0", "nebula/v1.x", "nebula", 10, SpecState::NEW, 0);
   LOG(INFO) << "SPEC: " << spec.toString();
 }
