@@ -160,6 +160,10 @@ tbody {
     width: 80pt;
 }
 
+.user {
+    float: right;
+}
+
 /** styles for constraints */
 .crule .cols {
     width: 70pt;

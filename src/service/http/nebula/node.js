@@ -20,6 +20,11 @@ const error = (msg) => {
         "error": msg
     });
 };
+
+// TODO(cao): these should go more flexible way to figure user info after auth
+// Right now, it is only one example way.
+const UserHeader = "X-FORWARDED-USER";
+const GroupHeader = "X-FORWARDED-GROUPS";
 /**
  * Query API
  * start: 2019-04-01
@@ -335,6 +340,25 @@ const listApi = (q) => {
     return JSON.stringify(Object.keys(api_handlers));
 };
 
+/**
+ * Current user info through OAuth
+ * q: query object
+ * h: request headers
+ */
+const userInfo = (q, h) => {
+    const info = {
+        auth: 0
+    };
+
+    if (UserHeader in h) {
+        info.auth = 1;
+        info.user = h[UserHeader];
+        info.groups = h[GroupHeader];
+    }
+
+    return JSON.stringify(info);
+};
+
 /** 
  * get all available tables in nebula.
  */
@@ -526,10 +550,6 @@ const shutdown = () => {
 
 //create a server object listening at 80:
 http.createServer(async function (req, res) {
-    // log headers of current req
-    // console.log("headers of current request");
-    // console.log(JSON.stringify(req.headers));
-
     const q = url.parse(req.url, true).query;
     if (q.api) {
         res.writeHead(200, {
@@ -539,6 +559,8 @@ http.createServer(async function (req, res) {
         // routing generic query through web UI
         if (q.api === "list") {
             res.write(listApi(q));
+        } else if (q.api === "user") {
+            res.write(userInfo(q, req.headers));
         } else if (q.api === "nuclear") {
             res.write(shutdown());
         } else if (q.api in api_handlers) {

@@ -570,6 +570,13 @@ $(() => {
         hash('n');
         restore();
     });
+
+    // display current user info if available
+    $.ajax({
+        url: "/?api=user"
+    }).done((data) => {
+        ds('#user').text(data.auth ? data.user : "unauth");
+    });
 });
 
 const vis = async (r) => {
