@@ -13,11 +13,13 @@ const signatures_table = "pin.signatures";
 const advertisers_table = "advertisers";
 const advertisers_spend_table = "advertisers.spend";
 const client = NebulaClient.qc(serviceAddr);
+const grpc = NebulaClient.grpc;
 const timeCol = "_time_";
 const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
 const error = (msg) => {
     return JSON.stringify({
-        "error": msg
+        "error": msg,
+        "duration": 0
     });
 };
 
@@ -26,6 +28,7 @@ const error = (msg) => {
 const AuthHeader = "authorization";
 const UserHeader = "x-forwarded-user";
 const GroupHeader = "x-forwarded-groups";
+
 /**
  * Query API
  * start: 2019-04-01
@@ -40,6 +43,7 @@ const GroupHeader = "x-forwarded-groups";
 class Handler {
     constructor() {
         this.response = null;
+        this.metadata = {};
         this.onError = (err) => {
             this.response.write(error(`${err}`));
             this.response.end();
@@ -89,7 +93,7 @@ const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, handl
     req.setTop(limit);
 
     // do the query
-    client.query(req, {}, (err, reply) => {
+    client.query(req, handler.metadata, (err, reply) => {
         if (err !== null) {
             return handler.onError(err);
         }
@@ -358,7 +362,20 @@ const userInfo = (q, h) => {
         info.groups = h[GroupHeader];
     }
 
-    return JSON.stringify(info);
+    return info;
+};
+/**
+ * Convert user info into nebula headers as metadata for grpc service
+ */
+const toMetadata = (info) => {
+    const metadata = new grpc.Metadata();
+    console.log("catch all keys:");
+    for (var f in info) {
+        console.log(`nebula-${f}: ${info[f]}`);
+        metadata.add(`nebula-${f}`, `${info[f]}`);
+    }
+    console.log("done all keys:");
+    return metadata;
 };
 
 /** 
@@ -479,7 +496,8 @@ const webq = (q, handler) => {
     // set limit
     req.setTop(p.l);
 
-    client.query(req, {}, (err, reply) => {
+    // send request to service to get result
+    client.query(req, handler.metadata, (err, reply) => {
         if (err !== null) {
             return handler.onError(err);
         }
@@ -562,7 +580,7 @@ http.createServer(async function (req, res) {
         if (q.api === "list") {
             res.write(listApi(q));
         } else if (q.api === "user") {
-            res.write(userInfo(q, req.headers));
+            res.write(JSON.stringify(userInfo(q, req.headers)));
         } else if (q.api === "nuclear") {
             res.write(shutdown());
         } else if (q.api in api_handlers) {
@@ -574,6 +592,7 @@ http.createServer(async function (req, res) {
                     // build a handler 
                     const handler = new Handler();
                     handler.response = res;
+                    handler.metadata = toMetadata(userInfo(q, req.headers));
                     api_handlers[q.api](q, handler);
                     return;
                 } catch (e) {

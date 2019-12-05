@@ -92,7 +92,8 @@ TEST(ServiceTest, TestQueryTimeline) {
 
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
-  auto plan = handler.compile(query, { request.start(), request.end() }, err);
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan = handler.compile(query, { request.start(), request.end() }, ctx, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
@@ -142,7 +143,8 @@ TEST(ServiceTest, TestStringFilters) {
 
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
-  auto plan = handler.compile(query, { request.start(), request.end() }, err);
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan = handler.compile(query, { request.start(), request.end() }, ctx, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
@@ -196,7 +198,8 @@ TEST(ServiceTest, TestQuerySamples) {
 
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
-  auto plan = handler.compile(query, { request.start(), request.end() }, err);
+  QueryContext ctx{ "nebula", { "nebula_users" } };
+  auto plan = handler.compile(query, { request.start(), request.end() }, ctx, err);
   plan->display();
   EXPECT_EQ(err, ErrorCode::NONE);
 
@@ -260,18 +263,18 @@ TEST(ServiceTest, TestQuerySerde) {
   // let's plan these many data std::thread::hardware_concurrency()
   nebula::meta::TestTable testTable;
 
-  const auto query = table(testTable.name(), ms)
-                       .where(like(col("event"), "NN%"))
-                       .select(
-                         col("event"),
-                         col("flag"),
-                         max(col("id") * 2).as("max_id"),
-                         min(col("id") + 1).as("min_id"),
-                         count(1).as("count"),
-                         avg(col("weight")).as("avg_weight"))
-                       .groupby({ 1, 2 })
-                       .sortby({ 5 }, SortType::DESC)
-                       .limit(10);
+  auto query = table(testTable.name(), ms)
+                 .where(like(col("event"), "NN%"))
+                 .select(
+                   col("event"),
+                   col("flag"),
+                   max(col("id") * 2).as("max_id"),
+                   min(col("id") + 1).as("min_id"),
+                   count(1).as("count"),
+                   avg(col("weight")).as("avg_weight"))
+                 .groupby({ 1, 2 })
+                 .sortby({ 5 }, SortType::DESC)
+                 .limit(10);
   QueryContext ctx{ "nebula", { "nebula_users" } };
   auto plan1 = query.compile(ctx);
   plan1->setWindow({ start, end });
@@ -313,18 +316,17 @@ TEST(ServiceTest, TestDataSerde) {
 
   // let's plan these many data std::thread::hardware_concurrency()
   nebula::meta::TestTable testTable;
-
-  const auto query = table(testTable.name(), ms)
-                       .where(like(col("event"), "NN%"))
-                       .select(
-                         col("event"),
-                         col("flag"),
-                         max(col("id") * 2).as("max_id"),
-                         min(col("id") + 1).as("min_id"),
-                         count(1).as("count"))
-                       .groupby({ 1, 2 })
-                       .sortby({ 5 }, SortType::DESC)
-                       .limit(10);
+  auto query = table(testTable.name(), ms)
+                 .where(like(col("event"), "NN%"))
+                 .select(
+                   col("event"),
+                   col("flag"),
+                   max(col("id") * 2).as("max_id"),
+                   min(col("id") + 1).as("min_id"),
+                   count(1).as("count"))
+                 .groupby({ 1, 2 })
+                 .sortby({ 5 }, SortType::DESC)
+                 .limit(10);
 
   QueryContext ctx{ "nebula", { "nebula_users" } };
   auto plan1 = query.compile(ctx);

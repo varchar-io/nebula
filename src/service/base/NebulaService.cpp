@@ -80,6 +80,8 @@ const std::string ServiceProperties::errorMessage(ErrorCode error) {
     ERROR_MESSSAGE_CASE(FAIL_BUILD_QUERY)
     ERROR_MESSSAGE_CASE(FAIL_COMPILE_QUERY)
     ERROR_MESSSAGE_CASE(FAIL_EXECUTE_QUERY)
+    ERROR_MESSSAGE_CASE(AUTH_REQUIRED)
+    ERROR_MESSSAGE_CASE(PERMISSION_REQUIRED)
   default: throw NException("Error Code Not Covered");
   }
 }
@@ -266,7 +268,7 @@ std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(
   const flatbuffers::grpc::Message<QueryPlan>* msg) {
   auto query = QuerySerde::deserialize(ms, msg);
 
-  LOG(INFO) << "compile query";
+  // TODO(cao): serialize query context to nodes and mark compile method as const
   QueryContext ctx{ "nebula", { "nebula_users" } };
   auto plan = query.compile(ctx);
 

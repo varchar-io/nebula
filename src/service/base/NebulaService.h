@@ -44,7 +44,9 @@ enum ErrorCode {
   MISSING_OUTPUT_FIELDS = 3,
   FAIL_BUILD_QUERY = 4,
   FAIL_COMPILE_QUERY = 5,
-  FAIL_EXECUTE_QUERY = 6
+  FAIL_EXECUTE_QUERY = 6,
+  AUTH_REQUIRED = 7,
+  PERMISSION_REQUIRED = 8
 };
 
 template <ErrorCode E>
@@ -83,6 +85,16 @@ struct ErrorTraits<ErrorCode::FAIL_COMPILE_QUERY> {
 template <>
 struct ErrorTraits<ErrorCode::FAIL_EXECUTE_QUERY> {
   static constexpr auto MESSAGE = "Fail To Execute Query";
+};
+
+template <>
+struct ErrorTraits<ErrorCode::AUTH_REQUIRED> {
+  static constexpr auto MESSAGE = "User Authentication Required To Execute";
+};
+
+template <>
+struct ErrorTraits<ErrorCode::PERMISSION_REQUIRED> {
+  static constexpr auto MESSAGE = "User Has No Permission To Execute";
 };
 
 class ServiceProperties final {

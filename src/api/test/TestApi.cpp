@@ -57,17 +57,17 @@ TEST(ApiTest, TestQueryStructure) {
   // query this table
   auto ms = TableService::singleton();
   auto tableName = std::get<0>(data);
-  const auto query = table(tableName, ms)
-                       .where(like(col("event"), "NN%"))
-                       .select(
-                         col("event"),
-                         col("flag"),
-                         max(col("id") * 2).as("max_id"),
-                         min(col("id") + 1).as("min_id"),
-                         count(1).as("count"))
-                       .groupby({ 1, 2 })
-                       .sortby({ 5 }, SortType::DESC)
-                       .limit(10);
+  auto query = table(tableName, ms)
+                 .where(like(col("event"), "NN%"))
+                 .select(
+                   col("event"),
+                   col("flag"),
+                   max(col("id") * 2).as("max_id"),
+                   min(col("id") + 1).as("min_id"),
+                   count(1).as("count"))
+                 .groupby({ 1, 2 })
+                 .sortby({ 5 }, SortType::DESC)
+                 .limit(10);
 
   LOG(INFO) << "Compiling query: ";
   LOG(INFO) << "                  select event, flag, max(id*2) as max_id, min(id+1) as min_id, count(1) as count";
@@ -113,18 +113,18 @@ TEST(ApiTest, TestSortingAndTop) {
   // query this table
   auto ms = TableService::singleton();
   auto tableName = std::get<0>(data);
-  const auto query = table(tableName, ms)
-                       .where(like(col("event"), "N%"))
-                       .select(
-                         col("event"),
-                         col("flag"),
-                         max(col("id") * 2).as("max_id"),
-                         min(col("id") + 1).as("min_id"),
-                         count(col("id")).as("count"),
-                         sum(col("value")).as("sum"))
-                       .groupby({ 1, 2 })
-                       .sortby({ 5 }, SortType::DESC)
-                       .limit(5);
+  auto query = table(tableName, ms)
+                 .where(like(col("event"), "N%"))
+                 .select(
+                   col("event"),
+                   col("flag"),
+                   max(col("id") * 2).as("max_id"),
+                   min(col("id") + 1).as("min_id"),
+                   count(col("id")).as("count"),
+                   sum(col("value")).as("sum"))
+                 .groupby({ 1, 2 })
+                 .sortby({ 5 }, SortType::DESC)
+                 .limit(5);
   // compile the query into an execution plan
   QueryContext ctx{ "nebula", { "nebula_users" } };
   auto plan = query.compile(ctx);

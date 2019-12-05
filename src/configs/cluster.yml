@@ -8,6 +8,10 @@ server:
   # such as task execution may not be implemented.
   anode: false
 
+  # this field indicates if current deployment requires auth or not
+  # if set as true, auth (such as oAuth) is required to set up to make query executable
+  auth: false
+
 # will be provided by enviroment
 nodes:
   - node:
@@ -26,11 +30,18 @@ tables:
     source: ""
     backup: s3://nebula/n100/
     format: none
+    columns:
+      id:
+        bloom_filter: true
+      event:
+        access:
+          read:
+            groups: ["nebula_users"]
+            action: mask
     time:
       type: static
       # get it from linux by "date +%s"
       value: 1565994194
-
   # <table name>:
   #   max-mb: 10000
   #   max-hr: 0
@@ -47,7 +58,6 @@ tables:
   #     type: static
   #     # date +%s --date='2019-09-10'
   #     value: 1571875200
-
   ## all kafka table name will start with "k." followed by topic name
   ## to indicating its a kafka data source
   # k.<topic>:

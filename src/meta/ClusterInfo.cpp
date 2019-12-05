@@ -34,6 +34,7 @@ struct convert<nebula::meta::ServerOptions> {
     }
 
     so.anode = node["anode"].as<bool>();
+    so.authRequired = node["auth"].as<bool>();
     return true;
   }
 };

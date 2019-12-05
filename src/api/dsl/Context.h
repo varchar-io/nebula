@@ -17,10 +17,13 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include "Expressions.h"
+
 #include "api/udf/Not.h"
 #include "common/Cursor.h"
 #include "execution/ExecutionPlan.h"
+#include "meta/ClusterInfo.h"
 #include "meta/MetaService.h"
 #include "meta/Table.h"
 #include "surface/DataSurface.h"
@@ -35,10 +38,21 @@ namespace nebula {
 namespace api {
 namespace dsl {
 
+// store error in context
+enum class Error {
+  NONE,
+  NO_SELECTS,
+  NO_AUTH,
+  TABLE_PERM,
+  COLUMN_PERM,
+  NOT_SUPPORT,
+  INVALID_QUERY
+};
+
 class QueryContext {
 public:
   QueryContext(const std::string& user, std::unordered_set<std::string> groups)
-    : user_{ user }, groups_{ std::move(groups) } {}
+    : user_{ user }, groups_{ std::move(groups) }, error_{ Error::NONE } {}
 
   inline bool isAuth() const {
     // any authorized uesr will have at least one group regardless what the name is
@@ -53,10 +67,24 @@ public:
     return groups_;
   }
 
+  inline void setError(Error error) {
+    error_ = error;
+  }
+
+  inline Error getError() const {
+    return error_;
+  }
+
+  inline bool requireAuth() const {
+    // check if current system requires auth
+    return nebula::meta::ClusterInfo::singleton().server().authRequired;
+  }
+
 private:
   // user context to understand who is making the query
   std::string user_;
   std::unordered_set<std::string> groups_;
+  Error error_;
 };
 } // namespace dsl
 } // namespace api

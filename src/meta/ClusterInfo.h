@@ -34,6 +34,7 @@ using NNodeSet = std::unordered_set<NNode, NodeHash, NodeEqual>;
 // server options mapping in cluster.yml for server
 struct ServerOptions {
   bool anode;
+  bool authRequired;
 };
 
 class ClusterInfo {

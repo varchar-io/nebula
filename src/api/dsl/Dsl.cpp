@@ -15,7 +15,9 @@
  */
 
 #include "Dsl.h"
+
 #include <algorithm>
+
 #include "common/Cursor.h"
 #include "surface/DataSurface.h"
 #include "type/Serde.h"
@@ -65,7 +67,7 @@ std::vector<std::shared_ptr<Expression>> Query::preprocess(
 }
 
 // execute current query to get result list
-std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
+std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) noexcept {
   // compile the query into an execution plan
   // a valid query (single data source query - no join support at the moment) should be
   // 1. aggregation query, should have more than 1 UDAF in selects
@@ -77,11 +79,17 @@ std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
   // every expression can decide its temporary type and its final type.
   // for example, avg temporary type is int128 or byte[16], but its final type ties to its own type.
   // hence we are extending type method to return mutltiple types for forming schemas for different compute phases
+#define END_ERROR(ERR) \
+  qc.setError(ERR);    \
+  return {};
 
   // table level access check
-  N_ENSURE(qc.isAuth(), "Nebula requires authentication to execute query");
+  if (!qc.isAuth() && qc.requireAuth()) {
+    END_ERROR(Error::NO_AUTH)
+  }
+
   if (table_->checkAccess(AccessType::READ, qc.groups()) != ActionType::PASS) {
-    throw NException("The user has no permission to query the table");
+    END_ERROR(Error::TABLE_PERM)
   }
 
   // fetch schema of the table first
@@ -90,7 +98,9 @@ std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
 
   // build output schema tree
   const auto numOutputFields = this->selects_.size();
-  N_ENSURE_GT(numOutputFields, 0, "at least one column select");
+  if (numOutputFields == 0) {
+    END_ERROR(Error::NO_SELECTS)
+  }
 
   // temp nodes used for block/node computing phase
   // final nodes used for global phase, and they may have different schemas
@@ -134,11 +144,10 @@ std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
       // for aggregation function, we do not do any mask
       for (const auto& c : crefs) {
         if (table_->checkAccess(AccessType::AGGREGATION, qc.groups(), c) != ActionType::PASS) {
-          throw NException("The user has no permission to aggregate this column");
+          END_ERROR(Error::COLUMN_PERM)
         }
       }
     } else {
-
       for (const auto& c : crefs) {
         auto check = table_->checkAccess(AccessType::READ, qc.groups(), c);
         if (check > action) {
@@ -152,6 +161,7 @@ std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
     if (action == ActionType::PASS) {
       selects.push_back(itr);
     } else if (action == ActionType::MASK) {
+      LOG(INFO) << "Mask a column due to access policy: " << itr->alias();
 #define MASK_TYPE(K, V)                                                 \
   case nebula::type::Kind::K: {                                         \
     using X = nebula::type::TypeTraits<nebula::type::Kind::K>::CppType; \
@@ -169,13 +179,22 @@ std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
         MASK_TYPE(REAL, 0)
         MASK_TYPE(DOUBLE, 0)
         MASK_TYPE(VARCHAR, "***")
-      default: throw NException("type not supported in masking");
+      default: {
+        END_ERROR(Error::NOT_SUPPORT);
+      }
       }
 #undef MASK_TYPE
     } else {
-      throw NException(fmt::format("You have no permission to access column: {0}", rejectColumn));
+      LOG(ERROR) << "You have no permission to access column: " << rejectColumn;
+      END_ERROR(Error::COLUMN_PERM)
     }
   }
+
+  // swap selects with selects_ to preserve it
+  // note that the same plan will be serialized to each node to compile again
+  // TODO(cao): this method should be const, alternative better way is to serialize query context to nodes
+  // so each nodes will compile original query with same context (but less efficient)
+  std::swap(selects_, selects);
 
   // create output schema
   auto tempOutput = std::static_pointer_cast<RowType>(nebula::type::RowType::create("", tempNodes));
@@ -196,24 +215,35 @@ std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
     // validations
     // 1. group by index has to be all those columns that are not aggregate columns
     // group by count has to be the same as non-agg column count
-    N_ENSURE_EQ(groupSize, numOutputFields - numAggColumns, "query key count");
+    if (groupSize != numOutputFields - numAggColumns) {
+      LOG(ERROR) << "Invalid key count: " << groupSize;
+      END_ERROR(Error::INVALID_QUERY)
+    }
 
     // check the index are correct values and convert 1-based group by keys into 0-based keys for internal usage
-    std::transform(groups_.begin(), groups_.end(), std::back_inserter(zbKeys), [&aggColumns](size_t index) {
+    for (auto& index : groups_) {
       auto zbIndex = index - 1;
-      N_ENSURE(!aggColumns[zbIndex], "group by column should not be aggregate column");
-      return zbIndex;
-    });
+      if (aggColumns[zbIndex]) {
+        LOG(ERROR) << "group by column should not be aggregate column";
+        END_ERROR(Error::INVALID_QUERY)
+      }
+
+      zbKeys.push_back(zbIndex);
+    }
   }
 
   // check the index are correct values and convert 1-based sort keys into 0-based keys for internal usage
   std::vector<size_t> zbSorts;
   zbSorts.reserve(sorts_.size());
-  std::transform(sorts_.begin(), sorts_.end(), std::back_inserter(zbSorts), [&numOutputFields](size_t index) {
+  for (size_t index : sorts_) {
     auto zbIndex = index - 1;
-    N_ENSURE(index > 0 && index <= numOutputFields, "sort by column is out of range");
-    return zbIndex;
-  });
+    if (index == 0 || index > numOutputFields) {
+      LOG(ERROR) << "sort by column is out of range: " << index;
+      END_ERROR(Error::INVALID_QUERY)
+    }
+
+    zbSorts.push_back(zbIndex);
+  }
 
   // build block level compute phase
   // TODO(cao) - for some query or aggregate type such as AVG
@@ -221,7 +251,7 @@ std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
   // x y, max(z)
   // filter by filter predicate, compute by keys: agg functions
   std::vector<std::unique_ptr<ValueEval>> fields;
-  std::transform(selects.begin(), selects.end(), std::back_inserter(fields),
+  std::transform(selects_.begin(), selects_.end(), std::back_inserter(fields),
                  [](std::shared_ptr<Expression> expr)
                    -> std::unique_ptr<ValueEval> { return expr->asEval(); });
   auto block = std::make_unique<BlockPhase>(schema, tempOutput);
@@ -251,6 +281,8 @@ std::unique_ptr<ExecutionPlan> Query::compile(const QueryContext& qc) const {
   // make an execution plan from a few phases
   return std::make_unique<ExecutionPlan>(
     std::move(server), std::move(nodeList), differentSchema ? output : tempOutput);
+
+#undef END_ERROR
 }
 
 } // namespace dsl

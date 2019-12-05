@@ -40,6 +40,7 @@ using nebula::api::dsl::sum;
 
 using nebula::api::dsl::ColumnExpression;
 using nebula::api::dsl::ConstExpression;
+using nebula::api::dsl::Error;
 using nebula::api::dsl::Expression;
 using nebula::api::dsl::in;
 using nebula::api::dsl::like;
@@ -68,24 +69,45 @@ using nebula::type::TypeNode;
 using nebula::type::TypeTraits;
 
 std::unique_ptr<ExecutionPlan> QueryHandler::compile(
-  const std::shared_ptr<Query> query, const QueryWindow& window, ErrorCode& err) const noexcept {
+  const std::shared_ptr<Query> query,
+  const QueryWindow& window,
+  QueryContext& queryContext,
+  ErrorCode& err) const noexcept {
 
-  // 2. build query out of the request
-  std::unique_ptr<ExecutionPlan> plan = nullptr;
-  try {
-    // TODO(cao): replace with real user credential
-    QueryContext ctx{ "nebula", { "nebula_users" } };
-    auto plan = query->compile(ctx);
-
-    // set time window in query plan
-    plan->setWindow(window);
-
-    return plan;
-  } catch (const std::exception& exp) {
-    LOG(ERROR) << "Error in building query: " << exp.what();
+  // previous error blocks processing
+  if (queryContext.getError() != Error::NONE) {
     err = ErrorCode::FAIL_COMPILE_QUERY;
     return {};
   }
+
+  // 2. build query out of the request
+  std::unique_ptr<ExecutionPlan> plan = query->compile(queryContext);
+  auto error = queryContext.getError();
+  if (error != Error::NONE) {
+    LOG(ERROR) << "Error in building query: " << (int)error;
+    // translate into service error code
+    switch (error) {
+    case Error::NO_AUTH: {
+      err = ErrorCode::AUTH_REQUIRED;
+      break;
+    }
+    case Error::TABLE_PERM:
+    case Error::COLUMN_PERM: {
+      err = ErrorCode::PERMISSION_REQUIRED;
+      break;
+    }
+    default: {
+      err = ErrorCode::FAIL_COMPILE_QUERY;
+      break;
+    }
+    }
+
+    return {};
+  }
+
+  // set time window in query plan
+  plan->setWindow(window);
+  return plan;
 }
 
 RowCursorPtr QueryHandler::query(

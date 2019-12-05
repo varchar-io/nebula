@@ -28,7 +28,9 @@ const sstatic = require('serve-static');
 const fh = require('finalhandler');
 const grpc = require('grpc');
 const qc = (service) => {
-    return new V1Client(service, grpc.credentials.createInsecure());
+    return new V1Client(service, grpc.credentials.createInsecure(), {
+        "nebula": "node"
+    });
 };
 
 // static handler
@@ -95,5 +97,6 @@ export default {
     QueryResponse,
     bytes2utf8,
     static_res,
-    qc
+    qc,
+    grpc
 };

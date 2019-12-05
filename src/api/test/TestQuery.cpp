@@ -58,14 +58,14 @@ TEST(ApiTest, TestMultipleBlocks) {
   auto tableName = std::get<0>(data);
   auto start = std::get<1>(data);
   auto end = std::get<2>(data);
-  const auto query = table(tableName, ms)
-                       .where(col("_time_") > start && col("_time_") < end && like(col("event"), "NN%"))
-                       .select(
-                         col("event"),
-                         count(col("value")).as("total"))
-                       .groupby({ 1 })
-                       .sortby({ 2 }, SortType::DESC)
-                       .limit(10);
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end && like(col("event"), "NN%"))
+                 .select(
+                   col("event"),
+                   count(col("value")).as("total"))
+                 .groupby({ 1 })
+                 .sortby({ 2 }, SortType::DESC)
+                 .limit(10);
 
   // compile the query into an execution plan
   QueryContext ctx{ "nebula", { "nebula_users" } };
@@ -103,14 +103,14 @@ TEST(ApiTest, TestStringEqEmpty) {
   auto tableName = std::get<0>(data);
   auto start = std::get<1>(data);
   auto end = std::get<2>(data);
-  const auto query = table(tableName, ms)
-                       .where(col("_time_") > start && col("_time_") < end && col("event") == "")
-                       .select(
-                         col("event"),
-                         count(col("value")).as("total"))
-                       .groupby({ 1 })
-                       .sortby({ 2 }, SortType::DESC)
-                       .limit(10);
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end && col("event") == "")
+                 .select(
+                   col("event"),
+                   count(col("value")).as("total"))
+                 .groupby({ 1 })
+                 .sortby({ 2 }, SortType::DESC)
+                 .limit(10);
 
   // compile the query into an execution plan
   QueryContext ctx{ "nebula", { "nebula_users" } };
@@ -148,14 +148,14 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
   auto tableName = std::get<0>(data);
   auto start = std::get<1>(data);
   auto end = std::get<2>(data);
-  const auto query = table(tableName, ms)
-                       .where(col("_time_") > start && col("_time_") < end && col("id") == 8989)
-                       .select(
-                         col("event"),
-                         count(col("value")).as("total"))
-                       .groupby({ 1 })
-                       .sortby({ 2 }, SortType::DESC)
-                       .limit(10);
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end && col("id") == 8989)
+                 .select(
+                   col("event"),
+                   count(col("value")).as("total"))
+                 .groupby({ 1 })
+                 .sortby({ 2 }, SortType::DESC)
+                 .limit(10);
 
   // compile the query into an execution plan
   QueryContext ctx{ "nebula", { "nebula_users" } };
@@ -182,15 +182,15 @@ TEST(ApiTest, TestAvgAggregation) {
   auto tableName = std::get<0>(data);
   auto start = std::get<1>(data);
   auto end = std::get<2>(data);
-  const auto query = table(tableName, ms)
-                       .where(col("_time_") > start && col("_time_") < end)
-                       .select(
-                         col("event"),
-                         avg(col("value")).as("avg"),
-                         avg(col("weight")).as("davg"))
-                       .groupby({ 1 })
-                       .sortby({ 2 }, SortType::DESC)
-                       .limit(10);
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end)
+                 .select(
+                   col("event"),
+                   avg(col("value")).as("avg"),
+                   avg(col("weight")).as("davg"))
+                 .groupby({ 1 })
+                 .sortby({ 2 }, SortType::DESC)
+                 .limit(10);
 
   // compile the query into an execution plan
   QueryContext ctx{ "nebula", { "nebula_users" } };
@@ -229,13 +229,13 @@ TEST(ApiTest, TestAccessControl) {
   auto tableName = std::get<0>(data);
   auto start = std::get<1>(data);
   auto end = std::get<2>(data);
-  const auto query = table(tableName, ms)
-                       .where(col("_time_") > start && col("_time_") < end)
-                       .select(
-                         col("event"),
-                         col("value"),
-                         col("weight"))
-                       .limit(10);
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end)
+                 .select(
+                   col("event"),
+                   col("value"),
+                   col("weight"))
+                 .limit(10);
 
   // compile the query into an execution plan
   // test table require nebula_users to read event column, refer TestTable.h

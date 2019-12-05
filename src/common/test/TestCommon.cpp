@@ -21,6 +21,7 @@
 #include <valarray>
 #include <xxh3.h>
 
+#include "common/Chars.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
 #include "common/Fold.h"
@@ -581,6 +582,62 @@ TEST(CommonTest, TestInt128) {
               << ", sum=" << sum
               << ", count=" << count;
   }
+}
+
+TEST(CommonTest, TestCharsUtils) {
+#define TEST_SPLIT(EXPECTED, COUNT, D)                                                          \
+  auto result = nebula::common::Chars::split(str, strlen(str), D);                              \
+  EXPECT_EQ(result.size(), COUNT);                                                              \
+  std::vector<std::string> list;                                                                \
+  list.reserve(COUNT);                                                                          \
+  std::transform(result.begin(), result.end(), std::back_insert_iterator(list), [](auto& str) { \
+    return str;                                                                                 \
+  });                                                                                           \
+  std::sort(list.begin(), list.end());                                                          \
+  EXPECT_EQ(list, EXPECTED);
+
+  {
+    auto str = "xyz,abc,";
+    std::vector<std::string> expected{ "abc", "xyz" };
+    TEST_SPLIT(expected, 2, ',')
+  }
+  {
+    auto str = ",ayz,abc,";
+    std::vector<std::string> expected{ "abc", "ayz" };
+    TEST_SPLIT(expected, 2, ',')
+  }
+  {
+    auto str = ",";
+    std::vector<std::string> expected{};
+    TEST_SPLIT(expected, 0, ',')
+  }
+  {
+    auto str = ",,,x,a,z,,";
+    std::vector<std::string> expected{ "a", "x", "z" };
+    TEST_SPLIT(expected, 3, ',')
+  }
+  {
+    auto str = ",a,a,a,b,x,b,x,x,,";
+    std::vector<std::string> expected{ "a", "b", "x" };
+    TEST_SPLIT(expected, 3, ',')
+  }
+  {
+    auto str = "abc:#x:m&:";
+    std::vector<std::string> expected{ "#x", "abc", "m&" };
+    TEST_SPLIT(expected, 3, ':')
+  }
+  {
+    auto str = "abc,xyz";
+    std::vector<std::string> expected{ "abc", "xyz" };
+    TEST_SPLIT(expected, 2, ',')
+  }
+  {
+    auto str = "abc";
+    std::vector<std::string> expected{ "abc" };
+    TEST_SPLIT(expected, 1, ',')
+  }
+
+#undef TEST_SPLIT
 }
 
 } // namespace test

@@ -103,7 +103,7 @@ public:
 
 public:
   // compile the query into an execution plan
-  std::unique_ptr<nebula::execution::ExecutionPlan> compile(const QueryContext&) const;
+  std::unique_ptr<nebula::execution::ExecutionPlan> compile(QueryContext&) noexcept;
 
 public:
   // table identifier

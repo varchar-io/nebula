@@ -44,6 +44,7 @@ public:
   std::unique_ptr<nebula::execution::ExecutionPlan> compile(
     const std::shared_ptr<nebula::api::dsl::Query>,
     const nebula::execution::QueryWindow&,
+    nebula::api::dsl::QueryContext&,
     nebula::service::base::ErrorCode&) const noexcept;
 
   nebula::surface::RowCursorPtr query(

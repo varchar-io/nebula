@@ -27,6 +27,7 @@
 
 #include "NebulaServer.h"
 #include "NodeSync.h"
+#include "common/Chars.h"
 #include "common/Evidence.h"
 #include "common/Folly.h"
 #include "common/TaskScheduler.h"
@@ -60,6 +61,7 @@ namespace server {
 
 using grpc::ServerContext;
 using grpc::Status;
+using nebula::api::dsl::QueryContext;
 using nebula::common::Evidence;
 using nebula::common::SingleCommandTask;
 using nebula::common::Task;
@@ -125,7 +127,7 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest*
   return Status::OK;
 }
 
-grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* request, QueryResponse* reply) {
+grpc::Status V1ServiceImpl::Query(grpc::ServerContext* ctx, const QueryRequest* request, QueryResponse* reply) {
   // validate the query request and build the call
   nebula::common::Evidence::Duration tick;
   ErrorCode error = ErrorCode::NONE;
@@ -154,14 +156,37 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
     return replyError(error, reply, 0);
   }
 
+  // build query context
+  const auto& metadata = ctx->client_metadata();
+
+  // fetch user info keys, refer userInfo definition in node.js serving http traffic
+  // auth, authorization, user, groups
+  std::string user{ "unauth" };
+  std::unordered_set<std::string> groups;
+  auto itr = metadata.find("nebula-auth");
+  if (itr != metadata.end() && itr->second == "1") {
+    auto u = metadata.find("nebula-user");
+    if (u != metadata.end()) {
+      user = std::string(u->second.data(), u->second.size());
+    }
+
+    auto g = metadata.find("nebula-groups");
+    if (g != metadata.end()) {
+      groups = nebula::common::Chars::split(g->second.data(), g->second.size());
+    }
+  }
+
   // compile the query into a plan
-  auto plan = handler_.compile(query, { request->start(), request->end() }, error);
+  LOG(INFO) << "Started a query for user: " << user;
+  QueryContext queryContext{ user, std::move(groups) };
+  auto plan = handler_.compile(
+    query, { request->start(), request->end() }, queryContext, error);
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }
+  N_ENSURE_NOT_NULL(plan, "Incorrect query compile");
 
   // create a remote connector and execute the query plan
-  LOG(INFO) << "create a remote node connector ";
   auto connector = std::make_shared<RemoteNodeConnector>(query);
   RowCursorPtr result = handler_.query(threadPool_, *plan, connector, error);
   auto durationMs = tick.elapsedMs();
@@ -188,12 +213,13 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext*, const QueryRequest* requ
 grpc::Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, size_t durationMs) const {
   N_ENSURE_NE(code, ErrorCode::NONE, "Error Reply Code Not 0");
 
+  auto error = ServiceProperties::errorMessage(code);
   auto stats = reply->mutable_stats();
   stats->set_error(code);
-  stats->set_message(ServiceProperties::errorMessage(code));
+  stats->set_message(error);
   stats->set_querytimems(durationMs);
 
-  return grpc::Status(grpc::StatusCode::INTERNAL, "error: check stats");
+  return grpc::Status(grpc::StatusCode::INTERNAL, error);
 }
 
 // Logic and data behind the server's behavior.

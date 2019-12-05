@@ -7,6 +7,7 @@ server:
   # NOTE that, there are maybe missing functions to fully compatible for server as node.
   # such as task execution may not be implemented.
   anode: false
+  auth: false
 
 # will be provided by enviroment
 nodes:
