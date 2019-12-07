@@ -577,6 +577,9 @@ $(() => {
     }).done((data) => {
         ds('#user').text(data.auth ? data.user : "unauth");
     });
+
+    // set sundance to load after all page inits so it doesn't block current page loading
+    ds('#sandance').attr("src", "d/sde.html");
 });
 
 const vis = async (r) => {
@@ -594,8 +597,8 @@ const vis = async (r) => {
             if (json && json.length > 0) {
                 const sandance = () => {
                     // TODO(cao): to use content window we have to use document.getElementById, not sure why
-                    const iframe = document.getElementById("sandance");
-                    const _post = m => iframe.contentWindow.postMessage(m, '*');
+                    const s = document.getElementById("sandance");
+                    const _post = m => s.contentWindow.postMessage(m, '*');
                     return new Promise(resolve => {
                         resolve(_post);
                     });
