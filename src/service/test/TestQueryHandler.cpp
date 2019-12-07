@@ -92,7 +92,7 @@ TEST(ServiceTest, TestQueryTimeline) {
 
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = handler.compile(query, { request.start(), request.end() }, ctx, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
@@ -143,7 +143,7 @@ TEST(ServiceTest, TestStringFilters) {
 
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = handler.compile(query, { request.start(), request.end() }, ctx, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
@@ -198,7 +198,7 @@ TEST(ServiceTest, TestQuerySamples) {
 
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = handler.compile(query, { request.start(), request.end() }, ctx, err);
   plan->display();
   EXPECT_EQ(err, ErrorCode::NONE);
@@ -275,7 +275,7 @@ TEST(ServiceTest, TestQuerySerde) {
                  .groupby({ 1, 2 })
                  .sortby({ 5 }, SortType::DESC)
                  .limit(10);
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan1 = query.compile(ctx);
   plan1->setWindow({ start, end });
 
@@ -328,7 +328,7 @@ TEST(ServiceTest, TestDataSerde) {
                  .sortby({ 5 }, SortType::DESC)
                  .limit(10);
 
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan1 = query.compile(ctx);
   plan1->setWindow({ start, end });
 

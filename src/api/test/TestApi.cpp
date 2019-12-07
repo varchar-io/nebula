@@ -76,7 +76,7 @@ TEST(ApiTest, TestQueryStructure) {
   LOG(INFO) << "                  order by 5";
   LOG(INFO) << "                  limit 100";
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = query.compile(ctx);
 
   // print out the plan through logging
@@ -126,7 +126,7 @@ TEST(ApiTest, TestSortingAndTop) {
                  .sortby({ 5 }, SortType::DESC)
                  .limit(5);
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = query.compile(ctx);
 
   nebula::common::Evidence::Duration tick;

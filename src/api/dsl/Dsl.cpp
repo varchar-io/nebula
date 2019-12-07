@@ -139,7 +139,7 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) noexcept {
     // check column level access
     auto crefs = itr->columnRefs();
     ActionType action = ActionType::PASS;
-    std::string rejectColumn;
+    std::string_view columnImpacted;
     if (isAgg) {
       // for aggregation function, we do not do any mask
       for (const auto& c : crefs) {
@@ -152,7 +152,7 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) noexcept {
         auto check = table_->checkAccess(AccessType::READ, qc.groups(), c);
         if (check > action) {
           action = check;
-          rejectColumn = c;
+          columnImpacted = c;
         }
       }
     }
@@ -161,7 +161,7 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) noexcept {
     if (action == ActionType::PASS) {
       selects.push_back(itr);
     } else if (action == ActionType::MASK) {
-      LOG(INFO) << "Mask a column due to access policy: " << itr->alias();
+      LOG(INFO) << "Mask a column due to access policy: " << columnImpacted;
 #define MASK_TYPE(K, V)                                                 \
   case nebula::type::Kind::K: {                                         \
     using X = nebula::type::TypeTraits<nebula::type::Kind::K>::CppType; \
@@ -185,7 +185,7 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) noexcept {
       }
 #undef MASK_TYPE
     } else {
-      LOG(ERROR) << "You have no permission to access column: " << rejectColumn;
+      LOG(ERROR) << "You have no permission to access column: " << columnImpacted;
       END_ERROR(Error::COLUMN_PERM)
     }
   }

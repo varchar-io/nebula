@@ -177,7 +177,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext* ctx, const QueryRequest* 
   }
 
   // compile the query into a plan
-  LOG(INFO) << "Started a query for user: " << user;
+  LOG(INFO) << "Started a query for user: " << user << ", with groups:" << groups.size();
   QueryContext queryContext{ user, std::move(groups) };
   auto plan = handler_.compile(
     query, { request->start(), request->end() }, queryContext, error);

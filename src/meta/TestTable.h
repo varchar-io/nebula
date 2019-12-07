@@ -45,12 +45,12 @@ public:
     }
 
     if (col == "event") {
-      // place an access rule on event column requiring user to be in nebula_users to read
+      // place an access rule on event column requiring user to be in nebula-users to read
       static const Column COL_EVENT{
         false,
         true,
         "",
-        { AccessRule{ AccessType::READ, { "nebula_users" }, ActionType::MASK } }
+        { AccessRule{ AccessType::READ, { "nebula-users" }, ActionType::MASK } }
       };
       return COL_EVENT;
     }

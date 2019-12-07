@@ -30,13 +30,15 @@ tables:
     source: ""
     backup: s3://nebula/n100/
     format: none
+    # NOTE: refernece only, column properties defined here will not take effect
+    # because they are overwritten/decided by definition of TestTable.h
     columns:
       id:
         bloom_filter: true
       event:
         access:
           read:
-            groups: ["nebula_users"]
+            groups: ["nebula-users"]
             action: mask
     time:
       type: static

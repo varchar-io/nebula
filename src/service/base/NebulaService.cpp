@@ -269,7 +269,7 @@ std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(
   auto query = QuerySerde::deserialize(ms, msg);
 
   // TODO(cao): serialize query context to nodes and mark compile method as const
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = query.compile(ctx);
 
   // set a few other properties associated with execution plan

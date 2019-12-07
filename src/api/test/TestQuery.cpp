@@ -68,7 +68,7 @@ TEST(ApiTest, TestMultipleBlocks) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = query.compile(ctx);
   plan->setWindow({ start, end });
 
@@ -113,7 +113,7 @@ TEST(ApiTest, TestStringEqEmpty) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = query.compile(ctx);
   plan->setWindow({ start, end });
 
@@ -158,7 +158,7 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = query.compile(ctx);
   plan->setWindow({ start, end });
 
@@ -193,7 +193,7 @@ TEST(ApiTest, TestAvgAggregation) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula_users" } };
+  QueryContext ctx{ "nebula", { "nebula-users" } };
   auto plan = query.compile(ctx);
   plan->setWindow({ start, end });
 
@@ -238,8 +238,8 @@ TEST(ApiTest, TestAccessControl) {
                  .limit(10);
 
   // compile the query into an execution plan
-  // test table require nebula_users to read event column, refer TestTable.h
-  QueryContext ctx{ "nebula", { "nebula_guest" } };
+  // test table require nebula-users to read event column, refer TestTable.h
+  QueryContext ctx{ "nebula", { "nebula-guest" } };
   auto plan = query.compile(ctx);
   plan->setWindow({ start, end });
 
