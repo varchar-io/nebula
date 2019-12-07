@@ -357,7 +357,7 @@ const userInfo = (q, h) => {
 
     if (UserHeader in h) {
         info.auth = 1;
-        info.authorization = h[AuthHeader];
+        info.authorization = h[AuthHeader] || "NONE";
         info.user = h[UserHeader];
         info.groups = h[GroupHeader];
     }
@@ -369,12 +369,9 @@ const userInfo = (q, h) => {
  */
 const toMetadata = (info) => {
     const metadata = new grpc.Metadata();
-    console.log("catch all keys:");
     for (var f in info) {
-        console.log(`nebula-${f}: ${info[f]}`);
         metadata.add(`nebula-${f}`, `${info[f]}`);
     }
-    console.log("done all keys:");
     return metadata;
 };
 
