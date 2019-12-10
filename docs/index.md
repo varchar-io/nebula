@@ -29,11 +29,15 @@ To fit Nebula into the most common big data system, it could be partially illust
 > Connecting with the organization's authentication and authorization system is highly customized in Nebula.
 > It operates as plugin model with a common interface. 
 
+
 ### Column Level Access Control
 
 Nebula data gateway requires user principal or access token to query Nebula service interface. The engine itself connects with customized authorization engine to retrieve access rules to decide reactions (pass, reject, masking, repalcement) on given actions (read/write on columns). 
 
 This provides a unified way to control data access in a fine-grained granularity.
+
+Here is a detailed post explaining how access control works and how it looks, check it out...
+[Nebula Access Control](access_control.md)
 
 ### Data Anonymization
 

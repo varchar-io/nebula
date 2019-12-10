@@ -31,7 +31,7 @@ DEFINE_uint64(TOP_SORT_SCALE,
               "instead we return scale times of sorting result back to server and this may result in wrong answer!");
 
 DEFINE_uint64(NODE_TIMEOUT,
-              5000,
+              30000,
               "maximum time nebula can torelate for each query in miliseconds");
 
 /**

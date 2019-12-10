@@ -24,7 +24,7 @@
 
 // maximum timeout in ms a query can best do
 DEFINE_uint64(RPC_TIMEOUT,
-              5000,
+              35000,
               "maximum time nebula can torelate for each query in miliseconds");
 
 /**
