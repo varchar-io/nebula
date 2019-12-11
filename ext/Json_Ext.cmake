@@ -1,9 +1,7 @@
 if(APPLE)
   find_package(Threads REQUIRED)
 
-  # http://roaringbitmap.org/
-  # by default, roaring is providng dynamic lib for linking
-  # however I changed it to build static here - we may want to adjust in final deployment
+  # not sure why we only add this for APPLE only.
   include(ExternalProject)
   SET(JSON_OPTS
     -DRAPIDJSON_BUILD_DOC=OFF

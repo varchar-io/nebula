@@ -12,7 +12,8 @@ target_link_libraries(${NEBULA_COMMON}
 # build test binary
 add_executable(CommonTests 
     ${NEBULA_SRC}/common/test/TestCommon.cpp
-    ${NEBULA_SRC}/common/test/TestExts.cpp)
+    ${NEBULA_SRC}/common/test/TestExts.cpp
+    ${NEBULA_SRC}/common/test/TestSimd.cpp)
 
 target_link_libraries(CommonTests 
     PRIVATE ${NEBULA_COMMON}    
@@ -20,6 +21,7 @@ target_link_libraries(CommonTests
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${ROARING_LIBRARY}
+    PRIVATE ${HWY_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${BF_LIBRARY}

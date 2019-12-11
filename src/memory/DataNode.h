@@ -89,7 +89,7 @@ public: // data reading API
   //    type = read()
   // }
   // we can do
-  // std::Optional<Type> type = read();
+  // std::optional<Type> type = read();
   inline bool isNull(size_t index) {
     return meta_->isNull(index);
   }
