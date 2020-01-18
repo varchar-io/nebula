@@ -19,7 +19,9 @@
 #include <roaring.hh>
 #include <unordered_map>
 
+#include "TypeData.h"
 #include "common/Likely.h"
+#include "memory/serde/Histogram.h"
 #include "type/Type.h"
 
 namespace nebula {
@@ -50,13 +52,49 @@ public:
       },
       hashItems_{ column.withDict ? std::make_unique<HashItems>() : nullptr },
       dict_{ column.withDict ? std::make_unique<Dictionary>() : nullptr },
-      default_{ column.defaultValue.size() > 0 } {
+      default_{ column.defaultValue.size() > 0 },
+      histo_{ nullptr } {
+
     if (offsetSize_ != nullptr) {
       // first item always equals 0
       offsetSize_->reserve(N_ITEMS);
       offsetSize_->push_back(0);
     }
-  };
+
+    // initialize histogram object
+    histo_ = nullptr;
+    bh_ = nullptr;
+    ih_ = nullptr;
+    rh_ = nullptr;
+    switch (kind) {
+    case nebula::type::Kind::BOOLEAN: {
+      auto temp = std::make_unique<BoolHistogram>();
+      bh_ = temp.get();
+      histo_ = std::move(temp);
+      break;
+    }
+    case nebula::type::Kind::TINYINT:
+    case nebula::type::Kind::SMALLINT:
+    case nebula::type::Kind::INTEGER:
+    case nebula::type::Kind::BIGINT: {
+      auto temp = std::make_unique<IntHistogram>();
+      ih_ = temp.get();
+      histo_ = std::move(temp);
+      break;
+    }
+    case nebula::type::Kind::REAL:
+    case nebula::type::Kind::DOUBLE: {
+      auto temp = std::make_unique<RealHistogram>();
+      rh_ = temp.get();
+      histo_ = std::move(temp);
+      break;
+    }
+    default:
+      histo_ = std::make_unique<Histogram>();
+      break;
+    }
+  }
+
   virtual ~TypeMetadata() = default;
 
 public:
@@ -149,6 +187,22 @@ public:
     return default_;
   }
 
+public:
+  // build up histogram in metadata for supported types
+  // including:
+  //    bool type: true count, false count will be computed by "total - null count - true count"
+  //    number type: min, max, count, sum (here valid count = "total - null count")
+  //    string type: <TBD - total length?>
+  template <typename T>
+  size_t histogram(T);
+
+  // get a const reference of the histogram object used internally
+  template <typename T = Histogram>
+  inline auto histogram() const ->
+    typename std::enable_if_t<std::is_base_of_v<Histogram, T>, T> {
+    return *static_cast<T*>(histo_.get());
+  }
+
 private:
   // store all null positions
   // call runOptimize() to compress the bitmap when finalizing.
@@ -178,6 +232,14 @@ private:
   // indicate if this column has default value setting
   // if yes, it will never be NULL, default value will be returned instead of NULLs
   bool default_;
+
+  // a histogram object storing concrete typed histogram
+  // to avoid runtime casting, we use 3 different pointers internally pointing to the same object
+  // they don't maintain referneces.
+  std::unique_ptr<Histogram> histo_;
+  BoolHistogram* bh_;
+  IntHistogram* ih_;
+  RealHistogram* rh_;
 };
 
 } // namespace serde

@@ -102,6 +102,13 @@ public: // data reading API
     return data_->probably(v);
   }
 
+  // get a const reference of the histogram object for given column
+  template <typename T = nebula::memory::serde::Histogram>
+  inline auto histogram() const ->
+    typename std::enable_if_t<std::is_base_of_v<nebula::memory::serde::Histogram, T>, T> {
+    return meta_->histogram<T>();
+  }
+
 public: // basic metadata exposure
   inline size_t entries() const {
     return count_;
@@ -147,7 +154,7 @@ private:
   // real data
   std::unique_ptr<nebula::memory::serde::TypeDataProxy> data_;
 
-  // number of values in current data node
+  // number of values including nulls in current data node (total)
   size_t count_;
 
   // raw size of data accumulation

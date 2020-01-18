@@ -18,6 +18,7 @@
 
 #include "common/Hash.h"
 #include "common/Likely.h"
+#include "type/Type.h"
 
 /**
  * A data node holds real memory data for each node in the schema tree
@@ -75,81 +76,36 @@ size_t DataNode::appendNull() {
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
 
-template <>
-size_t DataNode::append(bool b) {
-  N_ENSURE(type_.k() == Kind::BOOLEAN, "bool type expected");
+#define APPEND_SOLID_VALUE(K, N)                                          \
+  template <>                                                             \
+  size_t DataNode::append(nebula::type::TypeTraits<Kind::K>::CppType v) { \
+    N_ENSURE(type_.k() == Kind::K, #N "type expected");                   \
+    constexpr size_t size = nebula::type::Type<Kind::K>::width;           \
+    data_->add(cursorAndAdvance(), v);                                    \
+    meta_->histogram(v);                                                  \
+    rawSize_ += size;                                                     \
+    return size;                                                          \
+  }
 
-  constexpr size_t size = nebula::type::BoolType::width;
-  data_->add(cursorAndAdvance(), b);
-  INCREMENT_RAW_SIZE_AND_RETURN()
-}
+APPEND_SOLID_VALUE(BOOLEAN, bool)
+APPEND_SOLID_VALUE(TINYINT, byte)
+APPEND_SOLID_VALUE(SMALLINT, short)
+APPEND_SOLID_VALUE(INTEGER, int)
+APPEND_SOLID_VALUE(BIGINT, long)
+APPEND_SOLID_VALUE(REAL, float)
+APPEND_SOLID_VALUE(DOUBLE, double)
 
-template <>
-size_t DataNode::append(int8_t b) {
-  N_ENSURE(type_.k() == nebula::type::ByteType::kind, "byte type expected");
-
-  constexpr size_t size = nebula::type::ByteType::width;
-  data_->add(cursorAndAdvance(), b);
-
-  INCREMENT_RAW_SIZE_AND_RETURN()
-}
-
-template <>
-size_t DataNode::append(int16_t s) {
-  N_ENSURE(type_.k() == nebula::type::ShortType::kind, "short type expected");
-
-  constexpr size_t size = nebula::type::ShortType::width;
-  data_->add(cursorAndAdvance(), s);
-
-  INCREMENT_RAW_SIZE_AND_RETURN()
-}
-
-template <>
-size_t DataNode::append(int32_t i) {
-  N_ENSURE(type_.k() == nebula::type::IntType::kind, "int type expected");
-
-  constexpr size_t size = nebula::type::IntType::width;
-  data_->add(cursorAndAdvance(), i);
-
-  INCREMENT_RAW_SIZE_AND_RETURN()
-}
-
-template <>
-size_t DataNode::append(int64_t l) {
-  N_ENSURE(type_.k() == nebula::type::LongType::kind, "long type expected");
-
-  constexpr size_t size = nebula::type::LongType::width;
-  data_->add(cursorAndAdvance(), l);
-
-  INCREMENT_RAW_SIZE_AND_RETURN()
-}
-
-template <>
-size_t DataNode::append(float f) {
-  N_ENSURE(type_.k() == nebula::type::FloatType::kind, "float type expected");
-
-  constexpr size_t size = nebula::type::FloatType::width;
-  data_->add(cursorAndAdvance(), f);
-
-  INCREMENT_RAW_SIZE_AND_RETURN()
-}
-
-template <>
-size_t DataNode::append(double d) {
-  N_ENSURE(type_.k() == nebula::type::DoubleType::kind, "double type expected");
-
-  constexpr size_t size = nebula::type::DoubleType::width;
-  data_->add(cursorAndAdvance(), d);
-
-  INCREMENT_RAW_SIZE_AND_RETURN()
-}
+#undef APPEND_SOLID_VALUE
 
 template <>
 size_t DataNode::append(int128_t i128) {
-  N_ENSURE(type_.k() == nebula::type::Int128Type::kind, "double type expected");
+  N_ENSURE(type_.k() == nebula::type::Int128Type::kind, "int128 type expected");
 
   constexpr size_t size = nebula::type::Int128Type::width;
   data_->add(cursorAndAdvance(), i128);
+
+  // histogram
+  meta_->histogram(i128);
 
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
@@ -183,6 +139,9 @@ size_t DataNode::append(std::string_view str) {
   if (withDict) {
     meta_->record(hash, index);
   }
+
+  // histogram
+  meta_->histogram(str);
 
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
@@ -229,6 +188,10 @@ size_t DataNode::append(const nebula::surface::ListData& list) {
   // return the raw size just added to current list
   const auto index = cursorAndAdvance();
   meta_->setOffsetSize(index, items);
+
+  // histogram recording
+  meta_->histogram(nullptr);
+
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
 
@@ -251,6 +214,9 @@ size_t DataNode::append(const nebula::surface::MapData& map) {
 
   // return raw size just added to current map
   meta_->setOffsetSize(cursorAndAdvance(), entries);
+
+  // histogram recording
+  meta_->histogram(nullptr);
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
 
@@ -303,6 +269,9 @@ size_t DataNode::append(const nebula::surface::RowData& row) {
       throw NException(fmt::format("Not supported type: {0}", name));
     }
   }
+
+  // histogram recording
+  meta_->histogram(nullptr);
 
   // return total raw size of the data added in this node
   INCREMENT_RAW_SIZE_AND_RETURN()

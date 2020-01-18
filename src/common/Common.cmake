@@ -13,7 +13,8 @@ target_link_libraries(${NEBULA_COMMON}
 add_executable(CommonTests 
     ${NEBULA_SRC}/common/test/TestCommon.cpp
     ${NEBULA_SRC}/common/test/TestExts.cpp
-    ${NEBULA_SRC}/common/test/TestSimd.cpp)
+    ${NEBULA_SRC}/common/test/TestSimd.cpp
+    ${NEBULA_SRC}/common/test/TestStatsAlgo.cpp)
 
 target_link_libraries(CommonTests 
     PRIVATE ${NEBULA_COMMON}    

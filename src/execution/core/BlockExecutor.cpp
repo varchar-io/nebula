@@ -53,6 +53,17 @@ void BlockExecutor::compute() {
   ComputedRow cr(plan_.outputSchema(), ctx, fields);
   result_ = std::make_unique<HashFlat>(plan_.outputSchema(), plan_.keys(), fields);
 
+  // we want to evaluate here for the whole block before we go to iterations of computing
+  // by leveraging its metadata including histogram, bloom filter, dictionary etc.
+  // the result we would like to see is:
+  // ALL ROWS - all rows needed
+  // NONE ROWS - no rows needed
+  // PARTIAL ROWS - not sure, need to scan.
+  // what the interface look like? filter.eval(data_.), we need an interface to wrap batch object
+  // and provide methods like "probably? range()? in()?"
+  // and these methods will be used in each individual ValueEval and give result like above.
+  // So we need an special operator to be implemented to have this function
+
   for (size_t i = 0, size = data_.getRows(); i < size; ++i) {
     ctx.reset(accessor->seek(i));
 

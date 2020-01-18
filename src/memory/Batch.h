@@ -19,6 +19,7 @@
 #include <string_view>
 #include <unordered_map>
 #include "DataNode.h"
+#include "memory/serde/Histogram.h"
 #include "meta/Table.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
@@ -66,6 +67,14 @@ public: // basic metrics / meta of the batch
   template <typename T>
   inline bool probably(const std::string& col, const T& value) const {
     return fields_.at(col)->probably(value);
+  }
+
+  // get a const reference of the histogram object for given column
+  template <typename T = nebula::memory::serde::Histogram>
+  inline auto histogram(const std::string& col) const ->
+    typename std::enable_if_t<std::is_base_of_v<nebula::memory::serde::Histogram, T>, T> {
+    // delegate the call to the node
+    return fields_.at(col)->histogram<T>();
   }
 
 private:

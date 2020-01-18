@@ -12,7 +12,8 @@ add_library(${NEBULA_MEMORY} STATIC
     ${NEBULA_SRC}/memory/keyed/FlatBuffer.cpp
     ${NEBULA_SRC}/memory/keyed/HashFlat.cpp
     ${NEBULA_SRC}/memory/serde/TypeData.cpp
-    ${NEBULA_SRC}/memory/serde/TypeDataFactory.cpp)
+    ${NEBULA_SRC}/memory/serde/TypeDataFactory.cpp
+    ${NEBULA_SRC}/memory/serde/TypeMetadata.cpp)
 target_link_libraries(${NEBULA_MEMORY}
     PUBLIC ${NEBULA_COMMON}
     PUBLIC ${NEBULA_TYPE}
@@ -26,7 +27,8 @@ add_executable(MemoryTests
     ${NEBULA_SRC}/memory/test/TestBatch.cpp
     ${NEBULA_SRC}/memory/test/TestEncoder.cpp
     ${NEBULA_SRC}/memory/test/TestFlatBuffer.cpp
-    ${NEBULA_SRC}/memory/test/TestFlatRow.cpp)
+    ${NEBULA_SRC}/memory/test/TestFlatRow.cpp
+    ${NEBULA_SRC}/memory/test/TestHistogram.cpp)
 
 target_link_libraries(MemoryTests
     PRIVATE ${NEBULA_MEMORY}
