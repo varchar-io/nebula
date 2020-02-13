@@ -315,11 +315,26 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
     // TODO(cao) - currently only support string column with time pattern
     // and unix time stamp value as bigint if pattern is absent.
     // ts.pattern is required: time string pattern or special value such as UNIXTIME
+
+    // Note: time column can not be NULL
+    // unfortunately if the data has it as null, we return 1 as indicator
+    // we can not use 0, because Nebula doesn't allow query time range fall into 0 start/end.
+    static constexpr time_t NULL_TIME = 1;
     constexpr auto UNIX_TS = "UNIXTIME";
     if (ts.pattern == UNIX_TS) {
-      timeFunc = [&ts](const RowData* r) { return r->readLong(ts.colName); };
+      timeFunc = [&ts](const RowData* r) {
+        if (UNLIKELY(r->isNull(ts.colName))) {
+          return NULL_TIME;
+        }
+
+        return r->readLong(ts.colName);
+      };
     } else {
       timeFunc = [&ts](const RowData* r) {
+        if (UNLIKELY(r->isNull(ts.colName))) {
+          return NULL_TIME;
+        }
+
         return Evidence::time(r->readString(ts.colName), ts.pattern);
       };
     }

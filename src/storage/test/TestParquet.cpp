@@ -522,14 +522,26 @@ TEST(ParquetTest, DISABLED_TestRealParquetFile) {
   EXPECT_EQ(rows, reader.size());
 }
 
-TEST(ParquetTest, DISABLED_TestEventsParquet) {
-  auto localFile = "/tmp/events.p";
-  auto schema = TypeSerializer::from("ROW<dt:string, eventtype:string, image_signature:string, country:string>");
+TEST(ParquetTest, DISABLED_TestRichPinParquet) {
+  auto localFile = "/tmp/test.par";
+  auto schema = TypeSerializer::from(
+    "ROW<id:long, alive:bool, active:bool, private:bool,"
+    "user_id:long, board_id:long, title:string, details:string, image_signature:string,"
+    "likes:long, link:string, annotations:string, advertiser:string, engages:long,"
+    "impressions:long, repins:long, clicks:long, created_at:string>");
   ParquetReader reader(localFile, schema);
+#define PRINT_COL(N) LOG(INFO) << (r.isNull(#N) ? "NULL" : r.readString(#N));
   while (reader.hasNext()) {
     const auto& r = reader.next();
-    LOG(INFO) << (r.isNull("image_signature") ? "NULL" : r.readString("image_signature"));
+    PRINT_COL(title)
+    PRINT_COL(details)
+    PRINT_COL(image_signature)
+    PRINT_COL(link)
+    PRINT_COL(annotations)
+    PRINT_COL(advertiser)
+    PRINT_COL(created_at)
   }
+#undef PRINT_COL
 
   LOG(INFO) << "Total rows: " << reader.size();
 }

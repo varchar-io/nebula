@@ -12,6 +12,7 @@ const pins_table = "pin.pins";
 const signatures_table = "pin.signatures";
 const advertisers_table = "advertisers";
 const advertisers_spend_table = "advertisers.spend";
+const promoted_pins = "pin.promote.rich";
 const client = NebulaClient.qc(serviceAddr);
 const grpc = NebulaClient.grpc;
 const timeCol = "_time_";
@@ -339,6 +340,85 @@ const getAdvertisersWithSpendByKey = (q, handler) => {
 };
 
 /**
+ * Search all promoted pins with specified keyword
+ */
+const getPinsByKeyword = (q, handler) => {
+    console.log(`querying promoted pins for details/annotations like ${q.key}`);
+    if (q.key) {
+        const req = new NebulaClient.QueryRequest();
+        req.setTable(promoted_pins);
+        req.setStart(seconds(q.start));
+        req.setEnd(seconds(q.end));
+
+        const conditions = [];
+        // apply the filter on different columns using OR
+        let columnsToSearch = ["details", "annotations"];
+        if (q.c2s) {
+            // if user specify what columns to search on, use it
+            // accept json array
+            columnsToSearch = JSON.parse(q.c2s);
+        }
+
+        for (let i = 0; i < columnsToSearch.length; ++i) {
+            let p = new NebulaClient.Predicate();
+            p.setColumn(columnsToSearch[i]);
+            p.setOp("5");
+            p.setValueList([`%${q.key}%`]);
+            conditions.push(p);
+        }
+
+        // other filters requiring to be true
+        const columnsToBeTrue = ["alive", "active"];
+        for (let i = 0; i < columnsToBeTrue.length; ++i) {
+            let p = new NebulaClient.Predicate();
+            p.setColumn(columnsToBeTrue[i]);
+            p.setOp("0");
+            p.setValueList(["1"]);
+            conditions.push(p);
+        }
+
+        // other filters requiring positive
+        const columnsToBePositive = ["impressions"];
+        for (let i = 0; i < columnsToBePositive.length; ++i) {
+            let p = new NebulaClient.Predicate();
+            p.setColumn(columnsToBePositive[i]);
+            p.setOp("2");
+            p.setValueList(["0"]);
+            conditions.push(p);
+        }
+
+        const filter = new NebulaClient.PredicateAnd();
+        filter.setExpressionList(conditions);
+        req.setFiltera(filter);
+
+        // set dimension
+        req.setDimensionList([
+            "id", "image_signature", "title", "advertiser", "link", "private", "user_id", "board_id",
+            "likes", "engages", "impressions", "clicks", "repins", "_time_"
+        ]);
+
+        // set limit to 1K results
+        req.setTop(1000);
+
+        // do the query
+        client.query(req, handler.metadata, (err, reply) => {
+            if (err !== null) {
+                return handler.onError(err);
+            }
+
+            if (reply == null) {
+                return handler.onNull();
+            }
+            return handler.onSuccess(NebulaClient.bytes2utf8(reply.getData()));
+        });
+
+        return;
+    }
+
+    handler.endWithMessage("Missing key");
+};
+
+/**
  * List all apis
  */
 const listApi = (q) => {
@@ -527,7 +607,8 @@ const api_handlers = {
     "keyed_pins_per_domain": getPinsPerDomainWithKey,
     "keyed_advertisers": getAdvertisersMatchingKey,
     "advertisers_spend": getAdvertisersSpend,
-    "keyed_advertisers_with_spend": getAdvertisersWithSpendByKey
+    "keyed_advertisers_with_spend": getAdvertisersWithSpendByKey,
+    "search_promoted_pins": getPinsByKeyword
 };
 
 /**

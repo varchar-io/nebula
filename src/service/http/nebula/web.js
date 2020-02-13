@@ -55,6 +55,7 @@ const onTableState = (state, stats, callback) => {
         enableTime: true,
         allowInput: true,
         clickOpens: false,
+        dateFormat: "Y-m-d H:i:S",
         defaultDate: mints,
         minDate: mints,
         maxDate: maxts
@@ -68,6 +69,7 @@ const onTableState = (state, stats, callback) => {
         enableTime: true,
         allowInput: true,
         clickOpens: false,
+        dateFormat: "Y-m-d H:i:S",
         defaultDate: maxts,
         minDate: mints,
         maxDate: maxts

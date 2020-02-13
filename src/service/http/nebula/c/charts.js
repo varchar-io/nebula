@@ -22,7 +22,8 @@ export class Charts {
             const d = pad2(date.getUTCDate());
             const h = pad2(date.getUTCHours())
             const mi = pad2(date.getUTCMinutes());
-            return `${y}-${m}-${d} ${h}:${mi}`;
+            const s = pad2(date.getUTCSeconds());
+            return `${y}-${m}-${d} ${h}:${mi}:${s}`;
         };
 
         // display a legend in given places
