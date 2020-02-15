@@ -39,23 +39,28 @@ namespace nebula {
 namespace surface {
 namespace eval {
 
-#define TYPE_VALUE_EVAL_KIND(K) TypeValueEval<typename nebula::type::TypeTraits<K>::CppType>
+// TypeValueEval accepts two parameters: store/native type and input type
+#define TYPE_VALUE_EVAL_KIND(S, I) \
+  TypeValueEval<typename nebula::type::TypeTraits<S>::CppType, typename nebula::type::TypeTraits<I>::CppType>
 
 // define an UDF interface
-template <nebula::type::Kind NK, nebula::type::Kind IK>
-class UDF : public TYPE_VALUE_EVAL_KIND(NK) {
+template <nebula::type::Kind NK,
+          nebula::type::Kind IK,
+          typename BaseType = TYPE_VALUE_EVAL_KIND(NK, IK)>
+class UDF : public BaseType {
 public:
   using NativeType = typename nebula::type::TypeTraits<NK>::CppType;
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
   using Logic = std::function<NativeType(const InputType&, bool& valid)>;
 
   UDF(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, Logic&& logic)
-    : TYPE_VALUE_EVAL_KIND(NK)(
+    : BaseType(
         fmt::format("{0}({1})", name, expr->signature()),
         [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
           // call the UDF to evalue the result
           return logic_(expr_->eval<InputType>(ctx, valid), valid);
         },
+        {},
         {},
         {}),
       expr_{ std::move(expr) },
@@ -68,8 +73,11 @@ private:
 };
 
 // UDAF is a state ful object, its eval signature is based on store type
-template <nebula::type::Kind NK, nebula::type::Kind SK = NK, nebula::type::Kind IK = NK>
-class UDAF : public TYPE_VALUE_EVAL_KIND(SK) {
+template <nebula::type::Kind NK,
+          nebula::type::Kind SK = NK,
+          nebula::type::Kind IK = NK,
+          typename BaseType = TYPE_VALUE_EVAL_KIND(SK, IK)>
+class UDAF : public BaseType {
 public:
   // A UDAF genericlly goes through 3 different life phase, each phase they may deal with different data types.
   // NativeType - this defines the UDF kind which relates to its inner expression data type.
@@ -84,22 +92,32 @@ public:
   using NativeType = typename nebula::type::TypeTraits<NK>::CppType;
   using StoreType = typename nebula::type::TypeTraits<SK>::CppType;
 
-  // store(input -> store), merge(store -> store), finalize(store -> native)
+  // why do we need both stack and merge?
+  // because we don't want to pay cost of serde of some customized objects for every single row
+  //
+  // store(input -> store): initialize an input value to store it for first time
+  // stack(input -> store): stack more value to existing stored value
+  // merge(store -> store): merge two different stored value
+  // finalize(store -> native): translate stored value into native value it represents
   using StoreFunction = std::function<StoreType(InputType)>;
+  using StackFunction = std::function<StoreType(StoreType, InputType)>;
   using MergeFunction = std::function<StoreType(StoreType, StoreType)>;
   using FinalizeFunction = std::function<NativeType(StoreType)>;
 
   UDAF(const std::string& name,
        std::unique_ptr<ValueEval> expr,
-       MergeFunction&& merge) : UDAF(name, std::move(expr), {}, std::move(merge), {}) {
+       StackFunction&& stack,
+       MergeFunction&& merge)
+    : UDAF(name, std::move(expr), {}, std::move(stack), std::move(merge), {}) {
   }
 
   UDAF(const std::string& name,
        std::unique_ptr<ValueEval> expr,
        StoreFunction&& store,
+       StackFunction&& stack,
        MergeFunction&& merge,
        FinalizeFunction&& finalize)
-    : TYPE_VALUE_EVAL_KIND(SK)(
+    : BaseType(
         fmt::format("{0}({1})", name, expr->signature()),
         [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
           // call the UDF to evalue the result
@@ -116,6 +134,7 @@ public:
             return static_cast<StoreType>(exprValue);
           }
         },
+        std::move(stack),
         std::move(merge),
         {}),
       expr_{ std::move(expr) },
@@ -137,6 +156,7 @@ public:
 private:
   std::unique_ptr<ValueEval> expr_;
   StoreFunction store_;
+  StackFunction stack_;
   FinalizeFunction finalize_;
 };
 
@@ -153,7 +173,8 @@ enum class UDFType {
   MIN,
   AVG,
   COUNT,
-  SUM
+  SUM,
+  TDIGEST
 };
 
 // UDF traits tells us:
@@ -286,6 +307,21 @@ UDAF_NOT_SUPPORT(AVG, nebula::type::Kind::INVALID)
 UDAF_NOT_SUPPORT(AVG, nebula::type::Kind::BOOLEAN)
 UDAF_NOT_SUPPORT(AVG, nebula::type::Kind::VARCHAR)
 UDAF_NOT_SUPPORT(AVG, nebula::type::Kind::INT128)
+
+// add tdigest UDAF traits definition
+// in schema, a digest is serialized as string type
+// while it's store type is a customized serializable struct / object => void*
+STATIC_TRAITS(TDIGEST, true)
+UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::TINYINT)
+UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::SMALLINT)
+UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::INTEGER)
+UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::BIGINT)
+UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::REAL)
+UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::DOUBLE)
+UDAF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::INVALID)
+UDAF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::BOOLEAN)
+UDAF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::VARCHAR)
+UDAF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::INT128)
 
 #undef UDAF_SAME_AS_INPUT_ALL
 #undef UDAF_SAME_AS_INPUT

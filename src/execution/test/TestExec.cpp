@@ -60,6 +60,7 @@ public:
     : UDAF<nebula::type::Kind::INTEGER>("TestExec",
                                         nebula::surface::eval::constant(1),
                                         {},
+                                        {},
                                         [](int32_t a, int32_t b) { return a + b; },
                                         {}) {}
   virtual ~TestUdaf() = default;

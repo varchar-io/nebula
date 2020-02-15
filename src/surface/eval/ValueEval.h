@@ -34,7 +34,7 @@ namespace surface {
 namespace eval {
 class EvalContext;
 
-template <typename T>
+template <typename T, typename I = T>
 class TypeValueEval;
 
 // this is a tree, with each node to be either macro/value or operator
@@ -68,10 +68,18 @@ public:
     return p->eval(ctx, valid);
   }
 
+  // merge t2 into t1
   template <typename T>
   inline T merge(T t1, T t2) const {
     auto p = static_cast<const TypeValueEval<T>*>(this);
     return p->merge(t1, t2);
+  }
+
+  // stack value into object
+  template <typename T, typename I>
+  inline T stack(T o, I v) const {
+    auto p = static_cast<const TypeValueEval<T, I>*>(this);
+    return p->stack(o, v);
   }
 
   // identify a unique value evaluation object in given query context
@@ -151,23 +159,29 @@ template <>
 std::string_view EvalContext::eval(const ValueEval& ve, bool& valid);
 
 // two utilities
-#define MT std::function<T(T, T)>
+#define StackFunction std::function<T(T, I)>
+#define MergeFunction std::function<T(T, T)>
 #define OPT std::function<T(EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&)>
 #define OPT_LAMBDA(X)                                                                           \
   ([](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>& children, bool& valid) { \
     X                                                                                           \
   })
 
-template <typename T>
+template <typename T, typename I>
 class TypeValueEval : public ValueEval {
 public:
+  TypeValueEval(const std::string& sign, const OPT&& op)
+    : TypeValueEval(sign, std::move(op), {}, {}, {}) {}
+
   TypeValueEval(
     const std::string& sign,
     const OPT&& op,
-    const MT&& mt,
+    const StackFunction&& st,
+    const MergeFunction&& mt,
     std::vector<std::unique_ptr<ValueEval>> children)
     : ValueEval(sign),
       op_{ std::move(op) },
+      st_{ std::move(st) },
       mt_{ std::move(mt) },
       children_{ std::move(children) } {}
 
@@ -181,9 +195,14 @@ public:
     return mt_(t1, t2);
   }
 
+  inline T stack(T o, I v) const {
+    return st_(o, v);
+  }
+
 private:
   OPT op_;
-  MT mt_;
+  StackFunction st_;
+  MergeFunction mt_;
   std::vector<std::unique_ptr<ValueEval>> children_;
 };
 
@@ -200,9 +219,7 @@ std::unique_ptr<ValueEval> constant(T v) {
       fmt::format("C:{0}", v),
       [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> ST {
         return v;
-      },
-      {},
-      {}));
+      }));
 }
 
 #define NULL_CHECK(R)               \
@@ -270,9 +287,7 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
 
         // TODO(cao): other types supported in DSL? for example: UDF on list or map
         throw NException("not supported template type");
-      },
-      {},
-      {}));
+      }));
 }
 
 #undef NULL_CHECK
@@ -304,6 +319,7 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
           }                                                                                       \
           return T(v1 SIGN v2);                                                                   \
         }),                                                                                       \
+        {},                                                                                       \
         {},                                                                                       \
         std::move(branch)));                                                                      \
   }
@@ -342,6 +358,7 @@ ARTHMETIC_VE(mod, %)
           return v1 SIGN v2;                                                                      \
         }),                                                                                       \
         {},                                                                                       \
+        {},                                                                                       \
         std::move(branch)));                                                                      \
   }
 
@@ -360,7 +377,8 @@ COMPARE_VE(bor, ||)
 
 #undef OPT_LAMBDA
 #undef OPT
-#undef MT
+#undef MergeFunction
+#undef StackFunction
 
 } // namespace eval
 } // namespace surface

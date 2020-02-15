@@ -47,9 +47,9 @@ inline auto extract(const int128_t& v) ->
 }
 
 // UDAF - avg
-template <nebula::type::Kind NK,
-          nebula::type::Kind IK = NK,
-          typename BaseType = nebula::surface::eval::UDAF<NK, nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::AVG, NK>::Store, IK>>
+template <nebula::type::Kind IK,
+          typename Traits = nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::AVG, IK>,
+          typename BaseType = nebula::surface::eval::UDAF<Traits::Type, Traits::Store, IK>>
 class Avg : public BaseType {
   static constexpr int64_t INT64_ONE = 1;
 
@@ -68,6 +68,9 @@ public:
                  nebula::common::low64_add(ov, INT64_ONE);
                  return ov;
                },
+
+               // stack method
+               {},
 
                // merge method
                [](StoreType ov, StoreType nv) {

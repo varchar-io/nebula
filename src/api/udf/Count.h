@@ -26,26 +26,28 @@ namespace api {
 namespace udf {
 
 // UDAF - count, the input is the constant 1 which is an integer value always
-template <nebula::type::Kind NK,
-          nebula::type::Kind IK = nebula::type::Kind::INTEGER,
-          typename BaseType = nebula::surface::eval::UDAF<NK, nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::COUNT, NK>::Store, IK>>
+template <nebula::type::Kind IK = nebula::type::Kind::INTEGER,
+          typename Traits = nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::COUNT, nebula::type::Kind::INTEGER>,
+          typename BaseType = nebula::surface::eval::UDAF<Traits::Type, Traits::Store, nebula::type::Kind::INTEGER>>
 class Count : public BaseType {
 public:
+  using InputType = typename BaseType::InputType;
   using StoreType = typename BaseType::StoreType;
+  using NativeType = typename BaseType::NativeType;
+
   // for count, we don't need evaluate inner expr
   // unless it's distinct a column, so we can safely replace it with a const expression with value 0
   Count(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval>)
     : BaseType(name,
                nebula::surface::eval::constant(1), // partial aggregate - sum each count results
+               // stack method
+               {},
+               // merge method
                [](StoreType ov, StoreType nv) {
                  return ov + nv;
                }) {}
   virtual ~Count() = default;
 };
-
-template <>
-Count<nebula::type::Kind::VARCHAR, nebula::type::Kind::INTEGER>::Count(
-  const std::string&, std::unique_ptr<nebula::surface::eval::ValueEval>);
 
 } // namespace udf
 } // namespace api

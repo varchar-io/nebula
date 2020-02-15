@@ -28,13 +28,23 @@ namespace api {
 namespace udf {
 
 // UDAF - min
-template <nebula::type::Kind NK, typename BaseType = nebula::surface::eval::UDAF<NK>>
+template <nebula::type::Kind IK,
+          typename Traits = nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::MAX, IK>,
+          typename BaseType = nebula::surface::eval::UDAF<Traits::Type, Traits::Store, IK>>
 class Min : public BaseType {
 public:
+  using InputType = typename BaseType::InputType;
   using StoreType = typename BaseType::StoreType;
+  using NativeType = typename BaseType::NativeType;
+
   Min(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : BaseType(name,
                std::move(expr),
+
+               // stack method
+               {},
+
+               // merge method
                [](StoreType ov, StoreType nv) {
                  return std::min<StoreType>(ov, nv);
                }) {}

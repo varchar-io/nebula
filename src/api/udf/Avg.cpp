@@ -30,7 +30,8 @@ using nebula::type::Kind;
     : nebula::surface::eval::UDAF<Kind::K>(                                                          \
         name,                                                                                        \
         std::move(expr),                                                                             \
-        [](NativeType) -> StoreType { throw NException("not supported"); },                          \
+        {},                                                                                          \
+        [](StoreType, StoreType) -> StoreType { throw NException("not supported"); },                \
         {},                                                                                          \
         {}) {}
 

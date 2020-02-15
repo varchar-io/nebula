@@ -286,6 +286,7 @@ std::function<void(const RowData&)> FlatBuffer::genParser(const TypeNode& tn, si
 }
 
 // add a row into current batch
+// if cols is not empty, we only populate those fileds, otherwise, populate all
 size_t FlatBuffer::add(const nebula::surface::RowData& row) {
   // record current state before adding a new row - used for rollback
   last_ = std::make_tuple(main_->offset, data_->offset, list_->offset);
@@ -319,6 +320,33 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
   rows_.emplace_back(rowOffset, std::move(columnProps));
 
   return rowOffset;
+}
+
+// this method is used to pair partial add (when cols set is not empty)
+// scenario: when a new added row will need to be a new entry, we fullfil all columns rather than keys.
+// this fullfilment is only for last row, so we have to have sanity check
+size_t FlatBuffer::resume(const nebula::surface::RowData& row,
+                          const std::unordered_set<size_t>& cols,
+                          const size_t rowId) {
+  N_ENSURE_EQ(rowId + 1, rows_.size(), "must be the last row");
+
+  auto origin = main_->offset;
+  // get row properties for this existing row
+  auto& rowProps = rows_.at(rowId);
+  auto& colPropsList = rows_.at(rowId).colProps;
+  auto rowOffset = rowProps.offset;
+  for (size_t i : cols) {
+    // if the column is null, we keep what it is
+    // otherwise we fill the value and update its column props
+    auto& colProps = colPropsList.at(i);
+    colProps.offset = main_->offset - rowOffset;
+    if (!colProps.isNull) {
+      parsers_.at(i)(row);
+    }
+  }
+
+  // return the delta size of the resumed values
+  return main_->offset - origin;
 }
 
 // random access to a row - may require internal seek

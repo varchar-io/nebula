@@ -17,6 +17,7 @@
 #include <chrono>
 #include <fmt/format.h>
 #include <folly/stats/Histogram.h>
+#include <folly/stats/TDigest.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <sstream>
@@ -29,6 +30,7 @@
 namespace nebula {
 namespace common {
 namespace test {
+
 TEST(StatsTest, TestHistogram) {
   // basic histogram functions
   {
@@ -114,6 +116,72 @@ TEST(StatsTest, TestHistogram) {
     std::ostringstream value;
     hist.toTSV(value);
     LOG(INFO) << value.str();
+  }
+}
+
+// more interesting tests see:
+// https://github.com/facebook/folly/blob/master/folly/stats/test/TDigestTest.cpp
+TEST(StatsTest, TestTDigest) {
+  // build percentiles
+  folly::TDigest digest(100);
+
+  EXPECT_TRUE(digest.empty());
+
+  // a vector has value ranging from 1 to 1000
+  constexpr auto numberOfValues = 1000;
+  std::vector<double> values;
+  for (int i = 1; i <= numberOfValues; ++i) {
+    values.push_back(i);
+  }
+
+  digest = digest.merge(values);
+
+  EXPECT_FALSE(digest.empty());
+  EXPECT_EQ(digest.count(), numberOfValues);
+  EXPECT_NEAR(digest.max(), numberOfValues, 1e-14);
+  EXPECT_NEAR(digest.min(), 1, 1e-14);
+  EXPECT_NEAR(digest.mean(), numberOfValues / 2, 1);
+  EXPECT_NEAR(digest.sum(), (1 + numberOfValues) * numberOfValues / 2, 1e-14);
+  EXPECT_NEAR(digest.estimateQuantile(0.1), 100, 1);
+
+  // can we serde this data structure
+  {
+    auto centroids = digest.getCentroids();
+    std::vector<std::pair<double, double>> serializedCentroids;
+    serializedCentroids.reserve(centroids.size());
+    std::transform(centroids.begin(), centroids.end(),
+                   std::back_inserter(serializedCentroids),
+                   [](auto& c) { return std::make_pair(c.mean(), c.weight()); });
+
+    auto sum = digest.sum();
+    auto count = digest.count();
+    auto max = digest.max();
+    auto min = digest.min();
+    auto maxSize = digest.maxSize();
+
+    // build a new TDigest
+    std::vector<folly::TDigest::Centroid> centroids2;
+    centroids2.reserve(serializedCentroids.size());
+    std::transform(serializedCentroids.begin(), serializedCentroids.end(),
+                   std::back_inserter(centroids2), [](auto& p) {
+                     return folly::TDigest::Centroid(std::get<0>(p), std::get<1>(p));
+                   });
+
+    folly::TDigest digest2(std::move(centroids2), sum, count, max, min, maxSize);
+
+    // verify digest and digest2 have the same properties
+    EXPECT_EQ(digest2.count(), numberOfValues);
+    EXPECT_NEAR(digest2.max(), numberOfValues, 1e-14);
+    EXPECT_NEAR(digest2.min(), 1, 1e-14);
+    EXPECT_NEAR(digest2.mean(), numberOfValues / 2, 1);
+    EXPECT_NEAR(digest2.sum(), (1 + numberOfValues) * numberOfValues / 2, 1e-14);
+
+    // verify digest 2 has all similar percentile estimates as original digest
+    for (auto i = 1; i < 10; ++i) {
+      auto percentile = i * 10.0 / 100;
+      LOG(INFO) << "verify percentile before / after serde: " << percentile;
+      EXPECT_NEAR(digest.estimateQuantile(percentile), digest2.estimateQuantile(percentile), 1e-14);
+    }
   }
 }
 

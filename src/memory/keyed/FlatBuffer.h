@@ -18,6 +18,8 @@
 
 #include <stack>
 #include <unordered_map>
+#include <unordered_set>
+
 #include "common/Memory.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
@@ -100,10 +102,13 @@ public:
   }
 
   // add a row into current batch
-  size_t add(const nebula::surface::RowData& row);
+  size_t add(const nebula::surface::RowData&);
 
   // this method only rollback last added row and the only one row only.
   bool rollback();
+
+  // instead of rollback, we continue the same row to fill data with remainings
+  size_t resume(const nebula::surface::RowData&, const std::unordered_set<size_t>&, const size_t);
 
   // random access to a row - may require internal seek
   const nebula::surface::RowData& row(size_t);

@@ -265,7 +265,12 @@ bool HashFlat::equal(size_t row1, size_t row2) const {
 }
 
 bool HashFlat::update(const nebula::surface::RowData& row) {
-  // add it as a new row first
+  // add a new row to the buffer may be expensive
+  // if there are object values to be created such as customized aggregation
+  // to have consistent way - we're taking this approach
+  // adding keys only
+  // TODO: may not be correct approach
+  // this->add(row, keys_);
   this->add(row);
 
   auto newRow = getRows() - 1;
@@ -285,7 +290,8 @@ bool HashFlat::update(const nebula::surface::RowData& row) {
     return true;
   }
 
-  // a new key
+  // resume all values population and add a new row key
+  // this->resume(row, values_, newRow);
   rowKeys_.insert(key);
   return false;
 }

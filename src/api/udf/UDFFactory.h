@@ -40,37 +40,34 @@ using UDFKind = nebula::surface::eval::UDFType;
 
 class UDFFactory {
 public:
-  template <UDFKind UKIND,
-            nebula::type::Kind IK,
-            nebula::type::Kind NK = nebula::surface::eval::UdfTraits<UKIND, IK>::Type,
-            nebula::type::Kind SK = nebula::surface::eval::UdfTraits<UKIND, IK>::Store,
-            typename... Args>
-  static typename std::unique_ptr<nebula::surface::eval::TypeValueEval<typename nebula::type::TypeTraits<SK>::CppType>>
-    createUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Args&&... args) {
+  template <UDFKind UKIND, nebula::type::Kind IK, typename... Args>
+  static auto createUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Args&&... args)
+    -> decltype(auto) {
 
     constexpr auto name = nebula::surface::eval::UdfTraits<UKIND, IK>::Name;
+
     if constexpr (UKIND == UDFKind::NOT) {
       return std::make_unique<Not>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::MAX) {
-      return std::make_unique<Max<NK>>(name, expr->asEval());
+      return std::make_unique<Max<IK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::MIN) {
-      return std::make_unique<Min<NK>>(name, expr->asEval());
+      return std::make_unique<Min<IK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::COUNT) {
-      return std::make_unique<Count<NK>>(name, expr->asEval());
+      return std::make_unique<Count<IK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::SUM) {
-      return std::make_unique<Sum<NK>>(name, expr->asEval());
+      return std::make_unique<Sum<IK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::AVG) {
-      return std::make_unique<Avg<NK, IK>>(name, expr->asEval());
+      return std::make_unique<Avg<IK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::LIKE) {

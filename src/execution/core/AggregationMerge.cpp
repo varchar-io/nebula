@@ -44,7 +44,6 @@ using nebula::memory::keyed::HashFlat;
 using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
-using nebula::surface::eval::UDAF;
 using nebula::surface::eval::ValueEval;
 using nebula::type::Kind;
 using nebula::type::Schema;

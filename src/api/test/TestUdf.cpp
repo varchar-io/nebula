@@ -478,6 +478,37 @@ TEST(UDFTest, TestAvgByte) {
   EXPECT_EQ(avg4, sum / count);
 }
 
+// TEST(UDFTest, TestTDigest) {
+//   using CType = nebula::api::udf::TDigest<nebula::type::Kind::VARCHAR, nebula::type::Kind::INTEGER>;
+
+//   // simulate the run times 11 for c1 and 22 for c2
+//   nebula::surface::eval::EvalContext ctx;
+//   bool invalid;
+//   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
+//   CType td1("td1", v9->asEval());
+
+//   for (auto i = 0; i < 11; ++i) {
+//     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+//     CType ci("count1", vi->asEval());
+//     td1 = td1.merge(td1, ci.eval(ctx, invalid));
+//   }
+
+//   CType::StoreType count2 = 0;
+//   for (auto i = 0; i < 22; ++i) {
+//     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+//     CType ci("count2", vi->asEval());
+//     count2 = cf.merge(count2, ci.eval(ctx, invalid));
+//   }
+
+//   // partial merge
+//   CType c3("count3", v9->asEval());
+//   CType::StoreType count3 = c3.merge(count1, count2);
+
+//   // we will ask itself for finalize
+//   CType::NativeType count4 = c3.finalize(count3);
+//   EXPECT_EQ(count4, 33);
+// }
+
 } // namespace test
 } // namespace api
 } // namespace nebula

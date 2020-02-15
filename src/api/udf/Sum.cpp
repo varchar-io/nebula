@@ -29,6 +29,7 @@ using nebula::type::Kind;
   Sum<Kind::K>::Sum(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)                                      \
     : nebula::surface::eval::UDAF<Kind::K>(name,                                                                                          \
                                            std::move(expr),                                                                               \
+                                           {},                                                                                            \
                                            [](nebula::type::TypeTraits<Kind::K>::CppType,                                                 \
                                               nebula::type::TypeTraits<Kind::K>::CppType) -> nebula::type::TypeTraits<Kind::K>::CppType { \
                                              throw NException(fmt::format("sum does not support {0}", #K));                               \

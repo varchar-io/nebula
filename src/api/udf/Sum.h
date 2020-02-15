@@ -26,13 +26,23 @@ namespace api {
 namespace udf {
 
 // UDAF - sum
-template <nebula::type::Kind NK, typename BaseType = nebula::surface::eval::UDAF<NK>>
+template <nebula::type::Kind IK,
+          typename Traits = nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::SUM, IK>,
+          typename BaseType = nebula::surface::eval::UDAF<Traits::Type, Traits::Store, IK>>
 class Sum : public BaseType {
 public:
+  using InputType = typename BaseType::InputType;
   using StoreType = typename BaseType::StoreType;
+  using NativeType = typename BaseType::NativeType;
+
   Sum(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : BaseType(name,
                std::move(expr),
+
+               // stack method
+               {},
+
+               // merge method
                [](StoreType ov, StoreType nv) {
                  return ov + nv;
                }) {}
