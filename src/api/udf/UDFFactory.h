@@ -41,36 +41,36 @@ using UDFKind = nebula::surface::eval::UDFType;
 class UDFFactory {
 public:
   template <UDFKind UKIND,
-            nebula::type::Kind EK,
-            nebula::type::Kind UK = nebula::surface::eval::UdfTraits<UKIND, EK>::Type,
-            nebula::type::Kind SK = nebula::surface::eval::UdfTraits<UKIND, EK>::Store,
+            nebula::type::Kind IK,
+            nebula::type::Kind NK = nebula::surface::eval::UdfTraits<UKIND, IK>::Type,
+            nebula::type::Kind SK = nebula::surface::eval::UdfTraits<UKIND, IK>::Store,
             typename... Args>
   static typename std::unique_ptr<nebula::surface::eval::TypeValueEval<typename nebula::type::TypeTraits<SK>::CppType>>
     createUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Args&&... args) {
 
-    constexpr auto name = nebula::surface::eval::UdfTraits<UKIND, EK>::Name;
+    constexpr auto name = nebula::surface::eval::UdfTraits<UKIND, IK>::Name;
     if constexpr (UKIND == UDFKind::NOT) {
       return std::make_unique<Not>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::MAX) {
-      return std::make_unique<Max<UK>>(name, expr->asEval());
+      return std::make_unique<Max<NK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::MIN) {
-      return std::make_unique<Min<UK>>(name, expr->asEval());
+      return std::make_unique<Min<NK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::COUNT) {
-      return std::make_unique<Count<UK>>(name, expr->asEval());
+      return std::make_unique<Count<NK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::SUM) {
-      return std::make_unique<Sum<UK>>(name, expr->asEval());
+      return std::make_unique<Sum<NK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::AVG) {
-      return std::make_unique<Avg<UK>>(name, expr->asEval());
+      return std::make_unique<Avg<NK, IK>>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::LIKE) {
@@ -82,7 +82,7 @@ public:
     }
 
     if constexpr (UKIND == UDFKind::IN) {
-      return std::make_unique<In<EK>>(name, expr->asEval(), std::forward<Args>(args)...);
+      return std::make_unique<In<IK>>(name, expr->asEval(), std::forward<Args>(args)...);
     }
 
     throw NException(fmt::format("Unimplemented UDF {0}", name));

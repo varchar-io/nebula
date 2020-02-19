@@ -23,7 +23,17 @@
 #include "type/Type.h"
 
 /**
- * Define expressions used in the nebula DSL.
+ * Define UDF properties used in the nebula DSL.
+ * 
+ * We define 2 types associated with UDF and 3 types for UDAF.
+ * They are:
+ *  Input Type -> the expression accepted by the UDF, 
+ *                yes, this needs to be variadic to support multi-params in the future.
+ *  Native Type -> type of the UDF, what type to use in its output schema
+ *  Store Type (UDAF only) -> what is the intermidiate store type for this UDAF.
+ * 
+ *  As clean-up, let's use above names consistently everywhere, 
+ *  and change the VAR name to NK (Native Kind), IK (Input Kind), SK (Store Kind)
  */
 namespace nebula {
 namespace surface {
@@ -32,26 +42,34 @@ namespace eval {
 #define TYPE_VALUE_EVAL_KIND(K) TypeValueEval<typename nebula::type::TypeTraits<K>::CppType>
 
 // define an UDF interface
-template <nebula::type::Kind KIND>
-class UDF : public TYPE_VALUE_EVAL_KIND(KIND) {
+template <nebula::type::Kind NK, nebula::type::Kind IK>
+class UDF : public TYPE_VALUE_EVAL_KIND(NK) {
 public:
-  UDF(const std::string& sign)
-    : TYPE_VALUE_EVAL_KIND(KIND)(
-        sign,
+  using NativeType = typename nebula::type::TypeTraits<NK>::CppType;
+  using InputType = typename nebula::type::TypeTraits<IK>::CppType;
+  using Logic = std::function<NativeType(const InputType&, bool& valid)>;
+
+  UDF(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, Logic&& logic)
+    : TYPE_VALUE_EVAL_KIND(NK)(
+        fmt::format("{0}({1})", name, expr->signature()),
         [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
           // call the UDF to evalue the result
-          return this->run(ctx, valid);
+          return logic_(expr_->eval<InputType>(ctx, valid), valid);
         },
         {},
-        {}) {}
+        {}),
+      expr_{ std::move(expr) },
+      logic_{ std::move(logic) } {}
   virtual ~UDF() = default;
 
-  virtual typename nebula::type::TypeTraits<KIND>::CppType run(EvalContext&, bool&) const = 0;
+private:
+  std::unique_ptr<nebula::surface::eval::ValueEval> expr_;
+  Logic logic_;
 };
 
 // UDAF is a state ful object, its eval signature is based on store type
-template <nebula::type::Kind KIND, nebula::type::Kind STORE = KIND>
-class UDAF : public TYPE_VALUE_EVAL_KIND(STORE) {
+template <nebula::type::Kind NK, nebula::type::Kind SK = NK, nebula::type::Kind IK = NK>
+class UDAF : public TYPE_VALUE_EVAL_KIND(SK) {
 public:
   // A UDAF genericlly goes through 3 different life phase, each phase they may deal with different data types.
   // NativeType - this defines the UDF kind which relates to its inner expression data type.
@@ -62,25 +80,40 @@ public:
   // Final Phase: this is also called global merge phase, it eventually convert storage type into native type.
   // Hence, every phase has different input/output schema due to this difference.
   // For most of the cases, StoreType == NativeType, so there is almost no changes.
-  using NativeType = typename nebula::type::TypeTraits<KIND>::CppType;
-  using StoreType = typename nebula::type::TypeTraits<STORE>::CppType;
-  using StoreFunction = std::function<StoreType(NativeType)>;
+  using InputType = typename nebula::type::TypeTraits<IK>::CppType;
+  using NativeType = typename nebula::type::TypeTraits<NK>::CppType;
+  using StoreType = typename nebula::type::TypeTraits<SK>::CppType;
+
+  // store(input -> store), merge(store -> store), finalize(store -> native)
+  using StoreFunction = std::function<StoreType(InputType)>;
   using MergeFunction = std::function<StoreType(StoreType, StoreType)>;
   using FinalizeFunction = std::function<NativeType(StoreType)>;
+
+  UDAF(const std::string& name,
+       std::unique_ptr<ValueEval> expr,
+       MergeFunction&& merge) : UDAF(name, std::move(expr), {}, std::move(merge), {}) {
+  }
+
   UDAF(const std::string& name,
        std::unique_ptr<ValueEval> expr,
        StoreFunction&& store,
        MergeFunction&& merge,
        FinalizeFunction&& finalize)
-    : TYPE_VALUE_EVAL_KIND(STORE)(
+    : TYPE_VALUE_EVAL_KIND(SK)(
         fmt::format("{0}({1})", name, expr->signature()),
         [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
           // call the UDF to evalue the result
-          auto exprValue = expr_->eval<NativeType>(ctx, valid);
-          if constexpr (STORE == KIND) {
+          auto exprValue = expr_->eval<InputType>(ctx, valid);
+          if constexpr (SK == IK) {
             return exprValue;
           } else {
-            return store_(exprValue);
+            // if input type is not the same as store type
+            // hmm, store function should be called, otherwise we only resort to type cast
+            if (store_) {
+              return store_(exprValue);
+            }
+
+            return static_cast<StoreType>(exprValue);
           }
         },
         std::move(merge),
@@ -91,10 +124,13 @@ public:
   virtual ~UDAF() = default;
 
   inline NativeType finalize(StoreType v) {
-    if constexpr (STORE == KIND) {
+    if constexpr (SK == NK) {
       return v;
     } else {
-      return finalize_(v);
+      if (finalize_) {
+        return finalize_(v);
+      }
+      return static_cast<NativeType>(v);
     }
   }
 
@@ -127,8 +163,8 @@ enum class UDFType {
 // 4. In contrast, all UDAF's store type will be defined event though they are the same as deduced type most times.
 // Note that, deduced type can be called evaluated type as well.
 // UDF Traits take UDF TYpe as as must-have parameter and variadic arguement of inner expression kinds.
-// UK=UDF Kind, EK=Expression Kind
-template <UDFType UK, nebula::type::Kind... EK>
+// UK=UDF Kind, IK=Input Kind
+template <UDFType UK, nebula::type::Kind... IK>
 struct UdfTraits {};
 
 // shortcut: repeat the same macro for all types

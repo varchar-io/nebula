@@ -18,7 +18,7 @@
 
 #include <fmt/format.h>
 
-#include "CommonUDF.h"
+#include "surface/eval/UDF.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -26,6 +26,16 @@
 namespace nebula {
 namespace api {
 namespace udf {
+
+// char equals
+static inline bool eq(char a, char b) {
+  return a == b;
+}
+
+// char equlas ignoring case
+static inline bool ieq(char a, char b) {
+  return a == b || std::tolower(a) == std::tolower(b);
+}
 
 // This UDF is doing the pattern match
 // Not sure if this is standard SQL like spec
@@ -35,7 +45,7 @@ bool match(const char* sp, const size_t ss, size_t si,
            const char* pp, const size_t ps, size_t pi,
            bool caseSensitive = true);
 
-using UdfLikeBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR>;
+using UdfLikeBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR>;
 class Like : public UdfLikeBase {
 public:
   Like(const std::string& name,
@@ -45,7 +55,7 @@ public:
     : UdfLikeBase(
         name,
         std::move(expr),
-        [pattern, caseSensitive](const ExprType& source, bool& valid) -> ReturnType {
+        [pattern, caseSensitive](const InputType& source, bool& valid) -> NativeType {
           if (valid) {
             return match(source.data(), source.size(), 0, pattern.data(), pattern.size(), 0, caseSensitive);
           }

@@ -77,11 +77,11 @@ public: /** only static methods */
 
   /// copied from internet
   /// struct tm to seconds since Unix epoch
-  static time_t my_timegm(struct tm* t) {
+  static size_t my_timegm(struct tm* t) {
     static constexpr int MONTHSPERYEAR = 12;
     static constexpr int cumdays[MONTHSPERYEAR] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
 
-    time_t result;
+    size_t result;
     int64_t year = 1900 + t->tm_year + t->tm_mon / MONTHSPERYEAR;
     result = (year - 1970) * 365 + cumdays[t->tm_mon % MONTHSPERYEAR];
     result += (year - 1968) / 4;
@@ -89,20 +89,26 @@ public: /** only static methods */
     result += (year - 1600) / 400;
     if ((year % 4) == 0 && ((year % 100) != 0 || (year % 400) == 0) && (t->tm_mon % MONTHSPERYEAR) < 2)
       result--;
+
     result += t->tm_mday - 1;
     result *= 24;
+
     result += t->tm_hour;
     result *= 60;
+
     result += t->tm_min;
     result *= 60;
+
     result += t->tm_sec;
+
     if (t->tm_isdst == 1)
       result -= 3600;
-    return (result);
+
+    return result;
   }
 
   // given date time string and parsing pattern, return GMT unix time stamp
-  static std::time_t time(const std::string_view datetime, const std::string& pattern) {
+  static size_t time(const std::string_view datetime, const std::string& pattern) {
     std::tm t = {};
 
     // set buffer to it - can we avoid constructing std::string here?

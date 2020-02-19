@@ -319,7 +319,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
     // Note: time column can not be NULL
     // unfortunately if the data has it as null, we return 1 as indicator
     // we can not use 0, because Nebula doesn't allow query time range fall into 0 start/end.
-    static constexpr time_t NULL_TIME = 1;
+    static constexpr size_t NULL_TIME = 1;
     constexpr auto UNIX_TS = "UNIXTIME";
     if (ts.pattern == UNIX_TS) {
       timeFunc = [&ts](const RowData* r) {
@@ -327,7 +327,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
           return NULL_TIME;
         }
 
-        return r->readLong(ts.colName);
+        return (size_t)r->readLong(ts.colName);
       };
     } else {
       timeFunc = [&ts](const RowData* r) {

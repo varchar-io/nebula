@@ -24,14 +24,14 @@ namespace api {
 namespace udf {
 using nebula::type::Kind;
 
-#define DO_NOT_SUPPORT(K)                                                                              \
-  template <>                                                                                          \
+#define DO_NOT_SUPPORT(K)                                                                            \
+  template <>                                                                                        \
   Avg<Kind::K>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr) \
-    : Avg<Kind::K>::BaseType(                                                                          \
-        name,                                                                                          \
-        std::move(expr),                                                                               \
-        [](NativeType) -> StoreType { throw NException("not supported"); },                            \
-        {},                                                                                            \
+    : nebula::surface::eval::UDAF<Kind::K>(                                                          \
+        name,                                                                                        \
+        std::move(expr),                                                                             \
+        [](NativeType) -> StoreType { throw NException("not supported"); },                          \
+        {},                                                                                          \
         {}) {}
 
 DO_NOT_SUPPORT(INVALID)

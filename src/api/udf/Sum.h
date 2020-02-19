@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "CommonUDAF.h"
+#include "surface/eval/UDF.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -26,16 +26,16 @@ namespace api {
 namespace udf {
 
 // UDAF - sum
-template <nebula::type::Kind KIND>
-class Sum : public CommonUDAF<KIND> {
+template <nebula::type::Kind NK, typename BaseType = nebula::surface::eval::UDAF<NK>>
+class Sum : public BaseType {
 public:
-  using NativeType = typename CommonUDAF<KIND>::NativeType;
+  using StoreType = typename BaseType::StoreType;
   Sum(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
-    : CommonUDAF<KIND>(name,
-                       std::move(expr),
-                       [](NativeType ov, NativeType nv) {
-                         return ov + nv;
-                       }) {}
+    : BaseType(name,
+               std::move(expr),
+               [](StoreType ov, StoreType nv) {
+                 return ov + nv;
+               }) {}
   virtual ~Sum() = default;
 };
 
@@ -52,7 +52,8 @@ Sum<nebula::type::Kind::VARCHAR>::Sum(
   const std::string&, std::unique_ptr<nebula::surface::eval::ValueEval>);
 
 template <>
-Sum<nebula::type::Kind::INT128>::Sum(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
+Sum<nebula::type::Kind::INT128>::Sum(
+  const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 } // namespace udf
 } // namespace api

@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "CommonUDF.h"
+#include "surface/eval/UDF.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -27,14 +27,14 @@ namespace udf {
 /**
  * This UDF provides logic operations to determine if a value is in given set.
  */
-template <nebula::type::Kind KIND>
-class In : public CommonUDF<nebula::type::Kind::BOOLEAN, KIND> {
-  using UdfInBase = CommonUDF<nebula::type::Kind::BOOLEAN, KIND>;
-  using ExprType = typename nebula::type::TypeTraits<KIND>::CppType;
+template <nebula::type::Kind IK>
+class In : public nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK> {
+  using UdfInBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK>;
+  using InputType = typename nebula::type::TypeTraits<IK>::CppType;
   using ValueType = typename std::conditional<
-    KIND == nebula::type::Kind::VARCHAR,
+    IK == nebula::type::Kind::VARCHAR,
     std::string,
-    typename nebula::type::TypeTraits<KIND>::CppType>::type;
+    typename nebula::type::TypeTraits<IK>::CppType>::type;
 
 public:
   In(const std::string& name,
@@ -44,7 +44,7 @@ public:
         name,
         std::move(expr),
         // logic for "in []"
-        [this](const ExprType& source, bool& valid) -> bool {
+        [this](const InputType& source, bool& valid) -> bool {
           if (valid) {
             return std::any_of(values_.cbegin(), values_.cend(), [&source](const ValueType& v) {
               return source == v;
@@ -62,7 +62,7 @@ public:
     : UdfInBase(name,
                 std::move(expr),
                 // logic for "not in []"
-                [this](const ExprType& source, bool& valid) -> bool {
+                [this](const InputType& source, bool& valid) -> bool {
                   if (valid) {
                     return std::none_of(values_.cbegin(), values_.cend(), [&source](const ValueType& v) {
                       return source == v;

@@ -18,7 +18,7 @@
 
 #include <glog/logging.h>
 
-#include "CommonUDF.h"
+#include "surface/eval/UDF.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -31,7 +31,7 @@ namespace udf {
 // Prefix is specifically for prefix match, special LIKE expression can be converted to prefix match
 // such as "<anything>%"
 // when pattern see %, treat it as macro, no escape support here.
-using UdfPrefixBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR>;
+using UdfPrefixBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR>;
 class Prefix : public UdfPrefixBase {
 public:
   Prefix(
@@ -42,7 +42,7 @@ public:
     : UdfPrefixBase(
         name,
         std::move(expr),
-        [prefix, caseSensitive](const ExprType& source, bool& valid) -> ReturnType {
+        [prefix, caseSensitive](const InputType& source, bool& valid) -> NativeType {
           if (valid) {
             const auto prefixSize = prefix.size();
             if (source.size() < prefixSize) {

@@ -47,27 +47,30 @@ inline auto extract(const int128_t& v) ->
 }
 
 // UDAF - avg
-template <nebula::type::Kind KIND>
-class Avg : public nebula::surface::eval::UDAF<KIND, nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::AVG, KIND>::Store> {
+template <nebula::type::Kind NK,
+          nebula::type::Kind IK = NK,
+          typename BaseType = nebula::surface::eval::UDAF<NK, nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::AVG, NK>::Store, IK>>
+class Avg : public BaseType {
   static constexpr int64_t INT64_ONE = 1;
 
 public:
-  using BaseType = typename nebula::surface::eval::UDAF<KIND, nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::AVG, KIND>::Store>;
-  using NativeType = typename BaseType::NativeType;
+  using InputType = typename BaseType::InputType;
   using StoreType = typename BaseType::StoreType;
+  using NativeType = typename BaseType::NativeType;
+
   Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : BaseType(name,
                std::move(expr),
                // compute method
-               [](NativeType nv) -> int128_t {
-                 int128_t ov = 0;
+               [](InputType nv) -> StoreType {
+                 StoreType ov = 0;
                  nebula::common::high64_add(ov, nv);
                  nebula::common::low64_add(ov, INT64_ONE);
                  return ov;
                },
 
                // merge method
-               [](int128_t ov, int128_t nv) {
+               [](StoreType ov, StoreType nv) {
                  auto sum = extract<NativeType>(nv);
                  auto count = nebula::common::low64<int64_t>(nv);
                  // merge sum
@@ -79,32 +82,32 @@ public:
                },
 
                // finalize method
-               [](const int128_t& v) -> NativeType {
+               [](const StoreType& v) -> NativeType {
                  auto count = nebula::common::low64<int64_t>(v);
                  if (count > 0) {
-                   // LOG(INFO) << "sum=" << extract<NativeType>(v) << " / count=" << count;
                    return extract<NativeType>(v) / count;
                  }
                  return 0;
                }) {}
 
   virtual ~Avg() = default;
-
-private:
-  std::atomic<int> called;
 };
 
 template <>
-Avg<nebula::type::Kind::INVALID>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
+Avg<nebula::type::Kind::INVALID>::Avg(
+  const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 template <>
-Avg<nebula::type::Kind::BOOLEAN>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
+Avg<nebula::type::Kind::BOOLEAN>::Avg(
+  const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 template <>
-Avg<nebula::type::Kind::VARCHAR>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
+Avg<nebula::type::Kind::VARCHAR>::Avg(
+  const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 template <>
-Avg<nebula::type::Kind::INT128>::Avg(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
+Avg<nebula::type::Kind::INT128>::Avg(
+  const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr);
 
 } // namespace udf
 } // namespace api

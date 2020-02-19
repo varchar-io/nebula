@@ -18,7 +18,7 @@
 
 #include <fmt/format.h>
 
-#include "CommonUDAF.h"
+#include "surface/eval/UDF.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -28,18 +28,16 @@ namespace api {
 namespace udf {
 
 // UDAF - max
-template <nebula::type::Kind KIND>
-class Max : public CommonUDAF<KIND> {
+template <nebula::type::Kind NK, typename BaseType = nebula::surface::eval::UDAF<NK>>
+class Max : public BaseType {
 public:
-  using NativeType = typename CommonUDAF<KIND>::NativeType;
+  using StoreType = typename BaseType::StoreType;
   Max(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
-    : CommonUDAF<KIND>(
-        name,
-        std::move(expr),
-        [](NativeType ov, NativeType nv) {
-          // LOG(INFO) << "p max o=" << ov << ", n=" << nv;
-          return std::max<NativeType>(ov, nv);
-        }) {}
+    : BaseType(name,
+               std::move(expr),
+               [](StoreType ov, StoreType nv) {
+                 return std::max<StoreType>(ov, nv);
+               }) {}
   virtual ~Max() = default;
 };
 

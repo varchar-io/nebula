@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "CommonUDAF.h"
+#include "surface/eval/UDF.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -25,25 +25,26 @@ namespace nebula {
 namespace api {
 namespace udf {
 
-// UDAF - count
-template <nebula::type::Kind KIND>
-class Count : public CommonUDAF<KIND> {
+// UDAF - count, the input is the constant 1 which is an integer value always
+template <nebula::type::Kind NK,
+          nebula::type::Kind IK = nebula::type::Kind::INTEGER,
+          typename BaseType = nebula::surface::eval::UDAF<NK, nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::COUNT, NK>::Store, IK>>
+class Count : public BaseType {
 public:
-  using NativeType = typename CommonUDAF<KIND>::NativeType;
+  using StoreType = typename BaseType::StoreType;
   // for count, we don't need evaluate inner expr
   // unless it's distinct a column, so we can safely replace it with a const expression with value 0
   Count(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval>)
-    : CommonUDAF<KIND>(name,
-                       nebula::surface::eval::constant(1),
-                       // partial aggregate - sum each count results
-                       [](NativeType ov, NativeType nv) {
-                         return ov + nv;
-                       }) {}
+    : BaseType(name,
+               nebula::surface::eval::constant(1), // partial aggregate - sum each count results
+               [](StoreType ov, StoreType nv) {
+                 return ov + nv;
+               }) {}
   virtual ~Count() = default;
 };
 
 template <>
-Count<nebula::type::Kind::VARCHAR>::Count(
+Count<nebula::type::Kind::VARCHAR, nebula::type::Kind::INTEGER>::Count(
   const std::string&, std::unique_ptr<nebula::surface::eval::ValueEval>);
 
 } // namespace udf

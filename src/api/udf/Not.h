@@ -18,7 +18,7 @@
 
 #include <fmt/format.h>
 
-#include "CommonUDF.h"
+#include "surface/eval/UDF.h"
 
 /**
  * Define expressions used in the nebula DSL.
@@ -27,10 +27,9 @@ namespace nebula {
 namespace api {
 namespace udf {
 // Used for demo purpose - revert the bool value
-using UdfNotBase = CommonUDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::BOOLEAN>;
+using UdfNotBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, nebula::type::Kind::BOOLEAN>;
 class Not : public UdfNotBase {
 public:
-  using NativeType = nebula::type::TypeTraits<nebula::type::Kind::BOOLEAN>::CppType;
   Not(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : UdfNotBase(
         name,

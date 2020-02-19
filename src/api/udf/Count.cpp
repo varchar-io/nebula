@@ -24,15 +24,15 @@ namespace api {
 namespace udf {
 
 using nebula::type::Kind;
-using VarcharNative = nebula::type::TypeTraits<Kind::VARCHAR>::CppType;
+using StoreType = nebula::type::TypeTraits<Kind::BIGINT>::CppType;
 
 template <>
-Count<Kind::VARCHAR>::Count(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
-  : CommonUDAF<Kind::VARCHAR>(name,
-                              std::move(expr),
-                              [](VarcharNative, VarcharNative) -> VarcharNative {
-                                throw NException("sum string is not supported currently");
-                              }) {}
+Count<Kind::VARCHAR, Kind::INTEGER>::Count(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
+  : nebula::surface::eval::UDAF<Kind::VARCHAR, Kind::BIGINT, Kind::INTEGER>(name,
+                                                                            std::move(expr),
+                                                                            [](StoreType, StoreType) -> StoreType {
+                                                                              throw NException("sum string is not supported currently");
+                                                                            }) {}
 
 } // namespace udf
 } // namespace api
