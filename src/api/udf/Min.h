@@ -30,24 +30,73 @@ namespace udf {
 // UDAF - min
 template <nebula::type::Kind IK,
           typename Traits = nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::MAX, IK>,
-          typename BaseType = nebula::surface::eval::UDAF<Traits::Type, Traits::Store, IK>>
+          typename BaseType = nebula::surface::eval::UDAF<Traits::Type, IK>>
 class Min : public BaseType {
 public:
   using InputType = typename BaseType::InputType;
-  using StoreType = typename BaseType::StoreType;
   using NativeType = typename BaseType::NativeType;
+  using BaseAggregator = typename BaseType::BaseAggregator;
 
+public:
+  class Aggregator : public BaseAggregator {
+    static constexpr auto StoreSize = sizeof(NativeType);
+
+  public:
+    virtual ~Aggregator() = default;
+    // aggregate an value in
+    inline virtual void merge(InputType v) override {
+      value = std::min<NativeType>(value, v);
+    }
+
+    // aggregate another aggregator
+    inline virtual void mix(const nebula::surface::eval::Sketch& another) override {
+      auto v2 = static_cast<const Aggregator&>(another).value;
+      value = std::min<NativeType>(value, v2);
+    }
+
+    inline virtual NativeType finalize() override {
+      return value;
+    }
+
+    // serialize into a buffer
+    inline virtual size_t serialize(nebula::common::PagedSlice& slice, size_t offset) const override {
+      return slice.write(offset, value);
+    }
+
+    // deserialize from a given buffer, and bin size
+    inline virtual size_t load(nebula::common::PagedSlice& slice, size_t offset) override {
+      value = slice.read<NativeType>(offset);
+      return StoreSize;
+    }
+
+    inline virtual bool fit(size_t space) override {
+      return space >= StoreSize;
+    }
+
+  private:
+    NativeType value;
+  };
+
+public:
   Min(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : BaseType(name,
                std::move(expr),
-
-               // stack method
-               {},
-
-               // merge method
-               [](StoreType ov, StoreType nv) {
-                 return std::min<StoreType>(ov, nv);
+               []() -> std::shared_ptr<Aggregator> {
+                 return std::make_shared<Aggregator>();
                }) {}
+  virtual ~Min() = default;
+};
+
+template <>
+class Min<nebula::type::Kind::VARCHAR> : public nebula::surface::eval::UDAF<nebula::type::Kind::VARCHAR, nebula::type::Kind::VARCHAR> {
+public:
+  Min(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
+    : nebula::surface::eval::UDAF<nebula::type::Kind::VARCHAR, nebula::type::Kind::VARCHAR>(
+        name,
+        std::move(expr),
+        {}) {
+    throw NException("Not supporting max(varchar) yet.");
+  }
   virtual ~Min() = default;
 };
 

@@ -63,7 +63,7 @@ using nebula::type::TypeNode;
  * A flat memory serialization format for a ROW structure.
  * internally it's just a byte array. The data layout like this
  * it's designed to be reused to carry every row data from reader to writer
- * it's optimized for fast access nad not optimized for storage size -
+ * it's optimized for fast access but not optimized for storage size -
  * so row data memory may be 2x larger than original row data
  * <p>
  */

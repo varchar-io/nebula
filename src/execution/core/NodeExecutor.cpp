@@ -100,7 +100,7 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
   // the results set from different block exeuction can be simply composite together
   // but the query needs to aggregate on keys, then we have to merge the results based on partial aggregatin plan
   const NodePhase& phase = plan.fetch<PhaseType::PARTIAL>();
-  auto merged = merge(pool, phase.outputSchema(), phase.keys(), phase.fields(), phase.hasAggregation(), x);
+  auto merged = merge(pool, phase.outputSchema(), phase.fields(), phase.hasAggregation(), x);
 
   // if scale is 0 or this query has no limit on it
   if (local_ || FLAGS_TOP_SORT_SCALE == 0 || phase.top() == 0) {

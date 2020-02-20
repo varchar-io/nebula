@@ -30,7 +30,9 @@ namespace core {
 // SCALE is used to enlarge the final set in result, by default return whatever asked
 template <nebula::execution::PhaseType PT>
 nebula::surface::RowCursorPtr topSort(
-  nebula::surface::RowCursorPtr input, const nebula::execution::Phase<PT>& phase, size_t scale = 1) {
+  nebula::surface::RowCursorPtr input,
+  const nebula::execution::Phase<PT>& phase,
+  size_t scale = 1) {
   // short circuit
   if (input->size() == 0) {
     return input;

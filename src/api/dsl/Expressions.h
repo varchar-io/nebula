@@ -440,8 +440,8 @@ public:
 
     // if this UDF has pre-defined type, we don't need to get it from inner expression then
     type_ = TypeInfo{
-      nebula::surface::eval::udfKind<UT, false>(innerType.native),
-      nebula::surface::eval::udfKind<UT, true>(innerType.native),
+      nebula::surface::eval::udfKind<UT>(innerType.native),
+      innerType.native
     };
 
     return type_;
@@ -457,13 +457,17 @@ public:
   }
 
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
-    // based on type, create different UDAF object and pass it to UDF function wrapper
-    switch (type_.native) {
+    // type_.store is used to store it's inner result
+    // so it basically equals inner.native.
+    // for example, SUM(TINYINT), inner.native=TINYINT
+    // type_.store will be the same as TINYINT, but its own native type is int64
+    switch (type_.store) {
       CASE_KIND_UDF(BOOLEAN)
       CASE_KIND_UDF(TINYINT)
       CASE_KIND_UDF(SMALLINT)
       CASE_KIND_UDF(INTEGER)
       CASE_KIND_UDF(BIGINT)
+      CASE_KIND_UDF(INT128)
       CASE_KIND_UDF(REAL)
       CASE_KIND_UDF(DOUBLE)
       CASE_KIND_UDF(VARCHAR)

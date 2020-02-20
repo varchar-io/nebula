@@ -18,6 +18,7 @@
 
 #include <string>
 #include "Table.h"
+#include "surface/eval/ValueEval.h"
 #include "type/Serde.h"
 
 /**
@@ -35,6 +36,20 @@ public:
     // TODO(cao) - let's make date as a number
     schema_ = nebula::type::TypeSerializer::from(
       "ROW<_time_: bigint, id:int, event:string, items:list<string>, flag:bool, value:tinyint, weight:double, stamp:int128>");
+
+    // make a test value eval list for testing
+    fields_.reserve(8);
+    fields_.emplace_back(nebula::surface::eval::constant(1));
+    fields_.emplace_back(nebula::surface::eval::constant(2));
+    fields_.emplace_back(nebula::surface::eval::constant("3"));
+    // TODO(cao) - we don't have a good value eval set up for LIST type
+    // use a fake one to replace - this may cause problem!!
+    fields_.emplace_back(nebula::surface::eval::constant(1));
+    fields_.emplace_back(nebula::surface::eval::constant(true));
+    fields_.emplace_back(nebula::surface::eval::constant((int8_t)0));
+    fields_.emplace_back(nebula::surface::eval::constant(0.1));
+    // ERROR: same as above, this is fake for testing, int128_t can't be used in fmt::format
+    fields_.emplace_back(nebula::surface::eval::constant(1));
   }
 
   virtual const Column& column(const std::string& col) const noexcept override {
@@ -67,6 +82,13 @@ public:
 
     return Table::column(col);
   }
+
+  const nebula::surface::eval::Fields& testFields() const {
+    return fields_;
+  }
+
+private:
+  nebula::surface::eval::Fields fields_;
 };
 
 } // namespace meta

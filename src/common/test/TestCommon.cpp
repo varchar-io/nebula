@@ -34,6 +34,8 @@ namespace nebula {
 namespace common {
 namespace test {
 
+using nebula::common::Int128_U;
+
 TEST(CommonTest, TestEnsures) {
   // test generic ensure
   N_ENSURE(3 > 2, "true");
@@ -432,12 +434,12 @@ TEST(CommonTest, TestInt128) {
   y += 1;
   EXPECT_TRUE(x > y);
 
-  int128_t z = UINT128_LOW_MASK;
+  int128_t z = Int128_U::UINT128_LOW_MASK;
   int128_t z1 = z + 1;
 
   // test out int128 features
-  EXPECT_EQ(low64<int64_t>(z1), 0);
-  EXPECT_EQ(high64<int64_t>(z1), 1);
+  EXPECT_EQ(Int128_U::low64<int64_t>(z1), 0);
+  EXPECT_EQ(Int128_U::high64<int64_t>(z1), 1);
 
   EXPECT_TRUE(z1 > z);
   auto z2 = z1 >> 64;
@@ -449,32 +451,32 @@ TEST(CommonTest, TestInt128) {
   z1 += delta;
 
   // try different types
-  EXPECT_EQ(low64<int64_t>(z1), delta);
-  EXPECT_EQ(high64<int64_t>(z1), 1);
+  EXPECT_EQ(Int128_U::low64<int64_t>(z1), delta);
+  EXPECT_EQ(Int128_U::high64<int64_t>(z1), 1);
 
-  EXPECT_EQ(low64<uint32_t>(z1), delta);
-  EXPECT_EQ(high64<uint32_t>(z1), 1);
+  EXPECT_EQ(Int128_U::low64<uint32_t>(z1), delta);
+  EXPECT_EQ(Int128_U::high64<uint32_t>(z1), 1);
 
-  EXPECT_EQ(low64<int32_t>(z1), delta);
-  EXPECT_EQ(high64<int32_t>(z1), 1);
+  EXPECT_EQ(Int128_U::low64<int32_t>(z1), delta);
+  EXPECT_EQ(Int128_U::high64<int32_t>(z1), 1);
 
-  EXPECT_EQ(low64<uint16_t>(z1), delta);
-  EXPECT_EQ(high64<uint16_t>(z1), 1);
+  EXPECT_EQ(Int128_U::low64<uint16_t>(z1), delta);
+  EXPECT_EQ(Int128_U::high64<uint16_t>(z1), 1);
 
-  EXPECT_EQ(low64<int16_t>(z1), delta);
-  EXPECT_EQ(high64<int16_t>(z1), 1);
+  EXPECT_EQ(Int128_U::low64<int16_t>(z1), delta);
+  EXPECT_EQ(Int128_U::high64<int16_t>(z1), 1);
 
   // now I want to mask high part to turn it into a negative value
-  int128_t zn = z1 | UINT128_HIGH_MASK;
+  int128_t zn = z1 | Int128_U::UINT128_HIGH_MASK;
   EXPECT_TRUE(zn < 0);
 
   // by default converting to uint64
-  EXPECT_EQ(low64<int64_t>(zn), delta);
-  EXPECT_EQ(high64<int64_t>(zn), UINT64_MAX);
+  EXPECT_EQ(Int128_U::low64<int64_t>(zn), delta);
+  EXPECT_EQ(Int128_U::high64<int64_t>(zn), UINT64_MAX);
 
   // for signed int64, it is a negative value
-  EXPECT_EQ(low64<int64_t>(zn), delta);
-  EXPECT_EQ(high64<int64_t>(zn), -1);
+  EXPECT_EQ(Int128_U::low64<int64_t>(zn), delta);
+  EXPECT_EQ(Int128_U::high64<int64_t>(zn), -1);
   LOG(INFO) << "zn=" << zn;
 
   // test value increment on different section
@@ -483,13 +485,13 @@ TEST(CommonTest, TestInt128) {
     int64_t sum = 0;
     int64_t count = 1000;
     for (int64_t i = 0; i < count; ++i) {
-      high64_add(parts, i);
+      Int128_U::high64_add(parts, i);
       sum += i;
-      low64_add(parts, 1);
+      Int128_U::low64_add(parts, 1);
     }
 
-    EXPECT_EQ(high64<int64_t>(parts), sum);
-    EXPECT_EQ(low64<int64_t>(parts), count);
+    EXPECT_EQ(Int128_U::high64<int64_t>(parts), sum);
+    EXPECT_EQ(Int128_U::low64<int64_t>(parts), count);
   }
 
   {
@@ -498,13 +500,13 @@ TEST(CommonTest, TestInt128) {
     double sum = 0;
     int64_t count = 1000;
     for (int64_t i = 0; i < count; ++i) {
-      high64_add(parts, i * 1.1);
+      Int128_U::high64_add(parts, i * 1.1);
       sum += i * 1.1;
-      low64_add(parts, 1);
+      Int128_U::low64_add(parts, 1);
     }
 
-    EXPECT_EQ(high64<double>(parts), sum);
-    EXPECT_EQ(low64<int64_t>(parts), count);
+    EXPECT_EQ(Int128_U::high64<double>(parts), sum);
+    EXPECT_EQ(Int128_U::low64<int64_t>(parts), count);
   }
 
   // test raw operations on bytes
@@ -638,6 +640,44 @@ TEST(CommonTest, TestCharsUtils) {
   }
 
 #undef TEST_SPLIT
+}
+
+TEST(CommonTest, TestRange) {
+  nebula::common::Range r1;
+  EXPECT_EQ(r1.offset, 0);
+  EXPECT_EQ(r1.size, 0);
+
+  nebula::common::Range r2(2, 100);
+  EXPECT_EQ(r2.offset, 2);
+  EXPECT_EQ(r2.size, 100);
+
+  nebula::common::PagedSlice slice(1024);
+  nebula::common::Range r3(111, 222);
+  EXPECT_EQ(r3.write(slice, 23), 8);
+
+  auto r4 = nebula::common::Range::make(slice, 23);
+  EXPECT_EQ(r4.offset, 111);
+  EXPECT_EQ(r4.size, 222);
+
+  auto max = std::numeric_limits<uint32_t>::max();
+  nebula::common::Range r5(max, max);
+  EXPECT_EQ(r5.write(slice, 55), 8);
+
+  nebula::common::Range r6;
+  r6.read(slice, 55);
+  EXPECT_EQ(r6.offset, max);
+  EXPECT_EQ(r6.size, max);
+}
+
+TEST(CommonTest, TestWriteAlign) {
+  nebula::common::PagedSlice slice(1024);
+  int8_t v = 126;
+  constexpr auto alignment = 8;
+  constexpr auto offset = 198;
+  size_t len = slice.writeAlign(offset, v, alignment);
+  EXPECT_EQ(len, alignment);
+  auto v2 = slice.read<int8_t>(offset);
+  EXPECT_EQ(v, v2);
 }
 
 } // namespace test

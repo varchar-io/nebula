@@ -20,6 +20,7 @@
 #include <glog/logging.h>
 #include <unordered_map>
 
+#include "Aggregator.h"
 #include "common/Cursor.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
@@ -33,15 +34,23 @@ namespace nebula {
 namespace surface {
 namespace eval {
 class EvalContext;
-
-template <typename T, typename I = T>
+// for a given type value eval object, we know its output kind, input kind
+// and a flag to indicate if evaluate input or not
+template <typename T, typename I = T, bool EvalInput = false>
 class TypeValueEval;
 
 // this is a tree, with each node to be either macro/value or operator
 // this is translated from expression.
 class ValueEval {
 public:
-  ValueEval(const std::string& sign) : sign_{ sign } {}
+  ValueEval(const std::string& sign,
+            nebula::type::Kind input,
+            nebula::type::Kind output,
+            bool aggregate)
+    : sign_{ sign },
+      input_{ input },
+      output_{ output },
+      aggregate_{ aggregate } {}
   virtual ~ValueEval() = default;
 
   // TODO(cao) - we definitely need to revisit and reevaluate if we should use std::optional<T> here
@@ -68,28 +77,39 @@ public:
     return p->eval(ctx, valid);
   }
 
-  // merge t2 into t1
-  template <typename T>
-  inline T merge(T t1, T t2) const {
-    auto p = static_cast<const TypeValueEval<T>*>(this);
-    return p->merge(t1, t2);
-  }
-
   // stack value into object
-  template <typename T, typename I>
-  inline T stack(T o, I v) const {
-    auto p = static_cast<const TypeValueEval<T, I>*>(this);
-    return p->stack(o, v);
+  template <nebula::type::Kind OK, nebula::type::Kind IK>
+  inline std::shared_ptr<Sketch> sketch() const {
+    using TypeVE = TypeValueEval<typename nebula::type::TypeTraits<OK>::CppType, typename nebula::type::TypeTraits<IK>::CppType>;
+    N_ENSURE(aggregate_, "only aggregated value can produce sketch");
+    auto p = static_cast<const TypeVE*>(this);
+    return p->sketch();
   }
 
+public:
   // identify a unique value evaluation object in given query context
   // TODO(cao) - consider using number instead for fast hashing
   inline const std::string_view signature() const {
     return sign_;
   }
 
+  inline nebula::type::Kind inputType() const {
+    return input_;
+  }
+
+  inline nebula::type::Kind outputType() const {
+    return output_;
+  }
+
+  inline bool isAggregate() const {
+    return aggregate_;
+  }
+
 protected:
   std::string sign_;
+  nebula::type::Kind input_;
+  nebula::type::Kind output_;
+  bool aggregate_;
 };
 
 // define a global type to represent runtime fields in schema
@@ -159,50 +179,49 @@ template <>
 std::string_view EvalContext::eval(const ValueEval& ve, bool& valid);
 
 // two utilities
-#define StackFunction std::function<T(T, I)>
-#define MergeFunction std::function<T(T, T)>
-#define OPT std::function<T(EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&)>
+#define SketchMaker std::function<std::shared_ptr<Aggregator<OutputTD::kind, InputTD::kind>>()>
+#define OPT std::function<EvalType(EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&)>
 #define OPT_LAMBDA(X)                                                                           \
   ([](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>& children, bool& valid) { \
     X                                                                                           \
   })
 
-template <typename T, typename I>
+// TODO(cao): evaluate if we can template TypeValueEval with nebula::type::Kind
+// rather than normal type so that we can keep consistent view across all foundation types
+// Also easy to store and extract - otherwise we have to use TypeDetect to convert back and forth
+template <typename T, typename I, bool EvalInput>
 class TypeValueEval : public ValueEval {
+  using OutputTD = typename nebula::type::TypeDetect<std::remove_reference_t<std::remove_cv_t<T>>>;
+  using InputTD = typename nebula::type::TypeDetect<std::remove_reference_t<std::remove_cv_t<I>>>;
+  using EvalType = typename std::conditional<EvalInput, I, T>::type;
+
 public:
   TypeValueEval(const std::string& sign, const OPT&& op)
-    : TypeValueEval(sign, std::move(op), {}, {}, {}) {}
+    : TypeValueEval(sign, std::move(op), {}, {}) {}
 
   TypeValueEval(
     const std::string& sign,
     const OPT&& op,
-    const StackFunction&& st,
-    const MergeFunction&& mt,
+    const SketchMaker&& st,
     std::vector<std::unique_ptr<ValueEval>> children)
-    : ValueEval(sign),
+    : ValueEval(sign, InputTD::kind, OutputTD::kind, st != nullptr),
       op_{ std::move(op) },
       st_{ std::move(st) },
-      mt_{ std::move(mt) },
       children_{ std::move(children) } {}
 
   virtual ~TypeValueEval() = default;
 
-  inline T eval(EvalContext& ctx, bool& valid) const {
+  inline EvalType eval(EvalContext& ctx, bool& valid) const {
     return op_(ctx, this->children_, valid);
   }
 
-  inline T merge(T t1, T t2) const {
-    return mt_(t1, t2);
-  }
-
-  inline T stack(T o, I v) const {
-    return st_(o, v);
+  inline std::shared_ptr<Aggregator<OutputTD::kind, InputTD::kind>> sketch() const {
+    return st_();
   }
 
 private:
   OPT op_;
-  StackFunction st_;
-  MergeFunction mt_;
+  SketchMaker st_;
   std::vector<std::unique_ptr<ValueEval>> children_;
 };
 
@@ -214,9 +233,17 @@ template <typename T>
 std::unique_ptr<ValueEval> constant(T v) {
   // get standard type for this constant after removing reference and const decors
   using ST = typename nebula::type::TypeDetect<std::remove_reference_t<std::remove_cv_t<T>>>::StandardType;
+
+  std::string sign;
+  if constexpr (std::is_same_v<ST, int128_t>) {
+    sign = fmt::format("C:{0}", nebula::common::Int128_U::to_string(v));
+  } else {
+    sign = fmt::format("C:{0}", v);
+  }
+
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<ST>(
-      fmt::format("C:{0}", v),
+      sign,
       [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> ST {
         return v;
       }));
@@ -320,7 +347,6 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
           return T(v1 SIGN v2);                                                                   \
         }),                                                                                       \
         {},                                                                                       \
-        {},                                                                                       \
         std::move(branch)));                                                                      \
   }
 
@@ -358,7 +384,6 @@ ARTHMETIC_VE(mod, %)
           return v1 SIGN v2;                                                                      \
         }),                                                                                       \
         {},                                                                                       \
-        {},                                                                                       \
         std::move(branch)));                                                                      \
   }
 
@@ -377,8 +402,7 @@ COMPARE_VE(bor, ||)
 
 #undef OPT_LAMBDA
 #undef OPT
-#undef MergeFunction
-#undef StackFunction
+#undef SketchMaker
 
 } // namespace eval
 } // namespace surface

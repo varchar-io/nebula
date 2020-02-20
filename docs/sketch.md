@@ -45,3 +45,25 @@ Here is what I propose to do to make this a bit cleaner hopefully:
 4. We need to allow all UDAF to have different runtime schema but with final schema corrected in last stage.
 
 Hopefully this change will help boost performance as well, for example AVG. Since this is going to be large refactoring, I will leave it to next diff and report back what the result looks like - the basic measure is ensure AVG UDAF is working well/better in the new design.
+
+### Update
+Through the whole Nebula code base, all the boundary is communicated through RowData and its cursor type RowCursor, it is extremely difficult to model a customized object (aggregator) on a plain storage wrapped by a RowData, and also to be very efficient to avoid object allocations across rows. I also looked at "struct" type, if we can reuse it to represent any customized sketch but attached with different functions, again it is good idea to keep RowData interface intact but facing two big challenges:
+1. construct sketch object on given memory chunk represented by the struct. (preventing object serde per row)
+2. avoid object creation for non-aggregated rows. 
+
+Given all the thoughts and exploration, I decided to make the change to RowData interface, adding a new interface to it to fetch aggregator object given column name/index. 
+Client will get a valid aggregator object if 
+- the row represents an aggregated row
+- the column is an aggregation column
+
+otherwise it will return a nullptr.
+
+Aggregation column type will be the same as its inner expression type, so that we know if a ROW can return normal value to be aggregated or it can return aggregator to aggregate other incoming values in block computing phase.
+
+In merge phase - aggregator will aggregate other aggregators.
+
+In final phase - an aggregator will provide finalize method to return its desired value.
+
+In the new architecture, any sketch is attached and can be detached. As optimization, it may share memory as schema indicates which is controlled by column width. If the column is an aggregation field, it will produce alignment space for the column no matter it has null value or not.
+
+When serialization, sketch will be serialized into data space, and deserialization will be restruct the sketch for each aggregation column.

@@ -361,6 +361,10 @@ public:
     return static_cast<const NodePhase&>(*upstream_).hasAggregation();
   }
 
+  inline bool isAggregateColumn(size_t index) const {
+    return !static_cast<const NodePhase&>(*upstream_).isAggregateColumn(index);
+  }
+
   inline const std::vector<size_t>& keys() const {
     return static_cast<const NodePhase&>(*upstream_).keys();
   }

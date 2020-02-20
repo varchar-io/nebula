@@ -118,7 +118,7 @@ grpc::Status NodeServerImpl::Query(
     NodeExecutor executor(BlockManager::init());
     auto cursor = executor.execute(threadPool_, *plan);
     const auto& phase = plan->fetch<PhaseType::PARTIAL>();
-    const auto& buffer = nebula::execution::serde::asBuffer(*cursor, phase.outputSchema());
+    const auto& buffer = nebula::execution::serde::asBuffer(*cursor, phase.outputSchema(), phase.fields());
 
     // serialize row cursor back
     *batch = BatchSerde::serialize(*buffer);

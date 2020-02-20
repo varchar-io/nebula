@@ -85,7 +85,7 @@ else()
       # unwind is needed by gperftools
       list(APPEND LNCFLAGS
       "-lunwind"
-      "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free")
+      "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free -s")
     else()
       # strip symbols since we don't need profiling and use jemalloc by default on linux release
       # MALLOC_CONF=stats_print:true ./NodeServer to enable jemalloc stats  
@@ -111,7 +111,7 @@ else()
     # dump flags for o1: gcc -O1 -Q --help=optimizers -xc - < /dev/null > o1.txt
     # dump flags for o2: gcc -O2 -Q --help=optimizers -xc - < /dev/null > o2.txt
     # diff them
-    set(NCFLAGS_RELEASE "-s -Ofast -march=native")
+    set(NCFLAGS_RELEASE "-Ofast -march=native")
   endif()
 endif()
 

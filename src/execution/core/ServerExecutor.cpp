@@ -73,7 +73,7 @@ RowCursorPtr ServerExecutor::execute(
   }
 
   // multiple results using input schema as output schema used by finalize only
-  auto result = merge(pool, phase.inputSchema(), phase.keys(), phase.fields(), phase.hasAggregation(), x);
+  auto result = merge(pool, phase.inputSchema(), phase.fields(), phase.hasAggregation(), x);
 
   // apply sorting and limit if available
   return topSort(finalize(result, phase), phase);

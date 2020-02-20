@@ -51,7 +51,7 @@ void BlockExecutor::compute() {
   // build context and computed row associated with this context
   EvalContext ctx(plan_.cacheEval());
   ComputedRow cr(plan_.outputSchema(), ctx, fields);
-  result_ = std::make_unique<HashFlat>(plan_.outputSchema(), plan_.keys(), fields);
+  result_ = std::make_unique<HashFlat>(plan_.outputSchema(), fields);
 
   // we want to evaluate here for the whole block before we go to iterations of computing
   // by leveraging its metadata including histogram, bloom filter, dictionary etc.

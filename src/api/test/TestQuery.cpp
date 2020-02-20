@@ -187,6 +187,9 @@ TEST(ApiTest, TestAvgAggregation) {
                  .select(
                    col("event"),
                    avg(col("value")).as("avg"),
+                   sum(col("value")).as("sum"),
+                   sum(col("stamp")).as("sint128"),
+                   count(1).as("count"),
                    avg(col("weight")).as("davg"))
                  .groupby({ 1 })
                  .sortby({ 2 }, SortType::DESC)
@@ -211,13 +214,16 @@ TEST(ApiTest, TestAvgAggregation) {
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
   LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << fmt::format("col: {0:20} | {1:12} | {2:12}", "event", "v.avg", "w.avg");
+  LOG(INFO) << fmt::format("col: {0:20} | {1:12} | {2:20} | {3:12} | {4:20} | {5:12}", "event", "v.avg", "w.avg", "v.sum", "s.sum", "v.count");
   while (result->hasNext()) {
     const auto& row = result->next();
-    LOG(INFO) << fmt::format("row: {0:20} | {1:12} | {2:12}",
+    LOG(INFO) << fmt::format("row: {0:20} | {1:12} | {2:20} | {3:12} | {4:20} | {5:12}",
                              row.readString("event"),
                              row.readByte("avg"),
-                             row.readDouble("davg"));
+                             row.readDouble("davg"),
+                             row.readLong("sum"),
+                             row.readLong("sint128"),
+                             row.readLong("count"));
   }
 }
 

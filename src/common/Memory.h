@@ -134,16 +134,18 @@ public:
   // append a data object at position using sizeof to determine its size
   template <typename T>
   auto write(size_t position, const T& value) -> typename std::enable_if<std::is_scalar<T>::value, size_t>::type {
+    // write a scalar typed data in a given alignment space
+    // auto size = std::max(sizeof(T), alignment);
     constexpr size_t size = sizeof(T);
-    ensure(position + size);
+    return writeSize(position, value, size);
+  }
 
-    // a couple of options to copy the scalar type object into this memory address
-    // 1. use reinterpret cast to assign the value directly
-    // 2. use place new to construct the data there
-    // not sure which one is better?
-    *reinterpret_cast<T*>(this->ptr_ + position) = value;
-
-    return size;
+  template <typename T>
+  size_t writeAlign(size_t position, const T& value, size_t alignment) {
+    // write a scalar typed data in a given alignment space
+    // auto size = std::max(sizeof(T), alignment);
+    constexpr size_t size = sizeof(T);
+    return writeSize(position, value, std::max(size, alignment));
   }
 
   // NOTE: (found a g++ bug)
@@ -197,11 +199,67 @@ private:
   // ensure capacity of memory allocation
   void ensure(size_t);
 
+  template <typename T>
+  inline size_t
+    writeSize(size_t position, const T& value, size_t size) {
+    ensure(position + size);
+
+    // a couple of options to copy the scalar type object into this memory address
+    // 1. use reinterpret cast to assign the value directly
+    // 2. use place new to construct the data there
+    // not sure which one is better?
+    *reinterpret_cast<T*>(this->ptr_ + position) = value;
+    return size;
+  }
+
 private:
   size_t slices_;
 
   // recording total number of extension
   size_t numExtended_;
+};
+
+// TODO(cao): for int128_t, this line will crash in release build, fine with debug build
+template <>
+#ifndef __clang__
+__attribute__((optimize("O1")))
+#endif
+inline size_t
+  PagedSlice::writeSize(size_t position, const int128_t& value, size_t size) {
+  ensure(position + size);
+  *reinterpret_cast<int128_t*>(this->ptr_ + position) = value;
+  return size;
+}
+
+// a basic range struct to hold offset and size in a size_t
+struct Range {
+  explicit Range() : Range(0, 0) {}
+  explicit Range(uint32_t o, uint32_t s) : offset{ o }, size{ s } {}
+  uint32_t offset;
+  uint32_t size;
+
+  // write range in a paged slice for given offset
+  inline size_t write(PagedSlice& slice, size_t position) const {
+    return write(slice, position, offset, size);
+  }
+
+  // write range in a paged slice for given offset
+  static inline size_t write(PagedSlice& slice, size_t position, uint32_t offset, uint32_t size) {
+    uint64_t value = offset;
+    value = value << 32 | size;
+    return slice.write(position, value);
+  }
+
+  inline void read(const PagedSlice& slice, size_t position) {
+    uint64_t value = slice.read<uint64_t>(position);
+    size = value;
+    offset = (uint32_t)(value >> 32);
+  }
+
+  static inline Range make(const PagedSlice& slice, size_t position) {
+    uint64_t value = slice.read<uint64_t>(position);
+    return Range{ (uint32_t)(value >> 32), (uint32_t)value };
+  }
 };
 
 } // namespace common

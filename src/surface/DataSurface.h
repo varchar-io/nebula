@@ -23,6 +23,8 @@
 #include "common/Errors.h"
 #include "common/Int128.h"
 
+#include "eval/Aggregator.h"
+
 /**
  * Define a Row data API to read data from
  * Row Data is basically a struct, it provides methods to retrieve all types of fields.
@@ -88,8 +90,13 @@ public:
   // compound types
   virtual std::unique_ptr<ListData> readList(const std::string& field) const = 0;
   virtual std::unique_ptr<MapData> readMap(const std::string& field) const = 0;
-// NOT SUPPORT struct of struct type for now
-// virtual RowData readStruct(const std::string& field) const = 0;
+  // NOT SUPPORT struct of struct type for now
+  // virtual RowData readStruct(const std::string& field) const = 0;
+
+  // this pointer will return whatever type of aggregator it has, otherwise return nullptr
+  virtual std::shared_ptr<eval::Sketch> getAggregator(const std::string&) const {
+    return nullptr;
+  }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 #define NOT_IMPL_FUNC(TYPE, FUNC)                                 \
@@ -110,6 +117,9 @@ public:
   NOT_IMPL_FUNC(std::unique_ptr<ListData>, readList)
   NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
 
+  virtual std::shared_ptr<eval::Sketch> getAggregator(IndexType) const {
+    return nullptr;
+  }
 #undef NOT_IMPL_FUNC
 };
 

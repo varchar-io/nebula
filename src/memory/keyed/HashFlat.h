@@ -57,18 +57,14 @@ class HashFlat : public FlatBuffer {
 
 public:
   HashFlat(const nebula::type::Schema schema,
-           const std::vector<size_t>& keys,
            const nebula::surface::eval::Fields& fields)
-    : FlatBuffer(schema), keys_{ keys.begin(), keys.end() }, fields_{ fields } {
+    : FlatBuffer(schema, fields) {
     init();
   }
 
   HashFlat(FlatBuffer* in,
-           const std::vector<size_t>& keys,
            const nebula::surface::eval::Fields& fields)
-    : FlatBuffer(in->schema(), (NByte*)in->chunk()),
-      keys_{ keys.begin(), keys.end() },
-      fields_{ fields } {
+    : FlatBuffer(in->schema(), fields, (NByte*)in->chunk()) {
     init();
   }
 
@@ -109,13 +105,8 @@ private:
   Copier genCopier(size_t) noexcept;
 
 private:
-  // referenced keys and fields for this hash flat
-  const std::unordered_set<size_t> keys_;
-  const nebula::surface::eval::Fields& fields_;
-
-  // computed non keys column index according to keys
+  std::unordered_set<size_t> keys_;
   std::unordered_set<size_t> values_;
-
   // customized operations for each column
   std::vector<ColOps> ops_;
 

@@ -35,6 +35,7 @@ std::mutex& sync_test_mutex() {
 }
 
 std::tuple<std::string, int64_t, int64_t> genData(unsigned numBlocks) {
+  numBlocks /= 2;
   static std::tuple<std::string, int64_t, int64_t> data{ "", 0, 0 };
 
   // global mutex
@@ -56,7 +57,7 @@ std::tuple<std::string, int64_t, int64_t> genData(unsigned numBlocks) {
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
-    bm->add(BlockSignature{ testTable.name(), i++, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), i, begin, begin + window });
   }
 
   data = { testTable.name(), start, end };

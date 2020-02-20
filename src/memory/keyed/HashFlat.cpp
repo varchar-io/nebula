@@ -22,19 +22,25 @@ namespace nebula {
 namespace memory {
 namespace keyed {
 
+using nebula::common::Range;
+using nebula::surface::eval::Aggregator;
+using nebula::surface::eval::Sketch;
 using nebula::type::Kind;
+using nebula::type::TypeTraits;
 
 void HashFlat::init() {
-  values_.reserve(numColumns_ - keys_.size());
   ops_.reserve(numColumns_);
+  keys_.reserve(numColumns_);
+  values_.reserve(numColumns_);
 
   for (size_t i = 0; i < numColumns_; ++i) {
-    if (keys_.find(i) == keys_.end()) {
-      values_.emplace(i);
-    }
-
     // every column may have its own operations
     ops_.emplace_back(genComparator(i), genHasher(i), genCopier(i));
+    if (!isAggregate(i)) {
+      keys_.emplace(i);
+    } else {
+      values_.emplace(i);
+    }
   }
 
   // set a max load factor to reduce rehash
@@ -43,7 +49,7 @@ void HashFlat::init() {
 
 Comparator HashFlat::genComparator(size_t i) noexcept {
   // only need for key
-  if (keys_.find(i) == keys_.end()) {
+  if (isAggregate(i)) {
     return {};
   }
 
@@ -70,7 +76,7 @@ Comparator HashFlat::genComparator(size_t i) noexcept {
   }
 
   // fetch value
-  Kind k = kw_.at(i).first;
+  Kind k = cops_.at(i).kind;
   // we only support primitive types for keys
   switch (k) {
     TYPE_COMPARE(BOOLEAN, bool)
@@ -89,20 +95,15 @@ Comparator HashFlat::genComparator(size_t i) noexcept {
       PREPARE_AND_NULLCHECK()
 
       // offset and length of each
-      auto o1 = row1Offset + colProps1.offset;
-      auto s1Length = main_->slice.read<int32_t>(o1 + 4);
-      auto o2 = row2Offset + colProps2.offset;
-      auto s2Length = main_->slice.read<int32_t>(o2 + 4);
+      auto r1 = Range::make(main_->slice, row1Offset + colProps1.offset);
+      auto r2 = Range::make(main_->slice, row2Offset + colProps2.offset);
 
       // length has to be the same
-      if (s1Length != s2Length) {
-        return s1Length - s2Length;
+      if (r1.size != r2.size) {
+        return r1.size - r2.size;
       }
 
-      auto s1Offset = main_->slice.read<int32_t>(o1);
-      auto s2Offset = main_->slice.read<int32_t>(o2);
-
-      return data_->slice.compare(s1Offset, s2Offset, s1Length);
+      return data_->slice.compare(r1.offset, r2.offset, r1.size);
     };
   }
   default:
@@ -120,7 +121,7 @@ Hasher HashFlat::genHasher(size_t i) noexcept {
   static constexpr size_t flip = 0x3600ABC35871E005UL;
 
   // only need for key
-  if (keys_.find(i) == keys_.end()) {
+  if (isAggregate(i)) {
     return {};
   }
 
@@ -143,7 +144,7 @@ Hasher HashFlat::genHasher(size_t i) noexcept {
   }
 
   // fetch value
-  Kind k = kw_.at(i).first;
+  Kind k = cops_.at(i).kind;
   switch (k) {
     TYPE_HASH(BOOLEAN, bool)
     TYPE_HASH(TINYINT, int8_t)
@@ -159,17 +160,16 @@ Hasher HashFlat::genHasher(size_t i) noexcept {
       PREPARE_AND_NULL()
 
       auto so = rowOffset + colProps.offset;
-      auto offset = main_->slice.read<int32_t>(so);
-      auto len = main_->slice.read<int32_t>(so + 4);
+      auto r = Range::make(main_->slice, so);
 
       // read the real data from data_
       // TODO(cao) - we don't need convert strings from bytes for hash
       // instead, slice should be able to hash the range[offset, len] much cheaper
-      if (len == 0) {
+      if (r.size == 0) {
         return hash;
       }
 
-      auto h = data_->slice.hash(offset, len);
+      auto h = data_->slice.hash(r.offset, r.size);
       return (hash ^ h) >> 32;
     };
   }
@@ -189,54 +189,48 @@ Hasher HashFlat::genHasher(size_t i) noexcept {
 // CMakeList.txt has more details in the problem.
 // So now, we disable optimizations higher than level 1 on this method
 // we may dig more in the future to understand this problem better. (CLANG need no this)
-#ifndef __clang__
-__attribute__((optimize("O1")))
-#endif
 Copier
   HashFlat::genCopier(size_t i) noexcept {
   // only need for value
-  if (keys_.find(i) != keys_.end()) {
+  if (!isAggregate(i)) {
     return {};
   }
 
-  // TODO(cao): ensure target to be null - generic way handle null metrics?
-#define UPDATE_COLUMN(KIND, TYPE)                            \
-  case Kind::KIND: {                                         \
-    return [this, i](size_t row1, size_t row2) {             \
-      const auto& row1Props = rows_.at(row1);                \
-      const auto& row2Props = rows_.at(row2);                \
-      const auto& colProps1 = row1Props.colProps.at(i);      \
-      const auto& colProps2 = row2Props.colProps.at(i);      \
-      if (colProps1.isNull) {                                \
-        return;                                              \
-      }                                                      \
-      auto row2Offset = row2Props.offset + colProps2.offset; \
-      auto row1Offset = row1Props.offset + colProps1.offset; \
-      TYPE nv = main_->slice.read<TYPE>(row1Offset);         \
-      TYPE ov = main_->slice.read<TYPE>(row2Offset);         \
-      TYPE x = fields_.at(i)->merge(ov, nv);                 \
-      main_->slice.write<TYPE>(row2Offset, x);               \
-    };                                                       \
+  const auto& f = fields_.at(i);
+  const auto ot = f->outputType();
+  const auto it = f->inputType();
+
+// below provides a template to write core logic for all input / output type combinations
+#define LOGIC_BY_IO(O, I)                                                                  \
+  case Kind::I: {                                                                          \
+    return [this, i](size_t row1, size_t row2) {                                           \
+      using InputType = TypeTraits<Kind::I>::CppType;                                      \
+      const auto& row1Props = rows_.at(row1);                                              \
+      const auto& row2Props = rows_.at(row2);                                              \
+      const auto& colProps1 = row1Props.colProps.at(i);                                    \
+      auto& colProps2 = row2Props.colProps.at(i);                                          \
+      if (colProps1.isNull) {                                                              \
+        return;                                                                            \
+      }                                                                                    \
+      N_ENSURE_NOT_NULL(colProps2.sketch, "merge row should have sketch");                 \
+      if (UNLIKELY(colProps1.sketch != nullptr)) {                                         \
+        colProps2.sketch->mix(*colProps1.sketch);                                          \
+        return;                                                                            \
+      }                                                                                    \
+      auto row1Offset = row1Props.offset + colProps1.offset;                               \
+      auto value = main_->slice.read<InputType>(row1Offset);                               \
+      auto agg = std::static_pointer_cast<Aggregator<Kind::O, Kind::I>>(colProps2.sketch); \
+      agg->merge(value);                                                                   \
+    };                                                                                     \
+    break;                                                                                 \
   }
 
-  Kind k = kw_.at(i).first;
-  // we only support primitive types aggregation fields
-  switch (k) {
-    UPDATE_COLUMN(BOOLEAN, bool)
-    UPDATE_COLUMN(TINYINT, int8_t)
-    UPDATE_COLUMN(SMALLINT, int16_t)
-    UPDATE_COLUMN(INTEGER, int32_t)
-    UPDATE_COLUMN(BIGINT, int64_t)
-    UPDATE_COLUMN(REAL, float)
-    UPDATE_COLUMN(DOUBLE, double)
-    UPDATE_COLUMN(INT128, int128_t)
-  default:
-    return [i](size_t, size_t) {
-      LOG(ERROR) << "This column can not be copy-updated: " << i;
-    };
-  }
+  ITERATE_BY_IO(ot, it)
 
-#undef UPDATE_COLUMN
+#undef LOGIC_BY_IO
+
+  // no supported combination found
+  return {};
 }
 
 // compute hash value of given row and column list
@@ -268,9 +262,6 @@ bool HashFlat::update(const nebula::surface::RowData& row) {
   // add a new row to the buffer may be expensive
   // if there are object values to be created such as customized aggregation
   // to have consistent way - we're taking this approach
-  // adding keys only
-  // TODO: may not be correct approach
-  // this->add(row, keys_);
   this->add(row);
 
   auto newRow = getRows() - 1;
@@ -293,6 +284,16 @@ bool HashFlat::update(const nebula::surface::RowData& row) {
   // resume all values population and add a new row key
   // this->resume(row, values_, newRow);
   rowKeys_.insert(key);
+
+  // since this is a new row, create aggregator for all its value fields
+  auto& rowProps = rows_.at(newRow);
+  for (size_t i : values_) {
+    auto& sketch = rowProps.colProps.at(i).sketch;
+    if (sketch == nullptr) {
+      sketch = cops_.at(i).sketcher();
+    }
+  }
+
   return false;
 }
 

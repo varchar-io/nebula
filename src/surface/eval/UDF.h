@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 
+#include "Aggregator.h"
 #include "ValueEval.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
@@ -33,20 +34,20 @@
  *  Store Type (UDAF only) -> what is the intermidiate store type for this UDAF.
  * 
  *  As clean-up, let's use above names consistently everywhere, 
- *  and change the VAR name to NK (Native Kind), IK (Input Kind), SK (Store Kind)
+ *  and change the VAR name to NK (Native Kind), IK (Input Kind)
  */
 namespace nebula {
 namespace surface {
 namespace eval {
 
 // TypeValueEval accepts two parameters: store/native type and input type
-#define TYPE_VALUE_EVAL_KIND(S, I) \
-  TypeValueEval<typename nebula::type::TypeTraits<S>::CppType, typename nebula::type::TypeTraits<I>::CppType>
+#define TYPE_VALUE_EVAL_KIND(S, I, T) \
+  TypeValueEval<typename nebula::type::TypeTraits<S>::CppType, typename nebula::type::TypeTraits<I>::CppType, T>
 
 // define an UDF interface
 template <nebula::type::Kind NK,
           nebula::type::Kind IK,
-          typename BaseType = TYPE_VALUE_EVAL_KIND(NK, IK)>
+          typename BaseType = TYPE_VALUE_EVAL_KIND(NK, IK, false)>
 class UDF : public BaseType {
 public:
   using NativeType = typename nebula::type::TypeTraits<NK>::CppType;
@@ -59,10 +60,7 @@ public:
         [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
           // call the UDF to evalue the result
           return logic_(expr_->eval<InputType>(ctx, valid), valid);
-        },
-        {},
-        {},
-        {}),
+        }),
       expr_{ std::move(expr) },
       logic_{ std::move(logic) } {}
   virtual ~UDF() = default;
@@ -73,91 +71,41 @@ private:
 };
 
 // UDAF is a state ful object, its eval signature is based on store type
+// its eval method will return inner expression only, hence it has eval type as Input (IK)
 template <nebula::type::Kind NK,
-          nebula::type::Kind SK = NK,
           nebula::type::Kind IK = NK,
-          typename BaseType = TYPE_VALUE_EVAL_KIND(SK, IK)>
+          typename BaseType = TYPE_VALUE_EVAL_KIND(NK, IK, true)>
 class UDAF : public BaseType {
 public:
   // A UDAF genericlly goes through 3 different life phase, each phase they may deal with different data types.
   // NativeType - this defines the UDF kind which relates to its inner expression data type.
-  // StoreType - this defines the storage type how states are stored for this UDAF
   // The 3 phases are
   // Compute Phase: it collects native type of data from expressions, apply compute and store states.
   // Merge Phase: it merges multiple storage types from different sources.
   // Final Phase: this is also called global merge phase, it eventually convert storage type into native type.
   // Hence, every phase has different input/output schema due to this difference.
-  // For most of the cases, StoreType == NativeType, so there is almost no changes.
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
   using NativeType = typename nebula::type::TypeTraits<NK>::CppType;
-  using StoreType = typename nebula::type::TypeTraits<SK>::CppType;
-
-  // why do we need both stack and merge?
-  // because we don't want to pay cost of serde of some customized objects for every single row
-  //
-  // store(input -> store): initialize an input value to store it for first time
-  // stack(input -> store): stack more value to existing stored value
-  // merge(store -> store): merge two different stored value
-  // finalize(store -> native): translate stored value into native value it represents
-  using StoreFunction = std::function<StoreType(InputType)>;
-  using StackFunction = std::function<StoreType(StoreType, InputType)>;
-  using MergeFunction = std::function<StoreType(StoreType, StoreType)>;
-  using FinalizeFunction = std::function<NativeType(StoreType)>;
+  using BaseAggregator = typename nebula::surface::eval::Aggregator<NK, IK>;
+  using SketchMaker = typename std::function<std::shared_ptr<BaseAggregator>()>;
 
   UDAF(const std::string& name,
        std::unique_ptr<ValueEval> expr,
-       StackFunction&& stack,
-       MergeFunction&& merge)
-    : UDAF(name, std::move(expr), {}, std::move(stack), std::move(merge), {}) {
-  }
-
-  UDAF(const std::string& name,
-       std::unique_ptr<ValueEval> expr,
-       StoreFunction&& store,
-       StackFunction&& stack,
-       MergeFunction&& merge,
-       FinalizeFunction&& finalize)
+       SketchMaker&& maker)
     : BaseType(
         fmt::format("{0}({1})", name, expr->signature()),
         [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
           // call the UDF to evalue the result
-          auto exprValue = expr_->eval<InputType>(ctx, valid);
-          if constexpr (SK == IK) {
-            return exprValue;
-          } else {
-            // if input type is not the same as store type
-            // hmm, store function should be called, otherwise we only resort to type cast
-            if (store_) {
-              return store_(exprValue);
-            }
-
-            return static_cast<StoreType>(exprValue);
-          }
+          return expr_->eval<InputType>(ctx, valid);
         },
-        std::move(stack),
-        std::move(merge),
+        std::move(maker),
         {}),
-      expr_{ std::move(expr) },
-      store_{ std::move(store) },
-      finalize_{ std::move(finalize) } {}
-  virtual ~UDAF() = default;
-
-  inline NativeType finalize(StoreType v) {
-    if constexpr (SK == NK) {
-      return v;
-    } else {
-      if (finalize_) {
-        return finalize_(v);
-      }
-      return static_cast<NativeType>(v);
-    }
+      expr_{ std::move(expr) } {
   }
+  virtual ~UDAF() = default;
 
 private:
   std::unique_ptr<ValueEval> expr_;
-  StoreFunction store_;
-  StackFunction stack_;
-  FinalizeFunction finalize_;
 };
 
 #undef TYPE_VALUE_EVAL_KIND
@@ -207,27 +155,23 @@ struct UdfTraits {};
     static constexpr bool UDAF = ISUDAF;       \
   };
 
-#define FUNCTION_TRAITS(NAME, DEDUCED, STORE, INPUT...)                        \
+#define FUNCTION_TRAITS(NAME, VALID, DEDUCED, INPUT...)                        \
   template <>                                                                  \
   struct UdfTraits<UDFType::NAME, ##INPUT> : public UdfTraits<UDFType::NAME> { \
+    static constexpr bool Valid = VALID;                                       \
     static constexpr nebula::type::Kind Type = DEDUCED;                        \
-    static constexpr nebula::type::Kind Store = STORE;                         \
   };
 
 // Shortcut: Normal Non-UDAF do not have STORE
-#define UDF_TRAITS(NAME, DEDUCED, INPUT...) FUNCTION_TRAITS(NAME, DEDUCED, DEDUCED, ##INPUT)
+#define UDF_TRAITS(NAME, DEDUCED, INPUT...) FUNCTION_TRAITS(NAME, true, DEDUCED, ##INPUT)
 #define UDF_TRAITS_INPUT1(INPUT, NAME, DEDUCED) UDF_TRAITS(NAME, DEDUCED, INPUT)
 
-// shortcut: UDAF traits
-#define UDAF_TRAITS(NAME, DEDUCED, STORE, INPUT...) FUNCTION_TRAITS(NAME, DEDUCED, STORE, ##INPUT)
-#define UDAF_TRAITS_INPUT1(INPUT, NAME, DEDUCED, STORE) UDAF_TRAITS(NAME, DEDUCED, STORE, INPUT)
-#define UDAF_NOT_SUPPORT(NAME, INPUT) UDAF_TRAITS(NAME, INPUT, INPUT, INPUT)
-
 // shortcut: for UDAF that has same type for (deduced, store, input).
-#define UDAF_SAME_AS_INPUT(K, NAME) UDAF_TRAITS(NAME, K, K, K)
+#define UDF_SAME_AS_INPUT(K, NAME) UDF_TRAITS(NAME, K, K)
+#define UDF_NOT_SUPPORT(NAME, INPUT) FUNCTION_TRAITS(NAME, false, INPUT, INPUT)
 
 // shortcut: for UDAF to define all supported types with same types
-#define UDAF_SAME_AS_INPUT_ALL(NAME) REPEAT_ALL_TYPES(UDAF_SAME_AS_INPUT, NAME)
+#define UDF_SAME_AS_INPUT_ALL(NAME) REPEAT_ALL_TYPES(UDF_SAME_AS_INPUT, NAME)
 
 // define traits for UDF: NOT
 // regardless what input expression is, it will always work as C++ syntax, such as
@@ -256,16 +200,16 @@ REPEAT_ALL_TYPES(UDF_TRAITS_INPUT1, IN, nebula::type::Kind::BOOLEAN)
 // define each UDAF type taits
 // define traits for UDAF: MAX
 STATIC_TRAITS(MAX, true)
-UDAF_SAME_AS_INPUT_ALL(MAX)
+UDF_SAME_AS_INPUT_ALL(MAX)
 
 // define traits for UDAF: MIN
 STATIC_TRAITS(MIN, true)
-UDAF_SAME_AS_INPUT_ALL(MIN)
+UDF_SAME_AS_INPUT_ALL(MIN)
 
 // define traits for UDAF: COUNT
 // no matter what input type is, it always uses BIGINT as result
 STATIC_TRAITS(COUNT, true)
-REPEAT_ALL_TYPES(UDAF_TRAITS_INPUT1, COUNT, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT)
+REPEAT_ALL_TYPES(UDF_TRAITS_INPUT1, COUNT, nebula::type::Kind::BIGINT)
 
 // define traits for UDAF: SUM
 // We use next level of types to store SUM, note that
@@ -274,18 +218,18 @@ REPEAT_ALL_TYPES(UDAF_TRAITS_INPUT1, COUNT, nebula::type::Kind::BIGINT, nebula::
 // with saying that, SUM(BIGINT) could be overflow in the final result, this will also apply to AVG function.
 // this is due to consideration of consistency with AVG function since BIGINT is the largest holder to sum up values.
 STATIC_TRAITS(SUM, true)
-UDAF_TRAITS(SUM, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT, nebula::type::Kind::TINYINT)
-UDAF_TRAITS(SUM, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT, nebula::type::Kind::SMALLINT)
-UDAF_TRAITS(SUM, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT, nebula::type::Kind::INTEGER)
-UDAF_TRAITS(SUM, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT)
-UDAF_TRAITS(SUM, nebula::type::Kind::DOUBLE, nebula::type::Kind::DOUBLE, nebula::type::Kind::REAL)
-UDAF_TRAITS(SUM, nebula::type::Kind::DOUBLE, nebula::type::Kind::DOUBLE, nebula::type::Kind::DOUBLE)
+UDF_TRAITS(SUM, nebula::type::Kind::BIGINT, nebula::type::Kind::TINYINT)
+UDF_TRAITS(SUM, nebula::type::Kind::BIGINT, nebula::type::Kind::SMALLINT)
+UDF_TRAITS(SUM, nebula::type::Kind::BIGINT, nebula::type::Kind::INTEGER)
+UDF_TRAITS(SUM, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT)
+UDF_TRAITS(SUM, nebula::type::Kind::DOUBLE, nebula::type::Kind::REAL)
+UDF_TRAITS(SUM, nebula::type::Kind::DOUBLE, nebula::type::Kind::DOUBLE)
+UDF_TRAITS(SUM, nebula::type::Kind::INT128, nebula::type::Kind::INT128)
 
 // we do not support sum bool, string or int128
-UDAF_NOT_SUPPORT(SUM, nebula::type::Kind::INVALID)
-UDAF_NOT_SUPPORT(SUM, nebula::type::Kind::BOOLEAN)
-UDAF_NOT_SUPPORT(SUM, nebula::type::Kind::VARCHAR)
-UDAF_NOT_SUPPORT(SUM, nebula::type::Kind::INT128)
+UDF_NOT_SUPPORT(SUM, nebula::type::Kind::INVALID)
+UDF_NOT_SUPPORT(SUM, nebula::type::Kind::BOOLEAN)
+UDF_NOT_SUPPORT(SUM, nebula::type::Kind::VARCHAR)
 
 // define traits for UDAF: AVG
 // We're always using 128bits as store type:
@@ -293,41 +237,40 @@ UDAF_NOT_SUPPORT(SUM, nebula::type::Kind::INT128)
 // while high 8 bytes can be eitehr interpreted as double for floating numbers or bigint for integral numbers
 // in finalize stage, AVG will get the division and convert to the return type
 STATIC_TRAITS(AVG, true)
-#define AVG_TYPE(K) UDAF_TRAITS(AVG, nebula::type::Kind::K, nebula::type::Kind::INT128, nebula::type::Kind::K)
-AVG_TYPE(TINYINT)
-AVG_TYPE(SMALLINT)
-AVG_TYPE(INTEGER)
-AVG_TYPE(BIGINT)
-AVG_TYPE(REAL)
-AVG_TYPE(DOUBLE)
-#undef AVG_TYPE
+UDF_SAME_AS_INPUT(nebula::type::Kind::TINYINT, AVG)
+UDF_SAME_AS_INPUT(nebula::type::Kind::SMALLINT, AVG)
+UDF_SAME_AS_INPUT(nebula::type::Kind::INTEGER, AVG)
+UDF_SAME_AS_INPUT(nebula::type::Kind::BIGINT, AVG)
+UDF_SAME_AS_INPUT(nebula::type::Kind::REAL, AVG)
+UDF_SAME_AS_INPUT(nebula::type::Kind::DOUBLE, AVG)
+UDF_SAME_AS_INPUT(nebula::type::Kind::INT128, AVG)
 
 // we do not support sum bool, string or int128
-UDAF_NOT_SUPPORT(AVG, nebula::type::Kind::INVALID)
-UDAF_NOT_SUPPORT(AVG, nebula::type::Kind::BOOLEAN)
-UDAF_NOT_SUPPORT(AVG, nebula::type::Kind::VARCHAR)
-UDAF_NOT_SUPPORT(AVG, nebula::type::Kind::INT128)
+UDF_NOT_SUPPORT(AVG, nebula::type::Kind::INVALID)
+UDF_NOT_SUPPORT(AVG, nebula::type::Kind::BOOLEAN)
+UDF_NOT_SUPPORT(AVG, nebula::type::Kind::VARCHAR)
 
 // add tdigest UDAF traits definition
 // in schema, a digest is serialized as string type
 // while it's store type is a customized serializable struct / object => void*
 STATIC_TRAITS(TDIGEST, true)
-UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::TINYINT)
-UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::SMALLINT)
-UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::INTEGER)
-UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::BIGINT)
-UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::REAL)
-UDAF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::STRUCT, nebula::type::Kind::DOUBLE)
-UDAF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::INVALID)
-UDAF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::BOOLEAN)
-UDAF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::VARCHAR)
-UDAF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::INT128)
+UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::TINYINT)
+UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::SMALLINT)
+UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::INTEGER)
+UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::BIGINT)
+UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::REAL)
+UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::DOUBLE)
 
-#undef UDAF_SAME_AS_INPUT_ALL
-#undef UDAF_SAME_AS_INPUT
-#undef UDAF_NOT_SUPPORT
-#undef UDAF_TRAITS_INPUT1
-#undef UDAF_TRAITS
+// do not support digest on these types
+UDF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::INVALID)
+UDF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::BOOLEAN)
+UDF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::VARCHAR)
+UDF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::INT128)
+
+#undef UDF_SAME_AS_INPUT_ALL
+#undef UDF_SAME_AS_INPUT
+#undef UDF_NOT_SUPPORT
+#undef UDF_TRAITS_INPUT1
 #undef UDF_TRAITS
 #undef FUNCTION_TRAITS
 #undef STATIC_TRAITS
@@ -339,38 +282,20 @@ UDAF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::INT128)
     return UdfTraits<UK, nebula::type::Kind::K>::F; \
   }
 
-template <UDFType UK, bool storeKind = false>
+// get UDF result type kind based on its input type kind
+template <UDFType UK>
 nebula::type::Kind udfKind(nebula::type::Kind k) noexcept {
-  // fetch store type
-  if constexpr (storeKind) {
-    switch (k) {
-      CASE_TYPE_KIND1(BOOLEAN, Store)
-      CASE_TYPE_KIND1(TINYINT, Store)
-      CASE_TYPE_KIND1(SMALLINT, Store)
-      CASE_TYPE_KIND1(INTEGER, Store)
-      CASE_TYPE_KIND1(BIGINT, Store)
-      CASE_TYPE_KIND1(REAL, Store)
-      CASE_TYPE_KIND1(DOUBLE, Store)
-      CASE_TYPE_KIND1(INT128, Store)
-      CASE_TYPE_KIND1(VARCHAR, Store)
-    default: return nebula::type::Kind::INVALID;
-    }
-  }
-
-  // fetch UDF type itself
-  if constexpr (!storeKind) {
-    switch (k) {
-      CASE_TYPE_KIND1(BOOLEAN, Type)
-      CASE_TYPE_KIND1(TINYINT, Type)
-      CASE_TYPE_KIND1(SMALLINT, Type)
-      CASE_TYPE_KIND1(INTEGER, Type)
-      CASE_TYPE_KIND1(BIGINT, Type)
-      CASE_TYPE_KIND1(REAL, Type)
-      CASE_TYPE_KIND1(DOUBLE, Type)
-      CASE_TYPE_KIND1(INT128, Type)
-      CASE_TYPE_KIND1(VARCHAR, Type)
-    default: return nebula::type::Kind::INVALID;
-    }
+  switch (k) {
+    CASE_TYPE_KIND1(BOOLEAN, Type)
+    CASE_TYPE_KIND1(TINYINT, Type)
+    CASE_TYPE_KIND1(SMALLINT, Type)
+    CASE_TYPE_KIND1(INTEGER, Type)
+    CASE_TYPE_KIND1(BIGINT, Type)
+    CASE_TYPE_KIND1(REAL, Type)
+    CASE_TYPE_KIND1(DOUBLE, Type)
+    CASE_TYPE_KIND1(INT128, Type)
+    CASE_TYPE_KIND1(VARCHAR, Type)
+  default: return nebula::type::Kind::INVALID;
   }
 }
 

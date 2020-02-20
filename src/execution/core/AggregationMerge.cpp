@@ -51,7 +51,6 @@ using nebula::type::Schema;
 RowCursorPtr merge(
   folly::ThreadPoolExecutor&,
   const Schema schema,
-  const std::vector<size_t>& keys,
   const std::vector<std::unique_ptr<ValueEval>>& fields,
   const bool hasAggregation,
   const std::vector<folly::Try<nebula::surface::RowCursorPtr>>& sources) {
@@ -68,7 +67,7 @@ RowCursorPtr merge(
     // transform folly tries into HashFlat
     // std::vector<std::unique_ptr<HashFlat>> blocks;
     // blocks.reserve(size);
-    auto hf = std::make_unique<HashFlat>(schema, keys, fields);
+    auto hf = std::make_unique<HashFlat>(schema, fields);
     for (auto it = sources.begin(); it < sources.end(); ++it) {
       // if the result is empty
       if (!it->hasValue()) {

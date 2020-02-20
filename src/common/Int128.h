@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <string>
 #include <type_traits>
 #include <vector>
 
@@ -50,96 +51,97 @@ namespace common {
 //   return (*least_significant_address == 0x01);
 // }
 // #endif
+class Int128_U {
+public:
+  static constexpr uint128_t UINT128_LOW_MASK = UINT64_MAX;
+  static constexpr uint128_t UINT128_HIGH_MASK = UINT128_LOW_MASK << 64;
 
-constexpr uint128_t UINT128_LOW_MASK = UINT64_MAX;
-constexpr uint128_t UINT128_HIGH_MASK = UINT128_LOW_MASK << 64;
-
-template <typename T = int64_t>
-inline auto low64(const int128_t& v) ->
-  typename std::enable_if_t<std::is_integral_v<T>, T> {
-  return (T)(*reinterpret_cast<const int64_t*>(&v));
-}
-
-template <typename T = double>
-inline auto low64(const int128_t& v) ->
-  typename std::enable_if_t<std::is_floating_point_v<T>, T> {
-  return (T)(*reinterpret_cast<const double*>(&v));
-}
-
-template <typename T = int64_t>
-inline auto high64(const int128_t& v) ->
-  typename std::enable_if_t<std::is_integral_v<T>, T> {
-  return (T)(*(reinterpret_cast<const int64_t*>(&v) + 1));
-}
-
-template <typename T = double>
-inline auto high64(const int128_t& v) ->
-  typename std::enable_if_t<std::is_floating_point_v<T>, T> {
-  return (T)(*(reinterpret_cast<const double*>(&v) + 1));
-}
-
-// TODO(cao): I'm assuming this is slow, how can we speed it up.
-template <typename T = int64_t>
-inline auto high64_add(int128_t& v, T delta) ->
-  typename std::enable_if_t<std::is_integral_v<T>, void> {
-  // TODO(cao): delta could be floating value, this will lose precision
-  // have to use 8 bytes, 8 bytes separation or std::array<char, 16> to re-implement
-  auto addr = reinterpret_cast<int64_t*>(&v) + 1;
-  *addr += delta;
-}
-
-template <typename T = double>
-inline auto high64_add(int128_t& v, T delta) ->
-  typename std::enable_if_t<std::is_floating_point_v<T>, void> {
-  // TODO(cao): delta could be floating value, this will lose precision
-  // have to use 8 bytes, 8 bytes separation or std::array<char, 16> to re-implement
-  auto addr = reinterpret_cast<double*>(&v) + 1;
-  *addr += delta;
-}
-
-// TODO(cao): I'm assuming this is slow, how can we speed it up.
-template <typename T = int64_t>
-inline auto low64_add(int128_t& v, T delta) ->
-  typename std::enable_if_t<std::is_integral_v<T>, void> {
-  // TODO(cao): delta could be floating value, this will lose precision
-  // have to use 8 bytes, 8 bytes separation or std::array<char, 16> to re-implement
-  auto addr = reinterpret_cast<int64_t*>(&v);
-  *addr += delta;
-}
-
-template <typename T = double>
-inline auto low64_add(int128_t& v, T delta) ->
-  typename std::enable_if_t<std::is_floating_point_v<T>, void> {
-  // TODO(cao): delta could be floating value, this will lose precision
-  // have to use 8 bytes, 8 bytes separation or std::array<char, 16> to re-implement
-  auto addr = reinterpret_cast<double*>(&v);
-  *addr += delta;
-}
-
-static std::string to_string(const int128_t& i) {
-  constexpr auto digits = "0123456789";
-  auto x = i < 0 ? -i : i;
-  char buffer[128];
-  char* ptr = std::end(buffer);
-  do {
-    --ptr;
-    *ptr = digits[x % 10];
-    x /= 10;
-  } while (x != 0);
-
-  // put the sign if negative value
-  if (i < 0) {
-    --ptr;
-    *ptr = '-';
+  template <typename T = int64_t>
+  static inline auto low64(const int128_t& v) ->
+    typename std::enable_if_t<std::is_integral_v<T>, T> {
+    return (T)(*reinterpret_cast<const int64_t*>(&v));
   }
 
-  auto size = std::end(buffer) - ptr;
-  return std::string(ptr, size);
-}
+  template <typename T = double>
+  static inline auto low64(const int128_t& v) ->
+    typename std::enable_if_t<std::is_floating_point_v<T>, T> {
+    return (T)(*reinterpret_cast<const double*>(&v));
+  }
 
-inline std::ostream& operator<<(std::ostream& os, int128_t i) {
-  return os << to_string(i);
-}
+  template <typename T = int64_t>
+  static inline auto high64(const int128_t& v) ->
+    typename std::enable_if_t<std::is_integral_v<T>, T> {
+    return (T)(*(reinterpret_cast<const int64_t*>(&v) + 1));
+  }
+
+  template <typename T = double>
+  static inline auto high64(const int128_t& v) ->
+    typename std::enable_if_t<std::is_floating_point_v<T>, T> {
+    return (T)(*(reinterpret_cast<const double*>(&v) + 1));
+  }
+
+  // TODO(cao): I'm assuming this is slow, how can we speed it up.
+  template <typename T = int64_t>
+  static inline auto high64_add(int128_t& v, T delta) ->
+    typename std::enable_if_t<std::is_integral_v<T>, void> {
+    // TODO(cao): delta could be floating value, this will lose precision
+    // have to use 8 bytes, 8 bytes separation or std::array<char, 16> to re-implement
+    auto addr = reinterpret_cast<int64_t*>(&v) + 1;
+    *addr += delta;
+  }
+
+  template <typename T = double>
+  static inline auto high64_add(int128_t& v, T delta) ->
+    typename std::enable_if_t<std::is_floating_point_v<T>, void> {
+    // TODO(cao): delta could be floating value, this will lose precision
+    // have to use 8 bytes, 8 bytes separation or std::array<char, 16> to re-implement
+    auto addr = reinterpret_cast<double*>(&v) + 1;
+    *addr += delta;
+  }
+
+  // TODO(cao): I'm assuming this is slow, how can we speed it up.
+  template <typename T = int64_t>
+  static inline auto low64_add(int128_t& v, T delta) ->
+    typename std::enable_if_t<std::is_integral_v<T>, void> {
+    // TODO(cao): delta could be floating value, this will lose precision
+    // have to use 8 bytes, 8 bytes separation or std::array<char, 16> to re-implement
+    auto addr = reinterpret_cast<int64_t*>(&v);
+    *addr += delta;
+  }
+
+  template <typename T = double>
+  static inline auto low64_add(int128_t& v, T delta) ->
+    typename std::enable_if_t<std::is_floating_point_v<T>, void> {
+    // TODO(cao): delta could be floating value, this will lose precision
+    // have to use 8 bytes, 8 bytes separation or std::array<char, 16> to re-implement
+    auto addr = reinterpret_cast<double*>(&v);
+    *addr += delta;
+  }
+
+  static std::string to_string(const int128_t& i) {
+    constexpr auto digits = "0123456789";
+    auto x = i < 0 ? -i : i;
+    char buffer[128];
+    char* ptr = std::end(buffer);
+    do {
+      --ptr;
+      *ptr = digits[x % 10];
+      x /= 10;
+    } while (x != 0);
+
+    // put the sign if negative value
+    if (i < 0) {
+      --ptr;
+      *ptr = '-';
+    }
+
+    auto size = std::end(buffer) - ptr;
+    return std::string(ptr, size);
+  }
+};
 
 } // namespace common
 } // namespace nebula
+
+// place this in global namespace so that every file can benefit it
+std::ostream& operator<<(std::ostream& os, int128_t i);

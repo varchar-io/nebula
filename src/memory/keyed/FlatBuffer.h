@@ -22,6 +22,8 @@
 
 #include "common/Memory.h"
 #include "surface/DataSurface.h"
+#include "surface/eval/Aggregator.h"
+#include "surface/eval/ValueEval.h"
 #include "type/Type.h"
 
 // DEFINE_int32(SLICE_SIZE, 64 * 1024, "slice size in bytes");
@@ -52,6 +54,8 @@ using nebula::surface::IndexType;
 static constexpr int8_t HIGH6_1 = 1 << 6;
 static constexpr auto SIZET_SIZE = sizeof(size_t);
 static constexpr size_t MAGIC = 0x910928;
+// max column width as 8 bytes (4bytes + 4bytes)
+static constexpr size_t MAX_ALIGNMENT = 8;
 
 class RowAccessor;
 
@@ -66,12 +70,19 @@ struct Buffer {
 };
 
 struct ColumnProps {
-  explicit ColumnProps(bool nv, uint32_t os) : isNull{ nv }, offset{ os } {}
+  explicit ColumnProps(bool nv, uint32_t os)
+    : ColumnProps(nv, os, nullptr) {}
+  explicit ColumnProps(bool nv, uint32_t os, std::shared_ptr<nebula::surface::eval::Sketch> s)
+    : isNull{ nv }, offset{ os }, sketch{ s } {}
+
   // whether it is a null value
   bool isNull;
 
   // its relative offset in current row in main buffer
   uint32_t offset;
+
+  // if current field has aggregator object
+  std::shared_ptr<nebula::surface::eval::Sketch> sketch;
 };
 
 // define column properties of given row: nullable, kind, column offset in main.
@@ -90,10 +101,40 @@ struct RowProps {
 // column parser to read data in from a row
 using Parser = std::function<void(const nebula::surface::RowData&)>;
 
+// Aggregator on one column to create aggregator object associated with the row
+using Sketcher = std::function<std::shared_ptr<nebula::surface::eval::Sketch>()>;
+
+struct ColumnOperations {
+  explicit ColumnOperations(Parser p, Sketcher s, nebula::type::Kind k, size_t w)
+    : parser{ std::move(p) },
+      sketcher{ std::move(s) },
+      kind{ k },
+      width{ w } {}
+
+  // function to parse a row data
+  Parser parser;
+
+  // function to create a sketcher
+  Sketcher sketcher;
+
+  // column type
+  nebula::type::Kind kind;
+
+  // column width if not null or reserved for sketch
+  size_t width;
+
+  inline bool isAggregate() const {
+    return sketcher != nullptr;
+  }
+};
+
 class FlatBuffer {
 public:
-  FlatBuffer(const nebula::type::Schema&);
-  FlatBuffer(const nebula::type::Schema&, NByte*);
+  FlatBuffer(const nebula::type::Schema&,
+             const nebula::surface::eval::Fields& fields);
+  FlatBuffer(const nebula::type::Schema&,
+             const nebula::surface::eval::Fields& fields,
+             NByte*);
 
   virtual ~FlatBuffer() {
     if (chunk_) {
@@ -120,7 +161,8 @@ public:
     return rows_.size();
   }
 
-  inline size_t binSize() const {
+  inline size_t prepareSerde() const {
+    LOG(INFO) << "sketch size:" << serializeSketches();
     return SIZET_SIZE +                                   // num rows
            rows_.size() * SIZET_SIZE +                    // rows offset
            SIZET_SIZE +                                   // main block size
@@ -136,7 +178,7 @@ public:
     return schema_;
   }
 
-  inline void* chunk() const {
+  inline const void* chunk() const {
     return chunk_;
   }
 
@@ -144,49 +186,60 @@ private:
   bool appendNull(bool, nebula::type::Kind, Buffer&);
 
   template <typename T>
-  size_t append(T, Buffer&);
+  size_t append(T, Buffer&, size_t = 0);
 
   // goes to list_
   size_t appendList(nebula::type::Kind, std::unique_ptr<nebula::surface::ListData>);
-
-  // get column properties of given row
-  FlatColumnProps columnProps(size_t) const noexcept;
 
   static size_t widthInMain(nebula::type::Kind) noexcept;
 
   void initSchema() noexcept;
 
-  Parser genParser(const nebula::type::TypeNode&, size_t) noexcept;
+  Parser genParser(const nebula::type::TypeNode&, size_t, nebula::type::Kind) noexcept;
+
+  Sketcher genSketcher(size_t) noexcept;
+
+  // build column properties of given row offset
+  FlatColumnProps rebuildColumnProps(size_t);
+
+  // the method is used to write all sketch into the data buffer
+  // it is supposed to call once before flat buffer is serialized into wire
+  // otherwise, we may end up multiple copies in the data buffer for each sketch
+  size_t serializeSketches() const;
 
 protected:
+  // schema and value evals - reference only
+  const nebula::type::Schema schema_;
+  const size_t numColumns_;
+  const nebula::surface::eval::Fields& fields_;
+  // an owned data buffer passed in - need to free it in destructor
+  void* chunk_;
+
+  // main dat abuffer
+  std::unique_ptr<Buffer> main_;
+  std::unique_ptr<Buffer> data_;
+  std::unique_ptr<Buffer> list_;
+
+  // name map for name->index mapping
+  std::unordered_map<std::string, size_t> nm_;
+
+  // parsers are function pointers to parse row data of each column
+  std::vector<ColumnOperations> cops_;
+
   // offset of last row used for supporting roll back
   std::tuple<size_t, size_t, size_t> last_;
 
   // record each row's offset and length
   std::vector<RowProps> rows_;
-  nebula::type::Schema schema_;
-  std::unique_ptr<Buffer> main_;
-  std::unique_ptr<Buffer> data_;
-  std::unique_ptr<Buffer> list_;
-
-  // an owned data buffer passed in - need to free it in destructor
-  void* chunk_;
 
   // A row accessor cursor to read data of given row
   friend class RowAccessor;
   std::unique_ptr<RowAccessor> current_;
 
-  // fields_ is name->index mapping
-  std::unordered_map<std::string, size_t> fields_;
-
-  // kw_ indicats the column's kind and width in main_ buffer if not null.
-  std::vector<std::pair<nebula::type::Kind, size_t>> kw_;
-
-  // parsers are function pointers to parse row data of each column
-  std::vector<Parser> parsers_;
-
-  // number of columns - reduce func calls even they are inlined
-  size_t numColumns_;
+  // check if a column is an aggregate column utility
+  inline bool isAggregate(size_t col) const noexcept {
+    return cops_.at(col).isAggregate();
+  }
 };
 
 class RowAccessor : public nebula::surface::RowData {
@@ -210,6 +263,9 @@ public:
   std::unique_ptr<nebula::surface::ListData> readList(const std::string& field) const override;
   std::unique_ptr<nebula::surface::MapData> readMap(const std::string& field) const override;
 
+  // fetch aggregator object for given column
+  std::shared_ptr<nebula::surface::eval::Sketch> getAggregator(const std::string&) const override;
+
   bool isNull(IndexType) const override;
   bool readBool(IndexType) const override;
   int8_t readByte(IndexType) const override;
@@ -224,6 +280,7 @@ public:
   // compound types
   std::unique_ptr<nebula::surface::ListData> readList(IndexType) const override;
   std::unique_ptr<nebula::surface::MapData> readMap(IndexType) const override;
+  std::shared_ptr<nebula::surface::eval::Sketch> getAggregator(IndexType) const override;
 
 private:
   const FlatBuffer& fb_;

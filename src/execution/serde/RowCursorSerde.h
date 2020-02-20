@@ -33,7 +33,9 @@ namespace serde {
 
 using FlatBufferPtr = std::unique_ptr<nebula::memory::keyed::FlatBuffer>;
 
-FlatBufferPtr asBuffer(nebula::surface::RowCursor& cursor, nebula::type::Schema schema);
+FlatBufferPtr asBuffer(nebula::surface::RowCursor&,
+                       nebula::type::Schema,
+                       const nebula::surface::eval::Fields&);
 void init();
 
 } // namespace serde

@@ -136,7 +136,7 @@ const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Sche
       // So we serialize bigint into string
       jsonCalls.push_back([name, &json](const RowData& row) {
         json.Key(name);
-        auto lv = nebula::common::to_string(row.readInt128(name));
+        auto lv = nebula::common::Int128_U::to_string(row.readInt128(name));
         json.String(lv.data(), lv.size());
       });
       break;
@@ -284,7 +284,8 @@ flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(const FlatBuffer& fb
   flatbuffers::grpc::MessageBuilder mb;
   auto schema = mb.CreateString(nebula::type::TypeSerializer::to(fb.schema()));
   int8_t* buffer;
-  auto bytes = mb.CreateUninitializedVector<int8_t>(fb.binSize(), &buffer);
+  auto size = fb.prepareSerde();
+  auto bytes = mb.CreateUninitializedVector<int8_t>(size, &buffer);
   fb.serialize(buffer);
 
   auto batch = CreateBatchRows(mb, schema, BatchType::BatchType_Flat, bytes);
@@ -292,7 +293,8 @@ flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(const FlatBuffer& fb
   return mb.ReleaseMessage<BatchRows>();
 }
 
-RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>* batch) {
+RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>* batch,
+                                     const nebula::surface::eval::Fields& fields) {
   auto ptr = batch->GetRoot();
 
   const auto schema = nebula::type::TypeSerializer::from(flatbuffers::GetString(ptr->schema()));
@@ -311,7 +313,7 @@ RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>
   std::memcpy(bytes, data->data(), size);
 
   // TODO(cao) - It is not good, we're reference some data from batch but actually not owning it.
-  auto fb = std::make_unique<FlatBuffer>(schema, bytes);
+  auto fb = std::make_unique<FlatBuffer>(schema, fields, bytes);
   return std::make_shared<FlatRowCursor>(std::move(fb));
 }
 

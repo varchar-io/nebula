@@ -134,7 +134,7 @@ public:
 class BatchSerde {
 public:
   static flatbuffers::grpc::Message<BatchRows> serialize(const nebula::memory::keyed::FlatBuffer&);
-  static nebula::surface::RowCursorPtr deserialize(const flatbuffers::grpc::Message<BatchRows>*);
+  static nebula::surface::RowCursorPtr deserialize(const flatbuffers::grpc::Message<BatchRows>*, const nebula::surface::eval::Fields&);
 };
 
 /**

@@ -90,7 +90,7 @@ BatchBlock BlockLoader::loadTestBlock(const BlockSignature& b) {
   auto seed = Evidence::unix_timestamp();
 
   // a seed that triggers a bug
-  // seed = 1556824936;
+  seed = 1583309624;
 
   TimeProvidedRow row(seed, b.start, b.end);
   for (auto i = 0; i < rows; ++i) {

@@ -26,6 +26,7 @@ namespace memory {
 namespace keyed {
 
 using nebula::common::PagedSlice;
+using nebula::common::Range;
 using nebula::surface::ListData;
 using nebula::surface::RowData;
 using nebula::type::Kind;
@@ -34,30 +35,39 @@ using nebula::type::TypeNode;
 
 void FlatBuffer::initSchema() noexcept {
   // build name to index look up
-  // build a field name to data node
-  numColumns_ = schema_->size();
-  fields_.reserve(numColumns_);
-  kw_.reserve(numColumns_);
-  parsers_.reserve(numColumns_);
+  nm_.reserve(numColumns_);
+  cops_.reserve(numColumns_);
 
+  // initialize keys and values
   for (size_t i = 0; i < numColumns_; ++i) {
+    // if current column is aggregate column
+    auto ia = fields_.at(i)->isAggregate();
     auto f = schema_->childType(i);
-    fields_[f->name()] = i;
-
+    nm_.emplace(f->name(), i);
     auto kind = f->k();
-    kw_.push_back({ kind, widthInMain(kind) });
+
+    // get the column width
+    auto width = widthInMain(kind);
+
+    // for aggregated columns we reserve space even it's null
+    if (ia) {
+      width = std::max(width, MAX_ALIGNMENT);
+    }
 
     // generate column parser for each column
-    parsers_.emplace_back(genParser(f, i));
+    cops_.emplace_back(genParser(f, i, kind), ia ? genSketcher(i) : nullptr, kind, width);
   }
 }
 
-FlatBuffer::FlatBuffer(const nebula::type::Schema& schema)
+FlatBuffer::FlatBuffer(const nebula::type::Schema& schema,
+                       const nebula::surface::eval::Fields& fields)
   : schema_{ schema },
+    numColumns_{ schema->size() },
+    fields_{ fields },
+    chunk_{ nullptr },
     main_{ std::make_unique<Buffer>(FLAGS_FB_MAIN_PAGE) },
     data_{ std::make_unique<Buffer>(FLAGS_FB_DATA_PAGE) },
-    list_{ std::make_unique<Buffer>(FLAGS_FB_LIST_PAGE) },
-    chunk_{ nullptr } {
+    list_{ std::make_unique<Buffer>(FLAGS_FB_LIST_PAGE) } {
   this->initSchema();
 }
 
@@ -65,8 +75,14 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema)
 // NOTE: This read-only object doesn't own the data buffer neither copy, it only references it.
 //       Hence external buffer holder needs to be live the same scope this object,
 //       We can improve this interface later.
-FlatBuffer::FlatBuffer(const nebula::type::Schema& schema, NByte* data)
-  : schema_{ schema }, chunk_{ data } {
+FlatBuffer::FlatBuffer(const nebula::type::Schema& schema,
+                       const nebula::surface::eval::Fields& fields,
+                       NByte* data)
+  : schema_{ schema },
+    numColumns_{ schema->size() },
+    fields_{ fields },
+    chunk_{ data } {
+  // 1. initialize the column align property based on the meta blob
   this->initSchema();
 
   // deserialize data for rows and all data blocks
@@ -114,10 +130,13 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema, NByte* data)
   for (size_t i = 0; i < numRows; ++i) {
     // read each column props of all rows (should it be lazy?)
     auto rowOffset = readSizeT();
-    rows_.emplace_back(rowOffset, columnProps(rowOffset));
+    rows_.emplace_back(rowOffset, rebuildColumnProps(rowOffset));
   }
 }
 
+// this defines how many bytes for each column take in main buffer
+// for scalar type, they are fixed width data, so we have width for non-null values
+// for binary type such as string, we store offset in related buffer and length as well
 size_t FlatBuffer::widthInMain(Kind kind) noexcept {
 #define SCALAR_WIDTH_DISTR(KIND)                        \
   case Kind::KIND: {                                    \
@@ -161,8 +180,8 @@ bool FlatBuffer::appendNull(bool isNull, nebula::type::Kind kind, Buffer& dest) 
 }
 
 template <typename T>
-size_t FlatBuffer::append(T value, Buffer& dest) {
-  size_t len = dest.slice.write(dest.offset, value);
+size_t FlatBuffer::append(T value, Buffer& dest, size_t align) {
+  size_t len = dest.slice.writeAlign(dest.offset, value, align);
   dest.offset += len;
 
   // return current offset
@@ -170,17 +189,15 @@ size_t FlatBuffer::append(T value, Buffer& dest) {
 }
 
 template <>
-size_t FlatBuffer::append(std::string_view str, Buffer& dest) {
+size_t FlatBuffer::append(std::string_view str, Buffer& dest, size_t) {
   // write variable data into dirty buffer and get offset and length
   auto len = data_->slice.write(data_->offset, (NByte*)str.data(), str.size());
 
   // write offset and length in main chunk
-  append<int32_t>(data_->offset, dest);
-  append<int32_t>(len, dest);
+  dest.offset += Range::write(dest.slice, dest.offset, data_->offset, len);
 
   // move forward data offset for next
   data_->offset += len;
-
   return len;
 }
 
@@ -244,15 +261,15 @@ bool FlatBuffer::rollback() {
   return false;
 }
 
-std::function<void(const RowData&)> FlatBuffer::genParser(const TypeNode& tn, size_t i) noexcept {
+std::function<void(const RowData&)> FlatBuffer::genParser(
+  const TypeNode& tn, size_t i, nebula::type::Kind kind) noexcept {
 
-#define SCALAR_DATA_DISTR(KIND, FUNC)                                      \
-  case Kind::KIND: {                                                       \
-    return [this, i](const RowData& row) { append(row.FUNC(i), *main_); }; \
+#define SCALAR_DATA_DISTR(KIND, FUNC)                                                         \
+  case Kind::KIND: {                                                                          \
+    return [this, i](const RowData& row) { append(row.FUNC(i), *main_, cops_.at(i).width); }; \
   }
 
   // add solid values for each type
-  auto kind = kw_.at(i).first;
   switch (kind) {
     SCALAR_DATA_DISTR(BOOLEAN, readBool)
     SCALAR_DATA_DISTR(TINYINT, readByte)
@@ -271,9 +288,9 @@ std::function<void(const RowData&)> FlatBuffer::genParser(const TypeNode& tn, si
       auto list = row.readList(i);
 
       // write 4 bytes of N = number of items
-      append<int32_t>(list->getItems(), *main_);
+      auto listItems = list->getItems();
       auto listOffset = appendList(childKind, std::move(list));
-      append<int32_t>(listOffset, *main_);
+      main_->offset += Range::write(main_->slice, main_->offset, listItems, listOffset);
     };
   }
   default:
@@ -283,6 +300,33 @@ std::function<void(const RowData&)> FlatBuffer::genParser(const TypeNode& tn, si
   }
 
 #undef SCALAR_DATA_DISTR
+}
+
+Sketcher FlatBuffer::genSketcher(size_t i) noexcept {
+  const auto& f = fields_.at(i);
+  const auto ot = f->outputType();
+  const auto it = f->inputType();
+  const auto isAggregate = f->isAggregate();
+  if (!isAggregate) {
+    return {};
+  }
+
+// below provides a template to write core logic for all input / output type combinations
+#define LOGIC_BY_IO(O, I)                   \
+  case Kind::I: {                           \
+    return [this, i]() -> auto {            \
+      const auto& f = fields_.at(i);        \
+      return f->sketch<Kind::O, Kind::I>(); \
+    };                                      \
+    break;                                  \
+  }
+
+  ITERATE_BY_IO(ot, it)
+
+#undef LOGIC_BY_IO
+
+  // no suitable combination found
+  return {};
 }
 
 // add a row into current batch
@@ -302,7 +346,7 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
   std::vector<bool> nulls;
   nulls.reserve(numColumns_);
   for (size_t i = 0; i < numColumns_; ++i) {
-    auto nv = appendNull(row.isNull(i), kw_.at(i).first, *main_);
+    auto nv = appendNull(row.isNull(i), cops_.at(i).kind, *main_);
     nulls.push_back(nv);
   }
 
@@ -310,9 +354,15 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
   for (size_t i = 0; i < numColumns_; ++i) {
     // push each column props
     auto nv = nulls.at(i);
-    columnProps.emplace_back(nv, main_->offset - rowOffset);
+    const auto& cop = cops_.at(i);
+    auto ia = cop.isAggregate();
+    auto sketch = ia ? row.getAggregator(i) : nullptr;
+    columnProps.emplace_back(nv, main_->offset - rowOffset, sketch);
     if (!nv) {
-      parsers_.at(i)(row);
+      cop.parser(row);
+    } else if (ia) {
+      // reserve space for aligned column
+      main_->offset += main_->slice.writeAlign(main_->offset, 0, cop.width);
     }
   }
 
@@ -341,7 +391,7 @@ size_t FlatBuffer::resume(const nebula::surface::RowData& row,
     auto& colProps = colPropsList.at(i);
     colProps.offset = main_->offset - rowOffset;
     if (!colProps.isNull) {
-      parsers_.at(i)(row);
+      cops_.at(i).parser(row);
     }
   }
 
@@ -361,7 +411,7 @@ const RowData& FlatBuffer::row(size_t rowId) {
   return *current_;
 }
 
-FlatColumnProps FlatBuffer::columnProps(size_t offset) const noexcept {
+FlatColumnProps FlatBuffer::rebuildColumnProps(size_t rowOffset) {
   // do not use constructor with count instances of T
   FlatColumnProps colProps;
   colProps.reserve(numColumns_);
@@ -369,15 +419,68 @@ FlatColumnProps FlatBuffer::columnProps(size_t offset) const noexcept {
   // first numCols bytes store nulls for all columns
   auto colOffset = numColumns_;
   for (size_t i = 0; i < numColumns_; ++i) {
-    auto nullByte = main_->slice.read<int8_t>(offset + i);
+    auto nullByte = main_->slice.read<int8_t>(rowOffset + i);
     bool nv = (nullByte & HIGH6_1) != 0;
-    colProps.emplace_back(nv, colOffset);
+    const auto& cop = cops_.at(i);
+
+    // build column properties without sketch
+    auto& cp = colProps.emplace_back(nv, colOffset);
     if (!nv) {
-      colOffset += kw_.at(i).second;
+      colOffset += cop.width;
+    }
+
+    // for aggregated fields, rebuild its sketch from the serialized binary
+    if (cop.isAggregate()) {
+      cp.sketch = cop.sketcher();
+      N_ENSURE_NOT_NULL(cp.sketch, "aggregated field should have sketch");
+      // load data of the sketch from main buffer since it's fit
+      auto offset = rowOffset + cp.offset;
+      if (cp.sketch->fit(cop.width)) {
+        auto size = cp.sketch->load(main_->slice, offset);
+        N_ENSURE(size <= cop.width, "sketch guranteed data size smaller than alignment");
+      } else {
+        auto r = Range::make(main_->slice, offset);
+        auto size = cp.sketch->load(data_->slice, r.offset);
+        N_ENSURE(size == r.size, "loaded size should be the same as it stored");
+      }
     }
   }
 
   return colProps;
+}
+
+// serialize sketches into data section and mark its offset/length at field
+// if the sketch serialized data is fixed within aignment, we can use it directly
+size_t FlatBuffer::serializeSketches() const {
+  // data size incremented for sketch serialization
+  auto size = 0;
+  for (auto& cp : rows_) {
+    for (size_t i = 0; i < numColumns_; ++i) {
+      // for (auto& p : cp.colProps) {
+      auto& p = cp.colProps.at(i);
+      // if we have sketch to serialize out
+      if (p.sketch) {
+        auto offset = (cp.offset + p.offset);
+        const auto& cop = cops_.at(i);
+        // if fit within main
+        if (p.sketch->fit(cop.width)) {
+          N_ENSURE(p.sketch->serialize(main_->slice, offset) <= cop.width,
+                   "serialzied size should not out of space");
+        } else {
+          auto len = p.sketch->serialize(data_->slice, data_->offset);
+          // record the data offset and length for this binary in main
+          Range::write(main_->slice, offset, data_->offset, len);
+          // grow data size
+          data_->offset += len;
+
+          // only counted the data size increase - not counting if fit in main
+          size += len;
+        }
+      }
+    }
+  }
+
+  return size;
 }
 
 size_t FlatBuffer::serialize(NByte* buffer) const {
@@ -455,11 +558,10 @@ std::string_view RowAccessor::readString(IndexType index) const {
   auto colOffset = rowProps_.colProps[index].offset;
   // read 4 bytes offset and 4 bytes length
   auto so = rowProps_.offset + colOffset;
-  auto offset = fb_.main_->slice.read<int32_t>(so);
-  auto len = fb_.main_->slice.read<int32_t>(so + 4);
+  auto r = Range::make(fb_.main_->slice, so);
 
   // read the real data from data_
-  return fb_.data_->slice.read(offset, len);
+  return fb_.data_->slice.read(r.offset, r.size);
 }
 
 // compound types
@@ -467,14 +569,14 @@ std::unique_ptr<nebula::surface::ListData> RowAccessor::readList(IndexType index
   auto colOffset = rowProps_.colProps[index].offset;
   // read 4 bytes offset and 4 bytes length
   auto lo = rowProps_.offset + colOffset;
-  auto items = fb_.main_->slice.read<int32_t>(lo);
-  auto offset = fb_.main_->slice.read<int32_t>(lo + 4);
+  auto r = Range::make(fb_.main_->slice, lo);
 
   // can we cache this query or cache listAccessor?
   auto listType = std::dynamic_pointer_cast<nebula::type::ListType>(fb_.schema_->childType(index));
 
   // read the real data from data_
-  return std::make_unique<ListAccessor>(items, offset, *fb_.list_, *fb_.data_, fb_.widthInMain(listType->childType(0)->k()));
+  return std::make_unique<ListAccessor>(
+    r.offset, r.size, *fb_.list_, *fb_.data_, fb_.widthInMain(listType->childType(0)->k()));
 }
 
 std::unique_ptr<nebula::surface::MapData> RowAccessor::readMap(IndexType) const {
@@ -484,9 +586,13 @@ std::unique_ptr<nebula::surface::MapData> RowAccessor::readMap(const std::string
   throw NException("Map is not supported yet");
 }
 
+inline std::shared_ptr<nebula::surface::eval::Sketch> RowAccessor::getAggregator(IndexType index) const {
+  return rowProps_.colProps[index].sketch;
+}
+
 #define FORWARD_NAME_2_INDEX(TYPE, FUNC)                   \
   TYPE RowAccessor::FUNC(const std::string& field) const { \
-    return FUNC(fb_.fields_.at(field));                    \
+    return FUNC(fb_.nm_.at(field));                        \
   }
 
 FORWARD_NAME_2_INDEX(bool, isNull)
@@ -500,6 +606,7 @@ FORWARD_NAME_2_INDEX(double, readDouble)
 FORWARD_NAME_2_INDEX(int128_t, readInt128)
 FORWARD_NAME_2_INDEX(std::string_view, readString)
 FORWARD_NAME_2_INDEX(std::unique_ptr<nebula::surface::ListData>, readList)
+FORWARD_NAME_2_INDEX(std::shared_ptr<nebula::surface::eval::Sketch>, getAggregator)
 
 #undef FORWARD_NAME_2_INDEX
 
@@ -527,11 +634,10 @@ std::string_view ListAccessor::readString(IndexType index) const {
   // we need to plus 1 to skip the first byte of null indicator
   const auto itemOffset = itemOffsets_[index] + 1;
   // read 4 bytes offset and 4 bytes length
-  auto offset = buffer_.slice.read<int32_t>(offset_ + itemOffset);
-  auto len = buffer_.slice.read<int32_t>(offset_ + itemOffset + 4);
+  auto r = Range::make(buffer_.slice, offset_ + itemOffset);
 
   // read the real data from data_
-  return strings_.slice.read(offset, len);
+  return strings_.slice.read(r.offset, r.size);
 }
 
 } // namespace keyed

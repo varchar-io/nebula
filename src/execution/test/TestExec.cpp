@@ -55,14 +55,53 @@ static constexpr auto line = [](const RowData& r) {
 
 class TestUdaf : public UDAF<nebula::type::Kind::INTEGER> {
 public:
-  using AggFunction = std::function<int32_t(int32_t, int32_t)>;
+  using BaseAggregator = typename UDAF<nebula::type::Kind::INTEGER>::BaseAggregator;
+
+  class Aggregator : public BaseAggregator {
+  public:
+    virtual ~Aggregator() = default;
+    // aggregate an value in
+    inline virtual void merge(int32_t v) override {
+      value += v;
+    }
+
+    // aggregate another aggregator
+    inline virtual void mix(const nebula::surface::eval::Sketch& another) override {
+      auto v2 = static_cast<const Aggregator&>(another).value;
+      value += v2;
+    }
+
+    inline virtual bool fit(size_t space) override {
+      // only 4 bytes to store
+      return space >= 4;
+    }
+
+    inline virtual NativeType finalize() override {
+      return value;
+    }
+
+    // serialize into a buffer
+    inline virtual size_t serialize(nebula::common::PagedSlice&, size_t) const override {
+      // return slice.write(offset, value);
+      return 4;
+    }
+
+    // deserialize from a given buffer, and bin size
+    inline virtual size_t load(nebula::common::PagedSlice&, size_t) override {
+      return 4;
+    }
+
+  private:
+    int32_t value;
+  };
+
+public:
   TestUdaf()
     : UDAF<nebula::type::Kind::INTEGER>("TestExec",
                                         nebula::surface::eval::constant(1),
-                                        {},
-                                        {},
-                                        [](int32_t a, int32_t b) { return a + b; },
-                                        {}) {}
+                                        []() -> std::shared_ptr<Aggregator> {
+                                          return std::make_shared<Aggregator>();
+                                        }) {}
   virtual ~TestUdaf() = default;
 };
 
@@ -75,7 +114,13 @@ TEST(ExecutionTest, TestRowCursorSerde) {
     auto schema = TypeSerializer::from(
       "ROW<id:int, event:string, flag:bool>");
 
-    auto fb = nebula::execution::serde::asBuffer(rowCursor, schema);
+    nebula::surface::eval::Fields f;
+    f.reserve(8);
+    f.emplace_back(nebula::surface::eval::constant(1));
+    f.emplace_back(nebula::surface::eval::constant("2"));
+    f.emplace_back(nebula::surface::eval::constant(true));
+
+    auto fb = nebula::execution::serde::asBuffer(rowCursor, schema, f);
     EXPECT_EQ(fb->getRows(), 8);
   }
 
@@ -105,7 +150,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       .limit(size);
 
     auto cursor = nebula::execution::core::compute(batch, plan);
-    auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema);
+    auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema, plan.fields());
 
     LOG(INFO) << "verify buffer size casted from cursor: " << typeid(cursor).name();
     EXPECT_EQ(fb->getRows(), size);
@@ -127,8 +172,11 @@ TEST(ExecutionTest, TestRowCursorSerde) {
     auto size = 10;
     Batch batch(test, size);
     MockRowData row;
+    MockRowData sameRow;
+    int idSum = 0;
     for (auto i = 0; i < size; ++i) {
       batch.add(row);
+      idSum += sameRow.readInt("id");
     }
 
     LOG(INFO) << "build up a block compute result";
@@ -146,7 +194,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       .aggregate(1, { false, true });
 
     auto cursor = nebula::execution::core::compute(batch, plan);
-    auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema);
+    auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema, plan.fields());
 
     LOG(INFO) << "verify buffer size casted from cursor";
     EXPECT_EQ(fb->getRows(), 1);

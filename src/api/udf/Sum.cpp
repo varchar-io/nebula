@@ -24,21 +24,16 @@ namespace api {
 namespace udf {
 using nebula::type::Kind;
 
-#define DO_NOT_SUPPORT(K)                                                                                                                 \
-  template <>                                                                                                                             \
-  Sum<Kind::K>::Sum(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)                                      \
-    : nebula::surface::eval::UDAF<Kind::K>(name,                                                                                          \
-                                           std::move(expr),                                                                               \
-                                           {},                                                                                            \
-                                           [](nebula::type::TypeTraits<Kind::K>::CppType,                                                 \
-                                              nebula::type::TypeTraits<Kind::K>::CppType) -> nebula::type::TypeTraits<Kind::K>::CppType { \
-                                             throw NException(fmt::format("sum does not support {0}", #K));                               \
-                                           }) {}
+#define DO_NOT_SUPPORT(K)                                                                            \
+  template <>                                                                                        \
+  Sum<Kind::K>::Sum(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr) \
+    : nebula::surface::eval::UDAF<Kind::K>(name,                                                     \
+                                           std::move(expr),                                          \
+                                           {}) {}
 
 DO_NOT_SUPPORT(INVALID)
 DO_NOT_SUPPORT(BOOLEAN)
 DO_NOT_SUPPORT(VARCHAR)
-DO_NOT_SUPPORT(INT128)
 
 #undef DO_NOT_SUPPORT
 

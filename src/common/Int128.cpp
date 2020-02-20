@@ -14,26 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#include "Int128.h"
 
-#include "common/Folly.h"
-#include "surface/DataSurface.h"
-#include "surface/eval/ValueEval.h"
-#include "type/Type.h"
-
-/**
- * A logic wrapper to merge aggregation results shared by aggregators (Node Executor or Server Executor)
- */
-namespace nebula {
-namespace execution {
-namespace core {
-
-nebula::surface::RowCursorPtr merge(
-  folly::ThreadPoolExecutor&,
-  const nebula::type::Schema,
-  const nebula::surface::eval::Fields&,
-  const bool,
-  const std::vector<folly::Try<nebula::surface::RowCursorPtr>>&);
-} // namespace core
-} // namespace execution
-} // namespace nebula
+std::ostream& operator<<(std::ostream& os, int128_t i) {
+  return os << nebula::common::Int128_U::to_string(i);
+}

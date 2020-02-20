@@ -30,15 +30,11 @@ using nebula::type::Kind;
     : nebula::surface::eval::UDAF<Kind::K>(                                                          \
         name,                                                                                        \
         std::move(expr),                                                                             \
-        {},                                                                                          \
-        [](StoreType, StoreType) -> StoreType { throw NException("not supported"); },                \
-        {},                                                                                          \
         {}) {}
 
 DO_NOT_SUPPORT(INVALID)
 DO_NOT_SUPPORT(BOOLEAN)
 DO_NOT_SUPPORT(VARCHAR)
-DO_NOT_SUPPORT(INT128)
 
 #undef DO_NOT_SUPPORT
 

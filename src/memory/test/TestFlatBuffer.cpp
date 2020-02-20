@@ -21,6 +21,7 @@
 #include "common/Memory.h"
 #include "fmt/format.h"
 #include "memory/keyed/FlatBuffer.h"
+#include "memory/keyed/HashFlat.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
@@ -37,6 +38,7 @@ namespace test {
 
 using nebula::common::Evidence;
 using nebula::memory::keyed::FlatBuffer;
+using nebula::memory::keyed::HashFlat;
 using nebula::surface::MockRowData;
 using nebula::surface::RowData;
 using nebula::type::TypeSerializer;
@@ -62,7 +64,7 @@ TEST(FlatBufferTest, TestFlatBufferWrite) {
   nebula::meta::TestTable test;
 
   // initialize a flat row with given schema
-  FlatBuffer fb(test.schema());
+  FlatBuffer fb(test.schema(), test.testFields());
 
   // add 10 rows
   constexpr auto rows2test = 1024;
@@ -103,7 +105,7 @@ TEST(FlatBufferTest, TestRollback) {
   nebula::meta::TestTable test;
 
   // initialize a flat row with given schema
-  FlatBuffer fb(test.schema());
+  FlatBuffer fb(test.schema(), test.testFields());
 
   // add 10 rows
   constexpr auto rows2test = 5;
@@ -145,7 +147,7 @@ TEST(FlatBufferTest, TestSerde) {
   nebula::meta::TestTable test;
 
   // initialize a flat row with given schema
-  FlatBuffer fb(test.schema());
+  FlatBuffer fb(test.schema(), test.testFields());
 
   // add some rows
   constexpr auto rows2test = 21053;
@@ -159,14 +161,14 @@ TEST(FlatBufferTest, TestSerde) {
 
   EXPECT_EQ(fb.getRows(), rows2test);
 
-  auto size = fb.binSize();
+  auto size = fb.prepareSerde();
   auto buffer = static_cast<NByte*>(nebula::common::Pool::getDefault().allocate(size));
 
   // serialize size should equal expected bin size
   EXPECT_EQ(size, fb.serialize(buffer));
 
   // deserialize this data into another flat buffer
-  FlatBuffer fb2(test.schema(), buffer);
+  FlatBuffer fb2(test.schema(), test.testFields(), buffer);
 
   // check these two buffers are exactly the same
   EXPECT_EQ(fb2.getRows(), rows2test);
@@ -181,6 +183,51 @@ TEST(FlatBufferTest, TestSerde) {
   // DO NOT release buffer as it's owned by flatbuffer
   // it has moved in semantic and own it
   // delete[] buffer;
+}
+
+TEST(FlatBufferTest, TestHashFlatSerde) {
+  auto schema = TypeSerializer::from("ROW<id:int, count:int>");
+
+  // initialize a flat row with given schema
+  auto c1 = nebula::surface::eval::constant(1);
+  auto c2 = nebula::surface::eval::constant(2);
+  nebula::surface::eval::Fields f;
+  f.reserve(2);
+  f.emplace_back(std::move(c1));
+  f.emplace_back(std::move(c2));
+  HashFlat hf(schema, f);
+
+  // add some rows
+  constexpr auto rows2test = 21053;
+  auto seed = Evidence::unix_timestamp();
+  MockRowData row(seed);
+
+  // add 5 rows
+  for (auto i = 0; i < rows2test; ++i) {
+    hf.add(row);
+  }
+
+  EXPECT_EQ(hf.getRows(), rows2test);
+
+  auto size = hf.prepareSerde();
+  auto buffer = static_cast<NByte*>(nebula::common::Pool::getDefault().allocate(size));
+
+  // serialize size should equal expected bin size
+  EXPECT_EQ(size, hf.serialize(buffer));
+
+  // deserialize this data into another flat buffer
+  FlatBuffer fb2(schema, f, buffer);
+
+  // check these two buffers are exactly the same
+  EXPECT_EQ(fb2.getRows(), rows2test);
+
+  // check every single row are the same
+  for (auto i = 0; i < rows2test; ++i) {
+    const auto& r = hf.row(i);
+    const auto& r2 = fb2.row(i);
+    EXPECT_EQ(r.readInt(0), r2.readInt(0));
+    EXPECT_EQ(r.readInt(1), r2.readInt(1));
+  }
 }
 
 } // namespace test

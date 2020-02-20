@@ -24,6 +24,7 @@
 #include "api/udf/Like.h"
 #include "api/udf/Not.h"
 #include "api/udf/Prefix.h"
+#include "api/udf/TDigest.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "surface/eval/ValueEval.h"
@@ -264,67 +265,113 @@ TEST(UDFTest, TestCount) {
   using CType = nebula::api::udf::Count<nebula::type::Kind::INTEGER>;
 
   // simulate the run times 11 for c1 and 22 for c2
-  CType::StoreType count1 = 0;
   nebula::surface::eval::EvalContext ctx;
   bool invalid;
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
   CType cf("count", v9->asEval());
+  auto count1 = cf.sketch();
 
   for (auto i = 0; i < 11; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ci("count1", vi->asEval());
-    count1 = cf.merge(count1, ci.eval(ctx, invalid));
+    auto v = ci.eval(ctx, invalid);
+    EXPECT_EQ(v, 1);
+    EXPECT_FALSE(invalid);
+    count1->merge(v);
   }
 
-  CType::StoreType count2 = 0;
+  auto count2 = cf.sketch();
   for (auto i = 0; i < 22; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ci("count2", vi->asEval());
-    count2 = cf.merge(count2, ci.eval(ctx, invalid));
+    count2->merge(ci.eval(ctx, invalid));
   }
 
   // partial merge
-  CType c3("count3", v9->asEval());
-  CType::StoreType count3 = c3.merge(count1, count2);
+  count1->mix(*count2);
 
   // we will ask itself for finalize
-  CType::NativeType count4 = c3.finalize(count3);
+  CType::NativeType count4 = count1->finalize();
   EXPECT_EQ(count4, 33);
 }
 
 TEST(UDFTest, TestSum) {
-  auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
-  using CType = nebula::api::udf::Sum<nebula::type::Kind::INTEGER>;
+  auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int8_t>>(0);
+  using CType = nebula::api::udf::Sum<nebula::type::Kind::TINYINT>;
   nebula::surface::eval::EvalContext ctx;
   bool invalid;
   CType sf("sum", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
   CType::NativeType expected = 0;
-  CType::StoreType sum1 = 0;
+  auto sum1 = sf.sketch();
   for (auto i = 0; i < 11; ++i) {
-    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int8_t>>(i);
     CType si("sum1", vi->asEval());
 
-    sum1 = sf.merge(sum1, si.eval(ctx, invalid));
+    sum1->merge(si.eval(ctx, invalid));
     expected += i;
   }
 
-  CType::StoreType sum2 = 0;
+  auto sum2 = sf.sketch();
   for (auto i = 0; i < 22; ++i) {
-    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int8_t>>(i);
     CType si("sum2", vi->asEval());
 
-    sum2 = sf.merge(sum2, si.eval(ctx, invalid));
+    sum2->merge(si.eval(ctx, invalid));
     expected += i;
   }
 
   // partial merge
   CType s3("sum3", v9->asEval());
-  CType::StoreType sum3 = s3.merge(sum1, sum2);
+  sum1->mix(*sum2);
 
   // we will ask itself for finalize
-  CType::NativeType sum4 = s3.finalize(sum3);
+  auto sum4 = sum1->finalize();
+  EXPECT_EQ(sum4, expected);
+
+  // serialize
+  nebula::common::PagedSlice slice(1024);
+  EXPECT_EQ(sum1->serialize(slice, 12), 8);
+  auto sum5 = sf.sketch();
+  EXPECT_EQ(sum5->load(slice, 12), 8);
+  auto sv = sum1->finalize();
+  EXPECT_EQ(sv, expected);
+}
+
+TEST(UDFTest, TestSum128) {
+  auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(12);
+  using CType = nebula::api::udf::Sum<nebula::type::Kind::INT128>;
+  nebula::surface::eval::EvalContext ctx;
+  bool invalid;
+  CType sf("sum", v9->asEval());
+
+  // simulate the run times 11 for c1 and 22 for c2
+  CType::NativeType expected = 0;
+  auto sum1 = sf.sketch();
+  for (auto i = 0; i < 5; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(i);
+    CType si("sum1", vi->asEval());
+
+    sum1->merge(si.eval(ctx, invalid));
+    expected += i;
+  }
+
+  auto sum2 = sf.sketch();
+  for (auto i = 0; i < 22; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(i);
+    CType si("sum2", vi->asEval());
+
+    sum2->merge(si.eval(ctx, invalid));
+    expected += i;
+  }
+
+  // partial merge
+  CType s3("sum3", v9->asEval());
+  sum1->mix(*sum2);
+
+  // we will ask itself for finalize
+  auto sum4 = sum1->finalize();
   EXPECT_EQ(sum4, expected);
 }
 
@@ -337,30 +384,29 @@ TEST(UDFTest, TestMin) {
 
   // simulate the run times 11 for c1 and 22 for c2
   CType::NativeType expected = 0;
-  CType::StoreType min1 = 0;
+  auto min1 = mf.sketch();
   for (auto i = 0; i < 11; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType mi("min1", vi->asEval());
 
-    min1 = mf.merge(min1, mi.eval(ctx, invalid));
+    min1->merge(mi.eval(ctx, invalid));
     expected = std::min(i, expected);
   }
 
-  CType::StoreType min2 = 0;
+  auto min2 = mf.sketch();
   for (auto i = 0; i < 22; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType mi("min2", vi->asEval());
 
-    min1 = mf.merge(min1, mi.eval(ctx, invalid));
+    min2->merge(mi.eval(ctx, invalid));
     expected = std::min(i, expected);
   }
 
   // partial merge
-  CType m3("min3", v9->asEval());
-  CType::StoreType min3 = m3.merge(min1, min2);
+  min1->mix(*min2);
 
   // we will ask itself for finalize
-  CType::NativeType min4 = m3.finalize(min3);
+  auto min4 = min1->finalize();
   EXPECT_EQ(min4, expected);
 }
 
@@ -373,28 +419,28 @@ TEST(UDFTest, TestMax) {
 
   // simulate the run times 11 for c1 and 22 for c2
   CType::NativeType expected = 0;
-  CType::StoreType max1 = 0;
+  auto max1 = mf.sketch();
   for (auto i = 0; i < 11; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType mi("max1", vi->asEval());
-    max1 = mf.merge(max1, mi.eval(ctx, invalid));
+    max1->merge(mi.eval(ctx, invalid));
     expected = std::max(i, expected);
   }
 
-  CType::StoreType max2 = 0;
+  auto max2 = mf.sketch();
   for (auto i = 0; i < 22; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType mi("max1", vi->asEval());
-    max2 = mf.merge(max2, mi.eval(ctx, invalid));
+    max2->merge(mi.eval(ctx, invalid));
     expected = std::max(i, expected);
   }
 
   // partial merge
   CType m3("max3", v9->asEval());
-  CType::StoreType max3 = m3.merge(max1, max2);
+  max1->mix(*max2);
 
   // we will ask itself for finalize
-  CType::NativeType max4 = m3.finalize(max3);
+  CType::NativeType max4 = max1->finalize();
   EXPECT_EQ(max4, expected);
 }
 
@@ -409,21 +455,21 @@ TEST(UDFTest, TestAvg) {
   CType::NativeType sum = 0;
   CType::NativeType count = 0;
 
-  CType::StoreType avg1 = 0;
+  auto avg1 = af.sketch();
   for (auto i = 0; i < 11; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ai("avg1", vi->asEval());
-    avg1 = af.merge(avg1, ai.eval(ctx, invalid));
+    avg1->merge(ai.eval(ctx, invalid));
 
     sum += i;
     count += 1;
   }
 
-  CType::StoreType avg2 = 0;
+  auto avg2 = af.sketch();
   for (auto i = 0; i < 22; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ai("avg2", vi->asEval());
-    avg2 = af.merge(avg2, ai.eval(ctx, invalid));
+    avg2->merge(ai.eval(ctx, invalid));
 
     sum += i;
     count += 1;
@@ -431,10 +477,10 @@ TEST(UDFTest, TestAvg) {
 
   // partial merge
   CType a3("avg3", v9->asEval());
-  CType::StoreType avg3 = a3.merge(avg1, avg2);
+  avg1->mix(*avg2);
 
   // we will ask itself for finalize
-  CType::NativeType avg4 = a3.finalize(avg3);
+  CType::NativeType avg4 = avg1->finalize();
   EXPECT_EQ(avg4, sum / count);
 }
 
@@ -449,65 +495,105 @@ TEST(UDFTest, TestAvgByte) {
   int64_t sum = 0;
   int64_t count = 0;
 
-  CType::StoreType avg1 = 0;
+  auto avg1 = af.sketch();
   for (auto i = 0; i < 127; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ai("avg2", vi->asEval());
-    avg1 = af.merge(avg1, ai.eval(ctx, invalid));
+    avg1->merge(ai.eval(ctx, invalid));
 
     sum += i;
     count += 1;
   }
 
-  CType::StoreType avg2 = 0;
+  auto avg2 = af.sketch();
   for (auto i = 0; i < 127; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ai("avg2", vi->asEval());
-    avg2 = af.merge(avg2, ai.eval(ctx, invalid));
+    avg2->merge(ai.eval(ctx, invalid));
 
     sum += i;
     count += 1;
   }
 
   // partial merge
-  CType a3("avg3", v9->asEval());
-  CType::StoreType avg3 = a3.merge(avg1, avg2);
+  avg1->mix(*avg2);
 
   // we will ask itself for finalize
-  CType::NativeType avg4 = a3.finalize(avg3);
+  CType::NativeType avg4 = avg1->finalize();
   EXPECT_EQ(avg4, sum / count);
 }
 
-// TEST(UDFTest, TestTDigest) {
-//   using CType = nebula::api::udf::TDigest<nebula::type::Kind::VARCHAR, nebula::type::Kind::INTEGER>;
+TEST(UDFTest, TestAvgInt128) {
+  auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(0);
+  using CType = nebula::api::udf::Avg<nebula::type::Kind::INT128>;
+  nebula::surface::eval::EvalContext ctx;
+  bool invalid;
+  CType af("avg", v9->asEval());
 
-//   // simulate the run times 11 for c1 and 22 for c2
-//   nebula::surface::eval::EvalContext ctx;
-//   bool invalid;
-//   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
-//   CType td1("td1", v9->asEval());
+  // simulate the run times 11 for c1 and 22 for c2
+  int128_t sum = 0;
+  int64_t count = 0;
 
-//   for (auto i = 0; i < 11; ++i) {
-//     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
-//     CType ci("count1", vi->asEval());
-//     td1 = td1.merge(td1, ci.eval(ctx, invalid));
-//   }
+  auto avg1 = af.sketch();
+  for (auto i = 0; i < 127; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(i);
+    CType ai("avg2", vi->asEval());
+    avg1->merge(ai.eval(ctx, invalid));
 
-//   CType::StoreType count2 = 0;
-//   for (auto i = 0; i < 22; ++i) {
-//     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
-//     CType ci("count2", vi->asEval());
-//     count2 = cf.merge(count2, ci.eval(ctx, invalid));
-//   }
+    sum += i;
+    count += 1;
+  }
 
-//   // partial merge
-//   CType c3("count3", v9->asEval());
-//   CType::StoreType count3 = c3.merge(count1, count2);
+  auto avg2 = af.sketch();
+  for (auto i = 0; i < 127; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(i);
+    CType ai("avg2", vi->asEval());
+    avg2->merge(ai.eval(ctx, invalid));
 
-//   // we will ask itself for finalize
-//   CType::NativeType count4 = c3.finalize(count3);
-//   EXPECT_EQ(count4, 33);
-// }
+    sum += i;
+    count += 1;
+  }
+
+  // partial merge
+  avg1->mix(*avg2);
+
+  // we will ask itself for finalize
+  CType::NativeType avg4 = avg1->finalize();
+  EXPECT_EQ(avg4, sum / count);
+}
+
+TEST(UDFTest, TestTDigest) {
+  using CType = nebula::api::udf::TDigest<nebula::type::Kind::INTEGER>;
+
+  // simulate the run times 11 for c1 and 22 for c2
+  nebula::surface::eval::EvalContext ctx;
+  bool invalid;
+  auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
+  CType tf("td1", v9->asEval());
+
+  auto td1 = tf.sketch();
+  for (auto i = 0; i < 11; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+    CType ci("count1", vi->asEval());
+    td1->merge(ci.eval(ctx, invalid));
+  }
+
+  auto td2 = tf.sketch();
+  for (auto i = 0; i < 22; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+    CType ci("count2", vi->asEval());
+    td2->merge(ci.eval(ctx, invalid));
+  }
+
+  // partial merge
+  CType c3("count3", v9->asEval());
+  td1->mix(*td2);
+
+  // we will ask itself for finalize
+  CType::NativeType td4 = td1->finalize();
+  LOG(INFO) << "digest: " << td4;
+  EXPECT_EQ(td4, "{\"sum\":0.0,\"count\":0.0,\"max\":,\"min\":,\"maxSize\":100.0,\"centroids\":[]}");
+}
 
 } // namespace test
 } // namespace api

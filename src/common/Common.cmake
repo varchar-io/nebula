@@ -4,7 +4,8 @@ set(NEBULA_COMMON NCommon)
 # target_include_directories(${NEBULA_COMMON} INTERFACE src/common)
 add_library(${NEBULA_COMMON} STATIC 
     ${NEBULA_SRC}/common/Errors.cpp 
-    ${NEBULA_SRC}/common/Memory.cpp)
+    ${NEBULA_SRC}/common/Memory.cpp
+    ${NEBULA_SRC}/common/Int128.cpp)
 target_link_libraries(${NEBULA_COMMON}
     PUBLIC ${FMT_LIBRARY}
     PUBLIC ${XXH_LIBRARY})

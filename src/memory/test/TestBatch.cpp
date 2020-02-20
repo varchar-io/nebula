@@ -198,7 +198,7 @@ TEST(BatchTest, TestStringDictionary) {
   rows.reserve(count);
 
   // fill rows
-  int128_t large = nebula::common::UINT128_LOW_MASK + 256;
+  int128_t large = nebula::common::Int128_U::UINT128_LOW_MASK + 256;
   for (int32_t i = 0; i < count; ++i) {
     nebula::surface::StaticRow row{ i,
                                     i,

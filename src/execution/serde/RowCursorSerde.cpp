@@ -87,19 +87,23 @@ void init() {
 #else
 
 // by default, if yomm2 is not available or buggy, go with this dynamic cast version as fallback
-FlatBufferPtr asBuffer(nebula::surface::RowCursor& cursor, nebula::type::Schema schema) {
+FlatBufferPtr asBuffer(nebula::surface::RowCursor& cursor,
+                       nebula::type::Schema schema,
+                       const nebula::surface::eval::Fields& fields) {
   if (auto b = dynamic_cast<nebula::execution::core::BlockExecutor*>(&cursor)) {
     return b->takeResult();
   } else if (auto f = dynamic_cast<nebula::memory::keyed::FlatRowCursor*>(&cursor)) {
     return f->takeResult();
   } else {
-    auto buffer = std::make_unique<nebula::memory::keyed::FlatBuffer>(schema);
+    // TODO(cao): this will lose the aggregation states by adding row by row
+    // we should ask FlatBuffer to support serializaiton with filtered rows
+    // push TOP ROWS serialization into FB instead of row by row rebuild.
+    LOG(INFO) << "Serializing row cursor as flat buffer.";
+    auto buffer = std::make_unique<nebula::memory::keyed::FlatBuffer>(schema, fields);
     while (cursor.hasNext()) {
       buffer->add(cursor.next());
     }
 
-    // move this buffer out
-    LOG(INFO) << "Serialized a cursor as flat buffer.";
     return buffer;
   }
 }

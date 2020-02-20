@@ -8,6 +8,7 @@ add_library(${NEBULA_META} STATIC
     ${NEBULA_SRC}/meta/ClusterInfo.cpp)
 target_link_libraries(${NEBULA_META}
     PUBLIC ${NEBULA_TYPE}
+    PUBLIC ${NEBULA_SURFACE}
     PUBLIC ${YAML_LIBRARY})
 
 # include its own root directory for searching headers

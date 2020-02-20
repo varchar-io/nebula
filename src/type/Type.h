@@ -420,8 +420,12 @@ struct TypeDetect {};
     static constexpr auto type = [](const std::string& n) { return KT::createTree(n); }; \
     static constexpr ST value = DV;                                                      \
     static inline std::string_view tid() {                                               \
-      static std::string id{ typeid(NT).name() };                                        \
-      return id;                                                                         \
+      if constexpr (std::is_same_v<int128_t, NT>) {                                      \
+        return "int128_t";                                                               \
+      } else {                                                                           \
+        static std::string id{ typeid(NT).name() };                                      \
+        return id;                                                                       \
+      }                                                                                  \
     }                                                                                    \
   };
 
@@ -441,6 +445,7 @@ DEFINE_TYPE_DETECT(const char*, VARCHAR, StringType, std::string_view, "")
 DEFINE_TYPE_DETECT(char*, VARCHAR, StringType, std::string_view, "")
 DEFINE_TYPE_DETECT(std::string_view, VARCHAR, StringType, std::string_view, "")
 DEFINE_TYPE_DETECT(std::string, VARCHAR, StringType, std::string_view, "")
+DEFINE_TYPE_DETECT(void*, INVALID, StructType, void*, nullptr)
 
 #undef DEFINE_TYPE_DETECT
 

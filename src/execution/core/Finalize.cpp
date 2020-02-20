@@ -40,12 +40,15 @@ using nebula::surface::RowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::surface::SchemaRow;
+using nebula::surface::eval::Aggregator;
+using nebula::surface::eval::Sketch;
 using nebula::surface::eval::UDAF;
 using nebula::type::Kind;
 using nebula::type::Schema;
+using nebula::type::TypeTraits;
 
 // transformers to be executed for each column if it needs a transformer
-using TransformerVector = std::vector<std::function<void(const int128_t& v, void* t)>>;
+using TransformerVector = std::vector<std::function<void(const RowData*, void*)>>;
 
 class ForwardRowData : public nebula::surface::SchemaRow {
 public:
@@ -83,9 +86,8 @@ public:
         LOG(INFO) << "cache hit: " << key; \
         return values_.F(key);             \
       }                                    \
-      auto i128 = row_->readInt128(i);     \
       T v;                                 \
-      transform(i128, &v);                 \
+      transform(row_, &v);                 \
       values_.write(key, v);               \
       return v;                            \
     }                                      \
@@ -135,16 +137,11 @@ private:
 
 class ForwardRowCursor : public RowCursor {
 public:
-  ForwardRowCursor(RowCursorPtr inner,
-                   Schema input,
-                   Schema output,
-                   const nebula::surface::eval::Fields& fields)
+  ForwardRowCursor(RowCursorPtr inner, const FinalPhase& phase)
     : RowCursor(inner->size()),
       inner_{ inner },
-      input_{ input },
-      output_{ output },
-      fields_{ fields },
-      row_{ input, transformers_ } {
+      phase_{ phase },
+      row_{ phase.inputSchema(), transformers_ } {
     // build transformers
     buildTransformers();
   }
@@ -157,65 +154,59 @@ public:
 
   // a const interface return an unique ptr for secure randome access
   virtual std::unique_ptr<RowData> item(size_t i) const override {
-    return std::unique_ptr<RowData>(new ForwardRowData(input_, transformers_, inner_->item(i)));
+    return std::unique_ptr<RowData>(
+      new ForwardRowData(phase_.inputSchema(), transformers_, inner_->item(i)));
   }
 
 private:
   void buildTransformers() {
+    auto input = phase_.inputSchema();
+    auto output = phase_.outputSchema();
     // different on this column index
-    const auto size = input_->size();
-    N_ENSURE_EQ(size, output_->size(), "support the same number of columns");
+    const auto size = input->size();
+    N_ENSURE_EQ(size, output->size(), "support the same number of columns");
     transformers_.reserve(size);
     for (size_t i = 0; i < size; ++i) {
-      auto iType = input_->childType(i)->k();
-      auto oType = output_->childType(i)->k();
-      auto different = iType != oType;
+      auto iType = input->childType(i)->k();
+      auto oType = output->childType(i)->k();
       transformers_.push_back({});
 
-      if (different) {
-        N_ENSURE_EQ(iType, Kind::INT128, "support transform from int128 to other types only");
-        // TODO(cao): ideally this should be a entry point for ValueEval - the base for all expressions
-        // However, so far I don't see any cases more than UDAF could have this, so jump directly to it for now
-#define DISPATCH_TYPE_FROM_I128(K)                                                                                        \
-  case Kind::K: {                                                                                                         \
-    transformers_[i] = [& udaf = static_cast<UDAF<Kind::K, Kind::INT128>&>(*fields_.at(i))](const int128_t& v, void* t) { \
-      *static_cast<nebula::type::TypeTraits<Kind::K>::CppType*>(t) = udaf.finalize(v);                                    \
-    };                                                                                                                    \
-    break;                                                                                                                \
+      if (phase_.isAggregateColumn(i)) {
+// below provides a template to write core logic for all input / output type combinations
+#define LOGIC_BY_IO(O, I)                                                        \
+  case Kind::I: {                                                                \
+    transformers_[i] = [i](const RowData* r, void* t) {                          \
+      using OutputType = TypeTraits<Kind::O>::CppType;                           \
+      auto sketch = r->getAggregator(i);                                         \
+      N_ENSURE_NOT_NULL(sketch, "transformer only built on sketch type");        \
+      auto agg = std::static_pointer_cast<Aggregator<Kind::O, Kind::I>>(sketch); \
+      *static_cast<OutputType*>(t) = agg->finalize();                            \
+    };                                                                           \
+    break;                                                                       \
   }
 
-        switch (oType) {
-          DISPATCH_TYPE_FROM_I128(TINYINT)
-          DISPATCH_TYPE_FROM_I128(SMALLINT)
-          DISPATCH_TYPE_FROM_I128(INTEGER)
-          DISPATCH_TYPE_FROM_I128(BIGINT)
-          DISPATCH_TYPE_FROM_I128(REAL)
-          DISPATCH_TYPE_FROM_I128(DOUBLE)
-        default:
-          throw NException(fmt::format("type {0} not supported.", nebula::type::TypeBase::kname(oType)));
-        }
-#undef DISPATCH_TYPE_FROM_I128
+        ITERATE_BY_IO(oType, iType)
+
+#undef LOGIC_BY_IO
       }
     }
   }
 
 private:
   RowCursorPtr inner_;
-  Schema input_;
-  Schema output_;
-  const nebula::surface::eval::Fields& fields_;
+  const FinalPhase& phase_;
   ForwardRowData row_;
   TransformerVector transformers_;
 };
 
 // finalize transform data between types if needed, otherwise you get the original cursor
 nebula::surface::RowCursorPtr finalize(nebula::surface::RowCursorPtr cursor, const FinalPhase& phase) {
-  if (!phase.diffInputOutput()) {
+  if (!phase.hasAggregation()) {
     return cursor;
   }
 
   // now let's return a cursor that has transformer built in
-  return std::make_shared<ForwardRowCursor>(cursor, phase.inputSchema(), phase.outputSchema(), phase.fields());
+  return std::make_shared<ForwardRowCursor>(cursor, phase);
 }
 
 } // namespace core
