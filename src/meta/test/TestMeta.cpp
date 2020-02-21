@@ -78,6 +78,13 @@ TEST(MetaTest, TestClusterConfigLoad) {
   for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
     LOG(INFO) << "TABLE: " << (*itr)->toString();
   }
+
+  // test the table level settings can be read as expected
+  auto test = (*tables.cbegin());
+  EXPECT_EQ(test->settings.size(), 2);
+  EXPECT_EQ(test->settings.at("key1"), "value1");
+  EXPECT_EQ(test->settings.at("key2"), "value2");
+  LOG(INFO) << "key1=" << test->settings.at("key1");
 }
 
 TEST(MetaTest, TestAccessRules) {

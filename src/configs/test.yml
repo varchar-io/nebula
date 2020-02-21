@@ -27,6 +27,9 @@ tables:
     source: ""
     backup: s3://nebula/n100/
     format: none
+    settings:
+      key1: value1
+      key2: value2
     time:
       type: static
       # get it from linux by "date +%s"

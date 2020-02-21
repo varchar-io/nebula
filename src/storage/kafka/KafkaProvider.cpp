@@ -16,8 +16,6 @@
 
 #include "KafkaProvider.h"
 
-#include <unordered_map>
-
 /**
  * Provide common kafka handles creation.
  */
@@ -30,7 +28,8 @@ thread_local std::unordered_map<std::string, std::unique_ptr<RdKafka::KafkaConsu
 
 // Kafka consumer handle is expensive resource which is supposed to reuse
 // in the same thread.
-RdKafka::KafkaConsumer* KafkaProvider::getConsumer(const std::string& brokers) {
+RdKafka::KafkaConsumer* KafkaProvider::getConsumer(const std::string& brokers,
+                                                   const std::unordered_map<std::string, std::string>& settings) {
   auto cache = consumers.find(brokers);
   if (cache != consumers.end()) {
     return cache->second.get();
@@ -45,6 +44,11 @@ RdKafka::KafkaConsumer* KafkaProvider::getConsumer(const std::string& brokers) {
   if (conf->set(K, V, error) != RdKafka::Conf::CONF_OK) { \
     LOG(INFO) << "Kafka: " << error;                      \
     return nullptr;                                       \
+  }
+
+  // for kafka - the configs are all go to consumers
+  for (auto itr = settings.begin(); itr != settings.end(); ++itr) {
+    SET_KEY_VALUE_CHECK(itr->first, itr->second)
   }
 
   // set up gzip

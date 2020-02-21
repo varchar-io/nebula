@@ -18,9 +18,9 @@ target_link_libraries(${NEBULA_STORAGE}
     PUBLIC ${PARQUET_LIBRARY}
     PUBLIC ${ARROW_LIBRARY}
     PUBLIC ${AWS_LIBRARY}
+    PUBLIC ${KAFKA_LIBRARY}
     PUBLIC ${CURL_LIBRARY}
-    PUBLIC ${THRIFT_LIBRARY}
-    PUBLIC ${KAFKA_LIBRARY})
+    PUBLIC ${THRIFT_LIBRARY})
 
 #build test binary
 add_executable(StorageTests

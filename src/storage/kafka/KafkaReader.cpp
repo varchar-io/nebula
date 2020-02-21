@@ -98,12 +98,24 @@ void KafkaReader::load(RdKafka::KafkaConsumer* consumer) {
   // TODO(cao) - due kafka version without timestamp.
   // split may not have precise offset info
   const int64_t max = segment_.offset + segment_.size;
+  size_t numErrors = 0;
   while (messages_.size() < segment_.size) {
     // when this message is consumed from queue, please delete it
     auto msg = std::unique_ptr<RdKafka::Message>(consumer->consume(timeoutMs_));
 
     // message may be empty
     if (msg && msg->len() > 0) {
+      // check if the message has error
+      if (msg->err() != RdKafka::ERR_NO_ERROR) {
+        LOG(ERROR) << "Error in reading kafka message: " << msg->errstr();
+
+        // more than half messages are error, not waiting any more
+        if (numErrors++ >= segment_.size / 5) {
+          LOG(ERROR) << "More than 20% messages are error, give up...";
+          break;
+        }
+      }
+
       auto offset = msg->offset();
       messages_.push_back(std::move(msg));
 

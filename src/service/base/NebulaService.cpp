@@ -456,6 +456,11 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
       sd.cmap.emplace(itr->name()->str(), itr->index());
     }
 
+    // TODO(cao): settings needs to be sync to all nodes as it may contain critical info
+    // such as SSL cert settings to enable ingester read data properly
+    // build key-value settings
+    std::unordered_map<std::string, std::string> settings;
+
     // build table spec
     std::string tbName = it->name()->str();
     std::string src = it->location()->str();
@@ -472,7 +477,8 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
                                              std::move(sd),
                                              std::move(props),
                                              std::move(time),
-                                             std::move(as));
+                                             std::move(as),
+                                             std::move(settings));
 
     auto is = std::make_shared<IngestSpec>(
       table,

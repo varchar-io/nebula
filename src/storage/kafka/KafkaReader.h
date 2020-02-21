@@ -55,7 +55,7 @@ public:
     }
 
     // load all desired messages through this consumer
-    load(KafkaProvider::getConsumer(table_->location));
+    load(KafkaProvider::getConsumer(table_->location, table_->settings));
   }
 
   virtual ~KafkaReader() = default;

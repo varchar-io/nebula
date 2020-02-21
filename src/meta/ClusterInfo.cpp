@@ -114,6 +114,27 @@ std::vector<AccessRule> asAccessRules(const YAML::Node& node) {
   return {};
 }
 
+// read flat single dimensional key-value list
+// example:
+// settings:
+//    k1:v1
+//    ...
+//    kn:vn
+std::unordered_map<std::string, std::string> asSettings(const YAML::Node& node) {
+  if (node) {
+    std::unordered_map<std::string, std::string> settings;
+    // for all access type
+    for (YAML::const_iterator it = node.begin(); it != node.end(); ++it) {
+      settings.emplace(it->first.as<std::string>(), it->second.as<std::string>());
+    }
+
+    return settings;
+  }
+
+  // no rules defined
+  return {};
+}
+
 TimeSpec asTimeSpec(const YAML::Node& node) {
   auto timeType = node["type"].as<std::string>();
   if (timeType == "static") {
@@ -268,7 +289,8 @@ void ClusterInfo::load(const std::string& file) {
       asSerde(td["serde"]),
       asColumnProps(td["columns"]),
       asTimeSpec(td["time"]),
-      asAccessRules(td["access"])));
+      asAccessRules(td["access"]),
+      asSettings(td["settings"])));
   }
 
   // swap with new table set
