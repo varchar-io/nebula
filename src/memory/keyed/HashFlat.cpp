@@ -189,8 +189,7 @@ Hasher HashFlat::genHasher(size_t i) noexcept {
 // CMakeList.txt has more details in the problem.
 // So now, we disable optimizations higher than level 1 on this method
 // we may dig more in the future to understand this problem better. (CLANG need no this)
-Copier
-  HashFlat::genCopier(size_t i) noexcept {
+Copier HashFlat::genCopier(size_t i) noexcept {
   // only need for value
   if (!isAggregate(i)) {
     return {};
@@ -209,12 +208,12 @@ Copier
       const auto& row2Props = rows_.at(row2);                                              \
       const auto& colProps1 = row1Props.colProps.at(i);                                    \
       auto& colProps2 = row2Props.colProps.at(i);                                          \
-      if (colProps1.isNull) {                                                              \
+      N_ENSURE_NOT_NULL(colProps2.sketch, "merge row should have sketch");                 \
+      if (UNLIKELY(row1 != row2 && colProps1.sketch != nullptr)) {                         \
+        colProps2.sketch->mix(*colProps1.sketch);                                          \
         return;                                                                            \
       }                                                                                    \
-      N_ENSURE_NOT_NULL(colProps2.sketch, "merge row should have sketch");                 \
-      if (UNLIKELY(colProps1.sketch != nullptr)) {                                         \
-        colProps2.sketch->mix(*colProps1.sketch);                                          \
+      if (colProps1.isNull) {                                                              \
         return;                                                                            \
       }                                                                                    \
       auto row1Offset = row1Props.offset + colProps1.offset;                               \
@@ -282,7 +281,6 @@ bool HashFlat::update(const nebula::surface::RowData& row) {
   }
 
   // resume all values population and add a new row key
-  // this->resume(row, values_, newRow);
   rowKeys_.insert(key);
 
   // since this is a new row, create aggregator for all its value fields
@@ -291,6 +289,8 @@ bool HashFlat::update(const nebula::surface::RowData& row) {
     auto& sketch = rowProps.colProps.at(i).sketch;
     if (sketch == nullptr) {
       sketch = cops_.at(i).sketcher();
+      // since this is the first time sketch created, merge its own value
+      ops_.at(i).copier(newRow, newRow);
     }
   }
 

@@ -78,7 +78,19 @@ TreeNode Expression::typeCreate(Kind kind, const std::string& alias) {
     M(OP, K3, K5, F),                                        \
     M(OP, K3, K6, F),                                        \
     M(OP, K4, K5, F),                                        \
-    M(OP, K5, K6, F)
+    M(OP, K4, K6, F),                                        \
+    M(OP, K5, K1, F),                                        \
+    M(OP, K5, K2, F),                                        \
+    M(OP, K5, K3, F),                                        \
+    M(OP, K5, K4, F),                                        \
+    M(OP, K5, K5, F),                                        \
+    M(OP, K5, K6, F),                                        \
+    M(OP, K6, K1, F),                                        \
+    M(OP, K6, K2, F),                                        \
+    M(OP, K6, K3, F),                                        \
+    M(OP, K6, K4, F),                                        \
+    M(OP, K6, K5, F),                                        \
+    M(OP, K6, K6, F)
 
 const arthmetic_forward::Map& arthmetic_forward::map() {
 
@@ -186,7 +198,8 @@ std::unique_ptr<nebula::surface::eval::ValueEval> logical_forward::operator()(
   const auto& m = map();
   auto itr = m.find(std::make_tuple(op, k1, k2));
   if (itr == m.end()) {
-    throw NException("logical function is not defined");
+    throw NException(fmt::format("logical function '{0}({1}, {2})' is not defined.",
+                                 (int)op, TypeBase::kname(k1), TypeBase::kname(k2)));
   }
 
   return itr->second(std::move(v1), std::move(v2));

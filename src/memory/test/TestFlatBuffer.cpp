@@ -198,8 +198,10 @@ TEST(FlatBufferTest, TestHashFlatSerde) {
   HashFlat hf(schema, f);
 
   // add some rows
-  constexpr auto rows2test = 21053;
+  constexpr auto rows2test = 101053;
   auto seed = Evidence::unix_timestamp();
+  // seed = 1583448824;
+  // LOG(INFO) << "seed: " << seed;
   MockRowData row(seed);
 
   // add 5 rows
@@ -221,12 +223,23 @@ TEST(FlatBufferTest, TestHashFlatSerde) {
   // check these two buffers are exactly the same
   EXPECT_EQ(fb2.getRows(), rows2test);
 
+#define VERIFY_COL(C)                         \
+  {                                           \
+    auto rn = r.isNull(C);                    \
+    auto rn2 = r2.isNull(C);                  \
+    EXPECT_EQ(rn, rn2);                       \
+    if (!rn) {                                \
+      EXPECT_EQ(r.readInt(C), r2.readInt(C)); \
+    }                                         \
+  }
+
   // check every single row are the same
   for (auto i = 0; i < rows2test; ++i) {
     const auto& r = hf.row(i);
     const auto& r2 = fb2.row(i);
-    EXPECT_EQ(r.readInt(0), r2.readInt(0));
-    EXPECT_EQ(r.readInt(1), r2.readInt(1));
+
+    VERIFY_COL(0)
+    VERIFY_COL(1)
   }
 }
 

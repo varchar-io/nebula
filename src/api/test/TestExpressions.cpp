@@ -456,6 +456,32 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(valid, true);
   }
 
+  // logical expression serde - double compare
+  {
+    auto cw = nebula::api::dsl::col("weight") > 1.5;
+    auto i1ser = nebula::api::dsl::Serde::serialize(cw);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(cw.alias(), "weight");
+    EXPECT_EQ(exp->alias(), "weight");
+
+    // verify kind
+    cw.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->typeInfo(), cw.typeInfo());
+
+    // verify value evaluation
+    bool valid = true;
+    auto v1 = cw.asEval();
+    auto v2 = exp->asEval();
+
+    EXPECT_EQ(v1->eval<bool>(ctx, valid), false);
+    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v2->eval<bool>(ctx, valid), false);
+    EXPECT_EQ(valid, true);
+  }
+
   // arthmetic expresssions
   {
     auto cv = nebula::api::dsl::col("value") * 10 + 100;
