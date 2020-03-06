@@ -122,7 +122,7 @@ enum class UDFType {
   AVG,
   COUNT,
   SUM,
-  TDIGEST
+  PCT
 };
 
 // UDF traits tells us:
@@ -253,19 +253,19 @@ UDF_NOT_SUPPORT(AVG, nebula::type::Kind::VARCHAR)
 // add tdigest UDAF traits definition
 // in schema, a digest is serialized as string type
 // while it's store type is a customized serializable struct / object => void*
-STATIC_TRAITS(TDIGEST, true)
-UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::TINYINT)
-UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::SMALLINT)
-UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::INTEGER)
-UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::BIGINT)
-UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::REAL)
-UDF_TRAITS(TDIGEST, nebula::type::Kind::VARCHAR, nebula::type::Kind::DOUBLE)
+STATIC_TRAITS(PCT, true)
+UDF_SAME_AS_INPUT(nebula::type::Kind::TINYINT, PCT)
+UDF_SAME_AS_INPUT(nebula::type::Kind::SMALLINT, PCT)
+UDF_SAME_AS_INPUT(nebula::type::Kind::INTEGER, PCT)
+UDF_SAME_AS_INPUT(nebula::type::Kind::BIGINT, PCT)
+UDF_SAME_AS_INPUT(nebula::type::Kind::REAL, PCT)
+UDF_SAME_AS_INPUT(nebula::type::Kind::DOUBLE, PCT)
 
 // do not support digest on these types
-UDF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::INVALID)
-UDF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::BOOLEAN)
-UDF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::VARCHAR)
-UDF_NOT_SUPPORT(TDIGEST, nebula::type::Kind::INT128)
+UDF_NOT_SUPPORT(PCT, nebula::type::Kind::INVALID)
+UDF_NOT_SUPPORT(PCT, nebula::type::Kind::BOOLEAN)
+UDF_NOT_SUPPORT(PCT, nebula::type::Kind::VARCHAR)
+UDF_NOT_SUPPORT(PCT, nebula::type::Kind::INT128)
 
 #undef UDF_SAME_AS_INPUT_ALL
 #undef UDF_SAME_AS_INPUT

@@ -23,8 +23,8 @@
 #include "api/udf/In.h"
 #include "api/udf/Like.h"
 #include "api/udf/Not.h"
+#include "api/udf/Pct.h"
 #include "api/udf/Prefix.h"
-#include "api/udf/TDigest.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "surface/eval/ValueEval.h"
@@ -562,37 +562,39 @@ TEST(UDFTest, TestAvgInt128) {
   EXPECT_EQ(avg4, sum / count);
 }
 
-TEST(UDFTest, TestTDigest) {
-  using CType = nebula::api::udf::TDigest<nebula::type::Kind::INTEGER>;
+TEST(UDFTest, TestPct) {
+  using CType = nebula::api::udf::Pct<nebula::type::Kind::INTEGER>;
 
   // simulate the run times 11 for c1 and 22 for c2
   nebula::surface::eval::EvalContext ctx;
   bool invalid;
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
-  CType tf("td1", v9->asEval());
+  double percentile = 99.0;
+  CType tf("td1", v9->asEval(), percentile);
 
   auto td1 = tf.sketch();
-  for (auto i = 0; i < 11; ++i) {
+  for (auto i = 0; i < 110; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
-    CType ci("count1", vi->asEval());
+    CType ci("count1", vi->asEval(), percentile);
     td1->merge(ci.eval(ctx, invalid));
   }
 
   auto td2 = tf.sketch();
-  for (auto i = 0; i < 22; ++i) {
+  for (auto i = 0; i < 220; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
-    CType ci("count2", vi->asEval());
+    CType ci("count2", vi->asEval(), percentile);
     td2->merge(ci.eval(ctx, invalid));
   }
 
   // partial merge
-  CType c3("count3", v9->asEval());
+  CType c3("count3", v9->asEval(), percentile);
   td1->mix(*td2);
 
   // we will ask itself for finalize
   CType::NativeType td4 = td1->finalize();
-  LOG(INFO) << "digest: " << td4;
-  EXPECT_EQ(td4, "{\"sum\":0.0,\"count\":0.0,\"max\":,\"min\":,\"maxSize\":100.0,\"centroids\":[]}");
+  EXPECT_NEAR(td4, 217, 1);
+  auto json = static_cast<CType::Aggregator*>(td1.get())->jsonfy();
+  LOG(INFO) << "sketch in json: " << json;
 }
 
 } // namespace test

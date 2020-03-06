@@ -18,6 +18,7 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <msgpack.hpp>
 #include <roaring.hh>
 #include <yaml-cpp/yaml.h>
 #include <yorel/yomm2/cute.hpp>
@@ -243,6 +244,53 @@ TEST(CommonTest, TestTimer) {
 
   // after done
   LOG(INFO) << "scheduler exits";
+}
+
+TEST(CommonTest, TestMsgpack) {
+  {
+    using TT = std::tuple<int, bool, std::string>;
+    TT src(1, true, "example");
+
+    std::stringstream buffer;
+    msgpack::pack(buffer, src);
+
+    // send the buffer ...
+    buffer.seekg(0);
+
+    // unpack
+    std::string str = buffer.str();
+    msgpack::object_handle oh = msgpack::unpack(str.data(), str.size());
+
+    msgpack::object deserialized = oh.get();
+    LOG(INFO) << deserialized;
+
+    TT dst;
+    deserialized.convert(dst);
+
+    // or create the new instance
+    TT dst2 = deserialized.as<TT>();
+    EXPECT_EQ(dst, dst2);
+  }
+
+  // single double tuple
+  {
+    using TT = std::tuple<double>;
+    TT src(99);
+
+    std::stringstream buffer;
+    msgpack::pack(buffer, src);
+
+    // send the buffer ...
+    buffer.seekg(0);
+
+    // unpack
+    std::string str = buffer.str();
+    LOG(INFO) << "ser=" << str << ", size=" << str.size();
+    msgpack::object_handle oh = msgpack::unpack(str.data(), str.size());
+
+    msgpack::object deserialized = oh.get();
+    LOG(INFO) << "des=" << deserialized;
+  }
 }
 
 } // namespace test

@@ -23,6 +23,7 @@
 #include "Max.h"
 #include "Min.h"
 #include "Not.h"
+#include "Pct.h"
 #include "Prefix.h"
 #include "Sum.h"
 #include "api/dsl/Base.h"
@@ -41,8 +42,8 @@ using UDFKind = nebula::surface::eval::UDFType;
 class UDFFactory {
 public:
   template <UDFKind UKIND, nebula::type::Kind IK, typename... Args>
-  static auto createUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Args&&... args)
-    -> decltype(auto) {
+  static std::unique_ptr<nebula::surface::eval::ValueEval>
+    createUDF(std::shared_ptr<nebula::api::dsl::Expression> expr, Args&&... args) {
 
     constexpr auto name = nebula::surface::eval::UdfTraits<UKIND, IK>::Name;
 
@@ -68,6 +69,10 @@ public:
 
     if constexpr (UKIND == UDFKind::AVG) {
       return std::make_unique<Avg<IK>>(name, expr->asEval());
+    }
+
+    if constexpr (UKIND == UDFKind::PCT) {
+      return std::make_unique<Pct<IK>>(name, expr->asEval(), std::forward<Args>(args)...);
     }
 
     if constexpr (UKIND == UDFKind::LIKE) {

@@ -560,6 +560,36 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(v2->eval<bool>(ctx, valid), true);
     EXPECT_EQ(valid, true);
   }
+
+  // expression with UDAF pct
+  {
+    LOG(INFO) << "Starting to test UDAF PCT";
+    auto ci = nebula::api::dsl::pct(nebula::api::dsl::col("value"), 99).as("p99");
+    auto i1ser = nebula::api::dsl::Serde::serialize(ci);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+
+    // vreify alias
+    EXPECT_EQ(ci.alias(), "p99");
+    EXPECT_EQ(exp->alias(), "p99");
+
+    // verify kind
+    ci.type(*tbl);
+    exp->type(*tbl);
+    EXPECT_EQ(exp->typeInfo(), ci.typeInfo());
+
+    // verify value evaluation
+    auto v1 = ci.asEval();
+
+    using AggType = nebula::surface::eval::Aggregator<nebula::type::Kind::INTEGER, nebula::type::Kind::INTEGER>;
+    auto s1 = std::static_pointer_cast<AggType>(
+      v1->sketch<nebula::type::Kind::INTEGER, nebula::type::Kind::INTEGER>());
+    for (int i = 0; i <= 100; ++i) {
+      s1->merge(i);
+    }
+
+    auto pv = s1->finalize();
+    EXPECT_NEAR(pv, 99, 1);
+  }
 }
 
 } // namespace test

@@ -291,10 +291,10 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
 std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) const {
   const auto& colName = metric.column();
-#define BUILD_METRIC_CASE(TYPE, NAME)                                         \
-  case Rollup::TYPE: {                                                        \
-    auto exp = NAME(col(colName)).as(fmt::format("{0}.{1}", colName, #NAME)); \
-    return std::make_shared<decltype(exp)>(exp);                              \
+#define BUILD_METRIC_CASE(TYPE, NAME, ...)                                                   \
+  case Rollup::TYPE: {                                                                       \
+    auto exp = NAME(col(colName), ##__VA_ARGS__).as(fmt::format("{0}.{1}", colName, #NAME)); \
+    return std::make_shared<decltype(exp)>(exp);                                             \
   }
 
   switch (metric.method()) {
@@ -303,6 +303,14 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
     BUILD_METRIC_CASE(COUNT, count)
     BUILD_METRIC_CASE(SUM, sum)
     BUILD_METRIC_CASE(AVG, avg)
+    BUILD_METRIC_CASE(P10, pct, 10)
+    BUILD_METRIC_CASE(P25, pct, 25)
+    BUILD_METRIC_CASE(P50, pct, 50)
+    BUILD_METRIC_CASE(P75, pct, 75)
+    BUILD_METRIC_CASE(P90, pct, 90)
+    BUILD_METRIC_CASE(P99, pct, 99)
+    BUILD_METRIC_CASE(P99_9, pct, 99.9)
+    BUILD_METRIC_CASE(P99_99, pct, 99.99)
   default:
     throw NException("Rollup method not supported");
   }

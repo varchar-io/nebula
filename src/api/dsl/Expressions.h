@@ -18,6 +18,7 @@
 
 #include <folly/Conv.h>
 #include <glog/logging.h>
+#include <msgpack.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
@@ -420,11 +421,15 @@ private:
 // So here - we will implement this first. When necessary, we may want to introduce different expresssion type.
 // TODO(cao) - need rework this since we need to come up with a framework
 // to allow customized UDAFs to be plugged in
-template <nebula::surface::eval::UDFType UT>
+template <nebula::surface::eval::UDFType UT, typename... T>
 class UDFExpression : public Expression {
+  using Tuple = typename std::tuple<T...>;
+  static constexpr size_t TupleSize = std::tuple_size<typename std::remove_reference<Tuple>::type>::value;
+
 public:
-  UDFExpression(std::shared_ptr<Expression> inner)
-    : inner_{ inner } {}
+  UDFExpression(std::shared_ptr<Expression> inner, T... args)
+    : inner_{ inner },
+      args_{ std::forward<T>(args)... } {}
   UDFExpression(const UDFExpression&) = default;
   UDFExpression& operator=(const UDFExpression&) = default;
   virtual ~UDFExpression() = default;
@@ -451,9 +456,18 @@ public:
     return inner_->columnRefs();
   }
 
-#define CASE_KIND_UDF(KIND)                                                               \
-  case nebula::type::Kind::KIND: {                                                        \
-    return nebula::api::udf::UDFFactory::createUDF<UT, nebula::type::Kind::KIND>(inner_); \
+  template <nebula::type::Kind K, size_t... S>
+  std::unique_ptr<nebula::surface::eval::ValueEval> apply_tuple(std::index_sequence<S...>) const {
+    return nebula::api::udf::UDFFactory::createUDF<UT, K>(inner_, std::get<S>(args_)...);
+  }
+
+#define CASE_KIND_UDF(KIND)                                                                 \
+  case nebula::type::Kind::KIND: {                                                          \
+    if constexpr (!nebula::surface::eval::UdfTraits<UT, nebula::type::Kind::KIND>::Valid) { \
+      return nullptr;                                                                       \
+    } else {                                                                                \
+      return apply_tuple<nebula::type::Kind::KIND>(std::make_index_sequence<TupleSize>());  \
+    }                                                                                       \
   }
 
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
@@ -481,6 +495,12 @@ public:
     data->type = ExpressionType::UDF;
     data->u_type = UT;
     data->inner = std::move(inner_->serialize());
+
+    // serialize the tuple
+    std::stringstream buffer;
+    msgpack::pack(buffer, args_);
+    buffer.seekg(0);
+    data->custom = buffer.str();
     return data;
   }
 
@@ -488,6 +508,7 @@ public:
 
 protected:
   std::shared_ptr<Expression> inner_;
+  std::tuple<T...> args_;
 };
 
 template <nebula::surface::eval::UDFType UDF>

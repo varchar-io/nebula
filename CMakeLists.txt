@@ -256,6 +256,9 @@ include(ext/Yaml_Ext.cmake)
 # include uri parser
 include(ext/Uri_Ext.cmake)
 
+# include msgpack - tuples serde
+include(ext/Msgpack_Ext.cmake)
+
 # include perf tools
 include(ext/Perf_Ext.cmake)
 

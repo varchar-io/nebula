@@ -107,7 +107,15 @@ enum Rollup {
   MAX = 2;
   MIN = 3;
   AVG = 4;
-  P99 = 5;
+  // pre-defined percentile
+  P10 = 5;
+  P25 = 6;
+  P50 = 7;
+  P75 = 8;
+  P90 = 9;
+  P99 = 10;
+  P99_9 = 11;
+  P99_99 = 12;
 }
 
 // A metric is defined by rollup method on a column
@@ -121,6 +129,7 @@ message Metric {
 enum OrderType {
   ASC = 0;
   DESC = 1;
+  NONE = 2;
 }
 
 message Order {

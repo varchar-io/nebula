@@ -24,18 +24,18 @@
 #include "surface/eval/UDF.h"
 
 /**
- * Implement UDAF TDigest to get quantiles of target values
+ * Implement UDAF Pct to get quantiles of target values using folly/tdigest implementation
  * Internally this UDAF maintains a sketch binary stream with all numbers in double type.
  */
 namespace nebula {
 namespace api {
 namespace udf {
 
-// UDAF - TDigest
+// UDAF - percentile value through tdigest
 template <nebula::type::Kind IK,
-          typename Traits = nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::TDIGEST, IK>,
+          typename Traits = nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::PCT, IK>,
           typename BaseType = nebula::surface::eval::UDAF<Traits::Type, IK>>
-class TDigest : public BaseType {
+class Pct : public BaseType {
   // most commonly for percentiles
   static constexpr size_t DIGEST_SIZE = 100;
 
@@ -47,10 +47,14 @@ public:
 public:
   class Aggregator : public BaseAggregator {
   public:
+    explicit Aggregator(double percentile)
+      : percentile_{ percentile / DIGEST_SIZE },
+        digest_{ DIGEST_SIZE },
+        serde_{} {}
     virtual ~Aggregator() = default;
     // aggregate an value in
     inline virtual void merge(InputType v) override {
-      digest_.merge(std::array<double, 1>{ static_cast<double>(v) });
+      digest_ = digest_.merge(std::array<double, 1>{ double(v) });
     }
 
     // aggregate another aggregator
@@ -59,10 +63,14 @@ public:
     // with better interface to merge single item by pointer or reference
     inline virtual void mix(const nebula::surface::eval::Sketch& another) override {
       const auto& v2 = static_cast<const Aggregator&>(another).digest_;
-      digest_.merge(std::array<folly::TDigest, 1>{ v2 });
+      digest_ = digest_.merge(std::array<folly::TDigest, 1>{ v2 });
     }
 
     inline virtual NativeType finalize() override {
+      return static_cast<NativeType>(digest_.estimateQuantile(percentile_));
+    }
+
+    std::string jsonfy() {
       // set up JSON writer to serialize each row
       rapidjson::StringBuffer buffer;
       rapidjson::Writer<rapidjson::StringBuffer> json(buffer);
@@ -157,19 +165,20 @@ public:
     }
 
   private:
-    std::string serde_;
+    double percentile_;
     folly::TDigest digest_;
+    std::string serde_;
   };
 
 public:
-  TDigest(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
+  Pct(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, double percentile)
     : BaseType(name,
                std::move(expr),
-               []() -> std::shared_ptr<Aggregator> {
-                 return std::make_shared<Aggregator>();
+               [p = percentile]() -> std::shared_ptr<Aggregator> {
+                 return std::make_shared<Aggregator>(p);
                }) {}
 
-  virtual ~TDigest() = default;
+  virtual ~Pct() = default;
 };
 
 } // namespace udf

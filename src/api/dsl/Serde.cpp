@@ -16,10 +16,10 @@
 
 #include "Serde.h"
 
+#include <msgpack.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
-
 #include "Expressions.h"
 #include "type/Type.h"
 
@@ -33,7 +33,8 @@ using nebula::type::TypeDetect;
 // helper method to add a json string field
 inline void addstring(rapidjson::Writer<rapidjson::StringBuffer>& json, const char* const key, const std::string& str) noexcept {
   json.Key(key);
-  json.String(str.data(), str.length());
+  // JSON string will remove the trailing 0s, to be preserved for serde purpose
+  json.String(str.data(), str.size());
 }
 
 // helper method to alias it
@@ -83,6 +84,8 @@ std::string ser(const ExpressionData& data) {
     json.Key("udf");
     json.Int(static_cast<int>(data.u_type));
     addstring(json, "inner", ser(*data.inner));
+    // append an tail to keep any trailing 0 in custom
+    // remove tail N before consuming it
     addstring(json, "custom", data.custom);
     json.Key("flag");
     json.Bool(data.flag);
@@ -232,6 +235,13 @@ std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::sh
     throw NException(fmt::format("Unrecognized value type: {0}", valueType));
 #undef TYPE_IN_EXPR
   }
+  case UDFType::PCT: {
+    msgpack::object_handle oh = msgpack::unpack(custom.data(), custom.size());
+    auto deser = oh.get();
+    auto dst = deser.as<std::tuple<double>>();
+    auto pct = std::get<0>(dst);
+    return as(alias, std::make_shared<UDFExpression<UDFType::PCT, double>>(inner, pct));
+  }
 
 #define COM_UDF(UT)                                                        \
   case UDFType::UT: {                                                      \
@@ -282,10 +292,11 @@ std::shared_ptr<Expression> Serde::deserialize(const std::string& data) {
                   deserialize(document["right"].GetString()));
   }
   case ExpressionType::UDF: {
+    const auto& c = document["custom"];
     return u_expr(alias,
                   static_cast<UDFType>(document["udf"].GetInt()),
                   deserialize(document["inner"].GetString()),
-                  document["custom"].GetString(),
+                  std::string(c.GetString(), c.GetStringLength()),
                   document["flag"].GetBool());
   }
   default:

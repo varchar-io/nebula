@@ -100,6 +100,11 @@ static UDFExpression<nebula::surface::eval::UDFType::AVG> avg(const T& expr) {
 }
 
 template <typename T>
+static UDFExpression<nebula::surface::eval::UDFType::PCT, double> pct(const T& expr, double&& percentile) {
+  return UDFExpression<nebula::surface::eval::UDFType::PCT, double>(std::shared_ptr<Expression>(new T(expr)), std::move(percentile));
+}
+
+template <typename T>
 static LikeExpression like(const T& expr, const std::string& pattern, bool caseSensitive = true) {
   // TODO(cao) - model UDAF/UDF with existing expression
   return LikeExpression(std::shared_ptr<Expression>(new T(expr)), pattern, caseSensitive);

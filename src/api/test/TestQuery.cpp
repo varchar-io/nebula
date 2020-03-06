@@ -227,6 +227,52 @@ TEST(ApiTest, TestAvgAggregation) {
   }
 }
 
+TEST(ApiTest, TestPercentile) {
+  auto data = genData();
+
+  // query this table
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end)
+                 .select(
+                   col("event"),
+                   pct(col("value"), 50).as("p50"),
+                   pct(col("value"), 90).as("p90"),
+                   pct(col("value"), 99).as("p99"))
+                 .groupby({ 1 })
+                 .sortby({ 2 }, SortType::DESC)
+                 .limit(10);
+
+  // compile the query into an execution plan
+  QueryContext ctx{ "nebula", { "nebula-users" } };
+  auto plan = query.compile(ctx);
+  plan->setWindow({ start, end });
+
+  // print out the plan through logging
+  plan->display();
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << fmt::format("col: {0:20} | {1:12} | {2:12} | {3:12}", "event", "v.p50", "v.p90", "v.p99");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << fmt::format("row: {0:20} | {1:12} | {2:12} | {3:12}",
+                             row.readString("event"),
+                             row.readByte("p50"),
+                             row.readByte("p90"),
+                             row.readByte("p99"));
+  }
+}
+
 TEST(ApiTest, TestAccessControl) {
   auto data = genData();
 
