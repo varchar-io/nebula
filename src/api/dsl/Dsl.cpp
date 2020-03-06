@@ -250,16 +250,33 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) noexcept {
   // we need to revise the plan to use sum and count to replace.
   // x y, max(z)
   // filter by filter predicate, compute by keys: agg functions
+
   std::vector<std::unique_ptr<ValueEval>> fields;
+  bool nullEval = false;
   std::transform(selects_.begin(), selects_.end(), std::back_inserter(fields),
-                 [](std::shared_ptr<Expression> expr)
-                   -> std::unique_ptr<ValueEval> { return expr->asEval(); });
+                 [&nullEval](std::shared_ptr<Expression> expr)
+                   -> std::unique_ptr<ValueEval> {
+                   auto e = expr->asEval();
+                   if (e == nullptr) {
+                     nullEval = true;
+                   }
+                   return e;
+                 });
+  if (nullEval) {
+    END_ERROR(Error::INVALID_METRIC)
+  }
+
   auto block = std::make_unique<BlockPhase>(schema, tempOutput);
   filter_->type(*table_);
   // a query can have aggregation but no keys, such as "select count(1)"
+  auto filterEv = filter_->asEval();
+  if (filterEv == nullptr) {
+    END_ERROR(Error::INVALID_QUERY)
+  }
+
   (*block)
     .scan(table_->name())
-    .filter(filter_->asEval())
+    .filter(std::move(filterEv))
     .keys(std::move(zbKeys))
     .compute(std::move(fields))
     .aggregate(numAggColumns, std::move(aggColumns))

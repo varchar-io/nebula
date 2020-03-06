@@ -46,7 +46,8 @@ enum class Error {
   TABLE_PERM,
   COLUMN_PERM,
   NOT_SUPPORT,
-  INVALID_QUERY
+  INVALID_QUERY,
+  INVALID_METRIC
 };
 
 class QueryContext {
