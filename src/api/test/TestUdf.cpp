@@ -383,9 +383,9 @@ TEST(UDFTest, TestMin) {
   CType mf("min", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
-  CType::NativeType expected = 0;
+  CType::NativeType expected = std::numeric_limits<int32_t>::max();
   auto min1 = mf.sketch();
-  for (auto i = 0; i < 11; ++i) {
+  for (auto i = 5; i < 11; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType mi("min1", vi->asEval());
 
@@ -394,7 +394,7 @@ TEST(UDFTest, TestMin) {
   }
 
   auto min2 = mf.sketch();
-  for (auto i = 0; i < 22; ++i) {
+  for (auto i = 6; i < 22; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType mi("min2", vi->asEval());
 
@@ -408,6 +408,7 @@ TEST(UDFTest, TestMin) {
   // we will ask itself for finalize
   auto min4 = min1->finalize();
   EXPECT_EQ(min4, expected);
+  LOG(INFO) << "min=" << min4 << ", expected=" << expected;
 }
 
 TEST(UDFTest, TestMax) {
@@ -418,21 +419,23 @@ TEST(UDFTest, TestMax) {
   CType mf("max", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
-  CType::NativeType expected = 0;
+  CType::NativeType expected = std::numeric_limits<int32_t>::min();
   auto max1 = mf.sketch();
-  for (auto i = 0; i < 11; ++i) {
-    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+  for (auto i = 1; i < 11; ++i) {
+    int32_t v = i * -1;
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(v);
     CType mi("max1", vi->asEval());
     max1->merge(mi.eval(ctx, invalid));
-    expected = std::max(i, expected);
+    expected = std::max(v, expected);
   }
 
   auto max2 = mf.sketch();
-  for (auto i = 0; i < 22; ++i) {
-    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+  for (auto i = 1; i < 22; ++i) {
+    int32_t v = i * -1;
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(v);
     CType mi("max1", vi->asEval());
     max2->merge(mi.eval(ctx, invalid));
-    expected = std::max(i, expected);
+    expected = std::max(v, expected);
   }
 
   // partial merge
@@ -442,6 +445,7 @@ TEST(UDFTest, TestMax) {
   // we will ask itself for finalize
   CType::NativeType max4 = max1->finalize();
   EXPECT_EQ(max4, expected);
+  LOG(INFO) << "max=" << max4 << ", expected=" << expected;
 }
 
 TEST(UDFTest, TestAvg) {

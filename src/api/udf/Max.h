@@ -42,31 +42,32 @@ public:
     static constexpr auto StoreSize = sizeof(NativeType);
 
   public:
+    Aggregator() : value_{ std::numeric_limits<NativeType>::min() } {}
     virtual ~Aggregator() = default;
 
     // aggregate an value in
     inline virtual void merge(InputType v) override {
-      value = std::max<NativeType>(value, v);
+      value_ = std::max<NativeType>(value_, v);
     }
 
     // aggregate another aggregator
     inline virtual void mix(const nebula::surface::eval::Sketch& another) override {
-      auto v2 = static_cast<const Aggregator&>(another).value;
-      value = std::max<NativeType>(value, v2);
+      auto v2 = static_cast<const Aggregator&>(another).value_;
+      value_ = std::max<NativeType>(value_, v2);
     }
 
     inline virtual NativeType finalize() override {
-      return value;
+      return value_;
     }
 
     // serialize into a buffer
     inline virtual size_t serialize(nebula::common::PagedSlice& slice, size_t offset) override {
-      return slice.write(offset, value);
+      return slice.write(offset, value_);
     }
 
     // deserialize from a given buffer, and bin size
     inline virtual size_t load(nebula::common::PagedSlice& slice, size_t offset) override {
-      value = slice.read<NativeType>(offset);
+      value_ = slice.read<NativeType>(offset);
       return StoreSize;
     }
 
@@ -75,7 +76,7 @@ public:
     }
 
   private:
-    NativeType value;
+    NativeType value_;
   };
 
 public:

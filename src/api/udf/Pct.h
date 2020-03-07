@@ -38,6 +38,7 @@ template <nebula::type::Kind IK,
 class Pct : public BaseType {
   // most commonly for percentiles
   static constexpr size_t DIGEST_SIZE = 100;
+  static constexpr size_t BUFFER_SIZE = 4 * DIGEST_SIZE;
 
 public:
   using InputType = typename BaseType::InputType;
@@ -51,12 +52,12 @@ public:
       : percentile_{ percentile / DIGEST_SIZE },
         digest_{ DIGEST_SIZE },
         serde_{} {
-      buffer_.reserve(DIGEST_SIZE);
+      buffer_.reserve(BUFFER_SIZE);
     }
     virtual ~Aggregator() = default;
     // aggregate an value in
     inline virtual void merge(InputType v) override {
-      if (LIKELY(buffer_.size() < DIGEST_SIZE)) {
+      if (LIKELY(buffer_.size() < BUFFER_SIZE)) {
         buffer_.emplace_back(double(v));
         return;
       }
@@ -69,9 +70,26 @@ public:
     // We may use our own version of TDigest implementation
     // with better interface to merge single item by pointer or reference
     inline virtual void mix(const nebula::surface::eval::Sketch& another) override {
-      flush();
-      const auto& v2 = static_cast<const Aggregator&>(another).digest_;
-      digest_ = digest_.merge(std::array<folly::TDigest, 1>{ v2 });
+      auto right = static_cast<const Aggregator&>(another);
+
+      // merge buffer
+      auto rightBufferSize = right.buffer_.size();
+      if (rightBufferSize > 0) {
+        if (rightBufferSize > buffer_.size()) {
+          std::swap(buffer_, right.buffer_);
+        }
+
+        for (auto v : right.buffer_) {
+          buffer_.emplace_back(v);
+        }
+
+        right.buffer_.clear();
+      }
+
+      // only merge object only when it has value
+      if (right.digest_.count() > 0) {
+        digest_ = digest_.merge(std::array<folly::TDigest, 1>{ right.digest_ });
+      }
     }
 
     inline virtual NativeType finalize() override {
