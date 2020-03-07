@@ -284,7 +284,7 @@ UDF_NOT_SUPPORT(PCT, nebula::type::Kind::INT128)
 
 // get UDF result type kind based on its input type kind
 template <UDFType UK>
-nebula::type::Kind udfKind(nebula::type::Kind k) noexcept {
+nebula::type::Kind udfNativeKind(nebula::type::Kind k) noexcept {
   switch (k) {
     CASE_TYPE_KIND1(BOOLEAN, Type)
     CASE_TYPE_KIND1(TINYINT, Type)
@@ -296,6 +296,18 @@ nebula::type::Kind udfKind(nebula::type::Kind k) noexcept {
     CASE_TYPE_KIND1(INT128, Type)
     CASE_TYPE_KIND1(VARCHAR, Type)
   default: return nebula::type::Kind::INVALID;
+  }
+}
+
+// get UDF store type kind based on its input type kind
+template <UDFType UK>
+inline nebula::type::Kind udfStoreKind(nebula::type::Kind k) noexcept {
+  // count is special - no matter what input is,
+  // always using integer 1 as input
+  if constexpr (UK == UDFType::COUNT) {
+    return nebula::type::Kind::INTEGER;
+  } else {
+    return k;
   }
 }
 

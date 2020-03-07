@@ -445,8 +445,8 @@ public:
 
     // if this UDF has pre-defined type, we don't need to get it from inner expression then
     type_ = TypeInfo{
-      nebula::surface::eval::udfKind<UT>(innerType.native),
-      innerType.native
+      nebula::surface::eval::udfNativeKind<UT>(innerType.native),
+      nebula::surface::eval::udfStoreKind<UT>(innerType.native),
     };
 
     return type_;

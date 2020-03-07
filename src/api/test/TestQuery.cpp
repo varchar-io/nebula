@@ -107,7 +107,7 @@ TEST(ApiTest, TestStringEqEmpty) {
                  .where(col("_time_") > start && col("_time_") < end && col("event") == "")
                  .select(
                    col("event"),
-                   count(col("value")).as("total"))
+                   count(col("event")).as("total"))
                  .groupby({ 1 })
                  .sortby({ 2 }, SortType::DESC)
                  .limit(10);
