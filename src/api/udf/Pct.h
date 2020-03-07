@@ -50,11 +50,18 @@ public:
     explicit Aggregator(double percentile)
       : percentile_{ percentile / DIGEST_SIZE },
         digest_{ DIGEST_SIZE },
-        serde_{} {}
+        serde_{} {
+      buffer_.reserve(DIGEST_SIZE);
+    }
     virtual ~Aggregator() = default;
     // aggregate an value in
     inline virtual void merge(InputType v) override {
-      digest_ = digest_.merge(std::array<double, 1>{ double(v) });
+      if (LIKELY(buffer_.size() < DIGEST_SIZE)) {
+        buffer_.emplace_back(double(v));
+        return;
+      }
+
+      flush();
     }
 
     // aggregate another aggregator
@@ -62,11 +69,13 @@ public:
     // We may use our own version of TDigest implementation
     // with better interface to merge single item by pointer or reference
     inline virtual void mix(const nebula::surface::eval::Sketch& another) override {
+      flush();
       const auto& v2 = static_cast<const Aggregator&>(another).digest_;
       digest_ = digest_.merge(std::array<folly::TDigest, 1>{ v2 });
     }
 
     inline virtual NativeType finalize() override {
+      flush();
       return static_cast<NativeType>(digest_.estimateQuantile(percentile_));
     }
 
@@ -105,7 +114,9 @@ public:
     }
 
     // serialize into a buffer
-    inline virtual size_t serialize(nebula::common::PagedSlice& slice, size_t offset) const override {
+    inline virtual size_t serialize(nebula::common::PagedSlice& slice, size_t offset) override {
+      flush();
+
       // record first offset - final size will be delta of offset
       size_t origin = offset;
       // write sum
@@ -165,7 +176,16 @@ public:
     }
 
   private:
+    inline void flush() {
+      if (buffer_.size() > 0) {
+        digest_ = digest_.merge(buffer_);
+        buffer_.clear();
+      }
+    }
+
+  private:
     double percentile_;
+    std::vector<double> buffer_;
     folly::TDigest digest_;
     std::string serde_;
   };

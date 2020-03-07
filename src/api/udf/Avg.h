@@ -91,7 +91,7 @@ public:
     }
 
     // serialize into a buffer
-    inline virtual size_t serialize(nebula::common::PagedSlice& slice, size_t offset) const override {
+    inline virtual size_t serialize(nebula::common::PagedSlice& slice, size_t offset) override {
       offset += slice.write(offset, sum_);
       slice.write(offset, count_);
       return StoreSize;

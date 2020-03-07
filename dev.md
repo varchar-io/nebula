@@ -149,7 +149,7 @@ We will automate these steps one day.
 ### Docker images
 Docker images are available here: https://hub.docker.com/search?q=caoxhua%2Fnebula&type=image
 I published these images from a Ubuntu machine via these commands:
-1. docker login (my account)
+1. docker login (my account - check /etc/.docker/config.json to see if it manages docker repo for you, delete it)
 2. docker tag nebula/envoy caoxhua/nebula.envoy && docker push caoxhua/nebula.envoy
 3. docker tag nebula/web caoxhua/nebula.web && docker push caoxhua/nebula.web
 4. docker tag nebula/server caoxhua/nebula.server && docker push caoxhua/nebula.server
