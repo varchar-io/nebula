@@ -66,6 +66,10 @@ table NodeStateReply {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Define Task Spec Serialization Format
 //////////////////////////////////////////////////////////////////////////////////////////////////
+table PartitionInfo {
+  values: [string];
+  chunk: uint64;
+}
 
 table ColumnProp {
   name: string;
@@ -75,6 +79,8 @@ table ColumnProp {
   dict: bool;
   // default value when input is NULL
   dv: string;
+  // partition info of this column
+  pi: PartitionInfo;
 }
 
 table ColumnMap {
@@ -131,7 +137,7 @@ table IngestTask {
   serde: Serde;
 
   // column properties
-  column_props: [ColumnProp];  
+  column_props: [ColumnProp];
 
   // ingest spec itself
   version: string;

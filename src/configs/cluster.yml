@@ -24,7 +24,7 @@ tables:
     max-mb: 10000
     # max 10 days assignment
     max-hr: 240
-    schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    schema: "ROW<id:int, event:string, tag:string, items:list<string>, flag:bool, value:tinyint>"
     data: custom
     loader: NebulaTest
     source: ""
@@ -40,6 +40,10 @@ tables:
           read:
             groups: ["nebula-users"]
             action: mask
+      tag:
+        partition:
+          values: ["a", "b", "c"]
+          chunk: 1
     time:
       type: static
       # get it from linux by "date +%s"

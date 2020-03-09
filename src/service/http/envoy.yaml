@@ -30,7 +30,9 @@ static_resources:
                     - name: local_service
                       domains: ["*"]
                       routes:
-                        - match: { prefix: "/" }
+                        - match:
+                            prefix: "/"
+                            grpc: {}
                           route:
                             cluster: nebula_service
                             max_grpc_timeout: 0s

@@ -37,11 +37,11 @@ public:
   static BatchBlock from(const nebula::meta::BlockSignature&, std::shared_ptr<nebula::memory::Batch>);
 
 public:
-  BatchBlock load(const nebula::meta::BlockSignature&);
+  std::vector<BatchBlock> load(const nebula::meta::BlockSignature&);
 
 private:
   // Test Hook
-  BatchBlock loadTestBlock(const nebula::meta::BlockSignature&);
+  std::vector<BatchBlock> loadTestBlock(const nebula::meta::BlockSignature&);
   nebula::meta::TestTable test_;
 };
 

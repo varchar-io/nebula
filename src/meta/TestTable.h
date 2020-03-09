@@ -30,57 +30,87 @@ namespace meta {
 
 class TestTable : public Table {
   static constexpr auto NAME = "nebula.test";
+  static auto CP() {
+    static const Column COL_ID{ true, false, "", {} };
+    // place an access rule on event column requiring user to be in nebula-users to read
+    static const Column COL_EVENT{
+      false,
+      true,
+      "",
+      { AccessRule{ AccessType::READ, { "nebula-users" }, ActionType::MASK } }
+    };
+    static const Column COL_TAG{
+      false,
+      false,
+      "",
+      {},
+      { { "a", "b", "c", "d" }, 1 }
+    };
+    static const Column COL_VALUE{ false, false, "23", {} };
+    static const Column COL_STAMP{ false, false, "128", {} };
+
+    return ColumnProps{ { "id", COL_ID },
+                        { "event", COL_EVENT },
+                        { "tag", COL_TAG },
+                        { "value", COL_VALUE },
+                        { "stamp", COL_STAMP } };
+  }
 
 public:
-  TestTable() : Table(NAME) {
-    // TODO(cao) - let's make date as a number
-    schema_ = nebula::type::TypeSerializer::from(
-      "ROW<_time_: bigint, id:int, event:string, items:list<string>, flag:bool, value:tinyint, weight:double, stamp:int128>");
-
+  TestTable() : Table(NAME,
+                      nebula::type::TypeSerializer::from(
+                        "ROW<_time_: bigint, id:int, event:string, tag:string, items:list<string>, flag:bool, value:tinyint, weight:double, stamp:int128>"),
+                      CP(),
+                      {}) {
     // make a test value eval list for testing
-    fields_.reserve(8);
+    fields_.reserve(9);
     fields_.emplace_back(nebula::surface::eval::constant(1));
     fields_.emplace_back(nebula::surface::eval::constant(2));
     fields_.emplace_back(nebula::surface::eval::constant("3"));
+    fields_.emplace_back(nebula::surface::eval::constant("4"));
     // TODO(cao) - we don't have a good value eval set up for LIST type
     // use a fake one to replace - this may cause problem!!
     fields_.emplace_back(nebula::surface::eval::constant(1));
     fields_.emplace_back(nebula::surface::eval::constant(true));
     fields_.emplace_back(nebula::surface::eval::constant((int8_t)0));
     fields_.emplace_back(nebula::surface::eval::constant(0.1));
-    // ERROR: same as above, this is fake for testing, int128_t can't be used in fmt::format
-    fields_.emplace_back(nebula::surface::eval::constant(1));
+    fields_.emplace_back(nebula::surface::eval::constant((int128_t)1));
   }
 
-  virtual const Column& column(const std::string& col) const noexcept override {
-    if (col == "id") {
-      // enable bloom filter on id column
-      static const Column COL_ID{ true, false, "", {} };
-      return COL_ID;
-    }
+  const nebula::surface::eval::Fields& testFields() const {
+    return fields_;
+  }
 
-    if (col == "event") {
-      // place an access rule on event column requiring user to be in nebula-users to read
-      static const Column COL_EVENT{
-        false,
-        true,
-        "",
-        { AccessRule{ AccessType::READ, { "nebula-users" }, ActionType::MASK } }
-      };
-      return COL_EVENT;
-    }
+private:
+  nebula::surface::eval::Fields fields_;
+};
 
-    if (col == "value") {
-      static const Column COL_VALUE{ false, false, "23", {} };
-      return COL_VALUE;
-    }
+// define a partitioned table
+class TestPartitionedTable : public Table {
+  static constexpr auto NAME = "nebula.test.partition";
+  static auto CP() {
+    static const Column D1{ false, false, "a", {}, { { "a", "b", "c", "e", "f", "g" }, 3 } };
+    static const Column D2{ false, false, "1", {}, { { "1", "2", "3", "4" }, 2 } };
+    static const Column D3{ false, false, "11", {}, { { "11", "12", "13" }, 1 } };
 
-    if (col == "stamp") {
-      static const Column COL_STAMP{ false, false, "128", {} };
-      return COL_STAMP;
-    }
+    return ColumnProps{ { "d1", D1 }, { "d2", D2 }, { "d3", D3 } };
+  }
 
-    return Table::column(col);
+public:
+  TestPartitionedTable() : Table(
+                             NAME,
+                             nebula::type::TypeSerializer::from(
+                               "ROW<_time_: bigint, d1:string, d2:tinyint, d3:int, value:tinyint, weight:double>"),
+                             CP(),
+                             {}) {
+    // make a test value eval list for testing
+    fields_.reserve(6);
+    fields_.emplace_back(nebula::surface::eval::constant(1));
+    fields_.emplace_back(nebula::surface::eval::constant("2"));
+    fields_.emplace_back(nebula::surface::eval::constant((int8_t)3));
+    fields_.emplace_back(nebula::surface::eval::constant(4));
+    fields_.emplace_back(nebula::surface::eval::constant((int8_t)5));
+    fields_.emplace_back(nebula::surface::eval::constant(6.0));
   }
 
   const nebula::surface::eval::Fields& testFields() const {

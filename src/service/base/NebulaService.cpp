@@ -348,11 +348,25 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     colProps.reserve(numCols);
     for (auto& itr : table->columnProps) {
       auto& cp = itr.second;
+      // if the column has partition info, we will need to serialize it
+      flatbuffers::Offset<PartitionInfo> pi;
+      if (cp.partition.valid()) {
+        const auto& values = cp.partition.values;
+        std::vector<flatbuffers::Offset<flatbuffers::String>> fbValues;
+        fbValues.reserve(values.size());
+        for (auto& v : values) {
+          fbValues.emplace_back(mb.CreateString(v));
+        }
+
+        pi = CreatePartitionInfo(mb, mb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(fbValues), cp.partition.chunk);
+      }
+
       colProps.push_back(
         CreateColumnProp(mb, mb.CreateString(itr.first),
                          cp.withBloomFilter,
                          cp.withDict,
-                         mb.CreateString(cp.defaultValue)));
+                         mb.CreateString(cp.defaultValue),
+                         pi));
     }
     auto fbColProps = mb.CreateVector<flatbuffers::Offset<ColumnProp>>(colProps);
 
@@ -440,7 +454,18 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     auto colProps = it->column_props();
     for (auto itr = colProps->begin(); itr != colProps->end(); ++itr) {
       // adding all properties here
-      props[itr->name()->str()] = Column{ itr->bf(), itr->dict(), itr->dv()->str() };
+      nebula::meta::PartitionInfo partInfo;
+      auto pi = itr->pi();
+      if (pi) {
+        partInfo.chunk = pi->chunk();
+        auto values = pi->values();
+        partInfo.values.reserve(values->size());
+        for (auto itr = values->begin(); itr != values->end(); ++itr) {
+          partInfo.values.emplace_back(itr->data(), itr->size());
+        }
+      }
+
+      props[itr->name()->str()] = Column{ itr->bf(), itr->dict(), itr->dv()->str(), {}, std::move(partInfo) };
     }
 
     // build access rules

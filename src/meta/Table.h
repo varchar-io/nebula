@@ -21,6 +21,7 @@
 
 #include "Access.h"
 #include "common/Errors.h"
+#include "meta/Pod.h"
 #include "type/Type.h"
 
 /**
@@ -36,12 +37,30 @@ namespace meta {
 
 using nebula::type::Schema;
 
+// only save partition values as string
+// if values is empty then the owner column is not a partition column
+struct PartitionInfo {
+  std::vector<std::string> values;
+  size_t chunk;
+  inline bool valid() const {
+    return chunk > 0 && values.size() > 0;
+  }
+};
+
 /**
  * Define column properties that fetched from meta data system
  */
 struct Column {
-  explicit Column(bool bf = false, bool d = false, const std::string& dv = "", std::vector<AccessRule> rls = {})
-    : withBloomFilter{ bf }, withDict{ d }, defaultValue{ dv }, rules{ std::move(rls) } {}
+  explicit Column(bool bf = false,
+                  bool d = false,
+                  const std::string& dv = "",
+                  std::vector<AccessRule> rls = {},
+                  PartitionInfo pi = {})
+    : withBloomFilter{ bf },
+      withDict{ d },
+      defaultValue{ dv },
+      rules{ std::move(rls) },
+      partition{ std::move(pi) } {}
 
   // by default, we don't build bloom filter
   bool withBloomFilter;
@@ -56,18 +75,32 @@ struct Column {
 
   // access rules
   std::vector<AccessRule> rules;
+
+  // partition info - can be used to convert as PartitionKey
+  PartitionInfo partition;
 };
 
 using ColumnProps = std::unordered_map<std::string, Column>;
 
 class Table {
 public:
-  Table(const std::string& name) : Table(name, nullptr) {}
-  Table(const std::string& name, Schema schema) : Table(name, schema, {}, {}) {}
+  Table(const std::string& name) : Table(name, nullptr, {}, {}) {}
   Table(const std::string& name, Schema schema, ColumnProps columns, AccessSpec rules)
     : name_{ name }, schema_{ schema }, columns_{ std::move(columns) }, rules_{ std::move(rules) } {
     // TODO(cao) - load table properties from meta data service
     loadTable();
+
+    // build up pod object
+    nebula::meta::Pod::KeyList keys;
+    for (const auto& cp : columns_) {
+      // this is a valid partition column
+      const auto& part = cp.second.partition;
+      if (part.valid()) {
+        // TODO(cao): figure out the right type for partition key
+        keys.emplace_back(makeKey(cp.first, part));
+      }
+    }
+    pod_ = keys.size() == 0 ? nullptr : std::make_shared<Pod>(std::move(keys));
   }
 
   virtual ~Table() = default;
@@ -107,14 +140,19 @@ public:
     return EMPTY;
   }
 
+  virtual std::shared_ptr<nebula::meta::Pod> pod() const noexcept {
+    return pod_;
+  }
+
   // TODO(cao): this may need refactoring to be a generic interface out of table class.
   // but right now, we're assuming we can make the decision through table object
   // This API will decide action type for given security groups and column
   // If column name is not given, it operates table level check
-  virtual ActionType checkAccess(
-    AccessType,
-    const std::unordered_set<std::string>&,
-    const std::string& col = "") const;
+  virtual ActionType
+    checkAccess(
+      AccessType,
+      const std::unordered_set<std::string>&,
+      const std::string& col = "") const;
 
 protected:
   // table name is global unique, but it can be organized by some namespace style naming convention
@@ -126,8 +164,12 @@ protected:
   // access rules, can be empty
   std::vector<AccessRule> rules_;
 
+  // pod info if there are partition columns
+  std::shared_ptr<nebula::meta::Pod> pod_;
+
 private:
   void loadTable();
+  std::unique_ptr<PK> makeKey(const std::string&, const PartitionInfo&) const;
 };
 } // namespace meta
 } // namespace nebula

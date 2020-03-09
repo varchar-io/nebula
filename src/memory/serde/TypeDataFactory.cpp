@@ -31,6 +31,12 @@ using nebula::type::Kind;
 
 std::unique_ptr<TypeDataProxy> TypeDataFactory::createData(
   Kind kind, const Column& column, size_t batchSize) {
+  // if current column is a partition column,
+  // metadata will record its value and we will not create data stream for it.
+  if (column.partition.valid()) {
+    return nullptr;
+  }
+
   switch (kind) {
     TYPE_DATA_PROXY(BOOLEAN, BoolData)
     TYPE_DATA_PROXY(TINYINT, ByteData)

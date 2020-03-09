@@ -37,11 +37,11 @@ using DnMap = std::unordered_map<std::string, PDataNode>;
 class RowAccessor;
 class Batch {
 public: // read row from and write row to
-  Batch(const nebula::meta::Table&, size_t capacity);
+  Batch(const nebula::meta::Table&, size_t capacity, size_t pid = 0);
   virtual ~Batch() = default;
 
   // add a row into current batch
-  size_t add(const nebula::surface::RowData& row);
+  size_t add(const nebula::surface::RowData& row, nebula::meta::BessType bess = 0);
 
   // random access to a row - may require internal seek
   std::unique_ptr<RowAccessor> makeAccessor() const;
@@ -80,6 +80,15 @@ public: // basic metrics / meta of the batch
 private:
   nebula::type::Schema schema_;
   nebula::memory::DataTree data_;
+
+  // encoding bess for each partition columns if partitioned
+  // pod will not be null if partitioned
+  std::shared_ptr<nebula::meta::Pod> pod_;
+  size_t pid_;
+  std::vector<size_t> spaces_;
+  nebula::common::PagedSlice bess_;
+
+  // recording number of rows
   size_t rows_;
 
   // A row accessor cursor to read data of given row
@@ -119,6 +128,7 @@ private:
   const Batch& batch_;
   const DnMap& dnMap_;
   size_t current_;
+  nebula::meta::BessType bessValue_;
 };
 
 class ListAccessor : public nebula::surface::ListData {

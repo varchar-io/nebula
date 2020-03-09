@@ -17,18 +17,24 @@
 #include "Batch.h"
 #include <numeric>
 
+DEFINE_int32(BESS_PAGE_SIZE, 1024, "page size for bess encoded data");
+
 namespace nebula {
 namespace memory {
 
+using nebula::meta::BessType;
 using nebula::meta::Table;
 using nebula::surface::RowData;
 using nebula::type::Schema;
 using nebula::type::TreeBase;
 using nebula::type::TypeBase;
 
-Batch::Batch(const Table& table, size_t capacity)
+Batch::Batch(const Table& table, size_t capacity, size_t pid)
   : schema_{ table.schema() },
     data_{ DataNode::buildDataTree(table, capacity) },
+    pod_{ table.pod() },
+    pid_{ pid },
+    bess_{ pod_ != nullptr ? (size_t)FLAGS_BESS_PAGE_SIZE : 0 },
     rows_{ 0 },
     fields_{ schema_->size() },
     sealed_{ false } {
@@ -37,13 +43,26 @@ Batch::Batch(const Table& table, size_t capacity)
     auto f = dynamic_cast<TypeBase*>(schema_->childAt(i).get());
     fields_[f->name()] = data_->childAt<PDataNode>(i).value();
   }
+
+  // if current batch belongs to a pod, then we can decode spaces for each dimensions
+  if (pod_ != nullptr) {
+    VLOG(1) << "Locate spaces for given pod: " << pid_;
+    spaces_ = pod_->locate(pid_);
+  }
 }
 
 // add a row into current batch
 // and return row ID of this row in current batch
 // thread-safe on sync guarded - exclusive lock?
-size_t Batch::add(const RowData& row) {
+size_t Batch::add(const RowData& row, BessType bess) {
   N_ENSURE(!sealed_, "can not add rows into sealed batch");
+  // bess is already calculated by caller just write it out
+  // TODO(cao): compress bess value which should be very small
+  // width = sum(bits width of each dimension)
+  if (pod_ != nullptr) {
+    bess_.write(rows_ * sizeof(BessType), bess);
+  }
+
   // read data from row data and save it to batch
   auto result = data_->append<const RowData&>(row);
 

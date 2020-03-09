@@ -20,6 +20,7 @@
 
 #include "meta/ClusterInfo.h"
 #include "meta/NBlock.h"
+#include "meta/Pod.h"
 #include "meta/Table.h"
 #include "meta/TestTable.h"
 
@@ -145,6 +146,111 @@ TEST(MetaTest, TestAccessRules) {
   TEST_COL_READ_ACCESS("fund", PASS)
 
 #undef TEST_COL_READ_ACCESS
+}
+
+TEST(MetaTest, TestPod) {
+  nebula::meta::Pod::KeyList keys;
+  keys.reserve(3);
+
+  keys.emplace_back(
+    new PartitionKey<std::string>("country",
+                                  { "US", "CA", "FR", "BR", "GB" },
+                                  2));
+  keys.emplace_back(
+    new PartitionKey<std::string>("gender",
+                                  { "Male", "Female", "Unknown" }));
+  keys.emplace_back(
+    new PartitionKey<int8_t>("age",
+                             { 1, 2, 3, 4, 5, 6, 7, 8, 9 },
+                             2));
+
+  nebula::meta::Pod pod{ std::move(keys) };
+  auto capacity = pod.capacity();
+  auto numKeys = pod.numKeys();
+  LOG(INFO) << "the pod with " << numKeys << " dimensions has max blocks: " << capacity;
+
+  // list offset for each key: 1, 3, 9
+  for (size_t i = 0; i < numKeys; ++i) {
+    LOG(INFO) << "key: " << i << ", offset:" << (int)pod.offset(i);
+  }
+
+  // for any combination, we can locate which pod this value belongs to
+  {
+    // "US"->0, "Unknown"->2, 7->3, so pid = 0*1 + 2*3 + 3 * 9 = 31
+    BessType bess;
+    EXPECT_EQ(pod.pod({ "US", "Unknown", "7" }, bess), 33);
+    LOG(INFO) << "pid=33, bess=" << bess;
+    // reverse operation
+    int v;
+    EXPECT_FALSE(pod.value<int>("xy", { 0 }, 0, v));
+
+    // get space of each dimension from given pod id
+    auto spaces = pod.locate(33);
+    // reverse country, gender, age
+    std::string_view country;
+    EXPECT_TRUE(pod.value("country", spaces, 0, country));
+    EXPECT_EQ(country, "US");
+    std::string_view gender;
+    EXPECT_TRUE(pod.value("gender", spaces, 0, gender));
+    EXPECT_EQ(gender, "Unknown");
+    int8_t age;
+    EXPECT_TRUE(pod.value("age", spaces, 0, age));
+    EXPECT_EQ(age, 7);
+    LOG(INFO) << "country=" << country << ", gender=" << gender << ", age=" << age;
+  }
+
+  {
+    BessType bess;
+    // "CA"->0, "Male"->0, 4->1, so pid = 0*1 + 0*3 + 1 * 9 = 9
+    EXPECT_EQ(pod.pod({ "CA", "Male", "4" }, bess), 9);
+    LOG(INFO) << "pid=9, bess=" << bess;
+    // "GB"->2, "Female"->1, 9->4, so pid = 2*1 + 1*3 + 4 * 9 = 9
+    EXPECT_EQ(pod.pod({ "GB", "Female", "9" }, bess), 41);
+    LOG(INFO) << "pid=41, bess=" << bess;
+  }
+
+  // test pod ID range for given predicates
+  {
+    // [0, 0], [1, 1], [1, 3] =>
+    // low = 0*1 + 1*3 + 1*9 = 12
+    // high = 0*1 + 1*3 + 3*9 = 30
+    Span expected{ 12, 30 };
+    auto range = pod.span({ { "US" }, { "Female" }, { "3", "8" } });
+    EXPECT_EQ(range, expected);
+  }
+  {
+    // [0, 2], [2, 2], [2, 2] =>
+    // low = 0*1 + 2*3 + 2*9 = 24
+    // high = 2*1 + 2*3 + 2*9 = 26
+    Span expected{ 24, 26 };
+    auto range = pod.span({ {}, { "Unknown" }, { "5" } });
+    EXPECT_EQ(range, expected);
+  }
+
+  {
+    // TODO(cao): current mapping will fast reduce pods range if high cardinality spaces in low dimension
+    // So we should sort all dimensions by number of spaces in decending order
+    // [0, 2], [0, 2], [2, 4] =>
+    // low = 0*1 + 0*3 + 2*9 = 18
+    // high = 2*1 + 2*3 + 4*9 = 44
+    Span expected{ 18, 44 };
+    auto range = pod.span({ {}, {}, { "5", "9" } });
+    EXPECT_EQ(range, expected);
+  }
+
+  // test reverse pid to dimensions
+  {
+    std::vector<size_t> expected{ 2, 1, 4 };
+    EXPECT_EQ(pod.locate(41), expected);
+  }
+  {
+    std::vector<size_t> expected{ 1, 0, 4 };
+    EXPECT_EQ(pod.locate(37), expected);
+  }
+  {
+    std::vector<size_t> expected{ 2, 1, 3 };
+    EXPECT_EQ(pod.locate(32), expected);
+  }
 }
 
 } // namespace test

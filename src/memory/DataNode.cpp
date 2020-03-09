@@ -220,9 +220,13 @@ size_t DataNode::append(const nebula::surface::MapData& map) {
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
 
+// if current column is a partition column
+// we save its value into meta and skip writing data stream
 #define DISPATCH_KIND(size, KIND, object, value) \
   case Kind::KIND: {                             \
-    size += object->append(value);               \
+    if (!object->meta_->isPartition()) {         \
+      size += object->append(value);             \
+    }                                            \
     break;                                       \
   }
 

@@ -28,6 +28,7 @@ namespace io {
 using nebula::common::Evidence;
 using nebula::execution::io::BatchBlock;
 using nebula::memory::Batch;
+using nebula::meta::BessType;
 using nebula::meta::BlockSignature;
 using nebula::meta::BlockState;
 using nebula::meta::NBlock;
@@ -40,7 +41,7 @@ BatchBlock BlockLoader::from(const BlockSignature& sign, std::shared_ptr<nebula:
   return BatchBlock(sign, b, state);
 }
 
-BatchBlock BlockLoader::load(const BlockSignature& block) {
+std::vector<BatchBlock> BlockLoader::load(const BlockSignature& block) {
   if (block.table == test_.name()) {
     return loadTestBlock(block);
   }
@@ -76,31 +77,74 @@ public:
     return MockRowData::readInt(field);
   }
 
+  virtual std::string_view readString(const std::string& field) const override {
+    static std::array<std::string, 4> VALUES{ "a", "b", "c", "d" };
+    // make all id are sequentially sorted
+    if (field == "tag") {
+      auto index = std::abs(rRand_()) % 4;
+      return VALUES[index];
+    }
+
+    return MockRowData::readString(field);
+  }
+
 private:
   // range [start_, end_]
   std::function<int64_t()> rRand_;
 };
 
-BatchBlock BlockLoader::loadTestBlock(const BlockSignature& b) {
+std::vector<BatchBlock> BlockLoader::loadTestBlock(const BlockSignature& b) {
   // use 1024 rows for testing
   auto rows = 10000;
-  auto block = std::make_shared<Batch>(test_, rows);
+  // auto block = std::make_shared<Batch>(test_, rows);
 
   // use the specified seed so taht the data can repeat
   auto seed = Evidence::unix_timestamp();
 
+  std::unordered_map<size_t, std::shared_ptr<Batch>> batches;
+  // auto batch = std::make_shared<Batch>(*table, bRows);
+  auto pod = test_.pod();
+
   // a seed that triggers a bug
-  seed = 1583309624;
+  // seed = 1583309624;
 
   TimeProvidedRow row(seed, b.start, b.end);
   for (auto i = 0; i < rows; ++i) {
-    block->add(row);
+    // for non-partitioned, all batch's pid will be 0
+    size_t pid = 0;
+    BessType bess = -1;
+    if (pod) {
+      pid = pod->pod(row, bess);
+    }
+
+    // get the batch
+    auto batch = batches[pid];
+    if (batch == nullptr) {
+      batch = std::make_shared<Batch>(test_, rows, pid);
+      batches[pid] = batch;
+    }
+
+    batch->add(row, bess);
   }
 
   // print out the block state
-  LOG(INFO) << "Loaded test block: seed=" << seed << ", state=" << block->state();
+  LOG(INFO) << "Loaded test blocks: " << batches.size() << " using seed=" << seed;
+  std::vector<BatchBlock> blocks;
+  blocks.reserve(batches.size());
+  for (auto& itr : batches) {
+    auto block = itr.second;
+    blocks.emplace_back(BatchBlock{
+      BlockSignature{
+        b.table,
+        b.id * 10 + itr.first,
+        b.start,
+        b.end,
+        b.spec },
+      block,
+      { block->getRows(), block->getRawSize() } });
+  }
 
-  return BatchBlock(b, block, { block->getRows(), block->getRawSize() });
+  return blocks;
 }
 
 } // namespace io

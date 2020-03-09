@@ -181,7 +181,20 @@ Column col(const YAML::Node& settings) {
     as = asAccessRules(access);
   }
 
-  return Column{ bf, d, std::move(dv), std::move(as) };
+  // if partition spec is defined
+  const auto& partition = settings["partition"];
+  PartitionInfo pi;
+  if (partition) {
+    const auto& values = partition["values"];
+    N_ENSURE(values, "values must be defined");
+    pi.values = values.as<std::vector<std::string>>();
+
+    // by default chunk set as 1, overwrite by config
+    const auto& chunk = partition["chunk"];
+    pi.chunk = chunk ? chunk.as<size_t>() : 1;
+  }
+
+  return Column{ bf, d, std::move(dv), std::move(as), std::move(pi) };
 
 #undef EVAL_SETTING
 }

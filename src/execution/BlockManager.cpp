@@ -205,7 +205,7 @@ bool BlockManager::add(const BatchBlock& block) {
   return true;
 }
 
-bool BlockManager::add(std::vector<io::BatchBlock> range) {
+bool BlockManager::add(std::vector<BatchBlock> range) {
   std::move(range.begin(), range.end(), std::inserter(blocks_, blocks_.begin()));
   return true;
 }

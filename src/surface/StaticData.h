@@ -90,7 +90,7 @@ public:
   }
 
   bool isNull(IndexType index) const override {
-    return (index == 3 && items_.size() == 0) || (index == 5 && byte_ % 2 == 0);
+    return (index == 4 && items_.size() == 0) || (index == 6 && byte_ % 2 == 0);
   }
 
   bool readBool(const std::string&) const override {
@@ -161,8 +161,6 @@ public:
   NOT_IMPL_FUNC(float, readFloat)
   NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
 
-#undef NOT_IMPL_FUNC
-
 private:
   int64_t time_;
   int id_;
@@ -173,6 +171,72 @@ private:
   int128_t i128_;
   double d_;
 };
+
+// data row for TestPartitionedTable
+struct StaticPartitionedRow : public nebula::surface::RowData {
+  static const std::string& d1() {
+    static std::vector<std::string> D1V{ "a", "b", "c", "e", "f", "g" };
+    return D1V.at(nebula::common::Evidence::ticks() % D1V.size());
+  }
+
+  static int8_t d2() {
+    static std::vector<int8_t> D2V{ 1, 2, 3, 4 };
+    return D2V.at(nebula::common::Evidence::ticks() % D2V.size());
+  }
+
+  static int32_t d3() {
+    static std::vector<int32_t> D3V{ 11, 12, 13 };
+    return D3V.at(nebula::common::Evidence::ticks() % D3V.size());
+  }
+
+  explicit StaticPartitionedRow(int64_t t, int8_t v, double w)
+    : time_{ t },
+      d1_{ d1() },
+      d2_{ d2() },
+      d3_{ d3() },
+      value_{ v },
+      weight_{ w } {}
+  // All intrefaces - string type has RVO, copy elision optimization
+  bool isNull(const std::string&) const override {
+    return false;
+  }
+
+  int8_t readByte(const std::string& f) const override {
+    return f == "d2" ? d2_ : value_;
+  }
+
+  int32_t readInt(const std::string&) const override {
+    return d3_;
+  }
+
+  std::string_view readString(const std::string&) const override {
+    return d1_;
+  }
+
+  int64_t readLong(const std::string&) const override {
+    return time_;
+  }
+
+  double readDouble(const std::string&) const override {
+    return weight_;
+  }
+
+  NOT_IMPL_FUNC(bool, readBool)
+  NOT_IMPL_FUNC(int16_t, readShort)
+  NOT_IMPL_FUNC(float, readFloat)
+  NOT_IMPL_FUNC(int128_t, readInt128)
+  NOT_IMPL_FUNC(std::unique_ptr<ListData>, readList)
+  NOT_IMPL_FUNC(std::unique_ptr<MapData>, readMap)
+
+  int64_t time_;
+  std::string d1_;
+  int8_t d2_;
+  int32_t d3_;
+  int8_t value_;
+  double weight_;
+};
+
+#undef NOT_IMPL_FUNC
 
 } // namespace surface
 } // namespace nebula

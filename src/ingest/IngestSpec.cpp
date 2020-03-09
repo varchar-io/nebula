@@ -46,6 +46,7 @@ using nebula::execution::io::BatchBlock;
 using nebula::execution::io::BlockLoader;
 using nebula::execution::meta::TableService;
 using nebula::memory::Batch;
+using nebula::meta::BessType;
 using nebula::meta::BlockSignature;
 using nebula::meta::DataSource;
 using nebula::meta::Table;
@@ -390,7 +391,6 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
   // limit at 1b on single host
   const size_t bRows = FLAGS_NBLOCK_MAX_ROWS;
-  auto batch = std::make_shared<Batch>(*table, bRows);
   RowWrapperWithTime rw{ std::move(timeFunc) };
   std::pair<size_t, size_t> range{ std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
 
@@ -407,9 +407,29 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
       b);
   };
 
+  // TODO(cao): we haven't done global lookup for the same partition
+  // This may result in many blocks since it's partitioned in each ingestion spec.
+  std::unordered_map<size_t, std::shared_ptr<Batch>> batches;
+  // auto batch = std::make_shared<Batch>(*table, bRows);
+  auto pod = table->pod();
+
   while (source->hasNext()) {
     auto& row = source->next();
     rw.set(&row);
+
+    // for non-partitioned, all batch's pid will be 0
+    size_t pid = 0;
+    BessType bess = -1;
+    if (pod) {
+      pid = pod->pod(rw, bess);
+    }
+
+    // get the batch
+    auto batch = batches[pid];
+    if (batch == nullptr) {
+      batch = std::make_shared<Batch>(*table, bRows, pid);
+      batches[pid] = batch;
+    }
 
     // if this is already full
     if (batch->getRows() >= bRows) {
@@ -417,7 +437,8 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
       blocks.push_back(makeBlock(blockId++, batch));
 
       // make a new batch
-      batch = std::make_shared<Batch>(*table, bRows);
+      batch = std::make_shared<Batch>(*table, bRows, pid);
+      batches[pid] = batch;
       range = { std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
     }
 
@@ -433,12 +454,12 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
     }
 
     // add a new entry
-    batch->add(rw);
+    batch->add(rw, bess);
   }
 
   // move all blocks in map into block manager
-  if (batch->getRows() > 0) {
-    blocks.push_back(makeBlock(blockId++, batch));
+  for (auto& itr : batches) {
+    blocks.push_back(makeBlock(blockId++, itr.second));
   }
 
   // return all blocks built up so far

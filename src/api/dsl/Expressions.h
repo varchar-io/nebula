@@ -508,7 +508,7 @@ public:
 
 protected:
   std::shared_ptr<Expression> inner_;
-  std::tuple<T...> args_;
+  Tuple args_;
 };
 
 template <nebula::surface::eval::UDFType UDF>

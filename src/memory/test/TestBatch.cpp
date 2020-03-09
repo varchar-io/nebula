@@ -269,6 +269,84 @@ TEST(BatchTest, TestDefaultValue) {
   }
 }
 
+TEST(BatchTest, TestPartitionedBatch) {
+  nebula::meta::TestPartitionedTable test;
+  size_t count = 10000;
+
+  // need some stable data set to write out and can be verified
+  // pid -> batch
+  std::unordered_map<size_t, std::unique_ptr<Batch>> batches;
+
+  // use the specified seed so taht the data can repeat
+  std::vector<nebula::surface::StaticPartitionedRow> rows;
+  MockRowData mr;
+  // fill rows
+  for (size_t i = 0; i < count; ++i) {
+    rows.emplace_back(mr.readLong("_time_"),
+                      mr.readByte("value"),
+                      mr.readDouble("weight"));
+  }
+
+  // print single row as string.
+  auto line = [](const nebula::surface::RowData& r) {
+    return fmt::format("({0}, {1}, {2}, {3}, {4})",
+                       r.readString("d1"), r.readByte("d2"), r.readInt("d3"),
+                       r.readByte("value"), r.readDouble("weight"));
+  };
+
+  // distribute to all batches
+  std::vector<std::string> lines;
+  lines.reserve(count);
+  auto pod = test.pod();
+  LOG(INFO) << "maximum blocks needed: " << pod->capacity();
+  {
+    for (size_t i = 0; i < count; ++i) {
+      const auto& r = rows.at(i);
+      // figure out which batch this row should go
+      // using row major function defined in pod
+      int32_t bess = -1;
+      auto pid = pod->pod(r, bess);
+      N_ENSURE(bess >= 0, "invalid bess");
+      lines.emplace_back(line(r));
+      auto itr = batches.find(pid);
+      if (itr != batches.end()) {
+        itr->second->add(r, bess);
+      } else {
+        auto p = new Batch(test, count, pid);
+        auto b = std::unique_ptr<Batch>(p);
+        b->add(r, bess);
+        batches.emplace(pid, std::move(b));
+      }
+    }
+
+    // sort all lines
+    std::sort(lines.begin(), lines.end());
+
+    std::vector<std::string> results;
+    results.reserve(count);
+    size_t totalRows = 0;
+    for (auto& b : batches) {
+      auto& batch = b.second;
+      auto rows = batch->getRows();
+      totalRows += rows;
+      // print out the batch state
+      LOG(INFO) << "Batch: " << batch->state();
+      auto accessor = batch->makeAccessor();
+      for (size_t i = 0; i < rows; ++i) {
+        const auto& r = accessor->seek(i);
+        results.emplace_back(line(r));
+      }
+    }
+
+    std::sort(results.begin(), results.end());
+    // verify batch data
+    EXPECT_EQ(totalRows, count);
+
+    // all lines are the same
+    EXPECT_EQ(lines, results);
+  }
+}
+
 } // namespace test
 } // namespace memory
 } // namespace nebula

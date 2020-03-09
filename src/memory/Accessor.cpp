@@ -21,6 +21,7 @@
 namespace nebula {
 namespace memory {
 
+using nebula::meta::BessType;
 using nebula::surface::ListData;
 using nebula::surface::MapData;
 
@@ -33,6 +34,12 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
   // we'd better to move it to API itself though it looks a bit more complex.
   N_ENSURE(rowId < batch_.rows_, "row id out of bound");
   current_ = rowId;
+
+  // populate all dimension values encoded in bess
+  if (batch_.pod_ != nullptr) {
+    bessValue_ = batch_.bess_.read<BessType>(current_ * sizeof(BessType));
+  }
+
   return *this;
 }
 
@@ -43,9 +50,13 @@ bool RowAccessor::isNull(const std::string& field) const {
   return itr->second->isNull(current_);
 }
 
-#define READ_TYPE_BY_FIELD(TYPE, FUNC)                     \
-  TYPE RowAccessor::FUNC(const std::string& field) const { \
-    return dnMap_.at(field)->read<TYPE>(current_);         \
+#define READ_TYPE_BY_FIELD(TYPE, FUNC)                                                        \
+  TYPE RowAccessor::FUNC(const std::string& field) const {                                    \
+    TYPE v;                                                                                   \
+    if (batch_.pod_ != nullptr && batch_.pod_->value(field, batch_.spaces_, bessValue_, v)) { \
+      return v;                                                                               \
+    }                                                                                         \
+    return dnMap_.at(field)->read<TYPE>(current_);                                            \
   }
 
 READ_TYPE_BY_FIELD(bool, readBool)

@@ -16,11 +16,17 @@
 
 #include "Table.h"
 
+#include <folly/Conv.h>
+
 /**
  * Nebula runtime / online meta data.
  */
 namespace nebula {
 namespace meta {
+
+using nebula::type::Kind;
+using nebula::type::TypeNode;
+using nebula::type::TypeTraits;
 
 void Table::loadTable() {
   // TODO(cao) - really build up meta service to servce this function
@@ -62,5 +68,40 @@ ActionType Table::checkAccess(AccessType at, const std::unordered_set<std::strin
 
   return access(at, groups, column(col).rules);
 }
+std::unique_ptr<PK> Table::makeKey(const std::string& name, const PartitionInfo& part) const {
+  Kind columnType = Kind::INVALID;
+  // check column type
+  schema_->onChild(name, [&columnType](const TypeNode& found) {
+    columnType = found->k();
+  });
+
+#define DISPATCH_KIND(KIND)                                               \
+  case Kind::KIND: {                                                      \
+    using T = TypeTraits<Kind::KIND>::CppType;                            \
+    const auto& sv = part.values;                                         \
+    std::vector<T> v;                                                     \
+    v.reserve(sv.size());                                                 \
+    std::transform(sv.begin(), sv.end(), std::back_insert_iterator(v),    \
+                   [](const std::string& e) { return folly::to<T>(e); }); \
+    return std::unique_ptr<PK>(new PartitionKey<T>(name, v, part.chunk)); \
+  }
+
+  switch (columnType) {
+    DISPATCH_KIND(BOOLEAN)
+    DISPATCH_KIND(TINYINT)
+    DISPATCH_KIND(SMALLINT)
+    DISPATCH_KIND(INTEGER)
+    DISPATCH_KIND(BIGINT)
+
+  case Kind::VARCHAR: {
+    return std::unique_ptr<PK>(new PartitionKey<std::string>(name, part.values, part.chunk));
+  }
+  default:
+    throw NException("partition column type not supported.");
+  }
+
+#undef DISPATCH_KIND
+}
+
 } // namespace meta
 } // namespace nebula

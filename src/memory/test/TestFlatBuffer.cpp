@@ -77,7 +77,7 @@ TEST(FlatBufferTest, TestFlatBufferWrite) {
     rows.push_back({ row.readLong("_time_"),
                      row.readInt("id"),
                      row.readString("event"),
-                     i % 3 != 0 ? nullptr : row.readList("items"),
+                     row.readList("items"),
                      // row.isNull("items") ? nullptr : row.readList("items"),
                      row.readBool("flag"),
                      row.readByte("value"),

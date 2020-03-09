@@ -45,7 +45,8 @@ class TypeMetadata {
 public:
   static constexpr IndexType INVALID_INDEX = std::numeric_limits<IndexType>::max();
   TypeMetadata(nebula::type::Kind kind, const nebula::meta::Column& column)
-    : offsetSize_{
+    : partition_{ column.partition.valid() },
+      offsetSize_{
         nebula::type::TypeBase::isScalar(kind) ?
           nullptr :
           std::make_unique<CompoundItems>()
@@ -187,6 +188,10 @@ public:
     return default_;
   }
 
+  inline bool isPartition() const {
+    return partition_;
+  }
+
 public:
   // build up histogram in metadata for supported types
   // including:
@@ -207,6 +212,10 @@ private:
   // store all null positions
   // call runOptimize() to compress the bitmap when finalizing.
   Roaring nulls_;
+
+  // save partition values within a space
+  // it should be a few bits - but we start with non-compressed
+  bool partition_;
 
   // list or map store number of items for each object
   // it stores accumulated values, so for any index, the child index is
