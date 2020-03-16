@@ -20,8 +20,10 @@
 #include <array>
 #include <glog/logging.h>
 #include <unordered_map>
+
 #include "common/Errors.h"
 #include "meta/Table.h"
+#include "surface/eval/Operation.h"
 #include "surface/eval/UDF.h"
 #include "type/Tree.h"
 
@@ -32,36 +34,9 @@ namespace nebula {
 namespace api {
 namespace dsl {
 
-// define all supported expression types
-enum ExpressionType {
-  UNKNOWN = 0,
-  CONSTANT,
-  COLUMN,
-  ARTHMETIC,
-  LOGICAL,
-  UDF
-};
-
-// supported arthmetic operations
-enum class ArthmeticOp {
-  ADD,
-  SUB,
-  MUL,
-  DIV,
-  MOD
-};
-
-// supported logical operations
-enum class LogicalOp {
-  EQ,
-  NEQ,
-  GT,
-  GE,
-  LT,
-  LE,
-  AND,
-  OR
-};
+using nebula::surface::eval::ArthmeticOp;
+using nebula::surface::eval::ExpressionType;
+using nebula::surface::eval::LogicalOp;
 
 #ifndef THIS_TYPE
 #define THIS_TYPE typename std::remove_reference<decltype(*this)>::type

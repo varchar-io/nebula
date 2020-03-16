@@ -174,6 +174,40 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
   EXPECT_EQ(result->size(), 1);
 }
 
+TEST(ApiTest, TestBlockSkipByPartitionColumn) {
+  auto data = genData();
+
+  // we know we don't have an id larger than this number, so the query should skip all blocks
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end && col("tag") == "b")
+                 .select(
+                   col("tag"),
+                   count(col("value")).as("total"))
+                 .groupby({ 1 })
+                 .sortby({ 2 }, SortType::DESC)
+                 .limit(10);
+
+  // compile the query into an execution plan
+  QueryContext ctx{ "nebula", { "nebula-users" } };
+  auto plan = query.compile(ctx);
+  plan->setWindow({ start, end });
+
+  // print out the plan through logging
+  plan->display();
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+
+  // query should have results
+  EXPECT_EQ(result->size(), 1);
+}
+
 TEST(ApiTest, TestAvgAggregation) {
   auto data = genData();
 

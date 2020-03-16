@@ -31,6 +31,7 @@ template <nebula::type::Kind IK>
 class In : public nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK> {
   using UdfInBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK>;
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
+  using EvalBlock = typename nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK>::EvalBlock;
   using ValueType = typename std::conditional<
     IK == nebula::type::Kind::VARCHAR,
     std::string,
@@ -52,7 +53,8 @@ public:
           }
 
           return false;
-        }),
+        },
+        buildEvalBlock(expr, values, true)),
       values_{ values } {}
 
   In(const std::string& name,
@@ -70,12 +72,104 @@ public:
                   }
 
                   return false;
-                }),
+                },
+                buildEvalBlock(expr, values, false)),
       values_{ values } {
     N_ENSURE(!in, "this constructor is designed for NOT IN clauase");
   }
 
   virtual ~In() = default;
+
+private:
+  static EvalBlock buildEvalBlock(const std::unique_ptr<nebula::surface::eval::ValueEval>& expr,
+                                  const std::vector<ValueType>& values,
+                                  bool in) {
+    // only handle case "column in []"
+    if (expr->expressionType() == nebula::surface::eval::ExpressionType::COLUMN) {
+      // column expr signature is composed by "F:{col}"
+      // const expr signature is compsoed by "C:{col}"
+      std::string colName(expr->signature().substr(2));
+      return [name = std::move(colName), values, in](const nebula::surface::eval::Block& b)
+               -> nebula::surface::eval::BlockEval {
+        auto A = in ? nebula::surface::eval::BlockEval::ALL : nebula::surface::eval::BlockEval::NONE;
+        auto N = in ? nebula::surface::eval::BlockEval::NONE : nebula::surface::eval::BlockEval::ALL;
+
+        // check partition values
+        auto pv = b.partitionValues(name);
+        // if no overlap, then the block can be skipped
+        // if covered all values in partition values, then scan whole block
+        if (pv.size() > 0) {
+          size_t covered = 0;
+          for (auto v : pv) {
+            auto ev = std::any_cast<ValueType>(v);
+            if (std::find(values.begin(), values.end(), ev) != values.end()) {
+              covered++;
+            }
+          }
+
+          // no overlap - skip the
+          if (covered == 0) {
+            return N;
+          }
+
+          // covered all values
+          if (covered == pv.size()) {
+            return A;
+          }
+        }
+
+        // check bloom filter
+        // if none of the values has possibility
+        bool possible = false;
+        for (const auto& v : values) {
+          possible = possible || b.probably(name, v);
+          if (possible) {
+            break;
+          }
+        }
+
+        // if all false - no possiblity
+        if (!possible) {
+          return N;
+        }
+
+// check histogram  if the value range has no overlap with histogram [min, max]
+// we can skip the block
+#define DISPATCH_CASE(HT)                                                    \
+  const auto [min, max] = std::minmax_element(values.begin(), values.end()); \
+  auto histo = static_cast<const HT&>(b.histogram(name));                    \
+  if (histo.min() > *max || *min > histo.max()) {                            \
+    return N;                                                                \
+  }
+
+        // only enable for scalar types
+        if constexpr (nebula::type::TypeBase::isScalar(IK)) {
+          switch (IK) {
+          case nebula::type::Kind::TINYINT:
+          case nebula::type::Kind::SMALLINT:
+          case nebula::type::Kind::INTEGER:
+          case nebula::type::Kind::BIGINT: {
+            DISPATCH_CASE(nebula::surface::eval::IntHistogram)
+            break;
+          }
+          case nebula::type::Kind::REAL:
+          case nebula::type::Kind::DOUBLE: {
+            DISPATCH_CASE(nebula::surface::eval::RealHistogram)
+            break;
+          }
+          default: break;
+          }
+        }
+
+#undef DISPATCH_CASE
+
+        // by default - let's do row scan
+        return nebula::surface::eval::BlockEval::PARTIAL;
+      };
+    }
+
+    return nebula::surface::eval::uncertain;
+  }
 
 private:
   const std::vector<ValueType> values_;

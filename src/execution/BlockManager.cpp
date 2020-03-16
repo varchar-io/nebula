@@ -32,6 +32,7 @@ using nebula::meta::BlockState;
 using nebula::meta::NBlock;
 using nebula::meta::NNode;
 using nebula::meta::Table;
+using nebula::surface::eval::BlockEval;
 using nebula::type::Kind;
 using nebula::type::Schema;
 using nebula::type::TypeNode;
@@ -106,65 +107,77 @@ const std::vector<NNode> BlockManager::query(const std::string& table) {
   return nodes;
 }
 
-const std::vector<Batch*> BlockManager::query(const Table& table, const ExecutionPlan& plan) {
+static constexpr auto BATCH_SIZE = 100;
+folly::Future<FilteredBlocks> batch(folly::ThreadPoolExecutor& pool,
+                                    const nebula::surface::eval::ValueEval& filter,
+                                    std::array<Batch*, BATCH_SIZE> input,
+                                    size_t size) {
+  auto p = std::make_shared<folly::Promise<FilteredBlocks>>();
+  pool.addWithPriority(
+    [&filter, input, size, p]() {
+      FilteredBlocks blocks;
+      blocks.reserve(BATCH_SIZE);
+      for (size_t i = 0; i < size; ++i) {
+        auto ptr = input[i];
+
+        auto eval = filter.eval(*ptr);
+        if (eval != BlockEval::NONE) {
+          blocks.emplace_back(ptr, eval);
+        }
+      }
+
+      // compute phase on block and return the result
+      p->setValue(blocks);
+    },
+    folly::Executor::HI_PRI);
+  return p->getFuture();
+}
+
+const FilteredBlocks BlockManager::query(const Table& table, const ExecutionPlan& plan, folly::ThreadPoolExecutor& pool) {
   // 1. a table and a predicate should determined by meta service how many blocks we should query
   // 2. determine how many blocks are not in memory yet, if they are not, load them in
   // 3. fan out the query plan to execute on each block in parallel (not this function but the caller)
-  std::vector<Batch*> tableBlocks;
   auto total = 0;
   const auto& window = plan.getWindow();
 
   // check if there are some predicates we can evaluate here
-  const auto& compute = plan.fetch<PhaseType::COMPUTE>();
+  const auto& filter = plan.fetch<PhaseType::COMPUTE>().filter();
 
-  // TODO(cao) - This is a big hack which is only working for one case
-  // We should have tree walking on the evaluation tree to decide if we can do so
-  // 1. a column in or equal predication
-  // 2. this predication can impact the whole tree
-  // LOG(INFO) << "filter signature: " << filter.signature();
-  auto pair = hackColEqValue(compute.filter().signature());
-  std::function<bool(Batch*)> pass = [](Batch*) { return true; };
+  std::array<Batch*, BATCH_SIZE> list;
+  std::vector<folly::Future<FilteredBlocks>> futures;
+  futures.reserve(1024);
 
-  if (pair.first.size() > 0) {
-    const auto& colName = pair.first;
-    Kind kind = Kind::INVALID;
-
-    // TODO(cao) - we should use table.schema() but here we use compute input schema instead
-    // before we have official meta service, all table has its own definition, so this table may be generic
-    compute.inputSchema()->onChild(colName, [&kind](const TypeNode& found) {
-      kind = found->k();
-    });
-
-    N_ENSURE(kind != Kind::INVALID, "column not found");
-#define KIND_CHECK(K, T)                                                                                            \
-  case Kind::K: {                                                                                                   \
-    pass = [&colName, &pair](Batch* batch) -> bool { return batch->probably(colName, folly::to<T>(pair.second)); }; \
-    break;                                                                                                          \
-  }
-
-    switch (kind) {
-      KIND_CHECK(BOOLEAN, bool)
-      KIND_CHECK(TINYINT, int8_t)
-      KIND_CHECK(SMALLINT, int16_t)
-      KIND_CHECK(INTEGER, int32_t)
-      KIND_CHECK(BIGINT, int64_t)
-      KIND_CHECK(REAL, float)
-      KIND_CHECK(DOUBLE, double)
-    default:
-      break;
-    }
-
-#undef KIND_CHECK
-  }
-
+  auto index = 0;
   for (auto& b : blocks_) {
     if (b.getTable() == table.name()) {
       ++total;
+      if (b.overlap(window)) {
+        list[index++] = b.data().get();
 
-      Batch* ptr = b.data().get();
-      if (b.overlap(window) && pass(ptr)) {
-        tableBlocks.push_back(ptr);
+        if (index == BATCH_SIZE) {
+          futures.push_back(batch(pool, filter, list, index));
+          index = 0;
+        }
       }
+    }
+  }
+
+  if (index > 0) {
+    futures.push_back(batch(pool, filter, list, index));
+  }
+
+  // collect futures
+  FilteredBlocks tableBlocks;
+  tableBlocks.reserve(total);
+  auto x = folly::collectAll(futures).get();
+  for (auto it = x.begin(); it < x.end(); ++it) {
+    // if the result is empty
+    if (!it->hasValue()) {
+      continue;
+    }
+
+    for (auto& item : it->value()) {
+      tableBlocks.push_back(item);
     }
   }
 

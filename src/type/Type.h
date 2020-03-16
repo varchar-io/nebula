@@ -295,6 +295,16 @@ public:
     }
   }
 
+  // return nullptr if not found
+  TypeNode find(const std::string& name) {
+    TypeNode found = nullptr;
+    onChild(name, [&found](const TypeNode& t) {
+      found = t;
+    });
+
+    return found;
+  }
+
   // remove a field by specified name
   void remove(const std::string& name) {
     N_ENSURE(KIND == Kind::STRUCT, "only support working on row type");

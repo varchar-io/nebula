@@ -34,8 +34,10 @@ namespace test {
 
 using nebula::execution::core::BlockExecutor;
 using nebula::memory::Batch;
+using nebula::memory::EvaledBlock;
 using nebula::surface::MockRowData;
 using nebula::surface::RowData;
+using nebula::surface::eval::BlockEval;
 using nebula::surface::eval::column;
 using nebula::surface::eval::constant;
 using nebula::surface::eval::EvalContext;
@@ -149,7 +151,8 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       .aggregate(0, { false, false, false })
       .limit(size);
 
-    auto cursor = nebula::execution::core::compute(batch, plan);
+    EvaledBlock eb{ &batch, BlockEval::PARTIAL };
+    auto cursor = nebula::execution::core::compute(eb, plan);
     auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema, plan.fields());
 
     LOG(INFO) << "verify buffer size casted from cursor: " << typeid(cursor).name();
@@ -193,7 +196,8 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       .keys({ 0 })
       .aggregate(1, { false, true });
 
-    auto cursor = nebula::execution::core::compute(batch, plan);
+    EvaledBlock eb{ &batch, BlockEval::PARTIAL };
+    auto cursor = nebula::execution::core::compute(eb, plan);
     auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema, plan.fields());
 
     LOG(INFO) << "verify buffer size casted from cursor";

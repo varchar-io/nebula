@@ -21,6 +21,9 @@
 #include <unordered_map>
 
 #include "Aggregator.h"
+#include "Block.h"
+#include "Operation.h"
+
 #include "common/Cursor.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
@@ -33,21 +36,41 @@
 namespace nebula {
 namespace surface {
 namespace eval {
+
 class EvalContext;
+
 // for a given type value eval object, we know its output kind, input kind
 // and a flag to indicate if evaluate input or not
 template <typename T, typename I = T, bool EvalInput = false>
 class TypeValueEval;
+
+// define block evaluation result:
+// ALL:     all rows will match the predicate, so further process no need to apply the filter again
+// PARTIAL: maybe partial rows match, we don't know, further processs requires filter row by row
+// NONE:    none rows will match, we can completely skip this block for further process
+enum class BlockEval {
+  ALL,
+  PARTIAL,
+  NONE
+};
+
+// by default, return BlockEval::PARTIAL indicating scan the whole block RBR (row-by-row)
+// uncertain means we can not determine if we should cover whole block or skip whole block
+inline BlockEval uncertain(const Block&) {
+  return BlockEval::PARTIAL;
+}
 
 // this is a tree, with each node to be either macro/value or operator
 // this is translated from expression.
 class ValueEval {
 public:
   ValueEval(const std::string& sign,
+            ExpressionType et,
             nebula::type::Kind input,
             nebula::type::Kind output,
             bool aggregate)
     : sign_{ sign },
+      et_{ et },
       input_{ input },
       output_{ output },
       aggregate_{ aggregate } {}
@@ -86,6 +109,9 @@ public:
     return p->sketch();
   }
 
+  // evaluate the whole block of data and determine if process the block or not
+  virtual BlockEval eval(const Block&) const = 0;
+
 public:
   // identify a unique value evaluation object in given query context
   // TODO(cao) - consider using number instead for fast hashing
@@ -101,12 +127,17 @@ public:
     return output_;
   }
 
+  inline ExpressionType expressionType() const {
+    return et_;
+  }
+
   inline bool isAggregate() const {
     return aggregate_;
   }
 
 protected:
   std::string sign_;
+  ExpressionType et_;
   nebula::type::Kind input_;
   nebula::type::Kind output_;
   bool aggregate_;
@@ -178,7 +209,8 @@ private:
 template <>
 std::string_view EvalContext::eval(const ValueEval& ve, bool& valid);
 
-// two utilities
+// customized functions defined by each individual typed value eval object
+#define EvalBlock std::function<BlockEval(const Block&)>
 #define SketchMaker std::function<std::shared_ptr<Aggregator<OutputTD::kind, InputTD::kind>>()>
 #define OPT std::function<EvalType(EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&)>
 #define OPT_LAMBDA(X)                                                                           \
@@ -196,16 +228,19 @@ class TypeValueEval : public ValueEval {
   using EvalType = typename std::conditional<EvalInput, I, T>::type;
 
 public:
-  TypeValueEval(const std::string& sign, const OPT&& op)
-    : TypeValueEval(sign, std::move(op), {}, {}) {}
+  TypeValueEval(const std::string& sign, const ExpressionType et, const OPT&& op, const EvalBlock&& eb)
+    : TypeValueEval(sign, et, std::move(op), std::move(eb), {}, {}) {}
 
   TypeValueEval(
     const std::string& sign,
+    const ExpressionType et,
     const OPT&& op,
+    const EvalBlock&& eb,
     const SketchMaker&& st,
     std::vector<std::unique_ptr<ValueEval>> children)
-    : ValueEval(sign, InputTD::kind, OutputTD::kind, st != nullptr),
+    : ValueEval(sign, et, InputTD::kind, OutputTD::kind, st != nullptr),
       op_{ std::move(op) },
+      eb_{ std::move(eb) },
       st_{ std::move(st) },
       children_{ std::move(children) } {}
 
@@ -219,8 +254,13 @@ public:
     return st_();
   }
 
+  virtual inline BlockEval eval(const Block& b) const override {
+    return eb_(b);
+  }
+
 private:
   OPT op_;
+  EvalBlock eb_;
   SketchMaker st_;
   std::vector<std::unique_ptr<ValueEval>> children_;
 };
@@ -244,9 +284,9 @@ std::unique_ptr<ValueEval> constant(T v) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<ST>(
       sign,
-      [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> ST {
-        return v;
-      }));
+      ExpressionType::CONSTANT,
+      [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> ST { return v; },
+      uncertain));
 }
 
 #define NULL_CHECK(R)               \
@@ -260,6 +300,7 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
       fmt::format("F:{0}", name),
+      ExpressionType::COLUMN,
       [name](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid)
         -> T {
         // This is the only place we need row object
@@ -314,7 +355,8 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
 
         // TODO(cao): other types supported in DSL? for example: UDF on list or map
         throw NException("not supported template type");
-      }));
+      },
+      uncertain));
 }
 
 #undef NULL_CHECK
@@ -335,6 +377,7 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
     return std::unique_ptr<ValueEval>(                                                            \
       new TypeValueEval<T>(                                                                       \
         fmt::format("({0}{1}{2})", s1, #SIGN, s2),                                                \
+        ExpressionType::ARTHMETIC,                                                                \
         OPT_LAMBDA({                                                                              \
           auto v1 = ctx.eval<T1>(*children[0], valid);                                            \
           if (UNLIKELY(!valid)) {                                                                 \
@@ -346,6 +389,7 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
           }                                                                                       \
           return T(v1 SIGN v2);                                                                   \
         }),                                                                                       \
+        uncertain,                                                                                \
         {},                                                                                       \
         std::move(branch)));                                                                      \
   }
@@ -358,13 +402,36 @@ ARTHMETIC_VE(mod, %)
 
 #undef ARTHMETIC_VE
 
+// build block evaluation function based on left and right expression connected with logical op
+template <LogicalOp op>
+EvalBlock buildEvalBlock(const std::unique_ptr<ValueEval>&, const std::unique_ptr<ValueEval>&) {
+  return uncertain;
+}
+
+// build eval block function for each logical operation
+#define BEB_LOGICAL(LOP) \
+  template <>            \
+  EvalBlock buildEvalBlock<LogicalOp::LOP>(const std::unique_ptr<ValueEval>&, const std::unique_ptr<ValueEval>&);
+
+BEB_LOGICAL(GT)
+BEB_LOGICAL(GE)
+BEB_LOGICAL(EQ)
+BEB_LOGICAL(NEQ)
+BEB_LOGICAL(LT)
+BEB_LOGICAL(LE)
+BEB_LOGICAL(AND)
+BEB_LOGICAL(OR)
+
+#undef BEB_LOGICAL
+
 // TODO(cao) - merge with ARTHMETIC_VE since they are pretty much the same
 // WHEN logical operation meets NULL (valid==false), return false and indicate valid as false
-#define COMPARE_VE(NAME, SIGN)                                                                    \
+#define COMPARE_VE(NAME, SIGN, LOP)                                                               \
   template <typename T1, typename T2>                                                             \
   std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
     const auto s1 = v1->signature();                                                              \
     const auto s2 = v2->signature();                                                              \
+    auto eb = buildEvalBlock<LOP>(v1, v2);                                                        \
     std::vector<std::unique_ptr<ValueEval>> branch;                                               \
     branch.reserve(2);                                                                            \
     branch.push_back(std::move(v1));                                                              \
@@ -372,6 +439,7 @@ ARTHMETIC_VE(mod, %)
     return std::unique_ptr<ValueEval>(                                                            \
       new TypeValueEval<bool>(                                                                    \
         fmt::format("({0}{1}{2})", s1, #SIGN, s2),                                                \
+        ExpressionType::LOGICAL,                                                                  \
         OPT_LAMBDA({                                                                              \
           auto v1 = ctx.eval<T1>(*children.at(0), valid);                                         \
           if (UNLIKELY(!valid)) {                                                                 \
@@ -383,26 +451,28 @@ ARTHMETIC_VE(mod, %)
           }                                                                                       \
           return v1 SIGN v2;                                                                      \
         }),                                                                                       \
+        std::move(eb),                                                                            \
         {},                                                                                       \
         std::move(branch)));                                                                      \
   }
 
-COMPARE_VE(gt, >)
-COMPARE_VE(ge, >=)
-COMPARE_VE(eq, ==)
-COMPARE_VE(neq, !=)
-COMPARE_VE(lt, <)
-COMPARE_VE(le, <=)
+COMPARE_VE(gt, >, LogicalOp::GT)
+COMPARE_VE(ge, >=, LogicalOp::GE)
+COMPARE_VE(eq, ==, LogicalOp::EQ)
+COMPARE_VE(neq, !=, LogicalOp::NEQ)
+COMPARE_VE(lt, <, LogicalOp::LT)
+COMPARE_VE(le, <=, LogicalOp::LE)
 
 // unncessary compare but same signatures
-COMPARE_VE(band, &&)
-COMPARE_VE(bor, ||)
+COMPARE_VE(band, &&, LogicalOp::AND)
+COMPARE_VE(bor, ||, LogicalOp::OR)
 
 #undef COMPARE_VE
 
 #undef OPT_LAMBDA
 #undef OPT
 #undef SketchMaker
+#undef EvalBlock
 
 } // namespace eval
 } // namespace surface

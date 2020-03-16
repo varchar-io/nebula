@@ -45,6 +45,7 @@ using nebula::execution::meta::TableService;
 using nebula::memory::Batch;
 using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
+using nebula::surface::eval::BlockEval;
 
 // set 10 seconds for now as max time to complete a query
 static const auto NODE_TIMEOUT = std::chrono::milliseconds(FLAGS_NODE_TIMEOUT);
@@ -52,7 +53,7 @@ static const auto NODE_TIMEOUT = std::chrono::milliseconds(FLAGS_NODE_TIMEOUT);
 // distribute the compute task into a promise
 folly::Future<RowCursorPtr> dist(
   folly::ThreadPoolExecutor& pool,
-  const Batch& block,
+  const nebula::memory::EvaledBlock& block,
   const BlockPhase& phase) {
   auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
   pool.addWithPriority(
@@ -78,14 +79,14 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
   // launch block executor on each in parallel
   // TODO(cao): this table service instance potentially can be carried by a query context on each node
   auto ts = TableService::singleton();
-  const std::vector<Batch*> blocks = blockManager_->query(*ts->query(blockPhase.table()), plan);
+  const FilteredBlocks blocks = blockManager_->query(*ts->query(blockPhase.table()), plan, pool);
 
   LOG(INFO) << "Processing total blocks: " << blocks.size();
   std::vector<folly::Future<RowCursorPtr>> results;
   results.reserve(blocks.size());
   std::transform(blocks.begin(), blocks.end(), std::back_inserter(results),
-                 [&blockPhase, &pool](const auto block) {
-                   return dist(pool, *block, blockPhase);
+                 [&blockPhase, &pool](const auto& block) {
+                   return dist(pool, block, blockPhase);
                  });
 
   // compile the results into a single row cursor

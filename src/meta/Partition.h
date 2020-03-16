@@ -165,6 +165,12 @@ public:
     return p->value(bits, space);
   }
 
+  template <typename T>
+  inline std::vector<T> values(size_t space) const {
+    auto p = static_cast<const PartitionKey<T>*>(this);
+    return p->values(space);
+  }
+
 protected:
   // partition key name
   std::string name_;
@@ -222,6 +228,12 @@ public:
     // chunk + internal
     auto index = (space * chunk_) + (mask_ & bits);
     return values_.at(index);
+  }
+
+  inline auto values(size_t space) const {
+    auto start = space * chunk_;
+    auto end = std::min(start + chunk_, values_.size());
+    return std::vector<T>(values_.begin() + start, values_.begin() + end);
   }
 
   // get which space the value is at

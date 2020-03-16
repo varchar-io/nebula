@@ -19,10 +19,10 @@
 #include "ComputedRow.h"
 #include "ReferenceRows.h"
 #include "execution/ExecutionPlan.h"
-#include "surface/eval/ValueEval.h"
 #include "memory/Batch.h"
 #include "memory/keyed/HashFlat.h"
 #include "surface/DataSurface.h"
+#include "surface/eval/ValueEval.h"
 
 /**
  * Block executor is used to apply computing on a single block
@@ -38,7 +38,7 @@ namespace core {
 class BlockExecutor : public nebula::surface::RowCursor {
 
 public:
-  BlockExecutor(const nebula::memory::Batch& data, const nebula::execution::BlockPhase& plan)
+  BlockExecutor(const nebula::memory::EvaledBlock& data, const nebula::execution::BlockPhase& plan)
     : nebula::surface::RowCursor(0), data_{ data }, plan_{ plan } {
     // compute will finish the compute and fill the data state in
     this->compute();
@@ -63,14 +63,14 @@ private:
   void compute();
 
 private:
-  const nebula::memory::Batch& data_;
+  const nebula::memory::EvaledBlock& data_;
   const nebula::execution::BlockPhase& plan_;
   std::unique_ptr<nebula::memory::keyed::HashFlat> result_;
 };
 
 class SamplesExecutor : public nebula::surface::RowCursor {
 public:
-  SamplesExecutor(const nebula::memory::Batch& data, const nebula::execution::BlockPhase& plan)
+  SamplesExecutor(const nebula::memory::EvaledBlock& data, const nebula::execution::BlockPhase& plan)
     : nebula::surface::RowCursor(0), data_{ data }, plan_{ plan } {
     // compute will finish the compute and fill the data state in
     this->compute();
@@ -81,7 +81,7 @@ public:
     index_++;
     return samples_->next();
   }
-  
+
   inline virtual std::unique_ptr<nebula::surface::RowData> item(size_t index) const override {
     return samples_->item(index);
   }
@@ -90,12 +90,12 @@ private:
   void compute();
 
 private:
-  const nebula::memory::Batch& data_;
+  const nebula::memory::EvaledBlock& data_;
   const nebula::execution::BlockPhase& plan_;
   std::unique_ptr<ReferenceRows> samples_;
 };
 
-nebula::surface::RowCursorPtr compute(const nebula::memory::Batch&, const nebula::execution::BlockPhase&);
+nebula::surface::RowCursorPtr compute(const nebula::memory::EvaledBlock&, const nebula::execution::BlockPhase&);
 
 } // namespace core
 } // namespace execution

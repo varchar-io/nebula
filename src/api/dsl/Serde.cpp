@@ -80,7 +80,7 @@ std::string ser(const ExpressionData& data) {
     addstring(json, "right", ser(*data.b_right));
     break;
   }
-  case ExpressionType::UDF: {
+  case ExpressionType::FUNCTION: {
     json.Key("udf");
     json.Int(static_cast<int>(data.u_type));
     addstring(json, "inner", ser(*data.inner));
@@ -291,7 +291,7 @@ std::shared_ptr<Expression> Serde::deserialize(const std::string& data) {
                   deserialize(document["left"].GetString()),
                   deserialize(document["right"].GetString()));
   }
-  case ExpressionType::UDF: {
+  case ExpressionType::FUNCTION: {
     const auto& c = document["custom"];
     return u_expr(alias,
                   static_cast<UDFType>(document["udf"].GetInt()),

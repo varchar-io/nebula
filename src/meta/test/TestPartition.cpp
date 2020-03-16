@@ -136,6 +136,28 @@ TEST(PartitionTest, TestPartitions) {
     2
   };
 
+  // test values API to get value list for given space
+  {
+    std::vector<std::string> expected0{ "US", "CA" };
+    EXPECT_EQ(country.values(0), expected0);
+    std::vector<std::string> expected2{ "GB" };
+    EXPECT_EQ(country.values(2), expected2);
+  }
+  {
+    std::vector<std::string> expected0{ "Male" };
+    EXPECT_EQ(gender.values(0), expected0);
+    std::vector<std::string> expected1{ "Female" };
+    EXPECT_EQ(gender.values(1), expected1);
+    std::vector<std::string> expected2{ "Unknown" };
+    EXPECT_EQ(gender.values(2), expected2);
+  }
+  {
+    std::vector<int8_t> expected2{ 5, 6 };
+    EXPECT_EQ(age.values(2), expected2);
+    std::vector<int8_t> expected4{ 9 };
+    EXPECT_EQ(age.values(4), expected4);
+  }
+
   nebula::meta::Cube cube{ std::move(country), std::move(gender), std::move(age) };
   auto capacity = cube.capacity();
   constexpr auto keys = cube.numKeys();

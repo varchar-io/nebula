@@ -18,7 +18,10 @@
 
 #include <mutex>
 #include <unordered_map>
+
 #include "ExecutionPlan.h"
+
+#include "common/Folly.h"
 #include "io/BlockLoader.h"
 #include "meta/NBlock.h"
 
@@ -44,6 +47,7 @@ struct Equal {
 };
 
 using BlockSet = std::unordered_set<io::BatchBlock, Hash, Equal>;
+using FilteredBlocks = std::vector<nebula::memory::EvaledBlock>;
 
 class BlockManager {
   using TableStates = std::unordered_map<std::string, std::tuple<size_t, size_t, size_t, size_t, size_t>>;
@@ -57,8 +61,7 @@ public:
   static std::shared_ptr<BlockManager> init();
 
 public:
-  // TODO(cao) - this interface needs predicate push down to filter out blocks
-  const std::vector<nebula::memory::Batch*> query(const nebula::meta::Table&, const ExecutionPlan&);
+  const FilteredBlocks query(const nebula::meta::Table&, const ExecutionPlan&, folly::ThreadPoolExecutor&);
 
   // query all nodes that hold data for given table
   const std::vector<nebula::meta::NNode> query(const std::string&);

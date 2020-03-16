@@ -103,10 +103,14 @@ public: // data reading API
   }
 
   // get a const reference of the histogram object for given column
-  template <typename T = nebula::memory::serde::Histogram>
+  template <typename T = nebula::surface::eval::Histogram>
   inline auto histogram() const ->
-    typename std::enable_if_t<std::is_base_of_v<nebula::memory::serde::Histogram, T>, T> {
+    typename std::enable_if_t<std::is_base_of_v<nebula::surface::eval::Histogram, T>, T> {
     return meta_->histogram<T>();
+  }
+
+  const nebula::surface::eval::Histogram& histogram() const {
+    return meta_->histogram();
   }
 
 public: // basic metadata exposure

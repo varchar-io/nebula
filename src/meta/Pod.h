@@ -120,6 +120,20 @@ public:
     return true;
   }
 
+  template <typename T>
+  inline std::vector<T> values(const std::string& name, const std::vector<size_t>& spaces) {
+    auto itr = colMap_.find(name);
+
+    // not found
+    if (itr == colMap_.end()) {
+      return {};
+    }
+
+    // get the value range for given space
+    auto i = itr->second;
+    return keys_.at(i)->values<T>(spaces.at(i));
+  }
+
   inline Span span(const std::vector<std::vector<std::string>>& ps) const {
     Span span{ 0, 0 };
     for (size_t i = 0, c = keys_.size(); i < c; ++i) {

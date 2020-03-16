@@ -492,7 +492,7 @@ public:
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
     auto data = Expression::serialize();
-    data->type = ExpressionType::UDF;
+    data->type = ExpressionType::FUNCTION;
     data->u_type = UT;
     data->inner = std::move(inner_->serialize());
 
@@ -530,7 +530,7 @@ public:
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
     auto data = Expression::serialize();
-    data->type = ExpressionType::UDF;
+    data->type = ExpressionType::FUNCTION;
     data->u_type = UDF;
     data->inner = std::move(expr_->serialize());
     return data;

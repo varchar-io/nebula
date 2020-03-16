@@ -18,8 +18,8 @@
 #include <gtest/gtest.h>
 
 #include "memory/Batch.h"
-#include "memory/serde/Histogram.h"
 #include "memory/serde/TypeDataFactory.h"
+#include "surface/eval/Histogram.h"
 
 #include "meta/Table.h"
 #include "meta/TestTable.h"
@@ -33,11 +33,11 @@ namespace nebula {
 namespace memory {
 namespace test {
 
-using nebula::memory::serde::BoolHistogram;
-using nebula::memory::serde::Histogram;
-using nebula::memory::serde::IntHistogram;
-using nebula::memory::serde::RealHistogram;
 using nebula::memory::serde::TypeDataFactory;
+using nebula::surface::eval::BoolHistogram;
+using nebula::surface::eval::Histogram;
+using nebula::surface::eval::IntHistogram;
+using nebula::surface::eval::RealHistogram;
 
 TEST(HistogramTest, TestHistogramTypes) {
   std::unique_ptr<Histogram> histo = std::make_unique<Histogram>();

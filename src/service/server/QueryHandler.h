@@ -64,7 +64,7 @@ private:
     const Predicate&,
     const nebula::meta::Table&,
     const std::shared_ptr<nebula::api::dsl::Expression> = nullptr,
-    const nebula::api::dsl::LogicalOp = nebula::api::dsl::LogicalOp::AND) const;
+    const nebula::surface::eval::LogicalOp = nebula::surface::eval::LogicalOp::AND) const;
 
   // build metric into the query
   std::shared_ptr<nebula::api::dsl::Expression> buildMetric(const Metric&) const;

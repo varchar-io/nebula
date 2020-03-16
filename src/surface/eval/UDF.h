@@ -53,14 +53,17 @@ public:
   using NativeType = typename nebula::type::TypeTraits<NK>::CppType;
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
   using Logic = std::function<NativeType(const InputType&, bool& valid)>;
+  using EvalBlock = std::function<BlockEval(const Block&)>;
 
-  UDF(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, Logic&& logic)
+  UDF(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, Logic&& logic, EvalBlock&& eb = uncertain)
     : BaseType(
         fmt::format("{0}({1})", name, expr->signature()),
+        ExpressionType::FUNCTION,
         [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
           // call the UDF to evalue the result
           return logic_(expr_->eval<InputType>(ctx, valid), valid);
-        }),
+        },
+        std::move(eb)),
       expr_{ std::move(expr) },
       logic_{ std::move(logic) } {}
   virtual ~UDF() = default;
@@ -94,10 +97,12 @@ public:
        SketchMaker&& maker)
     : BaseType(
         fmt::format("{0}({1})", name, expr->signature()),
+        ExpressionType::FUNCTION,
         [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
           // call the UDF to evalue the result
           return expr_->eval<InputType>(ctx, valid);
         },
+        uncertain,
         std::move(maker),
         {}),
       expr_{ std::move(expr) } {

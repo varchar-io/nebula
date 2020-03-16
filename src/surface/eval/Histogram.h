@@ -20,8 +20,8 @@
 #include "fmt/format.h"
 
 namespace nebula {
-namespace memory {
-namespace serde {
+namespace surface {
+namespace eval {
 /**
  * Define histogram data - Count is common value indicating total valid values.
  */
@@ -90,6 +90,6 @@ using IntHistogram = struct NumberHistogram<int64_t>;
 // cover all floating values
 using RealHistogram = struct NumberHistogram<double>;
 
-} // namespace serde
-} // namespace memory
+} // namespace eval
+} // namespace surface
 } // namespace nebula

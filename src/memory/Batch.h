@@ -18,10 +18,13 @@
 
 #include <string_view>
 #include <unordered_map>
+
 #include "DataNode.h"
-#include "memory/serde/Histogram.h"
+
 #include "meta/Table.h"
 #include "surface/DataSurface.h"
+#include "surface/eval/Histogram.h"
+#include "surface/eval/ValueEval.h"
 #include "type/Type.h"
 
 /**
@@ -35,7 +38,7 @@ namespace memory {
 using DnMap = std::unordered_map<std::string, PDataNode>;
 
 class RowAccessor;
-class Batch {
+class Batch : public nebula::surface::eval::Block {
 public: // read row from and write row to
   Batch(const nebula::meta::Table&, size_t capacity, size_t pid = 0);
   virtual ~Batch() = default;
@@ -46,12 +49,74 @@ public: // read row from and write row to
   // random access to a row - may require internal seek
   std::unique_ptr<RowAccessor> makeAccessor() const;
 
-public: // basic metrics / meta of the batch
+public: /* implement interface of Block.h */
   // get total rows in the batch
-  inline size_t getRows() const {
+  inline size_t getRows() const override {
     return rows_;
   }
 
+  nebula::type::TypeNode columnType(const std::string& col) const override {
+    return schema_->find(col);
+  }
+
+  const nebula::surface::eval::Histogram& histogram(const std::string& col) const override {
+    return fields_.at(col)->histogram();
+  }
+
+  std::vector<std::any> partitionValues(const std::string& col) const override {
+    // if block is not partitioned
+    if (pod_ == nullptr) {
+      return {};
+    }
+
+#define DISPATCH_KIND(KIND)                                                                              \
+  case nebula::type::Kind::KIND: {                                                                       \
+    auto list = pod_->values<nebula::type::TypeTraits<nebula::type::Kind::KIND>::CppType>(col, spaces_); \
+    return std::vector<std::any>(list.begin(), list.end());                                              \
+  }
+
+    // if column is not partitioned column
+    auto ct = schema_->find(col);
+    switch (ct->k()) {
+      DISPATCH_KIND(BOOLEAN)
+      DISPATCH_KIND(TINYINT)
+      DISPATCH_KIND(SMALLINT)
+      DISPATCH_KIND(INTEGER)
+      DISPATCH_KIND(BIGINT)
+    case nebula::type::Kind::VARCHAR: {
+      auto list = pod_->values<std::string>(col, spaces_);
+      return std::vector<std::any>(list.begin(), list.end());
+    }
+    default:
+      return {};
+    }
+
+#undef DISPATCH_KIND
+  }
+
+  bool probably(const std::string& col, std::any v) const override {
+#define DISPATCH_KIND(KIND)                                                 \
+  case nebula::type::Kind::KIND: {                                          \
+    using ET = nebula::type::TypeTraits<nebula::type::Kind::KIND>::CppType; \
+    return probably<ET>(col, std::any_cast<ET>(v));                         \
+  }
+
+    // if column is not partitioned column
+    auto ct = schema_->find(col);
+    switch (ct->k()) {
+      DISPATCH_KIND(BOOLEAN)
+      DISPATCH_KIND(TINYINT)
+      DISPATCH_KIND(SMALLINT)
+      DISPATCH_KIND(INTEGER)
+      DISPATCH_KIND(BIGINT)
+    default:
+      return true;
+    }
+
+#undef DISPATCH_KIND
+  }
+
+public:
   inline size_t getRawSize() const {
     return data_->rawSize();
   }
@@ -70,9 +135,9 @@ public: // basic metrics / meta of the batch
   }
 
   // get a const reference of the histogram object for given column
-  template <typename T = nebula::memory::serde::Histogram>
+  template <typename T = nebula::surface::eval::Histogram>
   inline auto histogram(const std::string& col) const ->
-    typename std::enable_if_t<std::is_base_of_v<nebula::memory::serde::Histogram, T>, T> {
+    typename std::enable_if_t<std::is_base_of_v<nebula::surface::eval::Histogram, T>, T> {
     // delegate the call to the node
     return fields_.at(col)->histogram<T>();
   }
@@ -99,6 +164,8 @@ private:
 
   bool sealed_;
 };
+
+using EvaledBlock = std::pair<Batch*, nebula::surface::eval::BlockEval>;
 
 class RowAccessor : public nebula::surface::RowData {
 public:
