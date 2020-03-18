@@ -241,14 +241,21 @@ void ClusterInfo::load(const std::string& file) {
 
   YAML::Node config = YAML::LoadFile(file);
 
+  // total top level section supported
+  auto topLevels = 0;
+
   // set the version from the config
   version_ = config["version"].as<std::string>();
+  topLevels++;
 
   // load server info
   server_ = config["server"].as<ServerOptions>();
+  topLevels++;
 
   // load all nodes configured for the cluster
   const auto& nodes = config["nodes"];
+  topLevels++;
+
   NNodeSet nodeSet;
   for (size_t i = 0, size = nodes.size(); i < size; ++i) {
     const auto& node = nodes[i]["node"];
@@ -273,6 +280,7 @@ void ClusterInfo::load(const std::string& file) {
 
   // load all table specs
   const auto& tables = config["tables"];
+  topLevels++;
   TableSpecSet tableSet;
   for (YAML::const_iterator it = tables.begin(); it != tables.end(); ++it) {
     std::string name = it->first.as<std::string>();
@@ -308,6 +316,13 @@ void ClusterInfo::load(const std::string& file) {
 
   // swap with new table set
   std::swap(tables_, tableSet);
+
+  // if user mistakenly config things at top level
+  // (I made mistake to place a new table the same level as "tables")
+  // let's fail this case as mis-config [version, server, nodes, tables]
+  if (config.size() > topLevels) {
+    throw NException("Un-recoganized config at the top level");
+  }
 }
 
 void ClusterInfo::update(const NNode& node) {
