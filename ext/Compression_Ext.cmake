@@ -17,7 +17,7 @@ set_target_properties(${ZLIB_LIBRARY} PROPERTIES
 
 # snappy - linux has system provided version
 if(APPLE)
-    set(SNAPPY_ROOT ${CELLAR_ROOT}/snappy/1.1.7_1)
+    set(SNAPPY_ROOT ${CELLAR_ROOT}/snappy/1.1.8)
     set(SNAPPY_INCLUDE_DIR ${SNAPPY_ROOT}/include)
     set(SNAPPY_LIBRARY_PATH ${SNAPPY_ROOT}/lib/libsnappy.a)
 else()
@@ -33,7 +33,7 @@ set_target_properties(${SNAPPY_LIBRARY} PROPERTIES
 
 # zstd
 if(APPLE)
-    set(ZSTD_ROOT ${CELLAR_ROOT}/zstd/1.4.1)
+    set(ZSTD_ROOT ${CELLAR_ROOT}/zstd/1.4.4)
     set(ZSTD_INCLUDE_DIR ${ZSTD_ROOT}/include)
     set(ZSTD_LIBRARY_PATH ${ZSTD_ROOT}/lib/libzstd.a)
 else()
@@ -49,7 +49,7 @@ set_target_properties(${ZSTD_LIBRARY} PROPERTIES
 
 # lz4
 if(APPLE)
-    set(LZ4_ROOT ${CELLAR_ROOT}/lz4/1.9.1)
+    set(LZ4_ROOT ${CELLAR_ROOT}/lz4/1.9.2)
     set(LZ4_INCLUDE_DIR ${LZ4_ROOT}/include)
     set(LZ4_LIBRARY_PATH ${LZ4_ROOT}/lib/liblz4.a)
 else()
@@ -62,3 +62,21 @@ set_target_properties(${LZ4_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${LZ4_LIBRARY_PATH}"
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${LZ4_INCLUDE_DIR}")
+
+# bzip2
+# bzip2 can be installed through brew on mac
+# and apt-get install bzip2 on unbuntu
+if(APPLE)
+    set(BZ2_ROOT ${CELLAR_ROOT}/bzip2/1.0.8/)
+    set(BZ2_INCLUDE_DIR ${BZ2_ROOT}/include)
+    set(BZ2_LIBRARY_PATH ${BZ2_ROOT}/lib/libbz2.a)
+else()
+    set(BZ2_INCLUDE_DIR /usr/local/include)
+    set(BZ2_LIBRARY_PATH /lib/x86_64-linux-gnu/libbz2.so.1)
+endif()
+set(BZ2_LIBRARY bz2)
+add_library(${BZ2_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${BZ2_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${BZ2_LIBRARY_PATH}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES" "${BZ2_INCLUDE_DIR}")

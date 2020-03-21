@@ -242,7 +242,7 @@ void ClusterInfo::load(const std::string& file) {
   YAML::Node config = YAML::LoadFile(file);
 
   // total top level section supported
-  auto topLevels = 0;
+  size_t topLevels = 0;
 
   // set the version from the config
   version_ = config["version"].as<std::string>();

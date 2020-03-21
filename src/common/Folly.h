@@ -17,7 +17,9 @@
 #pragma once
 
 // expliclitly define this for portability?
+#ifndef MAP_ANONYMOUS
 #define MAP_ANONYMOUS 0x20
+#endif
 
 /* A central place to include folly features */
 #include <folly/Conv.h>

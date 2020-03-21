@@ -84,7 +84,7 @@ public:
     }
 
     if constexpr (UKIND == UDFKind::IN) {
-      return std::make_unique<In<IK>>(name, expr->asEval(), std::forward<Args>(args)...);
+      return std::make_unique<In<IK>>(name, expr, std::forward<Args>(args)...);
     }
 
     throw NException(fmt::format("Unimplemented UDF {0}", name));

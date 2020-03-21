@@ -88,7 +88,8 @@ TEST(BatchTest, TestBatchRead) {
 
   // use the specified seed so taht the data can repeat
   std::vector<nebula::surface::StaticRow> rows;
-  MockRowData row;
+  auto seed = nebula::common::Evidence::ticks();
+  MockRowData row{ seed };
   // fill rows
   for (auto i = 0; i < count; ++i) {
     rows.push_back({ row.readLong("_time_"),

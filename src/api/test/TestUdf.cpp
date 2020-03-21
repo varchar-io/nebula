@@ -213,11 +213,11 @@ TEST(UDFTest, TestIn) {
 
       auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(t);
       if (f) {
-        nebula::api::udf::In<nebula::type::Kind::VARCHAR> in("i", c->asEval(), s);
+        nebula::api::udf::In<nebula::type::Kind::VARCHAR> in("i", c, s);
         bool valid = true;
         EXPECT_EQ(in.eval(ctx, valid), r);
       } else {
-        nebula::api::udf::In<nebula::type::Kind::VARCHAR> in("i", c->asEval(), s, f);
+        nebula::api::udf::In<nebula::type::Kind::VARCHAR> in("i", c, s, f);
         bool valid = true;
         EXPECT_EQ(in.eval(ctx, valid), r);
       }
@@ -248,11 +248,11 @@ TEST(UDFTest, TestIn) {
 
       auto c = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(t);
       if (f) {
-        nebula::api::udf::In<nebula::type::Kind::INTEGER> in("i", c->asEval(), s);
+        nebula::api::udf::In<nebula::type::Kind::INTEGER> in("i", c, s);
         bool valid = true;
         EXPECT_EQ(in.eval(ctx, valid), r);
       } else {
-        nebula::api::udf::In<nebula::type::Kind::INTEGER> in("i", c->asEval(), s, f);
+        nebula::api::udf::In<nebula::type::Kind::INTEGER> in("i", c, s, f);
         bool valid = true;
         EXPECT_EQ(in.eval(ctx, valid), r);
       }

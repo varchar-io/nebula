@@ -8,11 +8,13 @@ add_library(${NEBULA_COMMON} STATIC
     ${NEBULA_SRC}/common/Int128.cpp)
 target_link_libraries(${NEBULA_COMMON}
     PUBLIC ${FMT_LIBRARY}
-    PUBLIC ${XXH_LIBRARY})
+    PUBLIC ${XXH_LIBRARY}
+    PUBLIC ${FOLLY_LIBRARY})
 
 # build test binary
 add_executable(CommonTests 
     ${NEBULA_SRC}/common/test/TestCommon.cpp
+    ${NEBULA_SRC}/common/test/TestCompression.cpp
     ${NEBULA_SRC}/common/test/TestExts.cpp
     ${NEBULA_SRC}/common/test/TestSimd.cpp
     ${NEBULA_SRC}/common/test/TestStatsAlgo.cpp)

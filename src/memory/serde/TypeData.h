@@ -118,7 +118,7 @@ public:
 
 private:
   // memory chunk managed by paged slice
-  nebula::common::PagedSlice slice_;
+  nebula::common::CompressionSlice slice_;
   std::unique_ptr<nebula::common::BloomFilter<NType>> bf_;
 
   // default value of this data node

@@ -17,6 +17,7 @@
 #include "Memory.h"
 
 #include <gflags/gflags.h>
+#include <lz4.h>
 
 DEFINE_bool(ALLOC_CHECK, false, "check allocation and fail it grows too much");
 
@@ -90,6 +91,116 @@ size_t PagedSlice::copy(NByte* buffer, size_t offset, size_t length) const {
   std::memcpy(buffer + offset, this->ptr_, length);
 
   return length;
+}
+
+size_t CompressionSlice::write(size_t position, const NByte* data, size_t size) {
+  // case like empty string
+  if (size == 0) {
+    return 0;
+  }
+
+  // ensure the buffer can fit the largest data item
+  ensure(size);
+
+  // if current buffer can't fit the data, compress and flush the buffer
+  if (write_.size + size > size_) {
+    compress(position);
+  }
+
+  // write the data into current buffer and increase index
+  std::memcpy(this->ptr_ + write_.size, data, size);
+  write_.size += size;
+  return size;
+}
+
+std::string_view CompressionSlice::read(size_t position, size_t size) const {
+  if (size == 0) {
+    return CompressionSlice::EMPTY_STRING;
+  }
+
+  // if the requested data is still in write buffer
+  if (write_.include(position)) {
+    return std::string_view((char*)this->ptr_ + position - write_.offset, size);
+  }
+
+  // because we make sure every single element is captured in single block
+  // so we don't have single item across block
+  if (!read_.include(position)) {
+    uncompress(position);
+  }
+
+  // build data using copy elision
+  // note that, we're returning a string view on top of current buffer
+  // which is possible to be swapped by next read
+  // hence it requires client to consume it before next read, or corrupted data may happen
+  return std::string_view((char*)buffer_->ptr() + position - read_.offset, size);
+}
+
+// ensure the buffer is big enough to hold single item
+void CompressionSlice::ensure(size_t size) {
+  if (UNLIKELY(size >= size_)) {
+    size_t newSize = size_;
+    while (newSize <= size) {
+      newSize *= 2;
+    }
+
+    ptr_ = static_cast<NByte*>(pool_.extend(ptr_, size_, newSize));
+    size_ = newSize;
+  }
+}
+
+// compress current buffer and link it to the chain
+// recording the data range for this block [x-index_, x]
+void CompressionSlice::compress(size_t position) {
+  // compress current buffer into a new block
+  // for raw data range(offset=position - index_, size=index_)
+  auto buffer = folly::IOBuf::wrapBuffer(ptr_, write_.size);
+  auto result = codec_->compress(buffer.get());
+
+  // compressed block may not be better - we can store original one
+  // LOG(INFO) << "Compression a buffer by position=" << position
+  //           << ", raw size=" << write_.size
+  //           << ", compressed size=" << result->length();
+  N_ENSURE_EQ(write_.offset + write_.size, position, "unexpected position");
+  blocks_.emplace_back(write_, std::move(result));
+
+  // reset the buffer
+  write_.offset = position;
+  write_.size = 0;
+}
+
+// uncompress the compression block covers given position
+// and load it into current buffer (ptr_)
+void CompressionSlice::uncompress(size_t position) const {
+  // search the block that includes the position
+  // assuming we don't have a lot of blocks to iterate,
+  // otherwise this linear loop might require optimization for fast locating.
+  for (auto& block : blocks_) {
+    if (block.range.include(position)) {
+      // TODO(cao) - I was looking for an interface to use existing buffer to hold the raw data
+      // auto raw = codec_->uncompress(, block.range.size);
+      auto compressedSize = block.data->length();
+
+      // prepare the read buffer for this block
+      if (buffer_ == nullptr || buffer_->size() < block.range.size) {
+        *const_cast<std::unique_ptr<OneSlice>*>(&buffer_) = std::make_unique<OneSlice>(block.range.size);
+      }
+
+      N_ENSURE_EQ(type_, folly::io::CodecType::LZ4, "only supporting LZ4 for now");
+      auto ret = (uint32_t)LZ4_decompress_safe((char*)block.data->data(), (char*)buffer_->ptr(), compressedSize, size_);
+      N_ENSURE_EQ(ret, block.range.size, "raw data size mismatches.");
+
+      // TODO(cao) - sorry to use const_cast here as we want to keep read interfaces as const methods
+      *const_cast<Range*>(&read_) = block.range;
+      // LOG(INFO) << "Decompress a block for position =" << position
+      //           << ", raw size=" << read_.size
+      //           << ", compress size=" << compressedSize
+      //           << ", buffer size=" << size_;
+      return;
+    }
+  }
+
+  throw NException(fmt::format("invalid position to uncompress: {0}", position));
 }
 
 } // namespace common

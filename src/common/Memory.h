@@ -16,8 +16,10 @@
 
 #pragma once
 
+#include <folly/compression/Compression.h>
 #include <glog/logging.h>
 #include <iostream>
+#include <numeric>
 
 #include "Errors.h"
 #include "Hash.h"
@@ -91,6 +93,14 @@ public:
     }
   }
 
+  inline size_t size() const {
+    return size_;
+  }
+
+  inline NByte* ptr() const {
+    return ptr_;
+  }
+
 protected:
   // A read-only slice!! wrapping an external buffer but not owning it
   Slice(const NByte* buffer, size_t size, bool own = false)
@@ -112,6 +122,12 @@ protected:
 
   // own the buffer?
   bool ownbuffer_;
+};
+
+class OneSlice : public Slice {
+public:
+  OneSlice(size_t size) : Slice{ size } {}
+  ~OneSlice() = default;
 };
 
 /**
@@ -188,7 +204,7 @@ public:
   }
 
   // capacity
-  size_t capacity() const {
+  inline size_t capacity() const {
     return size_ * slices_;
   }
 
@@ -238,6 +254,10 @@ struct Range {
   uint32_t offset;
   uint32_t size;
 
+  inline bool include(size_t pos) const {
+    return pos >= offset && pos < (offset + size);
+  }
+
   // write range in a paged slice for given offset
   inline size_t write(PagedSlice& slice, size_t position) const {
     return write(slice, position, offset, size);
@@ -260,6 +280,119 @@ struct Range {
     uint64_t value = slice.read<uint64_t>(position);
     return Range{ (uint32_t)(value >> 32), (uint32_t)value };
   }
+};
+
+// compression buffer will manage a fixed size buffer
+// to receive input writes, when the buffer is full, it will compress it
+// and output the compressed bytes into the designated slice, reset the buffer.
+// it records the range of raw data for each compressed block
+struct CompressionBlock {
+  explicit CompressionBlock(Range r, std::unique_ptr<folly::IOBuf> d)
+    : range{ std::move(r) }, data{ std::move(d) } {}
+  Range range;
+  std::unique_ptr<folly::IOBuf> data;
+};
+
+class CompressionSlice : public Slice {
+  static constexpr auto EMPTY_STRING = "";
+
+public:
+  CompressionSlice(size_t size, folly::io::CodecType type = folly::io::CodecType::LZ4)
+    : Slice{ size },
+      write_{ 0, 0 },
+      read_{ 0, 0 },
+      type_{ type },
+      codec_{ folly::io::getCodec(type) } {
+    blocks_.reserve(64);
+  }
+  ~CompressionSlice() = default;
+
+public:
+  // append a bytes array of length bytes to position
+  inline size_t write(size_t position, const char* data, size_t length) {
+    return write(position, (const NByte*)data, length);
+  }
+
+  // write an external bytes buffer
+  size_t write(size_t, const NByte*, size_t);
+
+  // write a scalar data elements
+  template <typename T>
+  auto write(size_t position, const T& value) -> typename std::enable_if<std::is_scalar<T>::value, size_t>::type {
+    constexpr size_t size = sizeof(T);
+    // if current buffer can't fit the data, compress and flush the buffer
+    if (write_.size + size > size_) {
+      compress(position);
+    }
+
+    // write this value
+    *reinterpret_cast<T*>(this->ptr_ + write_.size) = value;
+    write_.size += size;
+    return size;
+  }
+
+  // total memory allocation for current slice
+  inline size_t size() const {
+    return std::accumulate(blocks_.begin(), blocks_.end(), size_, [](size_t init, const CompressionBlock& b) {
+      return init + b.data->length();
+    });
+  }
+
+  // capacity
+  inline size_t capacity() const {
+    return size();
+  }
+
+  // read a scalar type
+  template <typename T>
+  typename std::enable_if<std::is_scalar<T>::value, T>::type read(size_t position) const {
+    // if write buffer has the item
+    if (write_.include(position)) {
+      return *reinterpret_cast<T*>(this->ptr_ + position - write_.offset);
+    }
+
+    // check if position is in current range
+    if (!read_.include(position)) {
+      uncompress(position);
+    }
+
+    // buffer index = position - range.offset
+    return *reinterpret_cast<T*>(buffer_->ptr() + position - read_.offset);
+  }
+
+  // read a string
+  std::string_view read(size_t, size_t) const;
+
+private:
+  // ensure the buffer is big enough to hold single item
+  void ensure(size_t);
+
+  // compress current buffer and link it to the chain
+  // recording the data range for this block [x-index_, x]
+  void compress(size_t);
+
+  // uncompress the compression block covers given position
+  // and load it into current buffer (ptr_)
+  void uncompress(size_t) const;
+
+private:
+  // write index in current buffer
+  Range write_;
+
+  // compressed blocks, to reduce block locating time,
+  // we should keep number of blocks as small as possible, ideal size <32
+  std::vector<CompressionBlock> blocks_;
+
+  // TODO(cao) - we may introduce a reader to have these states rather than mix them here
+  // indicating what range of raw data current buffer holds the uncompressed data
+  Range read_;
+
+  // a buffer used for hold raw data of any uncompressed block
+  std::unique_ptr<OneSlice> buffer_;
+
+  // the codec used to compress the buffer
+  folly::io::CodecType type_;
+  std::unique_ptr<folly::io::Codec> codec_;
 };
 
 } // namespace common

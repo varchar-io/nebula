@@ -31,7 +31,7 @@ template <nebula::type::Kind IK>
 class In : public nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK> {
   using UdfInBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK>;
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
-  using EvalBlock = typename nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK>::EvalBlock;
+  using EvalBlock = typename UdfInBase::EvalBlock;
   using ValueType = typename std::conditional<
     IK == nebula::type::Kind::VARCHAR,
     std::string,
@@ -39,11 +39,11 @@ class In : public nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK> {
 
 public:
   In(const std::string& name,
-     std::unique_ptr<nebula::surface::eval::ValueEval> expr,
+     std::shared_ptr<nebula::api::dsl::Expression> expr,
      const std::vector<ValueType>& values)
     : UdfInBase(
         name,
-        std::move(expr),
+        expr->asEval(),
         // logic for "in []"
         [this](const InputType& source, bool& valid) -> bool {
           if (valid) {
@@ -58,11 +58,11 @@ public:
       values_{ values } {}
 
   In(const std::string& name,
-     std::unique_ptr<nebula::surface::eval::ValueEval> expr,
+     std::shared_ptr<nebula::api::dsl::Expression> expr,
      const std::vector<ValueType>& values,
      bool in)
     : UdfInBase(name,
-                std::move(expr),
+                expr->asEval(),
                 // logic for "not in []"
                 [this](const InputType& source, bool& valid) -> bool {
                   if (valid) {
@@ -81,14 +81,15 @@ public:
   virtual ~In() = default;
 
 private:
-  static EvalBlock buildEvalBlock(const std::unique_ptr<nebula::surface::eval::ValueEval>& expr,
+  static EvalBlock buildEvalBlock(std::shared_ptr<nebula::api::dsl::Expression> expr,
                                   const std::vector<ValueType>& values,
                                   bool in) {
     // only handle case "column in []"
-    if (expr->expressionType() == nebula::surface::eval::ExpressionType::COLUMN) {
+    auto ve = expr->asEval();
+    if (ve->expressionType() == nebula::surface::eval::ExpressionType::COLUMN) {
       // column expr signature is composed by "F:{col}"
       // const expr signature is compsoed by "C:{col}"
-      std::string colName(expr->signature().substr(2));
+      std::string colName(ve->signature().substr(2));
       return [name = std::move(colName), values, in](const nebula::surface::eval::Block& b)
                -> nebula::surface::eval::BlockEval {
         auto A = in ? nebula::surface::eval::BlockEval::ALL : nebula::surface::eval::BlockEval::NONE;
