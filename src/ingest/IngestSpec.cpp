@@ -17,6 +17,7 @@
 #include "IngestSpec.h"
 
 #include <gflags/gflags.h>
+#include <gperftools/heap-profiler.h>
 
 #include "common/Evidence.h"
 #include "execution/BlockManager.h"
@@ -31,7 +32,7 @@
 // TODO(cao) - system wide enviroment configs should be moved to cluster config to provide
 // table-wise customization
 DEFINE_string(NTEST_LOADER, "NebulaTest", "define the loader name for loading nebula test data");
-DEFINE_uint64(NBLOCK_MAX_ROWS, 50000, "max rows per block");
+DEFINE_uint64(NBLOCK_MAX_ROWS, 100000, "max rows per block");
 
 /**
  * We will sync etcd configs for cluster info into this memory object
@@ -232,6 +233,7 @@ bool IngestSpec::loadKafka() noexcept {
   }
 
   // build a block and add it to block manager
+  batch->seal();
   BlockManager::init()->add(
     BlockLoader::from(
       BlockSignature{ table->name(), 0, lowTime, highTime, signature_ }, batch));
@@ -293,6 +295,9 @@ private:
 };
 
 bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
+#ifdef PPROF
+  HeapProfilerStart("/tmp/heap_ingest.out");
+#endif
   // TODO(cao) - support column selection in ingestion and expand time column
   // to other columns for simple transformation
   // but right now, we're expecting the same schema of data
@@ -396,6 +401,10 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
   // a lambda to build batch block
   auto makeBlock = [&table, &range, spec = signature_](size_t bid, std::shared_ptr<Batch> b) {
+    // seal the block
+    b->seal();
+    LOG(INFO) << "Push a block: " << b->state();
+
     return BlockLoader::from(
       // build up a block signature with table name, sequence and spec
       BlockSignature{
@@ -462,7 +471,11 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
     blocks.push_back(makeBlock(blockId++, itr.second));
   }
 
+#ifdef PPROF
+  HeapProfilerStop();
+#endif
   // return all blocks built up so far
+  LOG(INFO) << "Memory Pool Report: " << nebula::common::Pool::getDefault().report();
   return true;
 }
 

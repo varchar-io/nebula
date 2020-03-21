@@ -49,12 +49,7 @@ public:
 
 public:
   DataNode(const nebula::type::TypeBase& type, const nebula::meta::Column& column, size_t capacity)
-    : nebula::type::Tree<PDataNode>(this),
-      type_{ type },
-      meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k(), column) },
-      data_{ nebula::memory::serde::TypeDataFactory::createData(type.k(), column, capacity) },
-      count_{ 0 },
-      rawSize_{ 0 } {
+    : DataNode(type, column, capacity, {}) {
     LOG(INFO) << fmt::format("Create data node w/o children [{0}].", type.name());
   }
 
@@ -67,7 +62,9 @@ public:
       meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k(), column) },
       data_{ nebula::memory::serde::TypeDataFactory::createData(type.k(), column, capacity) },
       count_{ 0 },
-      rawSize_{ 0 } {}
+      rawSize_{ 0 },
+      size_{ 0 },
+      storage_{ 0 } {}
 
   virtual ~DataNode() = default;
 
@@ -125,20 +122,47 @@ public: // basic metadata exposure
   inline size_t storageSize() const {
     // count metadata size in?
     // not including children's size - API provide access any node in the tree
-    return data_ == nullptr ? 0 : data_->size();
+    return size_;
   }
 
   inline size_t storageAllocation() const {
-    return data_ == nullptr ? 0 : data_->capacity();
+    return storage_;
   }
 
   // list/map retrieve child's offset and length at some position
   inline std::pair<IndexType, IndexType> offsetSize(IndexType index) {
-    return meta_->offsetSizeDirect(index);
+    return meta_->offsetSize(index);
   }
 
   inline void seal() {
     meta_->seal();
+
+    // rollup the storage size and storage allocation
+    if (data_ != nullptr) {
+      using SizeMeta = std::tuple<size_t, size_t>;
+      auto s = treeWalk<SizeMeta, DataNode>(
+        [](const DataNode&) {},
+        [](const DataNode& v, std::vector<SizeMeta>& children) {
+          size_t allocation = 0;
+          size_t size = 0;
+          if (v.data_) {
+            size = v.data_->size();
+            allocation = v.data_->capacity();
+          }
+
+          for (const auto& c : children) {
+            size += std::get<0>(c);
+            allocation += std::get<1>(c);
+          }
+
+          return std::make_tuple(size, allocation);
+        });
+
+      // only aggregate to the root,
+      // what if we want to aggregate to every node
+      size_ = std::get<0>(s);
+      storage_ = std::get<1>(s);
+    }
   }
 
 private:
@@ -163,6 +187,12 @@ private:
 
   // raw size of data accumulation
   size_t rawSize_;
+
+  // storage size of the data node
+  size_t size_;
+
+  // storage allocation for this data
+  size_t storage_;
 };
 } // namespace memory
 } // namespace nebula

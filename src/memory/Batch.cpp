@@ -97,8 +97,8 @@ std::string Batch::state() const {
     });
 
   // TODO(cao): output a JSON string
-  return fmt::format("[raw: {0}, size: {1}, allocation: {2}, rows: {3}]",
-                     data_->rawSize(), std::get<1>(s), std::get<0>(s), rows_);
+  return fmt::format("[raw: {0}, size: {1}, allocation: {2}, rows: {3}, bess: {4}]",
+                     data_->rawSize(), std::get<1>(s), std::get<0>(s), rows_, bess_.capacity());
 }
 
 void Batch::seal() {

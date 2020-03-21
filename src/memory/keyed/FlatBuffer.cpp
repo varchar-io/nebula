@@ -26,7 +26,7 @@ namespace memory {
 namespace keyed {
 
 using nebula::common::PagedSlice;
-using nebula::common::Range;
+using Range = nebula::common::PRange;
 using nebula::surface::ListData;
 using nebula::surface::RowData;
 using nebula::type::Kind;
@@ -65,6 +65,7 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema,
     numColumns_{ schema->size() },
     fields_{ fields },
     chunk_{ nullptr },
+    chunkSize_{ 0 },
     main_{ std::make_unique<Buffer>(FLAGS_FB_MAIN_PAGE) },
     data_{ std::make_unique<Buffer>(FLAGS_FB_DATA_PAGE) },
     list_{ std::make_unique<Buffer>(FLAGS_FB_LIST_PAGE) } {
@@ -81,7 +82,8 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema,
   : schema_{ schema },
     numColumns_{ schema->size() },
     fields_{ fields },
-    chunk_{ data } {
+    chunk_{ data },
+    chunkSize_{ 0 } {
   // 1. initialize the column align property based on the meta blob
   this->initSchema();
 
@@ -121,6 +123,10 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema,
 
   list_ = std::make_unique<Buffer>(listSize, data + offset);
   offset += listSize;
+
+  // we know how big the chunk is now
+  // used for information only, may not be exactly the same memory chunk size.
+  chunkSize_ = offset;
 
   // populate all rows properties
   rows_.reserve(numRows);

@@ -146,7 +146,7 @@ class Tree : public TreeBase {
 public:
   Tree(T data, const std::vector<TreeNode>& children)
     : TreeBase(fetchId(data), children), data_{ data } {}
-  Tree(T data) : TreeBase(fetchId(data)), data_{ data } {}
+  Tree(T data) : Tree(data, {}) {}
   virtual ~Tree() = default;
 
   /* Basic Tree APIs */

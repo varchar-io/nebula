@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <unordered_map>
+
+#include "common/Hash.h"
 #include "common/Memory.h"
 
 namespace nebula {
@@ -31,6 +34,78 @@ namespace encode {
  *      [number dict items(0~255)][p0(0-255)][c0(0-65536)][p1(0-255)]...[pN(0-255)]
  */
 class DictEncoder {
+  // assuming dictionary item can not exceeding max integer
+  using IndexType = int32_t;
+
+  // all items share the same hash value
+  using HashItems = std::unordered_multimap<size_t, IndexType>;
+
+  using Range = nebula::common::CRange;
+
+  // 6K page size per each dictinoary
+  static constexpr auto INDICE_PAGE = 2048;
+  static constexpr auto DICT_PAGE = 4096;
+  static constexpr auto IndexWidth = sizeof(IndexType);
+
+public:
+  DictEncoder()
+    : hashItems_{ std::make_unique<HashItems>() },
+      offsets_{ INDICE_PAGE },
+      dict_{ DICT_PAGE },
+      items_{ 0 },
+      size_{ 0 } {
+    offsets_.write(0, 0);
+  }
+  // set item and return its index in dictionary
+  int32_t set(std::string_view item) {
+    // check if this item is already in our dictionary
+    auto hash = nebula::common::Hasher::hash64(item.data(), item.size());
+    auto range = hashItems_->equal_range(hash);
+    for (auto it = range.first; it != range.second; ++it) {
+      // get offset and length of given index
+
+      const auto index = it->second;
+      auto str = get(index);
+
+      // string view equals
+      if (item == str) {
+        return index;
+      }
+    }
+
+    // not found, we're adding this new item
+    // write offset of the new item
+    size_ += dict_.write(size_, item.data(), item.size());
+    // add the hash value to the list for next value to lookup
+    hashItems_->emplace(hash, items_);
+    offsets_.write((items_ + 1) * IndexWidth, size_);
+    return items_++;
+  }
+
+  // get the item by its index
+  inline std::string_view get(int32_t index) const {
+    const auto pos = index * IndexWidth;
+    const auto pos2 = pos + IndexWidth;
+    auto offset = offsets_.read<IndexType>(pos);
+    auto offset2 = offsets_.read<IndexType>(pos2);
+    return dict_.read(offset, offset2 - offset);
+  }
+
+  void seal() {
+    // release the assitant data structure
+    hashItems_ = nullptr;
+  }
+
+private:
+  std::unique_ptr<HashItems> hashItems_;
+
+  // every value has offset and length of the dict item
+  nebula::common::CompressionSlice offsets_;
+  // store all dictionary items in order
+  nebula::common::CompressionSlice dict_;
+  // current size of the dictinaary slice
+  int32_t items_;
+  int32_t size_;
 };
 } // namespace encode
 } // namespace memory

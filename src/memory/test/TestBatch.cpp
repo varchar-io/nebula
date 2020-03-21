@@ -60,6 +60,8 @@ TEST(BatchTest, TestBatch) {
     EXPECT_EQ(batch1.getRows(), rows);
 
     // print out the batch state
+    batch1.seal();
+    LOG(INFO) << "Batch-Memory: " << batch1.getMemory();
     LOG(INFO) << "Batch: " << batch1.state();
   }
 
@@ -73,6 +75,7 @@ TEST(BatchTest, TestBatch) {
     EXPECT_EQ(batch2.getRows(), rows);
 
     // print out the batch state
+    batch2.seal();
     LOG(INFO) << "Batch: " << batch2.state();
   }
 

@@ -118,31 +118,20 @@ size_t DataNode::append(std::string_view str) {
   // if yes, we save the mapping.
   const size_t size = str.size();
   const auto index = cursorAndAdvance();
-  const auto withDict = meta_->hasDict();
-  const auto hash = Hasher::hash64(str.data(), str.size());
-  if (withDict) {
-    auto target = meta_->find(hash, str, *data_);
-    // found the same value
-    if (target != TypeMetadata::INVALID_INDEX) {
-      meta_->link(index, target);
 
-      INCREMENT_RAW_SIZE_AND_RETURN()
-    }
+  // histogram
+  meta_->histogram(str);
+
+  if (meta_->hasDict()) {
+    auto dictIdx = meta_->dictItem(str);
+    meta_->setOffsetSize(index, dictIdx);
+    INCREMENT_RAW_SIZE_AND_RETURN()
   }
 
   // this new value will be appended at the data chunk
   // and we record its offset and size
   data_->add(index, str);
   meta_->setOffsetSize(index, size);
-
-  // but if working with dict, we need to record this unique value
-  if (withDict) {
-    meta_->record(hash, index);
-  }
-
-  // histogram
-  meta_->histogram(str);
-
   INCREMENT_RAW_SIZE_AND_RETURN()
 }
 
@@ -314,6 +303,11 @@ std::string_view DataNode::read(size_t index) {
   // if with dictionary, we need to check
   // whether this points to another index so using offsetSize
   // instead of offsetSizeDirect
+  if (meta_->hasDict()) {
+    auto os = meta_->offsetSize(index);
+    return meta_->dictItem(os.second);
+  }
+
   auto os = meta_->offsetSize(index);
   return data_->read(os.first, os.second);
 }

@@ -154,17 +154,29 @@ void CompressionSlice::ensure(size_t size) {
 void CompressionSlice::compress(size_t position) {
   // compress current buffer into a new block
   // for raw data range(offset=position - index_, size=index_)
-  auto buffer = folly::IOBuf::wrapBuffer(ptr_, write_.size);
-  auto result = codec_->compress(buffer.get());
+  // output should be maximum size of input
+  const auto srcSize = write_.size;
+  auto slice = std::make_unique<OneSlice>(srcSize);
+  auto compressedSize = LZ4_compress_default((char*)ptr_, (char*)slice->ptr(), srcSize, srcSize);
+
+  // not good to compress, keep it as raw
+  if (compressedSize == 0) {
+    std::memcpy(slice->ptr(), ptr_, srcSize);
+    blocks_.emplace_back(write_, false, std::move(slice));
+  } else {
+    // copy into a smaller buffer
+    auto fit = std::make_unique<OneSlice>(compressedSize);
+    std::memcpy(fit->ptr(), slice->ptr(), compressedSize);
+    blocks_.emplace_back(write_, true, std::move(fit));
+  }
 
   // compressed block may not be better - we can store original one
   // LOG(INFO) << "Compression a buffer by position=" << position
   //           << ", raw size=" << write_.size
   //           << ", compressed size=" << result->length();
-  N_ENSURE_EQ(write_.offset + write_.size, position, "unexpected position");
-  blocks_.emplace_back(write_, std::move(result));
 
   // reset the buffer
+  N_ENSURE_EQ(write_.offset + write_.size, position, "unexpected position");
   write_.offset = position;
   write_.size = 0;
 }
@@ -179,7 +191,7 @@ void CompressionSlice::uncompress(size_t position) const {
     if (block.range.include(position)) {
       // TODO(cao) - I was looking for an interface to use existing buffer to hold the raw data
       // auto raw = codec_->uncompress(, block.range.size);
-      auto compressedSize = block.data->length();
+      auto compressedSize = block.data->size();
 
       // prepare the read buffer for this block
       if (buffer_ == nullptr || buffer_->size() < block.range.size) {
@@ -187,11 +199,15 @@ void CompressionSlice::uncompress(size_t position) const {
       }
 
       N_ENSURE_EQ(type_, folly::io::CodecType::LZ4, "only supporting LZ4 for now");
-      auto ret = (uint32_t)LZ4_decompress_safe((char*)block.data->data(), (char*)buffer_->ptr(), compressedSize, size_);
-      N_ENSURE_EQ(ret, block.range.size, "raw data size mismatches.");
+      if (block.compressed) {
+        auto ret = (uint32_t)LZ4_decompress_safe((char*)block.data->ptr(), (char*)buffer_->ptr(), compressedSize, size_);
+        N_ENSURE_EQ(ret, block.range.size, "raw data size mismatches.");
+      } else {
+        std::memcpy(buffer_->ptr(), block.data->ptr(), block.range.size);
+      }
 
       // TODO(cao) - sorry to use const_cast here as we want to keep read interfaces as const methods
-      *const_cast<Range*>(&read_) = block.range;
+      *const_cast<CRange*>(&read_) = block.range;
       // LOG(INFO) << "Decompress a block for position =" << position
       //           << ", raw size=" << read_.size
       //           << ", compress size=" << compressedSize

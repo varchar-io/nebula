@@ -50,10 +50,12 @@ public:
   virtual ~Pool() = default;
 
   inline void* allocate(size_t size) {
+    allocated_ += size;
     return std::malloc(size);
   }
 
-  inline void free(void* p) {
+  inline void free(void* p, size_t size) {
+    freed_ += size;
     std::free(p);
   }
 
@@ -63,18 +65,33 @@ public:
     // extend the memory if possible
     void* newP = std::realloc(p, newSize);
     if (UNLIKELY(!newP)) {
-      free(p);
+      free(p, size);
       throw std::bad_alloc();
     }
 
+    extended_ += (newSize - size);
     return newP;
+  }
+
+  std::string report() const {
+    return fmt::format("Allocated:{0}, Extended:{1}, Freed:{2}", allocated_, extended_, freed_);
   }
 
   static Pool& getDefault();
 
 private:
   // TODO(cao): a start point of pool impl, need a better pool management
-  Pool() = default;
+  Pool() : allocated_{ 0 }, extended_{ 0 }, freed_{ 0 } {}
+
+  size_t allocated_;
+  size_t extended_;
+  size_t freed_;
+};
+
+enum class SliceType {
+  PAGED,
+  SINGLE,
+  COMPRESSION
 };
 
 /**
@@ -86,7 +103,7 @@ public:
   virtual ~Slice() {
     if (ownbuffer_) {
       if (!!ptr_) {
-        pool_.free(static_cast<void*>(ptr_));
+        pool_.free(static_cast<void*>(ptr_), size_);
       } else {
         LOG(ERROR) << "A slice should hold a valid pointer";
       }
@@ -248,6 +265,7 @@ inline size_t
 }
 
 // a basic range struct to hold offset and size in a size_t
+template <typename T>
 struct Range {
   explicit Range() : Range(0, 0) {}
   explicit Range(uint32_t o, uint32_t s) : offset{ o }, size{ s } {}
@@ -259,38 +277,43 @@ struct Range {
   }
 
   // write range in a paged slice for given offset
-  inline size_t write(PagedSlice& slice, size_t position) const {
+  inline size_t write(T& slice, size_t position) const {
     return write(slice, position, offset, size);
   }
 
   // write range in a paged slice for given offset
-  static inline size_t write(PagedSlice& slice, size_t position, uint32_t offset, uint32_t size) {
+  static inline size_t write(T& slice, size_t position, uint32_t offset, uint32_t size) {
     uint64_t value = offset;
     value = value << 32 | size;
     return slice.write(position, value);
   }
 
-  inline void read(const PagedSlice& slice, size_t position) {
-    uint64_t value = slice.read<uint64_t>(position);
+  inline void read(const T& slice, size_t position) {
+    uint64_t value = slice.template read<uint64_t>(position);
     size = value;
     offset = (uint32_t)(value >> 32);
   }
 
-  static inline Range make(const PagedSlice& slice, size_t position) {
-    uint64_t value = slice.read<uint64_t>(position);
+  static inline Range make(const T& slice, size_t position) {
+    uint64_t value = slice.template read<uint64_t>(position);
     return Range{ (uint32_t)(value >> 32), (uint32_t)value };
   }
 };
+
+class CompressionSlice;
+using PRange = Range<PagedSlice>;
+using CRange = Range<CompressionSlice>;
 
 // compression buffer will manage a fixed size buffer
 // to receive input writes, when the buffer is full, it will compress it
 // and output the compressed bytes into the designated slice, reset the buffer.
 // it records the range of raw data for each compressed block
 struct CompressionBlock {
-  explicit CompressionBlock(Range r, std::unique_ptr<folly::IOBuf> d)
-    : range{ std::move(r) }, data{ std::move(d) } {}
-  Range range;
-  std::unique_ptr<folly::IOBuf> data;
+  explicit CompressionBlock(CRange r, bool c, std::unique_ptr<OneSlice> d)
+    : range{ std::move(r) }, compressed{ c }, data{ std::move(d) } {}
+  CRange range;
+  bool compressed;
+  std::unique_ptr<OneSlice> data;
 };
 
 class CompressionSlice : public Slice {
@@ -333,8 +356,9 @@ public:
 
   // total memory allocation for current slice
   inline size_t size() const {
-    return std::accumulate(blocks_.begin(), blocks_.end(), size_, [](size_t init, const CompressionBlock& b) {
-      return init + b.data->length();
+    // 2*size_ to count for the read/write buffers
+    return std::accumulate(blocks_.begin(), blocks_.end(), 2 * size_, [](size_t init, const CompressionBlock& b) {
+      return init + b.data->size();
     });
   }
 
@@ -377,7 +401,7 @@ private:
 
 private:
   // write index in current buffer
-  Range write_;
+  CRange write_;
 
   // compressed blocks, to reduce block locating time,
   // we should keep number of blocks as small as possible, ideal size <32
@@ -385,7 +409,7 @@ private:
 
   // TODO(cao) - we may introduce a reader to have these states rather than mix them here
   // indicating what range of raw data current buffer holds the uncompressed data
-  Range read_;
+  CRange read_;
 
   // a buffer used for hold raw data of any uncompressed block
   std::unique_ptr<OneSlice> buffer_;

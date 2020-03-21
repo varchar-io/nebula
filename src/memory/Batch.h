@@ -117,6 +117,14 @@ public: /* implement interface of Block.h */
   }
 
 public:
+  inline size_t getMemory() const {
+    return data_->storageAllocation();
+  }
+
+  inline size_t getSize() const {
+    return data_->storageSize();
+  }
+
   inline size_t getRawSize() const {
     return data_->rawSize();
   }
@@ -151,7 +159,7 @@ private:
   std::shared_ptr<nebula::meta::Pod> pod_;
   size_t pid_;
   std::vector<size_t> spaces_;
-  nebula::common::PagedSlice bess_;
+  nebula::common::CompressionSlice bess_;
 
   // recording number of rows
   size_t rows_;

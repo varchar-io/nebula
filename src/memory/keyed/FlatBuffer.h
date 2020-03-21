@@ -138,7 +138,7 @@ public:
 
   virtual ~FlatBuffer() {
     if (chunk_) {
-      nebula::common::Pool::getDefault().free(chunk_);
+      nebula::common::Pool::getDefault().free(chunk_, chunkSize_);
     }
   }
 
@@ -214,6 +214,7 @@ protected:
   const nebula::surface::eval::Fields& fields_;
   // an owned data buffer passed in - need to free it in destructor
   void* chunk_;
+  size_t chunkSize_;
 
   // main dat abuffer
   std::unique_ptr<Buffer> main_;

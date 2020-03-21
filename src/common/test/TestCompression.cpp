@@ -69,30 +69,36 @@ TEST(CompressionTest, TestCompressionSlice) {
 }
 
 TEST(CompressionTest, TestStringCompressionSlice) {
-  const char* strings[] = { "abasdfasfasrfqwe", "asdfasfa", "a4po90tu2[093utaldsbvldksvjw-23r08po;jNVSKNVQ;WR02[IALSKDVN" };
-  CompressionSlice slice(1024);
-  // write 10500 values
-  constexpr auto width = sizeof(int64_t);
-  constexpr auto total = 10500;
-  auto position = 0;
-  for (int64_t i = 0; i < total; ++i) {
-    auto& s = strings[i % 3];
-    position += slice.write(position, s, strlen(s));
+  LOG(INFO) << nebula::common::Pool::getDefault().report();
+  {
+    const char* strings[] = { "abasdfasfasrfqwe", "asdfasfa", "a4po90tu2[093utaldsbvldksvjw-23r08po;jNVSKNVQ;WR02[IALSKDVN" };
+    CompressionSlice slice(1024);
+    // write 10500 values
+    constexpr auto width = sizeof(int64_t);
+    constexpr auto total = 10500;
+    auto position = 0;
+    for (int64_t i = 0; i < total; ++i) {
+      auto& s = strings[i % 3];
+      position += slice.write(position, s, strlen(s));
+    }
+
+    // flush to finish all writing
+    // slice.flush(total * width);
+
+    LOG(INFO) << "raw=" << (total * width) << ", real=" << slice.size();
+
+    // read all values in order and verify their values
+    position = 0;
+    for (int64_t i = 0; i < total; ++i) {
+      auto& s = strings[i % 3];
+      auto str = slice.read(position, strlen(s));
+      EXPECT_EQ(str, s);
+      position += strlen(s);
+    }
+    LOG(INFO) << nebula::common::Pool::getDefault().report();
   }
 
-  // flush to finish all writing
-  // slice.flush(total * width);
-
-  LOG(INFO) << "raw=" << (total * width) << ", real=" << slice.size();
-
-  // read all values in order and verify their values
-  position = 0;
-  for (int64_t i = 0; i < total; ++i) {
-    auto& s = strings[i % 3];
-    auto str = slice.read(position, strlen(s));
-    EXPECT_EQ(str, s);
-    position += strlen(s);
-  }
+  LOG(INFO) << nebula::common::Pool::getDefault().report();
 }
 
 } // namespace test

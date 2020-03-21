@@ -22,7 +22,7 @@ namespace nebula {
 namespace memory {
 namespace keyed {
 
-using nebula::common::Range;
+using Range = nebula::common::PRange;
 using nebula::surface::eval::Aggregator;
 using nebula::surface::eval::Sketch;
 using nebula::type::Kind;

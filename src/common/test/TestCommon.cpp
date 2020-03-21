@@ -643,27 +643,27 @@ TEST(CommonTest, TestCharsUtils) {
 }
 
 TEST(CommonTest, TestRange) {
-  nebula::common::Range r1;
+  nebula::common::PRange r1;
   EXPECT_EQ(r1.offset, 0);
   EXPECT_EQ(r1.size, 0);
 
-  nebula::common::Range r2(2, 100);
+  nebula::common::PRange r2(2, 100);
   EXPECT_EQ(r2.offset, 2);
   EXPECT_EQ(r2.size, 100);
 
   nebula::common::PagedSlice slice(1024);
-  nebula::common::Range r3(111, 222);
+  nebula::common::PRange r3(111, 222);
   EXPECT_EQ(r3.write(slice, 23), 8);
 
-  auto r4 = nebula::common::Range::make(slice, 23);
+  auto r4 = nebula::common::PRange::make(slice, 23);
   EXPECT_EQ(r4.offset, 111);
   EXPECT_EQ(r4.size, 222);
 
   auto max = std::numeric_limits<uint32_t>::max();
-  nebula::common::Range r5(max, max);
+  nebula::common::PRange r5(max, max);
   EXPECT_EQ(r5.write(slice, 55), 8);
 
-  nebula::common::Range r6;
+  nebula::common::PRange r6;
   r6.read(slice, 55);
   EXPECT_EQ(r6.offset, max);
   EXPECT_EQ(r6.size, max);
@@ -680,6 +680,27 @@ TEST(CommonTest, TestWriteAlign) {
   EXPECT_EQ(v, v2);
 }
 
+struct B {
+  B() {
+    LOG(INFO) << "CONSTRUCT B";
+  }
+  virtual ~B() {
+    LOG(INFO) << "DESTRUCT B";
+  }
+};
+struct S : public B {
+  S() {
+    LOG(INFO) << "CONSTRUCT S";
+  }
+  ~S() = default;
+};
+
+TEST(CommonTest, TestConstructDestructOrder) {
+  auto s = std::make_unique<S>();
+  LOG(INFO) << (s != nullptr);
+  s = nullptr;
+  LOG(INFO) << "destructor already called";
+}
 } // namespace test
 } // namespace common
 } // namespace nebula

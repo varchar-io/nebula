@@ -21,6 +21,7 @@
 
 #include "TypeData.h"
 #include "common/Likely.h"
+#include "memory/encode/DictEncoder.h"
 #include "surface/eval/Histogram.h"
 #include "type/Type.h"
 
@@ -35,31 +36,27 @@ namespace serde {
  * Eventually this metadata can be serailized into a flat buffer to persistence.
  */
 class TypeMetadata {
-  using CompoundItems = std::vector<IndexType>;
-  using HashItems = std::unordered_multimap<size_t, IndexType>;
-  // Note we're using uint32 to represent index in a batch to save 8 bytes
-  // with assumption it is big enough for number of rows a batch is allowed.
-  using Dictionary = std::unordered_map<uint32_t, uint32_t>;
-  static constexpr size_t N_ITEMS = 1024;
+  static constexpr size_t N_ITEMS = 4096;
+  static constexpr auto INDEX_WIDTH = sizeof(IndexType);
 
 public:
   static constexpr IndexType INVALID_INDEX = std::numeric_limits<IndexType>::max();
   TypeMetadata(nebula::type::Kind kind, const nebula::meta::Column& column)
     : partition_{ column.partition.valid() },
+      count_{ 0 },
       offsetSize_{
         nebula::type::TypeBase::isScalar(kind) ?
           nullptr :
-          std::make_unique<CompoundItems>()
+          std::make_unique<nebula::common::CompressionSlice>(N_ITEMS)
       },
-      hashItems_{ column.withDict ? std::make_unique<HashItems>() : nullptr },
-      dict_{ column.withDict ? std::make_unique<Dictionary>() : nullptr },
+      dict_{ column.withDict ? std::make_unique<nebula::memory::encode::DictEncoder>() : nullptr },
       default_{ column.defaultValue.size() > 0 },
       histo_{ nullptr } {
 
     if (offsetSize_ != nullptr) {
       // first item always equals 0
-      offsetSize_->reserve(N_ITEMS);
-      offsetSize_->push_back(0);
+      offsetSize_->write<IndexType>(0, 0);
+      ++count_;
     }
 
     // initialize histogram object
@@ -117,35 +114,25 @@ public:
   }
 
   void setOffsetSize(size_t index, IndexType items) {
-    auto size = offsetSize_->size();
-    auto last = offsetSize_->at(size - 1);
+    auto last = offsetSize_->read<IndexType>((count_ - 1) * INDEX_WIDTH);
 
     // NULLS in the hole
-    if (LIKELY(index >= size)) {
-      while (size++ <= index) {
-        offsetSize_->push_back(last);
+    if (LIKELY(index >= count_)) {
+      while (count_ <= index) {
+        offsetSize_->write(count_ * INDEX_WIDTH, last);
+        ++count_;
       }
     }
 
     // an accumulated value
-    offsetSize_->push_back(last + items);
-  }
-
-  inline std::pair<IndexType, IndexType> offsetSize(size_t index) const {
-    if (UNLIKELY(dict_ != nullptr)) {
-      auto it = dict_->find(index);
-      if (it != dict_->end()) {
-        return offsetSizeDirect(it->second);
-      }
-    }
-
-    return offsetSizeDirect(index);
+    offsetSize_->write(count_++ * INDEX_WIDTH, last + items);
   }
 
   // no index link check, direct fetch offset and size
-  inline std::pair<IndexType, IndexType> offsetSizeDirect(size_t index) const {
-    auto offset = offsetSize_->at(index);
-    auto length = offsetSize_->at(index + 1) - offset;
+  inline std::pair<IndexType, IndexType> offsetSize(size_t index) const {
+    auto iPos = index * INDEX_WIDTH;
+    auto offset = offsetSize_->read<IndexType>(iPos);
+    auto length = offsetSize_->read<IndexType>(iPos + INDEX_WIDTH) - offset;
     return { offset, length };
   }
 
@@ -153,35 +140,19 @@ public:
     return dict_ != nullptr;
   }
 
-  IndexType find(size_t hash, const std::string_view& val, const TypeDataProxy& data) const {
-    auto range = hashItems_->equal_range(hash);
-    for (auto it = range.first; it != range.second; ++it) {
-      // get offset and length of given index
-      const auto index = it->second;
-      const auto os = offsetSizeDirect(index);
-      const auto str = data.read(os.first, os.second);
-
-      // string view equals
-      if (val == str) {
-        return index;
-      }
-    }
-
-    // not found the same value
-    return INVALID_INDEX;
+  inline int32_t dictItem(std::string_view item) {
+    return dict_->set(item);
   }
 
-  inline void link(IndexType index, IndexType target) {
-    dict_->emplace((uint32_t)index, (uint32_t)target);
-  }
-
-  inline void record(size_t hash, IndexType index) {
-    hashItems_->emplace(hash, index);
+  inline std::string_view dictItem(size_t index) {
+    return dict_->get(index);
   }
 
   inline void seal() {
     // release hash items for lookup
-    hashItems_ = nullptr;
+    if (dict_) {
+      dict_->seal();
+    }
   }
 
   inline bool hasDefault() const {
@@ -232,15 +203,11 @@ private:
   // call shrink_to_fit to compress the vector when finalizing
   // this can be futher compressed to storage efficiency.
   // uint32_t should be big enough for number of items in each object
-  std::unique_ptr<CompoundItems> offsetSize_;
-
-  // build a hash map from value hash to value index serving as dictionary purpose.
-  // insert order is preserved
-  // hence we can expect the first index will have correct offset/size to fetch value
-  std::unique_ptr<HashItems> hashItems_;
+  size_t count_;
+  std::unique_ptr<nebula::common::CompressionSlice> offsetSize_;
 
   // dictionary link one index to another index which has the value
-  std::unique_ptr<Dictionary> dict_;
+  std::unique_ptr<nebula::memory::encode::DictEncoder> dict_;
 
   // indicate if this column has default value setting
   // if yes, it will never be NULL, default value will be returned instead of NULLs

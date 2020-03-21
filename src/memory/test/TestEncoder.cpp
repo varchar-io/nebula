@@ -14,14 +14,16 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <valarray>
+
 #include "common/Memory.h"
-#include "fmt/format.h"
 #include "memory/Batch.h"
 #include "memory/DataNode.h"
 #include "memory/FlatRow.h"
+#include "memory/encode/DictEncoder.h"
 #include "memory/encode/RleDecoder.h"
 #include "memory/encode/RleEncoder.h"
 #include "memory/encode/Utils.h"
@@ -154,6 +156,27 @@ TEST(RleTest, TestZigzag) {
   // verify
   for (size_t i = 0; i < size; ++i) {
     EXPECT_EQ(decoded[i], data[i]);
+  }
+}
+
+TEST(DictTest, TestDictionary) {
+  std::string data[] = { "139", "222", "34543245", "23232", "232334" };
+  nebula::memory::encode::DictEncoder dict;
+  constexpr auto size = 5;
+  constexpr auto items = 100;
+
+  // encode
+  std::array<int32_t, items> indices;
+  for (size_t i = 0; i < 100; ++i) {
+    indices[i] = dict.set(data[i % size]);
+  }
+
+  dict.seal();
+
+  // decode
+  for (size_t i = 0; i < 100; ++i) {
+    LOG(INFO) << "item " << i << " stored at dict " << indices[i];
+    EXPECT_EQ(dict.get(indices[i]), data[i % size]);
   }
 }
 

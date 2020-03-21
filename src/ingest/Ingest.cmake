@@ -18,7 +18,8 @@ target_link_libraries(${NEBULA_INGEST}
     PUBLIC ${FMT_LIBRARY}
     PUBLIC ${YAML_LIBRARY}
     PUBLIC ${XXH_LIBRARY}
-    PUBLIC ${AWS_LIBRARY})
+    PUBLIC ${AWS_LIBRARY}
+    PUBLIC ${PERF_LIBRARY})
 
 # build test binary
 add_executable(IngestTests
