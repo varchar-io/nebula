@@ -16,6 +16,8 @@
 
 #include "File.h"
 
+#include <fstream>
+
 // use file system in GNU system for now
 // #ifdef __GNUG__
 #ifndef __APPLE__
@@ -68,6 +70,14 @@ FileInfo File::info(const std::string& file) {
 #else
   return FileInfo(false, 0, 0, file, "");
 #endif
+}
+
+size_t File::read(const std::string& file, char* buf) {
+  std::ifstream fs(file);
+  fs.seekg(0, std::ios::end);
+  auto size = fs.tellg();
+  fs.read(buf, size);
+  return size;
 }
 
 } // namespace local

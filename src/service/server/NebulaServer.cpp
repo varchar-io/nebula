@@ -301,6 +301,16 @@ void RunServer() {
       auto fs = nebula::storage::makeFS("local");
       auto fi = fs->info(conf);
       auto sign = fi.signature();
+
+      // for copied data, they will have random name and latest timestamp
+      // so we use size and content hash as its signature
+      if (copied) {
+        const auto size = fi.size;
+        auto data = std::make_unique<char[]>(size);
+        N_ENSURE_EQ(fs->read(conf, data.get()), size, "should read all bytes of the conf file");
+        sign = fmt::format("{0}_{1}", size, nebula::common::Hasher::hash64(data.get(), size));
+      }
+
       if (sign != confSignature) {
         LOG(INFO) << "Loading nebula cluster config: " << conf;
 

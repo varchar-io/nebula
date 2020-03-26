@@ -216,6 +216,7 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) noe
   // need lock here?
   auto brandnew = 0;
   auto renew = 0;
+  auto removed = specs_.size() - specs.size();
   for (auto itr = specs.cbegin(), end = specs.cend(); itr != end; ++itr) {
     // check if we have this spec already?
     auto specPtr = (*itr);
@@ -249,10 +250,11 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) noe
   }
 
   // print out update stats
-  if (brandnew > 0 || renew > 0) {
+  if (brandnew > 0 || renew > 0 || removed > 0) {
     LOG(INFO) << "Updating " << specs.size()
-              << " specs: brandnew =" << brandnew
+              << " specs: brandnew=" << brandnew
               << ", renew=" << renew
+              << ", removed=" << removed
               << ", count=" << next.size();
 
     // let's swap with existing one

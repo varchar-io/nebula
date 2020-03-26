@@ -38,9 +38,7 @@ public:
   }
 
   // read a file/object fully into a memory buffer
-  virtual size_t read(const std::string&, char*) override {
-    throw NException("Not implemented");
-  }
+  virtual size_t read(const std::string&, char*) override;
 
   // return file info of given file path
   virtual FileInfo info(const std::string&) override;
