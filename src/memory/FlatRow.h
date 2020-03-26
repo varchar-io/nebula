@@ -51,7 +51,7 @@
 namespace nebula {
 namespace memory {
 
-using nebula::common::PagedSlice;
+using nebula::common::ExtendableSlice;
 using nebula::type::Kind;
 using nebula::type::Schema;
 using nebula::type::Tree;
@@ -214,7 +214,7 @@ private:
 
 private:
   // data containers
-  PagedSlice slice_;
+  ExtendableSlice slice_;
 
   // write states
   size_t cursor_;
@@ -223,7 +223,7 @@ private:
 
 class FlatList : public nebula::surface::ListData {
 public:
-  FlatList(size_t size, int8_t type, size_t base, const PagedSlice& slice)
+  FlatList(size_t size, int8_t type, size_t base, const ExtendableSlice& slice)
     : ListData(size), type_{ type }, base_{ base }, slice_{ slice } {}
   virtual ~FlatList() = default;
 
@@ -250,7 +250,7 @@ private:
   // base offset for current list in slice ref
   size_t base_;
   // reference to data store
-  const PagedSlice& slice_;
+  const ExtendableSlice& slice_;
 };
 
 } // namespace memory

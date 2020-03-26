@@ -151,11 +151,11 @@ public:
  * A paged slice is a chain of slices with given sized slice of chunks.
  * A paged slice is a slice, and it can have more slices as extensions when necessary.
  */
-class PagedSlice : public Slice {
+class ExtendableSlice : public Slice {
 public:
-  PagedSlice(const NByte* buffer, size_t size) : Slice{ buffer, size }, slices_{ 1 }, numExtended_{ 0 } {}
-  PagedSlice(size_t page) : Slice{ page }, slices_{ 1 }, numExtended_{ 0 } {}
-  ~PagedSlice() = default;
+  ExtendableSlice(const NByte* buffer, size_t size) : Slice{ buffer, size }, slices_{ 1 }, numExtended_{ 0 } {}
+  ExtendableSlice(size_t page) : Slice{ page }, slices_{ 1 }, numExtended_{ 0 } {}
+  ~ExtendableSlice() = default;
 
   // append a bytes array of length bytes to position
   inline size_t write(size_t position, const char* data, size_t length) {
@@ -258,7 +258,7 @@ template <>
 __attribute__((optimize("O1")))
 #endif
 inline size_t
-  PagedSlice::writeSize(size_t position, const int128_t& value, size_t size) {
+  ExtendableSlice::writeSize(size_t position, const int128_t& value, size_t size) {
   ensure(position + size);
   *reinterpret_cast<int128_t*>(this->ptr_ + position) = value;
   return size;
@@ -300,9 +300,9 @@ struct Range {
   }
 };
 
-class CompressionSlice;
-using PRange = Range<PagedSlice>;
-using CRange = Range<CompressionSlice>;
+class PagedSlice;
+using PRange = Range<ExtendableSlice>;
+using CRange = Range<PagedSlice>;
 
 // compression buffer will manage a fixed size buffer
 // to receive input writes, when the buffer is full, it will compress it
@@ -316,11 +316,11 @@ struct CompressionBlock {
   std::unique_ptr<OneSlice> data;
 };
 
-class CompressionSlice : public Slice {
+class PagedSlice : public Slice {
   static constexpr auto EMPTY_STRING = "";
 
 public:
-  CompressionSlice(size_t size, folly::io::CodecType type = folly::io::CodecType::LZ4)
+  PagedSlice(size_t size, folly::io::CodecType type = folly::io::CodecType::LZ4)
     : Slice{ size },
       write_{ 0, 0 },
       read_{ 0, 0 },
@@ -328,7 +328,7 @@ public:
       codec_{ folly::io::getCodec(type) } {
     blocks_.reserve(64);
   }
-  ~CompressionSlice() = default;
+  ~PagedSlice() = default;
 
 public:
   // append a bytes array of length bytes to position
@@ -381,7 +381,7 @@ public:
     }
 
     // buffer index = position - range.offset
-    return *reinterpret_cast<T*>(buffer_->ptr() + position - read_.offset);
+    return *reinterpret_cast<T*>(bufferPtr_ + position - read_.offset);
   }
 
   // read a string
@@ -413,6 +413,9 @@ private:
 
   // a buffer used for hold raw data of any uncompressed block
   std::unique_ptr<OneSlice> buffer_;
+  // the buffer pointer may point to buffer_ which holds uncompressed data
+  // or pointing to the original buffer itself if it's not compressed
+  NByte* bufferPtr_;
 
   // the codec used to compress the buffer
   folly::io::CodecType type_;

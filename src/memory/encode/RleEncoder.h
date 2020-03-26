@@ -53,7 +53,7 @@ public:
   // signed: signed value
   // buffer: encoder doesn't own any memory, it writes to external allocated slice
   // alignBp: align bit packing
-  RleEncoder(bool isSigned, nebula::common::PagedSlice& buffer, bool alignBp = true)
+  RleEncoder(bool isSigned, nebula::common::ExtendableSlice& buffer, bool alignBp = true)
     : isSigned_{ isSigned },
       alignBp_{ alignBp },
       buffer_{ buffer },
@@ -94,7 +94,7 @@ private:
   const bool alignBp_;
 
   // buffer writing meta
-  nebula::common::PagedSlice& buffer_;
+  nebula::common::ExtendableSlice& buffer_;
   size_t bufferPos_;
 
   // recording metrics

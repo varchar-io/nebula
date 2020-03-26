@@ -53,11 +53,13 @@ struct PartitionInfo {
 struct Column {
   explicit Column(bool bf = false,
                   bool d = false,
+                  bool c = false,
                   const std::string& dv = "",
                   std::vector<AccessRule> rls = {},
                   PartitionInfo pi = {})
     : withBloomFilter{ bf },
       withDict{ d },
+      withCompress{ c },
       defaultValue{ dv },
       rules{ std::move(rls) },
       partition{ std::move(pi) } {}
@@ -67,6 +69,9 @@ struct Column {
 
   // by default, we turn on dictionay for strings
   bool withDict;
+
+  // by default, no compression turned on
+  bool withCompress;
 
   // specify a default value in string
   // empty means no default value,

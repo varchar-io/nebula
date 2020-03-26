@@ -37,6 +37,8 @@ namespace memory {
 namespace serde {
 
 using nebula::meta::Column;
+static constexpr auto CT_NONE = folly::io::CodecType::NO_COMPRESSION;
+static constexpr auto CT_LZ4 = folly::io::CodecType::LZ4;
 
 // convert string to void* with nullptr
 void* void_any(const std::string&) {
@@ -46,7 +48,8 @@ void* void_any(const std::string&) {
 #define TYPE_DATA_CONSTR(TYPE, SLICE_PAGE, CONV)                             \
   template <>                                                                \
   TYPE::TypeDataImpl(const Column& column, size_t batchSize)                 \
-    : slice_{ (size_t)SLICE_PAGE }, bf_{ nullptr } {                         \
+    : slice_{ (size_t)SLICE_PAGE, column.withCompress ? CT_LZ4 : CT_NONE },  \
+      bf_{ nullptr } {                                                       \
     if (column.withBloomFilter && Scalar) {                                  \
       bf_ = std::make_unique<nebula::common::BloomFilter<NType>>(batchSize); \
     }                                                                        \

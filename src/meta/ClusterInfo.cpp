@@ -171,6 +171,9 @@ Column col(const YAML::Node& settings) {
   bool d = false;
   EVAL_SETTING(dict, d, bool)
 
+  bool c = false;
+  EVAL_SETTING(compress, c, bool)
+
   std::string dv;
   EVAL_SETTING(default_value, dv, std::string)
 
@@ -194,7 +197,7 @@ Column col(const YAML::Node& settings) {
     pi.chunk = chunk ? chunk.as<size_t>() : 1;
   }
 
-  return Column{ bf, d, std::move(dv), std::move(as), std::move(pi) };
+  return Column{ bf, d, c, std::move(dv), std::move(as), std::move(pi) };
 
 #undef EVAL_SETTING
 }

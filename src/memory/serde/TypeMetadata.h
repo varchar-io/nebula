@@ -47,7 +47,7 @@ public:
       offsetSize_{
         nebula::type::TypeBase::isScalar(kind) ?
           nullptr :
-          std::make_unique<nebula::common::CompressionSlice>(N_ITEMS)
+          std::make_unique<nebula::common::PagedSlice>(N_ITEMS)
       },
       dict_{ column.withDict ? std::make_unique<nebula::memory::encode::DictEncoder>() : nullptr },
       default_{ column.defaultValue.size() > 0 },
@@ -204,7 +204,7 @@ private:
   // this can be futher compressed to storage efficiency.
   // uint32_t should be big enough for number of items in each object
   size_t count_;
-  std::unique_ptr<nebula::common::CompressionSlice> offsetSize_;
+  std::unique_ptr<nebula::common::PagedSlice> offsetSize_;
 
   // dictionary link one index to another index which has the value
   std::unique_ptr<nebula::memory::encode::DictEncoder> dict_;

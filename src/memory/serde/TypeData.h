@@ -31,7 +31,7 @@ namespace serde {
 using IndexType = size_t;
 
 // type metadata implementation for each type kind
-template <nebula::type::Kind KIND>
+template <nebula::type::Kind>
 class TypeDataImpl;
 
 /**
@@ -95,7 +95,7 @@ public:
   }
 
   NType read(IndexType index) const {
-    return slice_.read<NType>(index * Width);
+    return slice_.template read<NType>(index * Width);
   }
 
   inline std::string_view read(IndexType offset, IndexType size) {
@@ -118,7 +118,7 @@ public:
 
 private:
   // memory chunk managed by paged slice
-  nebula::common::CompressionSlice slice_;
+  nebula::common::PagedSlice slice_;
   std::unique_ptr<nebula::common::BloomFilter<NType>> bf_;
 
   // default value of this data node

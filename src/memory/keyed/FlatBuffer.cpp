@@ -25,7 +25,7 @@ namespace nebula {
 namespace memory {
 namespace keyed {
 
-using nebula::common::PagedSlice;
+using nebula::common::ExtendableSlice;
 using Range = nebula::common::PRange;
 using nebula::surface::ListData;
 using nebula::surface::RowData;

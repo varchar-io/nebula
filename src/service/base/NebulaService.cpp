@@ -365,6 +365,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
         CreateColumnProp(mb, mb.CreateString(itr.first),
                          cp.withBloomFilter,
                          cp.withDict,
+                         cp.withCompress,
                          mb.CreateString(cp.defaultValue),
                          pi));
     }
@@ -465,7 +466,14 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
         }
       }
 
-      props[itr->name()->str()] = Column{ itr->bf(), itr->dict(), itr->dv()->str(), {}, std::move(partInfo) };
+      props[itr->name()->str()] = Column{
+        itr->bf(),
+        itr->dict(),
+        itr->comp(),
+        itr->dv()->str(),
+        {},
+        std::move(partInfo)
+      };
     }
 
     // build access rules

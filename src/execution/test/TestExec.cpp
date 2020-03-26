@@ -83,13 +83,13 @@ public:
     }
 
     // serialize into a buffer
-    inline virtual size_t serialize(nebula::common::PagedSlice&, size_t) override {
+    inline virtual size_t serialize(nebula::common::ExtendableSlice&, size_t) override {
       // return slice.write(offset, value);
       return 4;
     }
 
     // deserialize from a given buffer, and bin size
-    inline virtual size_t load(nebula::common::PagedSlice&, size_t) override {
+    inline virtual size_t load(nebula::common::ExtendableSlice&, size_t) override {
       return 4;
     }
 

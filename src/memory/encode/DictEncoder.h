@@ -100,9 +100,9 @@ private:
   std::unique_ptr<HashItems> hashItems_;
 
   // every value has offset and length of the dict item
-  nebula::common::CompressionSlice offsets_;
+  nebula::common::PagedSlice offsets_;
   // store all dictionary items in order
-  nebula::common::CompressionSlice dict_;
+  nebula::common::PagedSlice dict_;
   // current size of the dictinaary slice
   int32_t items_;
   int32_t size_;

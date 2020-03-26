@@ -132,7 +132,7 @@ public:
     }
 
     // serialize into a buffer
-    inline virtual size_t serialize(nebula::common::PagedSlice& slice, size_t offset) override {
+    inline virtual size_t serialize(nebula::common::ExtendableSlice& slice, size_t offset) override {
       flush();
 
       // record first offset - final size will be delta of offset
@@ -160,7 +160,7 @@ public:
     }
 
     // deserialize from a given buffer, and bin size
-    inline virtual size_t load(nebula::common::PagedSlice& slice, size_t offset) override {
+    inline virtual size_t load(nebula::common::ExtendableSlice& slice, size_t offset) override {
       static constexpr auto WIDTH = sizeof(double);
 
       size_t origin = offset;

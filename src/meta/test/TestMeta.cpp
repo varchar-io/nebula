@@ -97,10 +97,12 @@ TEST(MetaTest, TestAccessRules) {
   columnProps["email"] = Column{
     false,
     false,
+    false,
     "*@*",
     { AccessRule{ AccessType::READ, { "pii_sg" }, ActionType::MASK } }
   };
   columnProps["fund"] = Column{
+    false,
     false,
     false,
     "0",

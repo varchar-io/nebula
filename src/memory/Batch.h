@@ -159,7 +159,7 @@ private:
   std::shared_ptr<nebula::meta::Pod> pod_;
   size_t pid_;
   std::vector<size_t> spaces_;
-  nebula::common::CompressionSlice bess_;
+  nebula::common::PagedSlice bess_;
 
   // recording number of rows
   size_t rows_;

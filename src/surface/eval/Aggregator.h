@@ -39,10 +39,10 @@ public:
   virtual bool fit(size_t) = 0;
 
   // serialize into a buffer
-  virtual size_t serialize(nebula::common::PagedSlice&, size_t) = 0;
+  virtual size_t serialize(nebula::common::ExtendableSlice&, size_t) = 0;
 
   // deserialize from a given buffer, and offset, return total size consumed
-  virtual size_t load(nebula::common::PagedSlice&, size_t) = 0;
+  virtual size_t load(nebula::common::ExtendableSlice&, size_t) = 0;
 
   // aggregate another sketch
   virtual void mix(const Sketch&) = 0;
@@ -87,12 +87,12 @@ public:
   }
 
   // serialize into a buffer
-  inline virtual size_t serialize(nebula::common::PagedSlice&, size_t) override {
+  inline virtual size_t serialize(nebula::common::ExtendableSlice&, size_t) override {
     return 0;
   }
 
   // deserialize from a given buffer, and bin size
-  inline virtual size_t load(nebula::common::PagedSlice&, size_t) override {
+  inline virtual size_t load(nebula::common::ExtendableSlice&, size_t) override {
     return 0;
   }
 

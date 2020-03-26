@@ -36,18 +36,20 @@ class TestTable : public Table {
     static const Column COL_EVENT{
       false,
       true,
+      false,
       "",
       { AccessRule{ AccessType::READ, { "nebula-users" }, ActionType::MASK } }
     };
     static const Column COL_TAG{
       false,
       false,
+      true,
       "",
       {},
       { { "a", "b", "c", "d" }, 1 }
     };
-    static const Column COL_VALUE{ false, false, "23", {} };
-    static const Column COL_STAMP{ false, false, "128", {} };
+    static const Column COL_VALUE{ false, false, false, "23", {} };
+    static const Column COL_STAMP{ false, false, true, "128", {} };
 
     return ColumnProps{ { "id", COL_ID },
                         { "event", COL_EVENT },
@@ -89,9 +91,9 @@ private:
 class TestPartitionedTable : public Table {
   static constexpr auto NAME = "nebula.test.partition";
   static auto CP() {
-    static const Column D1{ false, false, "a", {}, { { "a", "b", "c", "e", "f", "g" }, 3 } };
-    static const Column D2{ false, false, "1", {}, { { "1", "2", "3", "4" }, 2 } };
-    static const Column D3{ false, false, "11", {}, { { "11", "12", "13" }, 1 } };
+    static const Column D1{ false, false, false, "a", {}, { { "a", "b", "c", "e", "f", "g" }, 3 } };
+    static const Column D2{ false, false, false, "1", {}, { { "1", "2", "3", "4" }, 2 } };
+    static const Column D3{ false, false, false, "11", {}, { { "11", "12", "13" }, 1 } };
 
     return ColumnProps{ { "d1", D1 }, { "d2", D2 }, { "d3", D3 } };
   }

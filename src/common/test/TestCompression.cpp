@@ -28,7 +28,7 @@ namespace test {
 
 using folly::io::CodecType;
 using folly::io::getCodec;
-using nebula::common::CompressionSlice;
+using nebula::common::PagedSlice;
 
 TEST(CompressionTest, TestBasicCompressionApi) {
   auto codec = getCodec(CodecType::LZ4);
@@ -43,8 +43,8 @@ TEST(CompressionTest, TestBasicCompressionApi) {
   }
 }
 
-TEST(CompressionTest, TestCompressionSlice) {
-  CompressionSlice slice(1024);
+TEST(CompressionTest, TestPagedSlice) {
+  PagedSlice slice(1024);
   // write 10500 values
   constexpr auto width = sizeof(int64_t);
   constexpr auto total = 10500;
@@ -68,11 +68,11 @@ TEST(CompressionTest, TestCompressionSlice) {
   }
 }
 
-TEST(CompressionTest, TestStringCompressionSlice) {
+TEST(CompressionTest, TestStringPagedSlice) {
   LOG(INFO) << nebula::common::Pool::getDefault().report();
   {
     const char* strings[] = { "abasdfasfasrfqwe", "asdfasfa", "a4po90tu2[093utaldsbvldksvjw-23r08po;jNVSKNVQ;WR02[IALSKDVN" };
-    CompressionSlice slice(1024);
+    PagedSlice slice(1024);
     // write 10500 values
     constexpr auto width = sizeof(int64_t);
     constexpr auto total = 10500;

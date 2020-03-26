@@ -331,7 +331,7 @@ TEST(UDFTest, TestSum) {
   EXPECT_EQ(sum4, expected);
 
   // serialize
-  nebula::common::PagedSlice slice(1024);
+  nebula::common::ExtendableSlice slice(1024);
   EXPECT_EQ(sum1->serialize(slice, 12), 8);
   auto sum5 = sf.sketch();
   EXPECT_EQ(sum5->load(slice, 12), 8);

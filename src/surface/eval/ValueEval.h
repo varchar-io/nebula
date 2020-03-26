@@ -203,7 +203,7 @@ private:
   // layout all cached data, when reset, just move the cursor to 1
   // 0 is reserved, any evaluated data points to 0 if it is NULL
   size_t cursor_;
-  nebula::common::PagedSlice slice_;
+  nebula::common::ExtendableSlice slice_;
 };
 
 template <>

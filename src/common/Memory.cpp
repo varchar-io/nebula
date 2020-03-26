@@ -30,7 +30,7 @@ Pool& Pool::getDefault() {
 }
 
 // not-threadsafe
-void PagedSlice::ensure(size_t size) {
+void ExtendableSlice::ensure(size_t size) {
   // increase 10 slices requests, logging warning, increase over 30 slices requests, logging error.
   static constexpr size_t errors[] = { 50, 100 };
   if (UNLIKELY(size >= capacity())) {
@@ -71,7 +71,7 @@ void PagedSlice::ensure(size_t size) {
 }
 
 // append a bytes array of length bytes to position
-size_t PagedSlice::write(size_t position, const NByte* data, size_t length) {
+size_t ExtendableSlice::write(size_t position, const NByte* data, size_t length) {
   if (UNLIKELY(length == 0)) {
     return 0;
   }
@@ -84,7 +84,7 @@ size_t PagedSlice::write(size_t position, const NByte* data, size_t length) {
   return length;
 }
 
-size_t PagedSlice::copy(NByte* buffer, size_t offset, size_t length) const {
+size_t ExtendableSlice::copy(NByte* buffer, size_t offset, size_t length) const {
   N_ENSURE(length <= capacity(), "requested data is too much.");
 
   // copy over
@@ -93,7 +93,7 @@ size_t PagedSlice::copy(NByte* buffer, size_t offset, size_t length) const {
   return length;
 }
 
-size_t CompressionSlice::write(size_t position, const NByte* data, size_t size) {
+size_t PagedSlice::write(size_t position, const NByte* data, size_t size) {
   // case like empty string
   if (size == 0) {
     return 0;
@@ -113,9 +113,9 @@ size_t CompressionSlice::write(size_t position, const NByte* data, size_t size) 
   return size;
 }
 
-std::string_view CompressionSlice::read(size_t position, size_t size) const {
+std::string_view PagedSlice::read(size_t position, size_t size) const {
   if (size == 0) {
-    return CompressionSlice::EMPTY_STRING;
+    return PagedSlice::EMPTY_STRING;
   }
 
   // if the requested data is still in write buffer
@@ -133,11 +133,11 @@ std::string_view CompressionSlice::read(size_t position, size_t size) const {
   // note that, we're returning a string view on top of current buffer
   // which is possible to be swapped by next read
   // hence it requires client to consume it before next read, or corrupted data may happen
-  return std::string_view((char*)buffer_->ptr() + position - read_.offset, size);
+  return std::string_view((char*)bufferPtr_ + position - read_.offset, size);
 }
 
 // ensure the buffer is big enough to hold single item
-void CompressionSlice::ensure(size_t size) {
+void PagedSlice::ensure(size_t size) {
   if (UNLIKELY(size >= size_)) {
     size_t newSize = size_;
     while (newSize <= size) {
@@ -151,23 +151,31 @@ void CompressionSlice::ensure(size_t size) {
 
 // compress current buffer and link it to the chain
 // recording the data range for this block [x-index_, x]
-void CompressionSlice::compress(size_t position) {
+void PagedSlice::compress(size_t position) {
   // compress current buffer into a new block
   // for raw data range(offset=position - index_, size=index_)
   // output should be maximum size of input
   const auto srcSize = write_.size;
-  auto slice = std::make_unique<OneSlice>(srcSize);
-  auto compressedSize = LZ4_compress_default((char*)ptr_, (char*)slice->ptr(), srcSize, srcSize);
 
-  // not good to compress, keep it as raw
-  if (compressedSize == 0) {
+  // try to compress it
+  auto slice = std::make_unique<OneSlice>(srcSize);
+  // if codec is not-compressed, we just put this slice in
+  if (type_ == folly::io::CodecType::NO_COMPRESSION) {
     std::memcpy(slice->ptr(), ptr_, srcSize);
     blocks_.emplace_back(write_, false, std::move(slice));
   } else {
-    // copy into a smaller buffer
-    auto fit = std::make_unique<OneSlice>(compressedSize);
-    std::memcpy(fit->ptr(), slice->ptr(), compressedSize);
-    blocks_.emplace_back(write_, true, std::move(fit));
+    auto compressedSize = LZ4_compress_default((char*)ptr_, (char*)slice->ptr(), srcSize, srcSize);
+
+    // not good to compress, keep it as raw
+    if (compressedSize == 0) {
+      std::memcpy(slice->ptr(), ptr_, srcSize);
+      blocks_.emplace_back(write_, false, std::move(slice));
+    } else {
+      // copy into a smaller buffer
+      auto fit = std::make_unique<OneSlice>(compressedSize);
+      std::memcpy(fit->ptr(), slice->ptr(), compressedSize);
+      blocks_.emplace_back(write_, true, std::move(fit));
+    }
   }
 
   // compressed block may not be better - we can store original one
@@ -183,7 +191,7 @@ void CompressionSlice::compress(size_t position) {
 
 // uncompress the compression block covers given position
 // and load it into current buffer (ptr_)
-void CompressionSlice::uncompress(size_t position) const {
+void PagedSlice::uncompress(size_t position) const {
   // search the block that includes the position
   // assuming we don't have a lot of blocks to iterate,
   // otherwise this linear loop might require optimization for fast locating.
@@ -198,12 +206,14 @@ void CompressionSlice::uncompress(size_t position) const {
         *const_cast<std::unique_ptr<OneSlice>*>(&buffer_) = std::make_unique<OneSlice>(block.range.size);
       }
 
-      N_ENSURE_EQ(type_, folly::io::CodecType::LZ4, "only supporting LZ4 for now");
+      N_ENSURE(type_ == folly::io::CodecType::NO_COMPRESSION || type_ == folly::io::CodecType::LZ4,
+               "only supporting LZ4 or NONE for now");
       if (block.compressed) {
         auto ret = (uint32_t)LZ4_decompress_safe((char*)block.data->ptr(), (char*)buffer_->ptr(), compressedSize, size_);
         N_ENSURE_EQ(ret, block.range.size, "raw data size mismatches.");
+        *const_cast<NByte**>(&bufferPtr_) = buffer_->ptr();
       } else {
-        std::memcpy(buffer_->ptr(), block.data->ptr(), block.range.size);
+        *const_cast<NByte**>(&bufferPtr_) = block.data->ptr();
       }
 
       // TODO(cao) - sorry to use const_cast here as we want to keep read interfaces as const methods

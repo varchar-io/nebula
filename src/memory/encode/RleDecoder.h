@@ -32,7 +32,7 @@ static constexpr auto UNPACK_MAX = 256;
 // https://github.com/apache/orc/blob/master/c%2B%2B/src/RleDecoderV2.cc
 class RleDecoder {
 public:
-  RleDecoder(bool isSigned, nebula::common::PagedSlice& buffer)
+  RleDecoder(bool isSigned, nebula::common::ExtendableSlice& buffer)
     : isSigned_{ isSigned },
       buffer_{ buffer },
       cursor_(0),
@@ -91,7 +91,7 @@ private:
 private:
   // basic input data to decode
   bool isSigned_;
-  nebula::common::PagedSlice& buffer_;
+  nebula::common::ExtendableSlice& buffer_;
   uint64_t cursor_;
 
   // decoding state

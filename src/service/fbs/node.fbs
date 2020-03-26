@@ -77,6 +77,8 @@ table ColumnProp {
   bf: bool;
   // enable dictionary
   dict: bool;
+  // enable compression
+  comp: bool;
   // default value when input is NULL
   dv: string;
   // partition info of this column

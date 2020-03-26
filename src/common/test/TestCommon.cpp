@@ -149,8 +149,8 @@ TEST(CommonTest, TestNewDeleteOps) {
   EXPECT_EQ(size4, 16);
 }
 
-TEST(CommonTest, TestSliceAndPagedSlice) {
-  nebula::common::PagedSlice slice(1024);
+TEST(CommonTest, TestSliceAndExtendableSlice) {
+  nebula::common::ExtendableSlice slice(1024);
   EXPECT_EQ(slice.capacity(), 1024);
 
   size_t cursor = 0;
@@ -201,7 +201,7 @@ TEST(CommonTest, TestSliceAndPagedSlice) {
 }
 
 TEST(CommonTest, TestSliceWrite) {
-  nebula::common::PagedSlice slice(1024);
+  nebula::common::ExtendableSlice slice(1024);
 
   auto value = 1699213050;
   slice.write(0, value);
@@ -651,7 +651,7 @@ TEST(CommonTest, TestRange) {
   EXPECT_EQ(r2.offset, 2);
   EXPECT_EQ(r2.size, 100);
 
-  nebula::common::PagedSlice slice(1024);
+  nebula::common::ExtendableSlice slice(1024);
   nebula::common::PRange r3(111, 222);
   EXPECT_EQ(r3.write(slice, 23), 8);
 
@@ -670,7 +670,7 @@ TEST(CommonTest, TestRange) {
 }
 
 TEST(CommonTest, TestWriteAlign) {
-  nebula::common::PagedSlice slice(1024);
+  nebula::common::ExtendableSlice slice(1024);
   int8_t v = 126;
   constexpr auto alignment = 8;
   constexpr auto offset = 198;

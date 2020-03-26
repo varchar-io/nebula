@@ -66,7 +66,7 @@ struct Buffer {
   Buffer(size_t size, const NByte* buffer) : offset{ size }, slice{ buffer, size } {}
   // write offset and also current size
   size_t offset;
-  nebula::common::PagedSlice slice;
+  nebula::common::ExtendableSlice slice;
 };
 
 struct ColumnProps {

@@ -71,7 +71,7 @@ TEST(TypeDataTest, TestStringReadWrite) {
 }
 
 void testRle(int64_t* values, int size) {
-  nebula::common::PagedSlice slice(4096);
+  nebula::common::ExtendableSlice slice(4096);
   nebula::memory::encode::RleEncoder encoder(true, slice);
 
   for (int i = 0; i < size; ++i) {
