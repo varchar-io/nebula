@@ -44,6 +44,7 @@
 #include "service/node/RemoteNodeConnector.h"
 #include "storage/CsvReader.h"
 #include "storage/NFS.h"
+#include "storage/NFileSystem.h"
 
 // use "host.docker.internal" for docker env
 DEFINE_string(CLS_CONF, "configs/cluster.yml", "cluster config file");
@@ -75,6 +76,7 @@ using nebula::service::base::ErrorCode;
 using nebula::service::base::ServiceProperties;
 using nebula::service::node::RemoteNodeConnector;
 using nebula::storage::CsvReader;
+using nebula::storage::NFileSystem;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Kind;
@@ -281,11 +283,22 @@ void RunServer() {
   taskScheduler.setInterval(
     FLAGS_CLS_CONF_UPDATE_INTERVAL,
     [&pool, &specRepo, &confSignature] {
-      // create a local file system cheaply
-      auto fs = nebula::storage::makeFS("local");
-
       // load config into cluster info
-      const auto conf = LoadClusterConfig();
+      auto conf = LoadClusterConfig();
+
+      // if the conf is a S3 file, download it and replace the conf as the local copy
+      auto uri = nebula::storage::parse(conf);
+      bool copied = false;
+      if (uri.schema == "s3") {
+        // create a s3 file system
+        auto fs = nebula::storage::makeFS("s3", uri.host);
+        conf = fs->copy(uri.path);
+        copied = true;
+      } else if (uri.schema != "file" || uri.schema != "") {
+        throw NException(fmt::format("Unsupported config file system: {0}.", conf));
+      }
+
+      auto fs = nebula::storage::makeFS("local");
       auto fi = fs->info(conf);
       auto sign = fi.signature();
       if (sign != confSignature) {
@@ -300,6 +313,11 @@ void RunServer() {
 
         // TODO(cao) - how to support table schema/column props evolution?
         nebula::execution::meta::TableService::singleton()->enroll(ci);
+      }
+
+      // if the file is copied tmp file, delete it
+      if (copied) {
+        unlink(conf.c_str());
       }
 
       {

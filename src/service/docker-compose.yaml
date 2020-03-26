@@ -22,6 +22,9 @@ services:
       - ALL
     links:
       - node
+    environment: 
+      # can be a S3 file like s3://nebula/cluster-dev.yml
+      - NCONF=/etc/nebula/configs/cluster.yml
   envoy:
     build:
       context: ./

@@ -102,6 +102,14 @@ TEST(StorageTest, TestUriParse) {
     EXPECT_EQ(uriInfo.host, "x");
     EXPECT_EQ(uriInfo.path, "y/cd={date}");
   }
+
+  {
+    // try to support normal file
+    auto uriInfo = nebula::storage::parse("/etc/nebula/configs/cluster.yml");
+    EXPECT_EQ(uriInfo.schema, "");
+    EXPECT_EQ(uriInfo.host, "");
+    EXPECT_EQ(uriInfo.path, "etc/nebula/configs/cluster.yml");
+  }
 }
 
 } // namespace test
