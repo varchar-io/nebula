@@ -294,10 +294,9 @@ void RunServer() {
         auto fs = nebula::storage::makeFS("s3", uri.host);
         conf = fs->copy(uri.path);
         copied = true;
-      } else if (uri.schema != "file" || uri.schema != "") {
-        throw NException(fmt::format("Unsupported config file system: {0}.", conf));
       }
 
+      // assuming everything else are local file - if not, let runtime fails you
       auto fs = nebula::storage::makeFS("local");
       auto fi = fs->info(conf);
       auto sign = fi.signature();
