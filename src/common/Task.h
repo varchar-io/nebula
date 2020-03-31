@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <fmt/format.h>
+
 namespace nebula {
 namespace common {
 
@@ -47,12 +49,15 @@ class Task {
 public:
   // a task is an instance owning the passed in spec pointer
   // release this spec when task exits
-  Task(TaskType type, std::shared_ptr<Signable> spec) : type_{ type }, spec_{ spec } {}
+  Task(TaskType type, std::shared_ptr<Signable> spec)
+    : type_{ type },
+      spec_{ spec },
+      sign_{ fmt::format("{0}_{1}", spec_->signature(), (char)type) } {}
   virtual ~Task() = default;
 
 public:
-  inline std::string signature() const {
-    return spec_->signature();
+  inline const std::string& signature() const {
+    return sign_;
   }
 
   inline TaskType type() const {
@@ -67,6 +72,7 @@ public:
 private:
   TaskType type_;
   std::shared_ptr<Signable> spec_;
+  std::string sign_;
 };
 
 // A single command task used for single command communication.
