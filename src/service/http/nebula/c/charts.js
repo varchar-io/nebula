@@ -10,6 +10,8 @@ const symbols = ["circle", "diamond", "square", "triangle-up", "triangle-down", 
 const symbol = (i) => d3.symbol().size(81).type(symbols[i % symbols.length]);
 const isTime = (c) => c === "_time_";
 const pad2 = (v) => `${v}`.padStart(2, 0);
+const localTime = (unix_ms) => new Date(unix_ms).toLocaleString();
+const isoTime = (unix_ms) => new Date(unix_ms).toISOString();
 
 export class Charts {
     constructor() {
@@ -287,10 +289,15 @@ export class Charts {
             // define the line
             var line = d3.line()
                 .x((d) => x(new Date(d[key])))
-                .y((d) => y(d[value]));
+                .y((d) => y(d[value]))
+                .curve(d3.curveMonotoneX);
+
+            // define a floating tooltip block
+            var tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0);
 
             // draw each different line for each key in the data set
-            // we only provide 4 styles for now, see styles.css
             let idx = 0;
             for (var k in kds) {
                 // set the ranges
@@ -301,10 +308,28 @@ export class Charts {
 
                 // Add the line path.
                 svg.append("path")
-                    .data([kd])
+                    .datum(kd)
                     .attr("class", "line")
                     .attr("stroke", color(idx++))
                     .attr("d", line);
+
+                // for every data point, we draw circle on it
+                svg.selectAll(k)
+                    .data(kd)
+                    .enter().append("circle")
+                    .attr("class", "dot")
+                    .attr("cx", (d, i) => x(new Date(d[key])))
+                    .attr("cy", (d) => y(d[value]))
+                    .attr("r", 5)
+                    .on("mouseover", (d) => {
+                        tooltip.transition().duration(200).style("opacity", .8);
+                        tooltip.html(`T: ${localTime(d[key])}<br/>V: ${d[value]}`)
+                            .style("left", `${d3.event.pageX}px`)
+                            .style("top", `${d3.event.pageY}px`);
+                    })
+                    .on("mouseout", (d) => {
+                        tooltip.transition().duration(500).style("opacity", 0);
+                    });
             }
 
             // put legend on the left top
