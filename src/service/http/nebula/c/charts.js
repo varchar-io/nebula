@@ -314,8 +314,16 @@ export class Charts {
                     .attr("d", line);
 
                 // for every data point, we draw circle on it
-                svg.selectAll(k)
-                    .data(kd)
+                // we can not draw too many points
+                // the data needs to be range sampled, display maximum 1.5 * MAX_BASE
+                const samples = [];
+                const MAX_BASE = 10;
+                const skip = Math.max(Math.round(kd.length / MAX_BASE), 1);
+                for (var i = 0; i < kd.length; i += skip) {
+                    samples.push(kd[i]);
+                }
+                svg.selectAll(`g-${idx}`)
+                    .data(samples)
                     .enter().append("circle")
                     .attr("class", "dot")
                     .attr("cx", (d, i) => x(new Date(d[key])))
