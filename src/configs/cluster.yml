@@ -48,6 +48,7 @@ tables:
       type: static
       # get it from linux by "date +%s"
       value: 1565994194
+
   # <table name>:
   #   max-mb: 10000
   #   max-hr: 0

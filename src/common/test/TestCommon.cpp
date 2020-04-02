@@ -25,10 +25,13 @@
 #include "common/Errors.h"
 #include "common/Evidence.h"
 #include "common/Fold.h"
+#include "common/Format.h"
 #include "common/Hash.h"
 #include "common/Int128.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
+#include "common/Params.h"
+#include "common/Spark.h"
 
 namespace nebula {
 namespace common {
@@ -701,6 +704,195 @@ TEST(CommonTest, TestConstructDestructOrder) {
   s = nullptr;
   LOG(INFO) << "destructor already called";
 }
+
+TEST(CommonTest, TestFormat) {
+  {
+    auto text = nebula::common::format("go to {p} to do {x}", { { "p", "place" }, { "x", "something" } });
+    EXPECT_EQ(text, "go to place to do something");
+  }
+  {
+    auto text = nebula::common::format("{a} - {b} - {c}", { { "a", "ABC" },
+                                                            { "b", "OPQ" },
+                                                            { "c", "XYZ" } });
+    EXPECT_EQ(text, "ABC - OPQ - XYZ");
+  }
+  {
+    auto text = nebula::common::format("{a}", { { "a", "ABC" },
+                                                { "b", "OPQ" },
+                                                { "c", "XYZ" } });
+    EXPECT_EQ(text, "ABC");
+  }
+  {
+    auto text = nebula::common::format("a}{b}}", { { "a", "ABC" },
+                                                   { "b", "OPQ" },
+                                                   { "c", "XYZ" } });
+    EXPECT_EQ(text, "a}OPQ}");
+  }
+  {
+    // token not found exception
+    EXPECT_THROW(nebula::common::format("{a} - {b} - {c}", { { "a", "ABC" } }),
+                 nebula::common::NebulaException);
+  }
+}
+
+TEST(CommonTest, TestParams) {
+  auto json = "{\"a\":[\"a1\", \"a2\"], \"b\":[\"b1\", \"b2\"], \"c\":\"c1\"}";
+  rapidjson::Document cd;
+  if (cd.Parse(json).HasParseError()) {
+    throw NException(fmt::format("Error parsing params-json: {0}", json));
+  }
+
+  // convert this into a param list
+  N_ENSURE(cd.IsObject(), "expect params-json as an object.");
+  ParamList params(cd);
+
+  // for every single combination, we will use it to format template source to get a new spec source
+  auto tmp = "s3://nebula/a={a}/hash/b={b}/c={c}";
+  auto p = params.next();
+  std::vector<std::string> paths;
+  while (p.size() > 0) {
+    auto path = nebula::common::format(tmp, p);
+    LOG(INFO) << "Get a path: " << path;
+    paths.push_back(path);
+    p = params.next();
+  }
+  EXPECT_EQ(paths.size(), 4);
+}
+
+TEST(CommonTest, TestRegexMatchExpression) {
+  /// HACK! - Replace it!
+  std::string_view input = "&&(F:id==C:124))";
+  std::regex col_regex("&&\\(F:(\\w+)==C:(\\w+)\\)\\)");
+  std::smatch matches;
+  std::string str(input.data(), input.size());
+  auto result = std::regex_search(str, matches, col_regex);
+  EXPECT_TRUE(result);
+  EXPECT_EQ(matches.size(), 3);
+  EXPECT_EQ(matches[1].str(), "id");
+  EXPECT_EQ(matches[2].str(), "124");
+}
+
+TEST(CommonTest, TestSparkAlgo) {
+  {
+    auto v1 = 832251343547708167L;
+    auto v2 = 681591862263429002L;
+    EXPECT_EQ(nebula::common::Spark::hashLong(v1), -1445328789);
+    EXPECT_EQ(nebula::common::Spark::hashLong(v2), -1113418789);
+  }
+  {
+    // all these values shall go to bucket 1211
+    auto values = { 681591862263429002,
+                    832251343547708167,
+                    786511659832270883,
+                    651544408499615598,
+                    745838525697627629,
+                    725220483653562305,
+                    582231195484511033,
+                    770045373694648418,
+                    747316269325404644,
+                    350366183419019277,
+                    726698227281238570,
+                    600527068970671589,
+                    727753758444011679,
+                    241364998687820316,
+                    530087956048807305,
+                    571816621346140878,
+                    182255253578580115,
+                    521432600514974447,
+                    666532951009379268,
+                    204632514227082448,
+                    790381940762119745,
+                    443815875686984265,
+                    237213242781394825,
+                    564498271951689728,
+                    639792828221967225,
+                    491033303030191704,
+                    858147041405117484,
+                    795589227831131406,
+                    802837208481454588,
+                    680958543565688668,
+                    384917236810304120,
+                    737675751372942133,
+                    498984971122258693,
+                    85005649125053649,
+                    755197568673133221,
+                    589901388599953987,
+                    193303146414476075,
+                    796996602714713481,
+                    682436287193562385,
+                    755549412394035091,
+                    19140504574755010,
+                    301952487424792111,
+                    523402925351903539,
+                    673217981706160373,
+                    528399106188516357,
+                    710513416120468947,
+                    596304944320013714,
+                    579486814461677238,
+                    643874215384061561,
+                    823033038060547738,
+                    498914602378208966,
+                    832955030989555843,
+                    772508279741042960,
+                    471893004613846732,
+                    837528999361194645,
+                    677299368868594400,
+                    743094144674742699,
+                    631067103943747535,
+                    591871713436813803,
+                    854628604196187929,
+                    439664119780483439,
+                    165507492464302378,
+                    792141159366606713,
+                    787215347273999417,
+                    288934269752034499,
+                    163396430138968491,
+                    282741820264321579,
+                    783696910065249066,
+                    535647086838854343,
+                    782359903925773249,
+                    473511485729971255,
+                    296252619146534173,
+                    519251169445420325,
+                    606649149714278906,
+                    294563769286148994,
+                    294071188076912799,
+                    597923425436092365,
+                    859554416288700514,
+                    527202837537587884,
+                    446278781733284443,
+                    279997439241415831,
+                    181481197392627426,
+                    170362935812555911,
+                    798403977598369608,
+                    203365876831884174,
+                    414331371876523231,
+                    801218727365426260,
+                    688699105425447378,
+                    705517235283747054,
+                    587016270088617162,
+                    792352265599138706,
+                    513199457446279707,
+                    162129792743769404,
+                    627689404223226412,
+                    351773558302685279,
+                    323133479422274244,
+                    822118244386100168,
+                    105060741215683792,
+                    550776366837013393,
+                    46936158524946568 };
+
+    for (auto v : values) {
+      auto hash = nebula::common::Spark::hashLong(v);
+      auto bucket = nebula::common::Spark::hashBucket(v, 10000);
+      LOG(INFO) << "V=" << v
+                << ", hash=" << hash
+                << ", bucket=" << bucket;
+      EXPECT_EQ(1211, bucket);
+    }
+  }
+}
+
 } // namespace test
 } // namespace common
 } // namespace nebula

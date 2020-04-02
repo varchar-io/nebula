@@ -15,7 +15,7 @@
  */
 
 #include "BlockManager.h"
-#include <regex>
+
 #include "common/Folly.h"
 #include "type/Tree.h"
 
@@ -26,6 +26,7 @@ namespace nebula {
 namespace execution {
 
 using nebula::execution::io::BatchBlock;
+using nebula::execution::io::BlockList;
 using nebula::memory::Batch;
 using nebula::meta::BlockSignature;
 using nebula::meta::BlockState;
@@ -63,19 +64,6 @@ void BlockManager::collectBlockMetrics(const io::BatchBlock& meta, TableStates& 
   std::get<2>(tuple) += state.rawSize;
   std::get<3>(tuple) = std::min(std::get<3>(tuple), meta.start());
   std::get<4>(tuple) = std::max(std::get<4>(tuple), meta.end());
-}
-
-/// HACK! - Replace it!
-std::pair<std::string, std::string> hackColEqValue(std::string_view input) {
-  std::regex col_regex("&&\\(F:(\\w+)==C:(\\w+)\\)\\)");
-  std::smatch matches;
-  std::string str(input.data(), input.size());
-  if (std::regex_search(str, matches, col_regex) && matches.size() == 3) {
-    return { matches[1].str(),
-             matches[2].str() };
-  }
-
-  return { "", "" };
 }
 
 bool BlockManager::tableInBlockSet(const std::string& table, const BlockSet& bs) {
@@ -218,7 +206,7 @@ bool BlockManager::add(const BatchBlock& block) {
   return true;
 }
 
-bool BlockManager::add(std::vector<BatchBlock> range) {
+bool BlockManager::add(BlockList range) {
   std::move(range.begin(), range.end(), std::inserter(blocks_, blocks_.begin()));
   return true;
 }

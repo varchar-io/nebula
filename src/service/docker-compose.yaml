@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 services:
   node:
     build:
@@ -14,6 +14,9 @@ services:
       context: ./
       dockerfile: ./server/NebulaServer.Dockerfile
     image: nebula/server
+    networks:
+      default:
+        ipv4_address: 172.16.238.10
     ports:
       - "9190:9190"
     # We're using this for performance profiling NET_ADMIN, SYS_ADMIN
@@ -22,7 +25,7 @@ services:
       - ALL
     links:
       - node
-    environment: 
+    environment:
       # can be a S3 file like s3://nebula/cluster-dev.yml
       - NCONF=/etc/nebula/configs/cluster.yml
   envoy:
@@ -43,3 +46,13 @@ services:
       - "8088:8088"
     links:
       - envoy
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "true"
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.16.238.0/24

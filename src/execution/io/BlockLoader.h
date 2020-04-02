@@ -16,7 +16,9 @@
 
 #pragma once
 
+#include <forward_list>
 #include <glog/logging.h>
+
 #include "memory/Batch.h"
 #include "meta/NBlock.h"
 #include "meta/TestTable.h"
@@ -30,6 +32,7 @@ namespace execution {
 namespace io {
 
 using BatchBlock = nebula::meta::NBlock<nebula::memory::Batch>;
+using BlockList = std::forward_list<BatchBlock>;
 
 // load a NBlock into memory
 class BlockLoader {
@@ -37,11 +40,11 @@ public:
   static BatchBlock from(const nebula::meta::BlockSignature&, std::shared_ptr<nebula::memory::Batch>);
 
 public:
-  std::vector<BatchBlock> load(const nebula::meta::BlockSignature&);
+  BlockList load(const nebula::meta::BlockSignature&);
 
 private:
   // Test Hook
-  std::vector<BatchBlock> loadTestBlock(const nebula::meta::BlockSignature&);
+  BlockList loadTestBlock(const nebula::meta::BlockSignature&);
   nebula::meta::TestTable test_;
 };
 

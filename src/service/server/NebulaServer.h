@@ -32,6 +32,8 @@ class V1ServiceImpl final : public V1::Service {
   grpc::Status Tables(grpc::ServerContext*, const ListTables*, TableList*);
   grpc::Status State(grpc::ServerContext*, const TableStateRequest*, TableStateResponse*);
   grpc::Status Query(grpc::ServerContext*, const QueryRequest*, QueryResponse*);
+  grpc::Status Nuclear(grpc::ServerContext*, const EchoRequest*, EchoResponse*);
+  grpc::Status Load(grpc::ServerContext*, const LoadRequest*, LoadResponse*);
 
   // query handler to handle all the queries
   QueryHandler handler_;

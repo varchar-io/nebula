@@ -109,13 +109,16 @@ struct TableSpec {
   TimeSpec timeSpec;
   // access spec
   AccessSpec accessSpec;
+  // bucket info
+  BucketInfo bucketInfo;
   // settings spec just get list of key-values
   std::unordered_map<std::string, std::string> settings;
 
   TableSpec(std::string n, size_t mm, size_t mh, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak,
             std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts,
-            AccessSpec as, std::unordered_map<std::string, std::string> st)
+            AccessSpec as, BucketInfo bi,
+            std::unordered_map<std::string, std::string> st)
     : name{ std::move(n) },
       max_mb{ mm },
       max_hr{ mh },
@@ -129,6 +132,7 @@ struct TableSpec {
       columnProps{ std::move(cp) },
       timeSpec{ std::move(ts) },
       accessSpec{ std::move(as) },
+      bucketInfo{ std::move(bi) },
       settings{ std::move(st) } {}
 
   inline std::string toString() const {

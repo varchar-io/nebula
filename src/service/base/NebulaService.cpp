@@ -482,6 +482,9 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     // This behavior may change in the future when a dedicated node assigned to client for streaming.
     AccessSpec as;
 
+    // TODO(cao): we don't need bucket info to nodes for now
+    nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
+
     // build serde
     auto serde = it->serde();
     nebula::meta::KafkaSerde sd;
@@ -513,6 +516,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
                                              std::move(props),
                                              std::move(time),
                                              std::move(as),
+                                             std::move(bi),
                                              std::move(settings));
 
     auto is = std::make_shared<IngestSpec>(

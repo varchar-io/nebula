@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <forward_list>
 #include <mutex>
 #include <unordered_map>
 
@@ -69,7 +70,7 @@ public:
   // add a block into the system - the data may be loaded internal
   bool add(const nebula::meta::BlockSignature&);
 
-  bool add(std::vector<io::BatchBlock>);
+  bool add(io::BlockList);
 
   // add a block already loaded
   bool add(const io::BatchBlock&);

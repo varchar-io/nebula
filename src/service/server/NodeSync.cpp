@@ -83,7 +83,7 @@ void NodeSync::sync(
       for (auto itr = blocks.begin(); itr != blocks.end(); ++itr) {
         auto& sign = itr->signature();
         // assign existing spec, expire it if not assigned
-        if (!specRepo.assign(sign.spec, itr->residence())) {
+        if (!sign.isEphemeral() && !specRepo.assign(sign.spec, itr->residence())) {
           expired.push_back(sign.toString());
         }
 

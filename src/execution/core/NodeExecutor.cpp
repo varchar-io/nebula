@@ -25,7 +25,7 @@
 #include "surface/eval/UDF.h"
 
 DEFINE_uint64(TOP_SORT_SCALE,
-              10,
+              0,
               "This defines scale set of top sorting queries, by default, we're returning everything when scale is 0."
               "However, many times we want fast return so that we don't need to serialize massive data back to server,"
               "instead we return scale times of sorting result back to server and this may result in wrong answer!");

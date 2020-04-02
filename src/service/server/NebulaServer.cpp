@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "NebulaServer.h"
+
 #include <cstdlib>
 #include <fmt/format.h>
 #include <gflags/gflags.h>
@@ -21,15 +23,18 @@
 #include <grpcpp/grpcpp.h>
 #include <iostream>
 #include <memory>
+#include <rapidjson/document.h>
 #include <string>
 #include <thread>
 #include <unordered_map>
 
-#include "NebulaServer.h"
 #include "NodeSync.h"
 #include "common/Chars.h"
 #include "common/Evidence.h"
 #include "common/Folly.h"
+#include "common/Format.h"
+#include "common/Params.h"
+#include "common/Spark.h"
 #include "common/TaskScheduler.h"
 #include "execution/BlockManager.h"
 #include "execution/meta/TableService.h"
@@ -38,7 +43,7 @@
 #include "meta/ClusterInfo.h"
 #include "meta/NBlock.h"
 #include "meta/NNode.h"
-#include "meta/Table.h"
+#include "meta/TableSpec.h"
 #include "nebula.grpc.pb.h"
 #include "service/base/NebulaService.h"
 #include "service/node/RemoteNodeConnector.h"
@@ -62,16 +67,23 @@ namespace server {
 
 using grpc::ServerContext;
 using grpc::Status;
+using grpc::StatusCode;
 using nebula::api::dsl::QueryContext;
 using nebula::common::Evidence;
+using nebula::common::ParamList;
 using nebula::common::SingleCommandTask;
 using nebula::common::Task;
 using nebula::common::TaskType;
 using nebula::execution::BlockManager;
 using nebula::execution::io::BlockLoader;
 using nebula::execution::meta::TableService;
+using nebula::ingest::IngestSpec;
+using nebula::ingest::SpecState;
 using nebula::memory::Batch;
+using nebula::meta::BlockSignature;
 using nebula::meta::Table;
+using nebula::meta::TableSpec;
+using nebula::meta::TableSpecPtr;
 using nebula::service::base::ErrorCode;
 using nebula::service::base::ServiceProperties;
 using nebula::service::node::RemoteNodeConnector;
@@ -84,7 +96,7 @@ using nebula::type::Schema;
 using nebula::type::TypeNode;
 using nebula::type::TypeSerializer;
 
-grpc::Status V1ServiceImpl::Tables(grpc::ServerContext*, const ListTables* request, TableList* reply) {
+Status V1ServiceImpl::Tables(ServerContext*, const ListTables* request, TableList* reply) {
   auto bm = BlockManager::init();
   auto limit = request->limit();
   if (limit < 1) {
@@ -99,8 +111,8 @@ grpc::Status V1ServiceImpl::Tables(grpc::ServerContext*, const ListTables* reque
   return Status::OK;
 }
 
-grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest* request, TableStateResponse* reply) {
-
+Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, TableStateResponse* reply) {
+  LOG(INFO) << "Look up state for table " << request->table();
   const auto table = TableService::singleton()->query(request->table());
   auto bm = BlockManager::init();
   // query the table's state
@@ -129,14 +141,10 @@ grpc::Status V1ServiceImpl::State(grpc::ServerContext*, const TableStateRequest*
   return Status::OK;
 }
 
-grpc::Status V1ServiceImpl::Query(grpc::ServerContext* ctx, const QueryRequest* request, QueryResponse* reply) {
-  // validate the query request and build the call
-  nebula::common::Evidence::Duration tick;
-  ErrorCode error = ErrorCode::NONE;
-
-  auto tableName = request->table();
+Status V1ServiceImpl::Nuclear(ServerContext* ctx, const EchoRequest* req, EchoResponse* reply) {
   constexpr auto NUCLEAR = "_nuclear_";
-  if (NUCLEAR == tableName) {
+  // message verification to ensure
+  if (NUCLEAR == req->name()) {
     LOG(INFO) << "Received a nuclear command, tearing down everything";
     // DEBUG/PROFILE PURPOSE:
     // shutdown the local node by this command
@@ -149,15 +157,11 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext* ctx, const QueryRequest* 
     return Status::OK;
   }
 
-  // get the table
-  auto table = TableService::singleton()->query(tableName);
+  LOG(WARNING) << "Required message to be correct to shutdown single working node";
+  return Status::CANCELLED;
+}
 
-  // build the query
-  auto query = handler_.build(*table, *request, error);
-  if (error != ErrorCode::NONE) {
-    return replyError(error, reply, 0);
-  }
-
+QueryContext buildQueryContext(ServerContext* ctx) {
   // build query context
   const auto& metadata = ctx->client_metadata();
 
@@ -178,9 +182,190 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext* ctx, const QueryRequest* 
     }
   }
 
-  // compile the query into a plan
-  LOG(INFO) << "Started a query for user: " << user << ", with groups:" << groups.size();
-  QueryContext queryContext{ user, std::move(groups) };
+  return QueryContext{ user, std::move(groups) };
+}
+
+Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadResponse* reply) {
+  nebula::common::Evidence::Duration tick;
+  // get query context
+  auto queryContext = buildQueryContext(ctx);
+  LOG(INFO) << "Load data source for user: " << queryContext.user();
+
+  // get request content
+  const auto& table = req->table();
+  const auto& paramsJson = req->paramsjson();
+  const auto ttlHour = req->ttl() / 3600;
+
+  // search the template from ClusterInfo
+  auto& ci = nebula::meta::ClusterInfo::singleton();
+  TableSpecPtr tmp;
+  for (auto& ts : ci.tables()) {
+    if (table == ts->name) {
+      tmp = ts;
+      break;
+    }
+  }
+
+  // based on parameters, we will generate a list of sources
+  // we will generate a table instance based on the parameters
+  // TODO(cao) - handle hash collision if cluster info already contains this table name
+  size_t hash = nebula::common::Hasher::hashString(paramsJson);
+  // all ephemeral table instance will start with "#"
+  // because normal table won't be able to configured through YAML with # since it's comment.
+  auto tableName = fmt::format("{0}{1}-{2}", BlockSignature::EPHEMERAL_TABLE_PREFIX, table, hash);
+  // enroll this table in table service
+  // nebula::execution::meta::TableService::singleton()->enroll
+  auto tbSpec = std::make_shared<TableSpec>(
+    tableName,
+    tmp->max_mb,
+    ttlHour,
+    tmp->schema,
+    tmp->source,
+    tmp->loader,
+    tmp->location,
+    tmp->backup,
+    tmp->format,
+    tmp->serde,
+    tmp->columnProps,
+    tmp->timeSpec,
+    tmp->accessSpec,
+    tmp->bucketInfo,
+    tmp->settings);
+
+  // pattern must be present in settings
+  nebula::execution::meta::TableService::singleton()->enroll(tbSpec->to());
+
+  // by comparing the paramsJson value in table settings
+  rapidjson::Document cd;
+  if (cd.Parse(paramsJson.c_str()).HasParseError()) {
+    throw NException(fmt::format("Error parsing params-json: {0}", paramsJson));
+  }
+
+  // convert this into a param list
+  N_ENSURE(cd.IsObject(), "expect params-json as an object.");
+  ParamList params(cd);
+
+  // reserved macro "date" is used to recognize current date value for any placeholder.
+  static constexpr auto DATE = "date";
+  static constexpr auto BUCKET = "bucket";
+
+  auto sourceInfo = nebula::storage::parse(tmp->location);
+  // for every single combination, we will use it to format template source to get a new spec source
+  std::vector<std::shared_ptr<IngestSpec>> specs;
+  auto p = params.next();
+  auto& nodeSet = ci.nodes();
+  std::vector<nebula::meta::NNode> nodes(nodeSet.begin(), nodeSet.end());
+  size_t assignId = 0;
+  while (p.size() > 0) {
+    // get date info if provided by parameters
+    auto d = p.find(DATE);
+    auto dateMs = 0;
+    if (d != p.end()) {
+      dateMs = nebula::common::Evidence::time(p.at(DATE), "%Y-%m-%d");
+    }
+
+    // if bucket is required, bucket column value must be provided
+    // but if bucket parameter is provided directly, we don't need to compute
+    auto bucketCount = tbSpec->bucketInfo.count;
+    std::string bucket = "";
+    if (p.find(BUCKET) == p.end() && bucketCount > 0) {
+      // TODO(cao) - short term dependency, if Spark changes its hash algo, this will be broken
+      auto bcValue = folly::to<size_t>(p.at(tbSpec->bucketInfo.bucketColumn));
+      bucket = std::to_string(nebula::common::Spark::hashBucket(bcValue, bucketCount));
+
+      // TODO(cao) - ugly code, how can we avoid this?
+      auto width = std::log10(bucketCount) + 1;
+      bucket = std::string((width - bucket.size()), '0').append(bucket);
+      p.emplace(BUCKET, bucket);
+    }
+
+    // if the table has bucket info
+    auto path = nebula::common::format(sourceInfo.path, p);
+    LOG(INFO) << "Generate a spec path: " << path;
+    // build ingestion spec from this location
+    auto spec = std::make_shared<IngestSpec>(tbSpec, "0", path, sourceInfo.host, 0, SpecState::NEW, dateMs);
+
+    // round robin assign the spec to each node
+    spec->setAffinity(nodes.at(assignId));
+    if (++assignId >= nodes.size()) {
+      assignId = 0;
+    }
+
+    specs.push_back(spec);
+
+    // see next params
+    p = params.next();
+  }
+
+  // now we have a list of specs, let's assign nodes to these ingest specs and send to each node
+  auto& threadPool = pool();
+  auto connector = std::make_shared<node::RemoteNodeConnector>(nullptr);
+  std::vector<folly::Future<bool>> futures;
+  futures.reserve(specs.size());
+  for (auto spec : specs) {
+    auto promise = std::make_shared<folly::Promise<bool>>();
+
+    // pass values since we reutrn the whole lambda - don't reference temporary things
+    // such as local stack allocated variables, including "this" the client itself.
+    threadPool.add([promise, connector, spec, &threadPool]() {
+      auto client = connector->makeClient(spec->affinity(), threadPool);
+      // build a task out of this spec
+      Task t(TaskType::INGESTION, std::static_pointer_cast<nebula::common::Signable>(spec));
+      nebula::common::TaskState state = client->task(t);
+      if (state == nebula::common::TaskState::SUCCEEDED) {
+        spec->setState(SpecState::READY);
+        promise->setValue(true);
+        return;
+      }
+
+      // else return empty result set
+      promise->setValue(false);
+    });
+
+    futures.push_back(promise->getFuture());
+  }
+
+  auto x = folly::collectAll(futures).get();
+  auto succeeded = true;
+  for (auto it = x.begin(); it < x.end(); ++it) {
+    // if the result is empty
+    if (!it->hasValue() || !it->value()) {
+      succeeded = false;
+      break;
+    }
+  }
+
+  if (succeeded) {
+    reply->set_error(LoadError::SUCCESS);
+    reply->set_loadtimems(tick.elapsedMs());
+    reply->set_table(tableName);
+    return Status::OK;
+  }
+
+  reply->set_error(LoadError::TEMPLATE_NOT_FOUND);
+  return Status::CANCELLED;
+}
+
+Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, QueryResponse* reply) {
+  // validate the query request and build the call
+  nebula::common::Evidence::Duration tick;
+  ErrorCode error = ErrorCode::NONE;
+
+  auto tableName = request->table();
+
+  // get the table
+  auto table = TableService::singleton()->query(tableName);
+
+  // build the query
+  auto query = handler_.build(*table, *request, error);
+  if (error != ErrorCode::NONE) {
+    return replyError(error, reply, 0);
+  }
+
+  // get query context
+  auto queryContext = buildQueryContext(ctx);
+
+  // compile query into a query plan
   auto plan = handler_.compile(
     query, { request->start(), request->end() }, queryContext, error);
   if (error != ErrorCode::NONE) {
@@ -212,7 +397,7 @@ grpc::Status V1ServiceImpl::Query(grpc::ServerContext* ctx, const QueryRequest* 
   return Status::OK;
 }
 
-grpc::Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, size_t durationMs) const {
+Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, size_t durationMs) const {
   N_ENSURE_NE(code, ErrorCode::NONE, "Error Reply Code Not 0");
 
   auto error = ServiceProperties::errorMessage(code);
@@ -221,7 +406,7 @@ grpc::Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, siz
   stats->set_message(error);
   stats->set_querytimems(durationMs);
 
-  return grpc::Status(grpc::StatusCode::INTERNAL, error);
+  return Status(StatusCode::INTERNAL, error);
 }
 
 // Logic and data behind the server's behavior.

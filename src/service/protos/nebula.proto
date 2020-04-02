@@ -36,9 +36,17 @@ message EchoResponse {
 
 // all service methods are captilized compared to other regular methods
 service V1 {
+  // Get all available data sources
   rpc Tables(ListTables) returns(TableList) {}
+  // Get table state for given table
   rpc State(TableStateRequest) returns(TableStateResponse) {}
+  // Query Nebula to get result
   rpc Query(QueryRequest) returns(QueryResponse) {}
+  // on demand loading specified data with parameters
+  // template defined in cluster configuration
+  rpc Load(LoadRequest) returns(LoadResponse) {}
+  // shut down all work nodes - used for perf profiling
+  rpc Nuclear(EchoRequest) returns(EchoResponse) {}
 }
 
 message TableStateRequest {
@@ -171,7 +179,7 @@ message QueryRequest {
 
   // dimensions (key columns / group by columns) to pull metrics for
   repeated string dimension = 7;
-  
+
   // metric list, such as sum(col_a), count(col_b)
   repeated Metric metric = 8;
 
@@ -204,9 +212,40 @@ enum DataType {
   // JSON string sending in bytes buffer
   JSON = 1;
 }
+
 // define query response from server
 message QueryResponse {
   Statistics stats = 1;
   DataType type = 2;
   bytes data = 3;
+}
+
+// on-demand data loading request
+message LoadRequest {
+  // template table name
+  string table = 1;
+  // parameters to instantiate template
+  string paramsJson = 2;
+  // TTL in seconds for the data to live
+  uint32 ttl = 3;
+}
+
+// load error
+enum LoadError {
+  SUCCESS = 0;
+  TEMPLATE_NOT_FOUND = 1;
+  MISSING_PARAM = 2;
+  MISSING_BUCKET_VALUE = 3;
+}
+
+// load command response
+message LoadResponse {
+  // load state: error=0 indicating success∏
+  LoadError error = 1;
+  // loading time in milliseconds
+  uint32 loadTimeMs = 2;
+  // loaded instance table name
+  string table = 3;
+  // extra message the server wants to share
+  string message = 4;
 }

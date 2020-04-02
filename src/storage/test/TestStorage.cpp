@@ -17,7 +17,6 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "storage/CsvReader.h"
 #include "storage/NFS.h"
 #include "storage/aws/S3.h"
 #include "storage/local/File.h"

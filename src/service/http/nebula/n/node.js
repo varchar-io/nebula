@@ -17,6 +17,9 @@ const {
     Statistics,
     DataType,
     QueryResponse,
+    LoadError,
+    LoadRequest,
+    LoadResponse,
 } = require('nebula-pb');
 
 const {
@@ -95,6 +98,9 @@ export default {
     Statistics,
     DataType,
     QueryResponse,
+    LoadError,
+    LoadRequest,
+    LoadResponse,
     bytes2utf8,
     static_res,
     qc,

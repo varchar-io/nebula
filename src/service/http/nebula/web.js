@@ -177,8 +177,9 @@ const initTable = (table, callback) => {
             }
         });
     } else if (archMode === 2) {
+        // table name may have special characters, so encode the table name
         $.ajax({
-            url: "/?api=state&start=0&end=0&table=" + table
+            url: "/?api=state&start=0&end=0&table=" + encodeURIComponent(table)
         }).fail((err) => {
             stats.text("Error: " + err);
         }).done((data) => {
@@ -253,7 +254,7 @@ const build = () => {
     }
 
     // change hash will trigger query
-    hash('#' + encodeURI(JSON.stringify(Q)));
+    hash('#' + encodeURIComponent(JSON.stringify(Q)));
 };
 
 const restore = () => {
@@ -530,7 +531,7 @@ const execute = () => {
 };
 
 ds('#btn').on("click", build);
-$("#sdw").hide();
+// $("#sdw").hide();
 
 // hook up hash change event
 window.onhashchange = function () {
@@ -580,10 +581,12 @@ $(() => {
         ds('#user').text(data.auth ? data.user : "unauth");
     });
 
+    // Remove Sandance for now. 
     // set sundance to load after all page inits so it doesn't block current page loading
-    ds('#sandance').attr("src", "d/sde.html");
+    // ds('#sandance').attr("src", "d/sde.html");
 });
 
+/** Remove Sandance from nebula for now
 const vis = async (r) => {
     // n=>nebula, s=>sanddance
     const choice = r.target.value;
@@ -616,3 +619,4 @@ const vis = async (r) => {
 
 $("#vn").on("click", vis);
 $("#vs").on("click", vis);
+ */

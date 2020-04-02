@@ -27,6 +27,7 @@ namespace io {
 
 using nebula::common::Evidence;
 using nebula::execution::io::BatchBlock;
+using nebula::execution::io::BlockList;
 using nebula::memory::Batch;
 using nebula::meta::BessType;
 using nebula::meta::BlockSignature;
@@ -40,7 +41,7 @@ BatchBlock BlockLoader::from(const BlockSignature& sign, std::shared_ptr<nebula:
   return BatchBlock(sign, b, BlockState{ b->getRows(), b->getMemory() });
 }
 
-std::vector<BatchBlock> BlockLoader::load(const BlockSignature& block) {
+BlockList BlockLoader::load(const BlockSignature& block) {
   if (block.table == test_.name()) {
     return loadTestBlock(block);
   }
@@ -92,7 +93,7 @@ private:
   std::function<int64_t()> rRand_;
 };
 
-std::vector<BatchBlock> BlockLoader::loadTestBlock(const BlockSignature& b) {
+BlockList BlockLoader::loadTestBlock(const BlockSignature& b) {
   // use 1024 rows for testing
   auto rows = 10000;
   // auto block = std::make_shared<Batch>(test_, rows);
@@ -128,11 +129,10 @@ std::vector<BatchBlock> BlockLoader::loadTestBlock(const BlockSignature& b) {
 
   // print out the block state
   LOG(INFO) << "Loaded test blocks: " << batches.size() << " using seed=" << seed;
-  std::vector<BatchBlock> blocks;
-  blocks.reserve(batches.size());
+  BlockList blocks;
   for (auto& itr : batches) {
     auto block = itr.second;
-    blocks.emplace_back(BatchBlock{
+    blocks.push_front(BatchBlock{
       BlockSignature{
         b.table,
         b.id * 10 + itr.first,

@@ -352,7 +352,7 @@ const getPinsByKeyword = (q, handler) => {
 
         const conditions = [];
         // apply the filter on different columns using OR
-        let columnsToSearch = ["details", "annotations"];
+        let columnsToSearch = ["title", "details", "annotations"];
         if (q.c2s) {
             // if user specify what columns to search on, use it
             // accept json array
@@ -367,29 +367,9 @@ const getPinsByKeyword = (q, handler) => {
             conditions.push(p);
         }
 
-        // other filters requiring to be true
-        const columnsToBeTrue = ["alive", "active"];
-        for (let i = 0; i < columnsToBeTrue.length; ++i) {
-            let p = new NebulaClient.Predicate();
-            p.setColumn(columnsToBeTrue[i]);
-            p.setOp("0");
-            p.setValueList(["1"]);
-            conditions.push(p);
-        }
-
-        // other filters requiring positive
-        const columnsToBePositive = ["impressions"];
-        for (let i = 0; i < columnsToBePositive.length; ++i) {
-            let p = new NebulaClient.Predicate();
-            p.setColumn(columnsToBePositive[i]);
-            p.setOp("2");
-            p.setValueList(["0"]);
-            conditions.push(p);
-        }
-
-        const filter = new NebulaClient.PredicateAnd();
+        const filter = new NebulaClient.PredicateOr();
         filter.setExpressionList(conditions);
-        req.setFiltera(filter);
+        req.setFiltero(filter);
 
         // set dimension
         req.setDimensionList([
@@ -616,33 +596,53 @@ const api_handlers = {
  * Used for debugging and profiling purpose.
  */
 const shutdown = () => {
-    const req = new NebulaClient.QueryRequest();
-    req.setTable("_nuclear_");
-    req.setStart(10);
-    req.setEnd(20);
-
-    // single filter
-    const p2 = new NebulaClient.Predicate();
-    p2.setColumn("a");
-    p2.setOp("0");
-    p2.setValueList(["b"]);
-    const filter = new NebulaClient.PredicateAnd();
-    filter.setExpressionList([p2]);
-    req.setFiltera(filter);
-
-    // set dimension
-    req.setDimensionList(["c"]);
-
-    // set limit
-    req.setTop(1);
+    const req = new NebulaClient.EchoRequest();
+    req.setName("_nuclear_");
 
     // do the query
-    client.query(req, {}, (err, reply) => {
-        console.log(`ERR=${err}, REP=${reply}`);
+    client.nuclear(req, {}, (err, reply) => {
+        console.log(`ERR=${err}, REP=${reply.getMessage()}`);
     });
 
     return JSON.stringify({
         state: 'OK'
+    });
+};
+
+/**
+ * On-demand loading data from parameters.
+ * ?api=load&table=x&json=xxx&ttl=5000
+ */
+const load = (table, json, ttl, handler) => {
+    const req = new NebulaClient.LoadRequest();
+    if (!table) {
+        handler.endWithMessage("Missing table");
+        return;
+    }
+    req.setTable(table);
+
+    if (!json) {
+        handler.endWithMessage("Missing params json.");
+        return;
+    }
+    req.setParamsjson(json);
+
+    req.setTtl(ttl);
+
+    // send the query
+    client.load(req, {}, (err, reply) => {
+        if (err !== null) {
+            return handler.onError(err);
+        }
+
+        if (reply == null) {
+            return handler.onNull();
+        }
+        return handler.onSuccess(JSON.stringify({
+            er: reply.getError(),
+            tb: reply.getTable(),
+            ms: reply.getLoadtimems()
+        }));
     });
 };
 
@@ -661,6 +661,10 @@ http.createServer(async function (req, res) {
             res.write(JSON.stringify(userInfo(q, req.headers)));
         } else if (q.api === "nuclear") {
             res.write(shutdown());
+        } else if (q.api === "load") {
+            const handler = new Handler();
+            handler.response = res;
+            return load(q.table, q.json, q.ttl || 3600, handler);
         } else if (q.api in api_handlers) {
             // basic requirement
             if (!q.start || !q.end) {

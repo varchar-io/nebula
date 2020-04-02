@@ -103,10 +103,8 @@ public:
     return width;
   }
 
-  // write spceial value as string
-  size_t write(const std::string& key, const std::string& str) {
+  size_t write(const std::string& key, const char* str, size_t length) {
     // flag of string [STRING_FLAG][LENGTH][bytes]
-    auto length = str.size();
     auto size = 1 + 4 + length;
     auto pos = moveKey(key, size);
     slice_.write(pos++, STRING_FLAG);
@@ -114,8 +112,13 @@ public:
     pos += 4;
 
     // write string bytes out
-    slice_.write(pos, str.data(), length);
+    slice_.write(pos, str, length);
     return size;
+  }
+
+  // write spceial value as string
+  size_t write(const std::string& key, const std::string& str) {
+    return write(key, str.data(), str.size());
   }
 
   // support array/vector of scalar types including string data support as well

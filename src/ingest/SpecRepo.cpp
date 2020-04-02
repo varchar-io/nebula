@@ -196,6 +196,11 @@ void SpecRepo::process(
       genSpecs4Roll(version, table, specs);
       return;
     }
+
+    if (table->loader == "Api") {
+      // We're not loading data for API
+      return;
+    }
   }
 
   if (table->source == DataSource::KAFKA) {

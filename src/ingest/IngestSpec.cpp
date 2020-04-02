@@ -24,6 +24,7 @@
 #include "execution/meta/TableService.h"
 #include "meta/TestTable.h"
 #include "storage/CsvReader.h"
+#include "storage/JsonReader.h"
 #include "storage/NFS.h"
 #include "storage/ParquetReader.h"
 #include "storage/kafka/KafkaReader.h"
@@ -44,6 +45,7 @@ namespace ingest {
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::execution::io::BatchBlock;
+using nebula::execution::io::BlockList;
 using nebula::execution::io::BlockLoader;
 using nebula::execution::meta::TableService;
 using nebula::memory::Batch;
@@ -56,6 +58,7 @@ using nebula::meta::TestTable;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
 using nebula::storage::CsvReader;
+using nebula::storage::JsonReader;
 using nebula::storage::ParquetReader;
 using nebula::storage::kafka::KafkaReader;
 using nebula::storage::kafka::KafkaSegment;
@@ -66,6 +69,7 @@ using nebula::type::TypeSerializer;
 
 static constexpr auto LOADER_SWAP = "Swap";
 static constexpr auto LOADER_ROLL = "Roll";
+static constexpr auto LOADER_API = "Api";
 
 // load some nebula test data into current process
 void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
@@ -106,6 +110,10 @@ bool IngestSpec::work() noexcept {
     // if roll, they are reading files
     if (loader == LOADER_ROLL) {
       return this->loadRoll();
+    }
+
+    if (loader == LOADER_API) {
+      return this->loadApi();
     }
   }
 
@@ -148,8 +156,7 @@ bool IngestSpec::load(BlockList& blocks) noexcept {
 bool IngestSpec::loadSwap() noexcept {
   if (table_->source == DataSource::S3) {
     // TODO(cao) - make a better size estimation to understand total blocks to have
-    std::vector<BatchBlock> blocks;
-    blocks.reserve(32);
+    BlockList blocks;
 
     // load current
     auto result = this->load(blocks);
@@ -172,9 +179,25 @@ bool IngestSpec::loadSwap() noexcept {
 
 bool IngestSpec::loadRoll() noexcept {
   if (table_->source == DataSource::S3) {
-    // TODO(cao) - make a better size estimation to understand total blocks to have
-    std::vector<BatchBlock> blocks;
-    blocks.reserve(32);
+    BlockList blocks;
+
+    // load current
+    auto result = this->load(blocks);
+    if (result) {
+      auto bm = BlockManager::init();
+      // move all new blocks in
+      bm->add(std::move(blocks));
+    }
+
+    return result;
+  }
+
+  return false;
+}
+
+bool IngestSpec::loadApi() noexcept {
+  if (table_->source == DataSource::S3) {
+    BlockList blocks;
 
     // load current
     auto result = this->load(blocks);
@@ -327,6 +350,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
     // we can not use 0, because Nebula doesn't allow query time range fall into 0 start/end.
     static constexpr size_t NULL_TIME = 1;
     constexpr auto UNIX_TS = "UNIXTIME";
+    constexpr auto UNIX_MS = "UNIXTIME_MS";
     if (ts.pattern == UNIX_TS) {
       timeFunc = [&ts](const RowData* r) {
         if (UNLIKELY(r->isNull(ts.colName))) {
@@ -334,6 +358,14 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
         }
 
         return (size_t)r->readLong(ts.colName);
+      };
+    } else if (ts.pattern == UNIX_MS) {
+      timeFunc = [&ts](const RowData* r) {
+        if (UNLIKELY(r->isNull(ts.colName))) {
+          return NULL_TIME;
+        }
+
+        return (size_t)r->readLong(ts.colName) / 1000;
       };
     } else {
       timeFunc = [&ts](const RowData* r) {
@@ -386,6 +418,8 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   std::unique_ptr<RowCursor> source = nullptr;
   if (table_->format == "csv") {
     source = std::make_unique<CsvReader>(file, '\t', columns);
+  } else if (table_->format == "json") {
+    source = std::make_unique<JsonReader>(file, schema);
   } else if (table_->format == "parquet") {
     // schema is modified with time column, we need original schema here
     source = std::make_unique<ParquetReader>(file, schema);
@@ -443,7 +477,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
     // if this is already full
     if (batch->getRows() >= bRows) {
       // move it to the manager and erase it from the map
-      blocks.push_back(makeBlock(blockId++, batch));
+      blocks.push_front(makeBlock(blockId++, batch));
 
       // make a new batch
       batch = std::make_shared<Batch>(*table, bRows, pid);
@@ -468,7 +502,10 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
   // move all blocks in map into block manager
   for (auto& itr : batches) {
-    blocks.push_back(makeBlock(blockId++, itr.second));
+    // TODO(cao) - the block maybe too small
+    // to waste lots of memory especially in case of sparse storage
+    // we need to try to compress them if useful to save memory
+    blocks.push_front(makeBlock(blockId++, itr.second));
   }
 
 #ifdef PPROF

@@ -240,6 +240,22 @@ KafkaSerde asSerde(const YAML::Node& node) {
   return serde;
 }
 
+/** [example]
+    bucket:
+      size: 10000
+      column: pid
+*/
+BucketInfo asBucketInfo(const YAML::Node& node) {
+  if (node) {
+    auto count = node["size"].as<size_t>();
+    auto column = node["column"].as<std::string>();
+    return BucketInfo{ count, column };
+  }
+
+  // no bucket info
+  return BucketInfo::empty();
+}
+
 void ClusterInfo::load(const std::string& file) {
 
   YAML::Node config = YAML::LoadFile(file);
@@ -314,6 +330,7 @@ void ClusterInfo::load(const std::string& file) {
       asColumnProps(td["columns"]),
       asTimeSpec(td["time"]),
       asAccessRules(td["access"]),
+      asBucketInfo(td["bucket"]),
       asSettings(td["settings"])));
   }
 

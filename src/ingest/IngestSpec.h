@@ -17,6 +17,7 @@
 #pragma once
 
 #include <fmt/format.h>
+#include <forward_list>
 #include <mutex>
 
 #include "common/Task.h"
@@ -56,8 +57,6 @@ enum class SpecState : char {
 
 // a ingest spec defines a task specification to ingest some data
 class IngestSpec : public nebula::common::Signable {
-  using BlockList = std::vector<nebula::execution::io::BatchBlock>;
-
 public:
   IngestSpec(
     nebula::meta::TableSpecPtr table,
@@ -142,7 +141,7 @@ public:
 
 private:
   // ingest a given local file (usually tmp file) into a list of blocks
-  bool ingest(const std::string&, BlockList&) noexcept;
+  bool ingest(const std::string&, nebula::execution::io::BlockList&) noexcept;
 
   // load swap
   bool loadSwap() noexcept;
@@ -150,11 +149,14 @@ private:
   // load roll
   bool loadRoll() noexcept;
 
+  // load api - on demand ingestion
+  bool loadApi() noexcept;
+
   // load kafka
   bool loadKafka() noexcept;
 
   // load current spec as blocks
-  bool load(BlockList&) noexcept;
+  bool load(nebula::execution::io::BlockList&) noexcept;
 
 private:
   nebula::meta::TableSpecPtr table_;

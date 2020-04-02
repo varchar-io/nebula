@@ -47,6 +47,25 @@ struct PartitionInfo {
   }
 };
 
+// Bucket info is used to support reading specific bucket based on
+// a given bucketed column value.
+// Right now, we only support numeric column value mod on bucket count
+struct BucketInfo {
+  explicit BucketInfo(size_t c, const std::string& bc)
+    : count{ c }, bucketColumn{ bc } {}
+
+  size_t count;
+  std::string bucketColumn;
+
+  size_t bucket(size_t columnValue) const {
+    return columnValue % count;
+  }
+
+  static BucketInfo empty() {
+    return BucketInfo{ 0, "" };
+  }
+};
+
 /**
  * Define column properties that fetched from meta data system
  */
@@ -130,7 +149,7 @@ public:
     return schema_;
   }
 
-  inline std::string name() const {
+  inline const std::string& name() const {
     return name_;
   }
 

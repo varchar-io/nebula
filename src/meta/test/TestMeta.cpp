@@ -23,6 +23,7 @@
 #include "meta/Pod.h"
 #include "meta/Table.h"
 #include "meta/TestTable.h"
+#include "type/Serde.h"
 
 namespace nebula {
 namespace meta {
@@ -75,13 +76,25 @@ TEST(MetaTest, TestClusterConfigLoad) {
   }
 
   const auto& tables = clusterInfo.tables();
-  EXPECT_EQ(tables.size(), 1);
+  EXPECT_EQ(tables.size(), 2);
   for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
     LOG(INFO) << "TABLE: " << (*itr)->toString();
   }
 
+  auto ephemeral = *(tables.cbegin());
+  // on-demand ephemeral pacakge are loaded through API
+  auto schema = nebula::type::TypeSerializer::from(ephemeral->schema);
+  EXPECT_EQ(schema->size(), 18);
+  EXPECT_EQ(ephemeral->loader, "Api");
+  EXPECT_EQ(ephemeral->bucketInfo.count, 10000);
+  EXPECT_EQ(ephemeral->bucketInfo.bucketColumn, "partner_id");
+  // the bucket column can be found from the schema
+  auto type = schema->find(ephemeral->bucketInfo.bucketColumn);
+  EXPECT_TRUE(type != nullptr);
+  EXPECT_TRUE(nebula::type::TypeBase::isScalar(type->k()));
+
   // test the table level settings can be read as expected
-  auto test = (*tables.cbegin());
+  auto test = *(++tables.cbegin());
   EXPECT_EQ(test->settings.size(), 2);
   EXPECT_EQ(test->settings.at("key1"), "value1");
   EXPECT_EQ(test->settings.at("key2"), "value2");
