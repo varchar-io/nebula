@@ -38,7 +38,7 @@ enum TaskState : int8_t {
 
 class Signable {
 public:
-  virtual std::string signature() const = 0;
+  virtual const std::string& signature() const = 0;
 };
 
 /**
@@ -82,7 +82,7 @@ public:
   SingleCommandTask(std::string command) : command_{ std::move(command) } {}
   virtual ~SingleCommandTask() = default;
 
-  virtual std::string signature() const override {
+  virtual const std::string& signature() const override {
     return command_;
   }
 

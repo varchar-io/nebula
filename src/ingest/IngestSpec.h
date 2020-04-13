@@ -81,7 +81,7 @@ public:
     return fmt::format("[IS {0} - {1}]", version_, id_);
   }
 
-  inline virtual std::string signature() const override {
+  inline virtual const std::string& signature() const override {
     // TODO(cao) - use file+size as unique signature?
     return signature_;
   }

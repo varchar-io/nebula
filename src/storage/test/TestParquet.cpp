@@ -15,7 +15,6 @@
  */
 
 #include <arrow/io/file.h>
-#include <arrow/util/logging.h>
 #include <fmt/format.h>
 #include <folly/Conv.h>
 #include <glog/logging.h>

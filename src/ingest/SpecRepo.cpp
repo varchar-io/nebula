@@ -282,7 +282,7 @@ bool SpecRepo::assign(const std::string& spec, const nebula::meta::NNode& node) 
   auto& sp = f->second;
   if (!sp->assigned()) {
     sp->setAffinity(node);
-    return true;
+    return false;
   }
 
   // not in the same node

@@ -16,11 +16,17 @@
 
 #include "KafkaReader.h"
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+// we know TCompactProtocol will define LIKELY AND UNLIKELY
+#ifdef UNLIKELY
+#undef UNLIKELY
+#endif
+
 #include <thrift/protocol/TBinaryProtocol.h>
 #include <thrift/protocol/TCompactProtocol.h>
 #include <thrift/transport/TBufferTransports.h>
+
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 
 #include "common/Evidence.h"
 #include "meta/Table.h"

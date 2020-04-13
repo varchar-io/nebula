@@ -18,7 +18,6 @@
 
 #include <fmt/format.h>
 
-#include "common/Likely.h"
 #include "common/Memory.h"
 #include "type/Type.h"
 

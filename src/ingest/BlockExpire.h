@@ -30,11 +30,13 @@ namespace ingest {
 // a task to expire list of blocks
 class BlockExpire : public nebula::common::Signable {
 public:
-  BlockExpire(std::list<std::string> blocks) : blocks_{ std::move(blocks) } {}
+  BlockExpire(std::list<std::string> blocks) : blocks_{ std::move(blocks) } {
+    sign_ = fmt::format("{0}", blocks_.size());
+  }
   virtual ~BlockExpire() = default;
 
-  virtual std::string signature() const override {
-    return fmt::format("{0}", blocks_.size());
+  virtual const std::string& signature() const override {
+    return sign_;
   }
 
   inline const std::list<std::string>& blocks() const {
@@ -58,6 +60,7 @@ public:
 
 private:
   std::list<std::string> blocks_;
+  std::string sign_;
 };
 
 } // namespace ingest
