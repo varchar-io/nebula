@@ -40,7 +40,7 @@ public:
   BloomFilter(size_t items) {
     bloom_parameters parameters;
     parameters.projected_element_count = items;
-    parameters.false_positive_probability = 0.001;
+    parameters.false_positive_probability = 0.01;
     parameters.random_seed = Evidence::ticks();
     parameters.compute_optimal_parameters();
 

@@ -40,7 +40,7 @@ Batch::Batch(const Table& table, size_t capacity, size_t pid)
     sealed_{ false } {
   // build a field name to data node
   for (size_t i = 0, size = schema_->size(); i < size; ++i) {
-    auto f = dynamic_cast<TypeBase*>(schema_->childAt(i).get());
+    auto f = dynamic_cast<TypeBase*>(schema_->TreeBase::childAt(i).get());
     fields_[f->name()] = data_->childAt<PDataNode>(i).value();
   }
 
@@ -48,6 +48,7 @@ Batch::Batch(const Table& table, size_t capacity, size_t pid)
   if (pod_ != nullptr) {
     VLOG(1) << "Locate spaces for given pod: " << pid_;
     spaces_ = pod_->locate(pid_);
+    bessBits_ = pod_->bessBits();
   }
 }
 
@@ -60,7 +61,7 @@ size_t Batch::add(const RowData& row, BessType bess) {
   // TODO(cao): compress bess value which should be very small
   // width = sum(bits width of each dimension)
   if (pod_ != nullptr) {
-    bess_.write(rows_ * sizeof(BessType), bess);
+    bess_.writeBits(rows_ * bessBits_, bessBits_, bess);
   }
 
   // read data from row data and save it to batch
@@ -83,9 +84,9 @@ std::string Batch::state() const {
   // storage size is dynamic depending on adopted encoders
   // SizeMeta: size, allocation
   using SizeMeta = std::tuple<size_t, size_t>;
-  auto s = data_->treeWalk<SizeMeta, DataNode>(
-    [](const DataNode&) {},
-    [](const DataNode& v, std::vector<SizeMeta>& children) {
+  auto s = data_->walk<SizeMeta, DataNode>(
+    {},
+    [](const DataNode& v, const std::vector<SizeMeta>& children) {
       size_t allocation = v.storageAllocation();
       size_t size = v.storageSize();
       for (const auto& c : children) {
@@ -102,10 +103,17 @@ std::string Batch::state() const {
 }
 
 void Batch::seal() {
+  N_ENSURE(!sealed_, "batch is already sealed.");
   sealed_ = true;
 
   // seal every node
   data_->seal();
+
+  // seal bess as well
+  if (pod_) {
+    auto bits = (rows_ * bessBits_);
+    bess_.seal(bits / 8 + 1);
+  }
 }
 
 } // namespace memory

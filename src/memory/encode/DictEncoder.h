@@ -94,6 +94,9 @@ public:
   void seal() {
     // release the assitant data structure
     hashItems_ = nullptr;
+
+    offsets_.seal();
+    dict_.seal();
   }
 
 private:

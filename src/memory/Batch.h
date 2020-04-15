@@ -156,10 +156,12 @@ private:
 
   // encoding bess for each partition columns if partitioned
   // pod will not be null if partitioned
+  // spaces stores space/slot index for eacch partition dimension
   std::shared_ptr<nebula::meta::Pod> pod_;
   size_t pid_;
   std::vector<size_t> spaces_;
-  nebula::common::PagedSlice bess_;
+  size_t bessBits_;
+  nebula::common::ExtendableSlice bess_;
 
   // recording number of rows
   size_t rows_;

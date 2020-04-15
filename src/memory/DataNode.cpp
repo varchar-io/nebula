@@ -46,9 +46,9 @@ static constexpr size_t NULL_SIZE = 1;
 DataTree DataNode::buildDataTree(const Table& table, size_t capacity) {
   // traverse the whole schema tree to generate a data tree
   auto schema = table.schema();
-  auto dataTree = schema->treeWalk<TreeNode>(
-    [](const auto&) {},
-    [&table, capacity](const auto& v, std::vector<TreeNode>& children) {
+  auto dataTree = schema->walk<TreeNode>(
+    {},
+    [&table, capacity](const auto& v, const std::vector<TreeNode>& children) {
       const auto& t = dynamic_cast<const TypeBase&>(v);
       return TreeNode(new DataNode(t, table.column(t.name()), capacity, children));
     });

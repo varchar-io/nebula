@@ -64,7 +64,9 @@ public:
       shift += key->width();
       colMap_[key->name()] = i;
     }
+
     capacity_ = offset;
+    bessBits_ = shift;
   }
 
   // max number of blocks = product of (Ki spaces)
@@ -167,6 +169,11 @@ public:
     return spaces;
   }
 
+  // total bytes needed to store each bess value
+  inline size_t bessBits() const {
+    return bessBits_;
+  }
+
 private:
   KeyList keys_;
   // column name to index mapping for keys
@@ -175,6 +182,8 @@ private:
   std::vector<size_t> offsets_;
   // shifts for each key to compute BESS
   std::vector<size_t> shifts_;
+  // bess width = sum of shifts_
+  size_t bessBits_;
   size_t capacity_;
 };
 

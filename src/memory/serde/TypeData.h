@@ -50,6 +50,8 @@ public:
 
   virtual size_t capacity() const = 0;
 
+  virtual void seal() = 0;
+
 protected:
   // data size in slice_
   size_t size_;
@@ -116,6 +118,10 @@ public:
     return default_;
   }
 
+  inline virtual void seal() override {
+    slice_.seal();
+  }
+
 private:
   // memory chunk managed by paged slice
   nebula::common::PagedSlice slice_;
@@ -172,6 +178,10 @@ public:
 
   inline bool hasBloomFilter() const {
     return hasBf_;
+  }
+
+  inline void seal() {
+    data_->seal();
   }
 
 private:

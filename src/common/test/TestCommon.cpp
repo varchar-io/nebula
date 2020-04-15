@@ -21,6 +21,7 @@
 #include <valarray>
 #include <xxh3.h>
 
+#include "common/Bits.h"
 #include "common/Chars.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
@@ -890,6 +891,87 @@ TEST(CommonTest, TestSparkAlgo) {
                 << ", bucket=" << bucket;
       EXPECT_EQ(1211, bucket);
     }
+  }
+}
+
+TEST(CommonTest, TestBitsRW) {
+  // write 5 bits each time
+  constexpr auto BITS = 5;
+  constexpr auto BYTES = 1024;
+  // max number of value can fit in the slice without extension
+  constexpr auto LIMIT = BYTES * 8 / BITS;
+  const auto MAX = (size_t)std::pow(2, 5) - 1;
+  std::vector<size_t> values;
+  values.reserve(LIMIT);
+
+  nebula::common::ExtendableSlice slice(BYTES);
+  // test single value
+  slice.writeBits(0, BITS, 1);
+  EXPECT_EQ(slice.readBits(0, BITS), 1);
+
+  LOG(INFO) << "LIMIT: " << LIMIT;
+  // inclusive range [0, MAX]
+  auto r = nebula::common::Evidence::rand<size_t>(0, MAX);
+  for (auto i = 0; i < LIMIT - 2; ++i) {
+    auto v = r();
+    values.push_back(v);
+    N_ENSURE_LE(v, MAX, "value expected to be in range");
+    slice.writeBits(i * BITS, BITS, v);
+  }
+
+  // verify slice has no growth
+  EXPECT_EQ(slice.capacity(), BYTES);
+
+  // write one more value, slice will double its capacity
+  values.push_back(MAX);
+  values.push_back(MAX);
+  slice.writeBits((LIMIT - 2) * BITS, BITS, MAX);
+  slice.writeBits((LIMIT - 1) * BITS, BITS, MAX);
+  EXPECT_EQ(slice.capacity(), BYTES * 2);
+
+  // verify reading back all values match
+  auto size = values.size();
+  for (size_t i = 0; i < size; ++i) {
+    size_t v = slice.readBits(i * BITS, BITS);
+    EXPECT_EQ(v, values.at(i));
+  }
+  LOG(INFO) << "Values read, write and verified: " << size;
+}
+
+TEST(CommonTest, TestBitsOps) {
+  nebula::common::Byte::print();
+
+  uint8_t byte;
+  // bits: 4
+  nebula::common::Byte::write(&byte, 0, 4, 7);
+  nebula::common::Byte::write(&byte, 4, 4, 5);
+  EXPECT_EQ(nebula::common::Byte::read(&byte, 0, 4), 7);
+  EXPECT_EQ(nebula::common::Byte::read(&byte, 4, 4), 5);
+
+  // bits: 3, write 3 values
+  nebula::common::Byte::write(&byte, 0, 3, 7);
+  nebula::common::Byte::write(&byte, 3, 3, 6);
+  nebula::common::Byte::write(&byte, 6, 3, 2);
+  EXPECT_EQ(nebula::common::Byte::read(&byte, 0, 3), 7);
+  EXPECT_EQ(nebula::common::Byte::read(&byte, 3, 3), 6);
+  EXPECT_EQ(nebula::common::Byte::read(&byte, 6, 3), 2);
+
+  // bits: 2, write 4 values
+  nebula::common::Byte::write(&byte, 0, 2, 1);
+  nebula::common::Byte::write(&byte, 2, 2, 3);
+  nebula::common::Byte::write(&byte, 4, 2, 2);
+  nebula::common::Byte::write(&byte, 6, 2, 3);
+  EXPECT_EQ(nebula::common::Byte::read(&byte, 0, 2), 1);
+  EXPECT_EQ(nebula::common::Byte::read(&byte, 2, 2), 3);
+  EXPECT_EQ(nebula::common::Byte::read(&byte, 4, 2), 2);
+  EXPECT_EQ(nebula::common::Byte::read(&byte, 6, 2), 3);
+
+  // bits: 1, write 8 values
+  for (auto i = 0; i < 8; ++i) {
+    nebula::common::Byte::write(&byte, i, 1, i % 2);
+  }
+  for (auto i = 0; i < 8; ++i) {
+    EXPECT_EQ(nebula::common::Byte::read(&byte, i, 1), i % 2);
   }
 }
 

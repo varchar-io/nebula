@@ -64,12 +64,13 @@ public:
     : node_{ 0 }, id_{ id }, children_(children.begin(), children.end()) {}
   virtual ~TreeBase() = default;
 
+public:
   // avoid type conversion, so a tree Node should pass the exact type of the node as S
   // use D to define the return type
   template <typename D, typename S>
-  D treeWalk(
+  D walk(
     std::function<void(const S&)> prev,
-    std::function<D(const S&, std::vector<D>&)> post) const {
+    std::function<D(const S&, const std::vector<D>&)> post) const {
     // only apply on valid PREV procedure
     if (prev) {
       prev(static_cast<const S&>(*this));
@@ -78,14 +79,15 @@ public:
     // only apply on valid POST procedure
     if (post) {
       std::vector<D> results;
+      results.reserve(size());
       for (auto& child : children_) {
-        results.push_back(child->template treeWalk<D>(prev, post));
+        results.push_back(child->template walk<D>(prev, post));
       }
 
       return post(static_cast<const S&>(*this), results);
     } else {
       for (auto& child : children_) {
-        child->template treeWalk<D>(prev, {});
+        child->template walk<D>(prev, {});
       }
 
       return D();
@@ -94,12 +96,13 @@ public:
 
   // generic method without knowing the node type
   template <typename D>
-  D treeWalk(
+  D walk(
     std::function<void(const TreeBase&)> prev,
-    std::function<D(const TreeBase&, std::vector<D>&)> post) const {
-    return this->template treeWalk<D, TreeBase>(prev, post);
+    std::function<D(const TreeBase&, const std::vector<D>&)> post) const {
+    return this->template walk<D, TreeBase>(prev, post);
   }
 
+public:
   inline size_t getId() const {
     return id_;
   }
@@ -108,15 +111,24 @@ public:
     return node_;
   }
 
+  inline TreeNode childAt(size_t index) {
+    N_ENSURE(index < children_.size(), "index out of bound");
+    return children_[index];
+  }
+
+  inline size_t size() const noexcept {
+    return children_.size();
+  }
+
   // assign NODE ID to all nodes in the type tree
   // The ID allocation is sequence number in depth-first tree traverse
   // While ROOT has node ID as 0
   // return largest NODE ID = number of nodes in the tree
   size_t assignNodeId(size_t start = ROOT) {
     size_t node = start;
-    auto last = treeWalk<size_t>(
+    auto last = walk<size_t>(
       [&node](const auto& v) { const_cast<TreeBase&>(v).node_ = node++; },
-      [&node](const auto&, std::vector<size_t>&) { return node; });
+      [&node](const auto&, const std::vector<size_t>&) { return node; });
 
     N_ENSURE_EQ(node, last, "last node should match");
     return last;
@@ -150,25 +162,16 @@ public:
   virtual ~Tree() = default;
 
   /* Basic Tree APIs */
-  template <typename R>
+  template <typename R = T>
   Tree<R>& childAt(size_t index) {
-    return *std::static_pointer_cast<Tree<R>>(childAt(index));
-  }
-
-  TreeNode childAt(size_t index) {
-    N_ENSURE(index >= 0 && index < children_.size(), "index out of bound");
-    return children_[index];
-  }
-
-  inline size_t size() const {
-    return children_.size();
+    return *std::static_pointer_cast<Tree<R>>(TreeBase::childAt(index));
   }
 
   const T& value() const {
     return data_;
   }
 
-  template <typename R>
+  template <typename R = T>
   Tree<R>& addChild(std::shared_ptr<Tree<R>> child) {
     children_.push_back(child);
     return childAt<R>(size() - 1);

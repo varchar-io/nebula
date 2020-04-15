@@ -230,9 +230,9 @@ std::shared_ptr<RowType> TypeSerializer::from(const std::string& text) {
   auto root = parser.parse();
 
   // walk this node tree before transforming it to a RowType
-  auto typeTree = root->treeWalk<TreeNode, Node>(
-    [](const auto&) {},
-    [](const auto& node, std::vector<TreeNode>& children) {
+  auto typeTree = root->walk<TreeNode, Node>(
+    {},
+    [](const auto& node, const std::vector<TreeNode>& children) {
       switch (node.token.type) {
         SCALAR_TYPE_CREATE(TBOOLEAN, BoolType)
         SCALAR_TYPE_CREATE(TTINYINT, ByteType)
@@ -282,9 +282,9 @@ static auto convert(const Type<K>& t) -> typename std::enable_if<TypeTraits<K>::
 
 std::string TypeSerializer::to(const std::shared_ptr<RowType> row) {
   // walk this tree and print all its name
-  return row->treeWalk<std::string>(
-    [](const auto&) {},
-    [](const auto& v, std::vector<std::string>& children) {
+  return row->walk<std::string>(
+    {},
+    [](const auto& v, const std::vector<std::string>& children) {
       auto id = v.getId();
       auto kind = static_cast<Kind>(id);
       // dispatch the handling
@@ -302,13 +302,17 @@ std::string TypeSerializer::to(const std::shared_ptr<RowType> row) {
         N_ENSURE_EQ(children.size(), 1, "list type has single child");
         const auto& list = dynamic_cast<const ListType&>(v);
         const auto& name = list.name();
-        return name.length() > 0 ? fmt::format("{0}:ARRAY<{1}>", name, children[0]) : fmt::format("ARRAY<{0}>", children[0]);
+        return name.length() > 0 ?
+                 fmt::format("{0}:ARRAY<{1}>", name, children[0]) :
+                 fmt::format("ARRAY<{0}>", children[0]);
       }
       case Kind::MAP: {
         N_ENSURE_EQ(children.size(), 2, "map type has two children");
         const auto& map = dynamic_cast<const MapType&>(v);
         const auto& name = map.name();
-        return name.length() > 0 ? fmt::format("{0}:MAP<{1}, {2}>", name, children[0], children[1]) : fmt::format("MAP<{0}, {1}>", children[0], children[1]);
+        return name.length() > 0 ?
+                 fmt::format("{0}:MAP<{1}, {2}>", name, children[0], children[1]) :
+                 fmt::format("MAP<{0}, {1}>", children[0], children[1]);
       }
       case Kind::STRUCT: {
         N_ENSURE_GT(children.size(), 0, "struct type has at least one child");
@@ -321,7 +325,9 @@ std::string TypeSerializer::to(const std::shared_ptr<RowType> row) {
           buffer << children[i];
         }
 
-        return name.length() > 0 ? fmt::format("{0}:STRUCT<{1}>", name, buffer.str()) : fmt::format("STRUCT<{0}>", buffer.str());
+        return name.length() > 0 ?
+                 fmt::format("{0}:STRUCT<{1}>", name, buffer.str()) :
+                 fmt::format("STRUCT<{0}>", buffer.str());
       }
       default:
         throw NException(fmt::format("Not supported type: {0}", id));

@@ -236,7 +236,8 @@ TEST(TypeTest, TestSerdeRoundTrip) {
     LOG(INFO) << "Deserialized a type tree with number of columns: " << type->size();
     // assign node ID to the schema
     LOG(INFO) << "Total Nodes: " << type->assignNodeId(0);
-    type->treeWalk<size_t>([](const auto& v) { LOG(INFO) << "NODE: n=" << v.getNode() << ",id=" << v.getId(); }, {});
+    type->walk<size_t>([](auto& v) { LOG(INFO) << "NODE: n=" << v.getNode() << ",id=" << v.getId(); },
+                           {});
     auto serialized = TypeSerializer::to(type);
     LOG(INFO) << "Serialize the tree to schema: " << serialized;
 

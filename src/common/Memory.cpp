@@ -19,6 +19,8 @@
 #include <gflags/gflags.h>
 #include <lz4.h>
 
+#include "Bits.h"
+
 DEFINE_bool(ALLOC_CHECK, false, "check allocation and fail it grows too much");
 
 namespace nebula {
@@ -93,6 +95,77 @@ size_t ExtendableSlice::copy(NByte* buffer, size_t offset, size_t length) const 
   return length;
 }
 
+void ExtendableSlice::seal(size_t max) {
+  if (ownbuffer_) {
+    auto wasted = capacity() - max;
+    if (wasted >= max || wasted >= 1024) {
+      // Do we need alignment here to improvement fragmentation?
+      auto buffer = pool_.allocate(max);
+      N_ENSURE_NOT_NULL(buffer, "buffer not null");
+      std::memcpy(buffer, ptr_, max);
+      pool_.free(static_cast<void*>(ptr_), size_);
+      ptr_ = static_cast<NByte*>(buffer);
+      size_ = max;
+    }
+  }
+}
+
+// write value at position for width of bits
+// bits can not be larger than 64 (8 bytes)
+size_t ExtendableSlice::writeBits(size_t pos, int bits, size_t value) {
+  // ensure we have enough bytes in allocation
+  const auto totalBits = (pos + bits);
+  ensure(totalBits / 8 + ((totalBits % 8 == 0) ? 0 : 1));
+
+  // the starting byte and bit (offset in memory chunk) to work on
+  const auto start = pos / 8;
+  auto byte = start;
+  auto bit = pos % 8;
+
+  // auto decrement bits as we work on byte by byte
+  auto p = (uint8_t*)ptr_;
+  while (bits > 0) {
+    // fit bit from value in reverse order for current byte
+    Byte::write(p + byte, bit, bits, value);
+
+    // move to next byte to work on.
+    auto delta = 8 - bit;
+    bits -= delta;
+    value >>= delta;
+
+    bit = 0;
+    ++byte;
+  }
+
+  return byte - start;
+}
+
+size_t ExtendableSlice::readBits(size_t pos, int bits) const {
+  size_t value = 0;
+  // the starting byte and bit (offset in memory chunk) to work on
+  const auto start = pos / 8;
+  auto byte = start;
+  auto bit = pos % 8;
+  auto shift = 0;
+
+  // auto decrement bits as we work on byte by byte
+  auto p = (uint8_t*)ptr_;
+  while (bits > 0) {
+    // fit bit from value in reverse order for current byte
+    size_t v = Byte::read(p + byte, bit, bits);
+    value |= v << shift;
+
+    // move to next byte to work on.
+    auto delta = 8 - bit;
+    bits -= delta;
+    shift += delta;
+    bit = 0;
+    ++byte;
+  }
+
+  return value;
+}
+
 size_t PagedSlice::write(size_t position, const NByte* data, size_t size) {
   // case like empty string
   if (size == 0) {
@@ -149,6 +222,29 @@ void PagedSlice::ensure(size_t size) {
   }
 }
 
+// release unused memory
+// if current slice has compression blocks, the buffer is to be used soon
+// otherwise, we decide reallocation based on wasted bytes and percentage
+void PagedSlice::seal() {
+  // if buffer is valid
+  N_ENSURE(ownbuffer_, "buffer is owned");
+
+  // we are asking at least keep a word in the buffer
+  const auto validSize = write_.size;
+  auto wasted = size_ - validSize;
+  // wasted is more than valid or absolute value is more than 4KB
+  // let's reclaim it
+  if (wasted >= validSize || wasted >= 1024) {
+    // Do we need alignment here to improvement fragmentation?
+    auto buffer = pool_.allocate(validSize);
+    N_ENSURE_NOT_NULL(buffer, "buffer not null");
+    std::memcpy(buffer, ptr_, validSize);
+    pool_.free(static_cast<void*>(ptr_), size_);
+    ptr_ = static_cast<NByte*>(buffer);
+    size_ = validSize;
+  }
+}
+
 // compress current buffer and link it to the chain
 // recording the data range for this block [x-index_, x]
 void PagedSlice::compress(size_t position) {
@@ -162,26 +258,21 @@ void PagedSlice::compress(size_t position) {
   // if codec is not-compressed, we just put this slice in
   if (type_ == folly::io::CodecType::NO_COMPRESSION) {
     std::memcpy(slice->ptr(), ptr_, srcSize);
-    blocks_.emplace_back(write_, false, std::move(slice));
+    blocks_.emplace_front(write_, false, std::move(slice));
   } else {
     auto compressedSize = LZ4_compress_default((char*)ptr_, (char*)slice->ptr(), srcSize, srcSize);
 
     // not good to compress, keep it as raw
     if (compressedSize == 0) {
       std::memcpy(slice->ptr(), ptr_, srcSize);
-      blocks_.emplace_back(write_, false, std::move(slice));
+      blocks_.emplace_front(write_, false, std::move(slice));
     } else {
       // copy into a smaller buffer
       auto fit = std::make_unique<OneSlice>(compressedSize);
       std::memcpy(fit->ptr(), slice->ptr(), compressedSize);
-      blocks_.emplace_back(write_, true, std::move(fit));
+      blocks_.emplace_front(write_, true, std::move(fit));
     }
   }
-
-  // compressed block may not be better - we can store original one
-  // LOG(INFO) << "Compression a buffer by position=" << position
-  //           << ", raw size=" << write_.size
-  //           << ", compressed size=" << result->length();
 
   // reset the buffer
   N_ENSURE_EQ(write_.offset + write_.size, position, "unexpected position");
@@ -201,15 +292,16 @@ void PagedSlice::uncompress(size_t position) const {
       // auto raw = codec_->uncompress(, block.range.size);
       auto compressedSize = block.data->size();
 
-      // prepare the read buffer for this block
-      if (buffer_ == nullptr || buffer_->size() < block.range.size) {
-        *const_cast<std::unique_ptr<OneSlice>*>(&buffer_) = std::make_unique<OneSlice>(block.range.size);
-      }
-
       N_ENSURE(type_ == folly::io::CodecType::NO_COMPRESSION || type_ == folly::io::CodecType::LZ4,
                "only supporting LZ4 or NONE for now");
       if (block.compressed) {
-        auto ret = (uint32_t)LZ4_decompress_safe((char*)block.data->ptr(), (char*)buffer_->ptr(), compressedSize, size_);
+        // prepare the read buffer for this block
+        if (buffer_ == nullptr || buffer_->size() < block.range.size) {
+          auto buffer = std::make_unique<OneSlice>(block.range.size);
+          buffer.swap(const_cast<std::unique_ptr<OneSlice>&>(buffer_));
+        }
+
+        auto ret = (uint32_t)LZ4_decompress_safe((char*)block.data->ptr(), (char*)buffer_->ptr(), compressedSize, buffer_->size());
         N_ENSURE_EQ(ret, block.range.size, "raw data size mismatches.");
         *const_cast<NByte**>(&bufferPtr_) = buffer_->ptr();
       } else {
@@ -218,10 +310,6 @@ void PagedSlice::uncompress(size_t position) const {
 
       // TODO(cao) - sorry to use const_cast here as we want to keep read interfaces as const methods
       *const_cast<CRange*>(&read_) = block.range;
-      // LOG(INFO) << "Decompress a block for position =" << position
-      //           << ", raw size=" << read_.size
-      //           << ", compress size=" << compressedSize
-      //           << ", buffer size=" << size_;
       return;
     }
   }

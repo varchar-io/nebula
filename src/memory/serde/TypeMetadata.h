@@ -153,6 +153,14 @@ public:
     if (dict_) {
       dict_->seal();
     }
+
+    // shrink bitmap
+    nulls_.shrinkToFit();
+
+    // seal the slice to release unused memory
+    if (offsetSize_) {
+      offsetSize_->seal();
+    }
   }
 
   inline bool hasDefault() const {

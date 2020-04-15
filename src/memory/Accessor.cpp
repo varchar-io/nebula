@@ -37,7 +37,7 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
 
   // populate all dimension values encoded in bess
   if (batch_.pod_ != nullptr) {
-    bessValue_ = batch_.bess_.read<BessType>(current_ * sizeof(BessType));
+    bessValue_ = batch_.bess_.readBits(current_ * batch_.bessBits_, batch_.bessBits_);
   }
 
   return *this;

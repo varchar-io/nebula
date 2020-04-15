@@ -276,7 +276,7 @@ public:
 public:
   TypeNode childType(size_t index) {
     // Tip: "this->" is needed when accessing base's member and base is a template.
-    TreeNode node = this->childAt(index);
+    TreeNode node = TreeBase::childAt(index);
     return std::dynamic_pointer_cast<TypeBase>(node);
   }
 

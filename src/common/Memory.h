@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/compression/Compression.h>
+#include <forward_list>
 #include <glog/logging.h>
 #include <iostream>
 #include <numeric>
@@ -162,7 +163,11 @@ public:
     return write(position, (NByte*)data, length);
   }
 
-  size_t write(size_t position, const NByte* data, size_t length);
+  // write byte array to given position and length
+  size_t write(size_t, const NByte*, size_t);
+
+  // write bits into the memory
+  size_t writeBits(size_t, int, size_t);
 
   // append a data object at position using sizeof to determine its size
   template <typename T>
@@ -199,6 +204,9 @@ public:
     return std::string_view((char*)this->ptr_ + position, length);
   }
 
+  // read bits from positin and bits width
+  size_t readBits(size_t, int) const;
+
   // compute hash of bytes range
   inline size_t hash(size_t position, size_t length) const noexcept {
     return Hasher::hash64(this->ptr_ + position, length);
@@ -227,6 +235,9 @@ public:
 
   // copy current slice data into a given buffer
   size_t copy(NByte*, size_t, size_t) const;
+
+  // seal the slice - reduce memory if unused
+  void seal(size_t);
 
 private:
   // ensure capacity of memory allocation
@@ -326,7 +337,6 @@ public:
       read_{ 0, 0 },
       type_{ type },
       codec_{ folly::io::getCodec(type) } {
-    blocks_.reserve(64);
   }
   ~PagedSlice() = default;
 
@@ -387,6 +397,9 @@ public:
   // read a string
   std::string_view read(size_t, size_t) const;
 
+  // seal the slice and no more writes expected
+  void seal();
+
 private:
   // ensure the buffer is big enough to hold single item
   void ensure(size_t);
@@ -405,7 +418,7 @@ private:
 
   // compressed blocks, to reduce block locating time,
   // we should keep number of blocks as small as possible, ideal size <32
-  std::vector<CompressionBlock> blocks_;
+  std::forward_list<CompressionBlock> blocks_;
 
   // TODO(cao) - we may introduce a reader to have these states rather than mix them here
   // indicating what range of raw data current buffer holds the uncompressed data

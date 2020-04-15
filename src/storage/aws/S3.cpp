@@ -131,6 +131,27 @@ std::string S3::copy(const std::string& key) {
   objReq.SetBucket(this->bucket_);
   objReq.SetKey(key);
 
+  // construct a tmp file name from std io lib
+  // local file name tmeplate to copy data into
+  char f[] = "/tmp/nebula.s3.XXXXXX";
+  int ret = mkstemp(f);
+  N_ENSURE(ret != -1, "Failed to create temp file");
+
+  // create an out stream and copy data from S3 stream to it
+  // This method will stream data into memory instead of going to disk directly
+  // std::ofstream output(tmpFile, std::ios::binary);
+  // auto& retrieved = content.GetBody();
+  // output << retrieved.rdbuf();
+  // if (output.tellp() == 0) {
+  //   LOG(WARNING) << "Seen an empty file: " << key;
+  //   return {};
+  // }
+
+  // set the response to stream into the file
+  objReq.SetResponseStreamFactory([f]() {
+    return Aws::New<Aws::FStream>("s3", f, std::ios_base::out | std::ios_base::binary);
+  });
+
   // Get the object
   auto result = s3client().GetObject(objReq);
   if (result.IsSuccess()) {
@@ -143,26 +164,8 @@ std::string S3::copy(const std::string& key) {
       return {};
     }
 
-    auto& retrieved = content.GetBody();
-
-    // construct a tmp file name from std io lib
-    // local file name tmeplate to copy data into
-    char tmpFile[] = "/tmp/nebula.s3.XXXXXX";
-    int ret = mkstemp(tmpFile);
-    N_ENSURE(ret != -1, "Failed to create temp file");
-
-    // create an out stream and copy data from S3 stream to it
-    std::ofstream output(tmpFile, std::ios::binary);
-    output << retrieved.rdbuf();
-
-    // if nothing output - empty file
-    if (output.tellp() == 0) {
-      LOG(WARNING) << "Seen an empty file: " << key;
-      return {};
-    }
-
     // return a copy of file
-    return tmpFile;
+    return f;
   }
 
   auto error = result.GetError();

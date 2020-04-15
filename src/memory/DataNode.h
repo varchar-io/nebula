@@ -138,31 +138,28 @@ public: // basic metadata exposure
     meta_->seal();
 
     // rollup the storage size and storage allocation
-    if (data_ != nullptr) {
-      using SizeMeta = std::tuple<size_t, size_t>;
-      auto s = treeWalk<SizeMeta, DataNode>(
-        [](const DataNode&) {},
-        [](const DataNode& v, std::vector<SizeMeta>& children) {
-          size_t allocation = 0;
-          size_t size = 0;
-          if (v.data_) {
-            size = v.data_->size();
-            allocation = v.data_->capacity();
-          }
+    size_t alloc = 0;
+    size_t size = 0;
+    for (size_t i = 0, count = TreeBase::size(); i < count; ++i) {
+      // seal this child
+      auto child = this->childAt(i).value();
+      child->seal();
 
-          for (const auto& c : children) {
-            size += std::get<0>(c);
-            allocation += std::get<1>(c);
-          }
-
-          return std::make_tuple(size, allocation);
-        });
-
-      // only aggregate to the root,
-      // what if we want to aggregate to every node
-      size_ = std::get<0>(s);
-      storage_ = std::get<1>(s);
+      // accumulate its size and allocation into current
+      size += child->storageSize();
+      alloc += child->storageAllocation();
     }
+
+    // accumulate my metrics
+    if (data_) {
+      data_->seal();
+      size += data_->size();
+      alloc += data_->capacity();
+    }
+
+    // update my own size_ and storage_
+    size_ = size;
+    storage_ = alloc;
   }
 
 private:

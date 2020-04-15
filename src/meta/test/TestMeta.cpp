@@ -182,7 +182,10 @@ TEST(MetaTest, TestPod) {
   nebula::meta::Pod pod{ std::move(keys) };
   auto capacity = pod.capacity();
   auto numKeys = pod.numKeys();
-  LOG(INFO) << "the pod with " << numKeys << " dimensions has max blocks: " << capacity;
+  auto bessWidth = pod.bessBits();
+  LOG(INFO) << "the pod with " << numKeys
+            << " dimensions has max blocks: " << capacity
+            << ", each bess value length=" << bessWidth;
 
   // list offset for each key: 1, 3, 9
   for (size_t i = 0; i < numKeys; ++i) {
