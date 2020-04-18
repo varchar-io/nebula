@@ -17,8 +17,10 @@
 #pragma once
 
 #include <glog/logging.h>
+
 #include "NNode.h"
 #include "Table.h"
+#include "common/Evidence.h"
 
 /**
  * Define nebula table and system metadata 
@@ -30,6 +32,39 @@
  */
 namespace nebula {
 namespace meta {
+
+using TablePtr = std::shared_ptr<nebula::meta::Table>;
+
+class TableRegistry {
+public:
+  explicit TableRegistry(const TablePtr table, size_t stl = 0)
+    : table_{ table }, stl_{ stl } {
+    activate();
+  }
+
+public:
+  // check if current registry is expired
+  inline bool expired() const {
+    return stl_ > 0 && active_ + stl_ < nebula::common::Evidence::unix_timestamp();
+  }
+
+  inline void activate() {
+    active_ = nebula::common::Evidence::unix_timestamp();
+  }
+
+  inline TablePtr table() const {
+    return table_;
+  }
+
+private:
+  TablePtr table_;
+  // last active time stamp
+  size_t active_;
+  // seconds to live: if active + stl exceeds current time
+  // the table registry is expired and will be removed
+  size_t stl_;
+};
+
 class MetaService {
 protected:
   MetaService() = default;
@@ -37,8 +72,9 @@ protected:
 public:
   virtual ~MetaService() = default;
 
-  virtual std::shared_ptr<Table> query(const std::string& name) {
-    return std::make_shared<Table>(name);
+  virtual TableRegistry& query(const std::string& name) {
+    static auto EMPTY = TableRegistry{ std::make_shared<Table>(name) };
+    return EMPTY;
   }
 
   virtual std::vector<NNode> queryNodes(const std::shared_ptr<Table>, std::function<bool(const NNode&)>) {

@@ -90,7 +90,7 @@ public:
     return x.sign_ == y.sign_;
   }
 
-  inline const std::string& getTable() const {
+  inline const std::string& table() const {
     return sign_.table;
   }
 

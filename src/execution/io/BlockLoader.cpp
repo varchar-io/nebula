@@ -36,9 +36,9 @@ using nebula::meta::NBlock;
 using nebula::meta::TestTable;
 using nebula::surface::MockRowData;
 
-BatchBlock BlockLoader::from(const BlockSignature& sign, std::shared_ptr<nebula::memory::Batch> b) {
+std::shared_ptr<BatchBlock> BlockLoader::from(const BlockSignature& sign, std::shared_ptr<nebula::memory::Batch> b) {
   N_ENSURE_NOT_NULL(b, "requires a solid batch");
-  return BatchBlock(sign, b, BlockState{ b->getRows(), b->getMemory() });
+  return std::make_shared<BatchBlock>(sign, b, BlockState{ b->getRows(), b->getMemory() });
 }
 
 BlockList BlockLoader::load(const BlockSignature& block) {
@@ -132,7 +132,7 @@ BlockList BlockLoader::loadTestBlock(const BlockSignature& b) {
   BlockList blocks;
   for (auto& itr : batches) {
     auto block = itr.second;
-    blocks.push_front(BatchBlock{
+    blocks.push_front(std::make_shared<BatchBlock>(
       BlockSignature{
         b.table,
         b.id * 10 + itr.first,
@@ -140,7 +140,7 @@ BlockList BlockLoader::loadTestBlock(const BlockSignature& b) {
         b.end,
         b.spec },
       block,
-      { block->getRows(), block->getRawSize() } });
+      BlockState{ block->getRows(), block->getRawSize() }));
   }
 
   return blocks;

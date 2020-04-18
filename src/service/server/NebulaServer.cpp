@@ -103,7 +103,14 @@ Status V1ServiceImpl::Tables(ServerContext*, const ListTables* request, TableLis
     limit = FLAGS_MAX_TABLES_RETURN;
   }
 
-  for (const auto& table : bm->getTables(limit)) {
+  for (const auto& table : bm->tables(limit)) {
+    // non-existing table has data in system.
+    // kinda of leak, log a warning.
+    if (!TableService::singleton()->exists(table)) {
+      LOG(WARNING) << "Found data for non-existing table.";
+      continue;
+    }
+
     reply->add_table(table);
   }
 
@@ -112,19 +119,24 @@ Status V1ServiceImpl::Tables(ServerContext*, const ListTables* request, TableLis
 }
 
 Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, TableStateResponse* reply) {
-  LOG(INFO) << "Look up state for table " << request->table();
-  const auto table = TableService::singleton()->query(request->table());
+  const auto& tbl = request->table();
+  LOG(INFO) << "Look up state for table " << tbl;
+  if (tbl.size() == 0) {
+    return Status::CANCELLED;
+  }
+
+  auto table = TableService::singleton()->query(tbl).table();
   auto bm = BlockManager::init();
   // query the table's state
-  auto metrics = bm->getTableMetrics(table->name());
-  reply->set_blockcount(std::get<0>(metrics));
-  reply->set_rowcount(std::get<1>(metrics));
-  reply->set_memsize(std::get<2>(metrics));
-  reply->set_mintime(std::get<3>(metrics));
-  reply->set_maxtime(std::get<4>(metrics));
+  auto metrics = bm->metrics(table->name());
+  reply->set_blockcount(metrics.numBlocks());
+  reply->set_rowcount(metrics.numRows());
+  reply->set_memsize(metrics.rawBytes());
+  auto window = metrics.timeWindow();
+  reply->set_mintime(window.first);
+  reply->set_maxtime(window.second);
 
   // TODO(cao) - need meta data system to query table info
-
   auto schema = table->schema();
   for (size_t i = 0, size = schema->size(); i < size; ++i) {
     auto column = schema->childType(i);
@@ -194,16 +206,23 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   // get request content
   const auto& table = req->table();
   const auto& paramsJson = req->paramsjson();
-  const auto ttlHour = req->ttl() / 3600;
+  // STL = TTL in seconds
+  const auto stl = req->ttl();
+  const auto ttlHour = stl / 3600;
 
   // search the template from ClusterInfo
   auto& ci = nebula::meta::ClusterInfo::singleton();
-  TableSpecPtr tmp;
+  TableSpecPtr tmp = nullptr;
   for (auto& ts : ci.tables()) {
     if (table == ts->name) {
       tmp = ts;
       break;
     }
+  }
+
+  if (tmp == nullptr) {
+    reply->set_error(LoadError::TEMPLATE_NOT_FOUND);
+    return Status::CANCELLED;
   }
 
   // based on parameters, we will generate a list of sources
@@ -233,7 +252,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
     tmp->settings);
 
   // pattern must be present in settings
-  nebula::execution::meta::TableService::singleton()->enroll(tbSpec->to());
+  nebula::execution::meta::TableService::singleton()->enroll(tbSpec->to(), stl);
 
   // by comparing the paramsJson value in table settings
   rapidjson::Document cd;
@@ -267,11 +286,10 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
     // if bucket is required, bucket column value must be provided
     // but if bucket parameter is provided directly, we don't need to compute
     auto bucketCount = tbSpec->bucketInfo.count;
-    std::string bucket = "";
     if (p.find(BUCKET) == p.end() && bucketCount > 0) {
       // TODO(cao) - short term dependency, if Spark changes its hash algo, this will be broken
       auto bcValue = folly::to<size_t>(p.at(tbSpec->bucketInfo.bucketColumn));
-      bucket = std::to_string(nebula::common::Spark::hashBucket(bcValue, bucketCount));
+      auto bucket = std::to_string(nebula::common::Spark::hashBucket(bcValue, bucketCount));
 
       // TODO(cao) - ugly code, how can we avoid this?
       auto width = std::log10(bucketCount) + 1;
@@ -310,7 +328,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
     threadPool.add([promise, connector, spec, &threadPool]() {
       auto client = connector->makeClient(spec->affinity(), threadPool);
       // build a task out of this spec
-      Task t(TaskType::INGESTION, std::static_pointer_cast<nebula::common::Signable>(spec));
+      Task t(TaskType::INGESTION, std::static_pointer_cast<nebula::common::Signable>(spec), true);
       nebula::common::TaskState state = client->task(t);
       if (state == nebula::common::TaskState::SUCCEEDED) {
         spec->setState(SpecState::READY);
@@ -353,11 +371,12 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
 
   auto tableName = request->table();
 
-  // get the table
-  auto table = TableService::singleton()->query(tableName);
+  // get the table registry and activate it by recording latest used time
+  auto tr = TableService::singleton()->query(tableName);
+  tr.activate();
 
   // build the query
-  auto query = handler_.build(*table, *request, error);
+  auto query = handler_.build(*tr.table(), *request, error);
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }

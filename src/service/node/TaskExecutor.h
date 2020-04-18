@@ -43,14 +43,38 @@ public:
 public:
   void process(std::function<void()>, folly::ThreadPoolExecutor&);
 
-  nebula::common::TaskState enqueue(const nebula::common::Task&);
+  // put the task in async queue
+  nebula::common::TaskState enqueue(nebula::common::Task);
+
+  // execute the task in current thread as in-sync
+  nebula::common::TaskState execute(nebula::common::Task);
 
 private:
   bool process(const nebula::common::Task&);
 
-  inline void setState(const std::string& sign, nebula::common::TaskState state) noexcept {
+  inline void setState(nebula::common::TaskType type,
+                       const std::string& sign,
+                       nebula::common::TaskState state) noexcept {
+    // expiration task can be issued repeatedly
+    if (type == nebula::common::TaskType::EXPIRATION) {
+      state_.erase(sign);
+      return;
+    }
+
     std::lock_guard<std::mutex> guard(stateLock_);
     state_[sign] = state;
+  }
+
+  nebula::common::TaskState search(const std::string& sign) const noexcept {
+    // unique ID in the running system to avoid duplicate task
+    auto itr = state_.find(sign);
+
+    // found this task, it is already acked
+    if (itr != state_.end()) {
+      return itr->second;
+    }
+
+    return nebula::common::TaskState::NOTFOUND;
   }
 
 private:

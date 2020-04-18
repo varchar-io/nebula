@@ -178,7 +178,7 @@ TEST(ApiTest, TestExprValueEval) {
   auto expected2 = id1 * 2 + 10 - (id2 / 4);
 
   auto ms = TableService::singleton();
-  auto tbl = ms->query("nebula.test");
+  auto tbl = ms->query("nebula.test").table();
   expr.type(*tbl);
   expr2.type(*tbl);
   auto v1 = expr.asEval();

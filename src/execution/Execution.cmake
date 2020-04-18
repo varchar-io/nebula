@@ -15,7 +15,8 @@ add_library(${NEBULA_EXEC} STATIC
     ${NEBULA_SRC}/execution/op/Operator.cpp
     ${NEBULA_SRC}/execution/serde/RowCursorSerde.cpp
     ${NEBULA_SRC}/execution/BlockManager.cpp
-    ${NEBULA_SRC}/execution/ExecutionPlan.cpp)
+    ${NEBULA_SRC}/execution/ExecutionPlan.cpp
+    ${NEBULA_SRC}/execution/TableState.cpp)
 
 target_link_libraries(${NEBULA_EXEC}
     PUBLIC ${NEBULA_COMMON}

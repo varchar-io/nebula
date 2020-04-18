@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <vector>
+
+#include "common/Evidence.h"
 #include "execution/BlockManager.h"
 #include "meta/ClusterInfo.h"
 #include "meta/MetaService.h"
@@ -32,7 +35,6 @@ namespace nebula {
 namespace execution {
 namespace meta {
 
-using TablePtr = std::shared_ptr<nebula::meta::Table>;
 class TableService : public nebula::meta::MetaService {
 
 private:
@@ -53,13 +55,14 @@ public:
   }
 
 public:
-  virtual std::shared_ptr<nebula::meta::Table> query(const std::string& name) override {
+  virtual nebula::meta::TableRegistry& query(const std::string& name) override {
     auto it = tables_.find(name);
     if (it != tables_.end()) {
-      return it->second;
+      return *(it->second);
     }
 
-    return std::make_shared<nebula::meta::Table>(name);
+    // use base default implementation
+    return MetaService::query(name);
   }
 
   virtual std::vector<nebula::meta::NNode> queryNodes(
@@ -69,20 +72,40 @@ public:
   // TODO(cao) - currently the data source of table definition is from system configs
   // this system wide truth is not good for schema evolution.
   // e.g. what about if different data blocks loaded in different time has different schema?
-  void enroll(const TablePtr& tp) {
+  void enroll(const nebula::meta::TablePtr& tp, size_t stl = 0) {
     // no need a lock
     const auto& tn = tp->name();
     if (tables_.find(tn) == tables_.end()) {
-      tables_[tn] = tp;
+      tables_[tn] = std::make_unique<nebula::meta::TableRegistry>(tp, stl);
     }
   }
 
   // enroll/refresh tables from the whole cluster info
   void enroll(const nebula::meta::ClusterInfo&);
 
+  // clean any table that past TTL
+  void clean() {
+    std::vector<std::string> expired;
+    for (auto&& it : tables_) {
+      if (it.second->expired()) {
+        expired.push_back(it.first);
+      }
+    }
+
+    // erase them
+    for (auto& key : expired) {
+      LOG(INFO) << "Remove table that passed its ttl: " << key;
+      tables_.erase(key);
+    }
+  }
+
+  inline bool exists(const std::string& table) const {
+    return tables_.find(table) != tables_.end();
+  }
+
 private:
   // preset is a list of preload table before meta service functions
-  std::unordered_map<std::string, TablePtr> tables_;
+  std::unordered_map<std::string, std::unique_ptr<nebula::meta::TableRegistry>> tables_;
 };
 } // namespace meta
 } // namespace execution

@@ -30,6 +30,7 @@ using nebula::execution::BlockManager;
 using nebula::meta::ClusterInfo;
 using nebula::meta::NNode;
 using nebula::meta::Table;
+using nebula::meta::TablePtr;
 using nebula::type::LongType;
 using nebula::type::TypeSerializer;
 

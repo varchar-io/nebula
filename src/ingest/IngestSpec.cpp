@@ -161,14 +161,21 @@ bool IngestSpec::loadSwap() noexcept {
     // load current
     auto result = this->load(blocks);
     if (result) {
+      // unique specs by table and spec
+      // to avoid calling removeBySpec repeatedly on the same value
+      std::unordered_multimap<std::string, std::string> uniqueSpecs;
+      for (const auto& b : blocks) {
+        uniqueSpecs.emplace(b->table(), b->spec());
+      }
+
+      // remove blocks that shares the same spec / table
       auto bm = BlockManager::init();
-      for (BatchBlock& b : blocks) {
-        // remove blocks that shares the same spec / table
-        bm->removeSameSpec(b.signature());
+      for (auto& ts : uniqueSpecs) {
+        bm->removeBySpec(ts.first, ts.second);
       }
 
       // move all new blocks in
-      bm->add(std::move(blocks));
+      bm->add(blocks);
     }
 
     return result;
@@ -186,7 +193,7 @@ bool IngestSpec::loadRoll() noexcept {
     if (result) {
       auto bm = BlockManager::init();
       // move all new blocks in
-      bm->add(std::move(blocks));
+      bm->add(blocks);
     }
 
     return result;
@@ -204,7 +211,7 @@ bool IngestSpec::loadApi() noexcept {
     if (result) {
       auto bm = BlockManager::init();
       // move all new blocks in
-      bm->add(std::move(blocks));
+      bm->add(blocks);
     }
 
     return result;

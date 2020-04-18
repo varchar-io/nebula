@@ -21,10 +21,8 @@
 #include <unordered_map>
 
 #include "ExecutionPlan.h"
-
+#include "TableState.h"
 #include "common/Folly.h"
-#include "io/BlockLoader.h"
-#include "meta/NBlock.h"
 
 /**
  * Define nebula execution runtime.
@@ -47,13 +45,11 @@ struct Equal {
   }
 };
 
-using BlockSet = std::unordered_set<io::BatchBlock, Hash, Equal>;
+// table name to table state object mapping
+using TableStates = std::unordered_map<std::string, std::shared_ptr<TableState>>;
 using FilteredBlocks = std::vector<nebula::memory::EvaledBlock>;
 
 class BlockManager {
-  using TableStates = std::unordered_map<std::string, std::tuple<size_t, size_t, size_t, size_t, size_t>>;
-  using NodeSpecs = std::unordered_map<nebula::meta::NNode, std::unordered_set<std::string>, nebula::meta::NodeHash, nebula::meta::NodeEqual>;
-
 public:
   BlockManager(BlockManager&) = delete;
   BlockManager(BlockManager&&) = delete;
@@ -67,45 +63,61 @@ public:
   // query all nodes that hold data for given table
   const std::vector<nebula::meta::NNode> query(const std::string&);
 
-  // add a block into the system - the data may be loaded internal
-  bool add(const nebula::meta::BlockSignature&);
+  // add given block into the target table states repo
+  static bool addBlock(TableStates&, std::shared_ptr<io::BatchBlock>);
 
-  bool add(io::BlockList);
+  // add a block list, will change the list
+  bool add(io::BlockList&);
 
   // add a block already loaded
-  bool add(const io::BatchBlock&);
+  bool add(std::shared_ptr<io::BatchBlock>);
 
-  // remove a block from managmenet pool
-  bool remove(const io::BatchBlock&);
-
-  // remove a block from management pool by given ID
-  size_t removeById(const std::string&);
-
-  // swap an external block set for given node
-  void set(const nebula::meta::NNode&, BlockSet);
-
-  std::tuple<size_t, size_t, size_t, size_t, size_t> getTableMetrics(const std::string& table) const {
-    if (tableStates_.find(table) == tableStates_.end()) {
-      return { 0, 0, 0, 0, 0 };
-    }
-
-    return tableStates_.at(table);
+  // add a block into the system - the data may be loaded internal
+  inline bool add(const nebula::meta::BlockSignature& sign) {
+    // block loader
+    nebula::execution::io::BlockLoader loader;
+    auto list = loader.load(sign);
+    return add(list);
   }
 
-  const BlockSet& all(const nebula::meta::NNode& node = nebula::meta::NNode::inproc()) {
-    if (node.isInProc()) {
-      return blocks_;
+  // remove blocks by table name and spec signature
+  // return number of blocks removed
+  size_t removeBySpec(const std::string&, const std::string&);
+
+  // get table state for given table name
+  const TableState& state(const std::string& table) const {
+    const auto& self = local();
+    if (self.find(table) == self.end()) {
+      return TableState::empty();
     }
 
+    return *self.at(table);
+  }
+
+  // get all table states for given node
+  inline const TableStates& states(const nebula::meta::NNode& node = nebula::meta::NNode::inproc()) {
     // it may reutrn empty result if the node is not in
-    return remotes_[node];
+    return data_[node];
   }
 
-  std::vector<std::string> getTables(const size_t limit) const noexcept {
-    std::vector<std::string> tables;
-    tables.reserve(limit);
-    for (auto& item : tableStates_) {
-      tables.push_back(item.first);
+  // swap table states for given node
+  inline void swap(const nebula::meta::NNode& node, TableStates states) {
+    data_[node] = states;
+  }
+
+  inline size_t numBlocks() const {
+    return blocks_;
+  }
+
+  // get table list of current node
+  std::unordered_set<std::string> tables(const size_t limit) const noexcept {
+    std::unordered_set<std::string> tables;
+    for (const auto& node : data_) {
+      for (const auto& ts : node.second) {
+        tables.emplace(ts.first);
+      }
+
+      // need not more than limit
       if (tables.size() >= limit) {
         break;
       }
@@ -114,44 +126,57 @@ public:
     return tables;
   }
 
-  // update table metrics
-  void updateTableMetrics();
-
-  // remove blocks that share the spec of given block signature
-  size_t removeSameSpec(const nebula::meta::BlockSignature&);
-
   // has spec in node
-  bool hasSpec(const nebula::meta::NNode& node, const std::string& spec) {
-    auto entry = specs_.find(node);
-    if (entry != specs_.end()) {
-      auto& set = entry->second;
-      auto item = set.find(spec);
-      return item != set.end();
+  bool hasSpec(const nebula::meta::NNode& node, const std::string& table, const std::string& spec) {
+    auto entry = data_.find(node);
+    if (entry != data_.end()) {
+      const auto& states = entry->second;
+      auto ts = states.find(table);
+      if (ts != states.end()) {
+        return ts->second->hasSpec(spec);
+      }
     }
 
     return false;
   }
 
-private:
-  // table: <block count, row count, raw size, min time, max time>
-  TableStates tableStates_;
+  TableState metrics(const std::string& table) const {
+    TableState metricsOnly{ table };
+    // aggregate all nodes for given table
+    for (auto& ts : data_) {
+      const auto& states = ts.second;
+      auto found = states.find(table);
+      if (found != states.end()) {
+        metricsOnly.merge(*found->second);
+      }
+    }
 
-  // in-proc blocks
-  BlockSet blocks_;
+    return metricsOnly;
+  }
+
+private:
+  BlockManager() : blocks_{ 0 } {
+    data_.emplace(nebula::meta::NNode::inproc(), TableStates{});
+  }
+
+  inline TableStates& local() {
+    return data_.at(nebula::meta::NNode::inproc());
+  }
+
+  inline const TableStates& local() const {
+    return data_.at(nebula::meta::NNode::inproc());
+  }
+
+private:
+  // counter for in/out of blocks
+  size_t blocks_;
 
   // meta data for remote blocks
-  std::unordered_map<nebula::meta::NNode, BlockSet, nebula::meta::NodeHash, nebula::meta::NodeEqual> remotes_;
-
-  // node to spec set (by spec signature) mapping, updated by udpate table metrics
-  NodeSpecs specs_;
+  std::unordered_map<nebula::meta::NNode, TableStates, nebula::meta::NodeHash, nebula::meta::NodeEqual> data_;
 
 private:
   static std::mutex smux;
   static std::shared_ptr<BlockManager> inst;
-  BlockManager() {}
-
-  static void collectBlockMetrics(const io::BatchBlock&, TableStates&);
-  static bool tableInBlockSet(const std::string&, const BlockSet&);
 };
 
 } // namespace execution

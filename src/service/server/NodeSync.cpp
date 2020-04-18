@@ -20,6 +20,7 @@
 
 #include "common/Evidence.h"
 #include "execution/BlockManager.h"
+#include "execution/meta/TableService.h"
 #include "ingest/BlockExpire.h"
 #include "meta/ClusterInfo.h"
 #include "meta/NNode.h"
@@ -40,7 +41,8 @@ using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
 using nebula::execution::BlockManager;
-using nebula::execution::BlockSet;
+using nebula::execution::TableStates;
+using nebula::execution::meta::TableService;
 using nebula::ingest::BlockExpire;
 using nebula::ingest::SpecRepo;
 using nebula::ingest::SpecState;
@@ -61,6 +63,9 @@ void NodeSync::sync(
   // take data specs snapshot
   specRepo.refresh(ci);
 
+  // clean table registry that past TTL
+  TableService::singleton()->clean();
+
   // do the spec assignment
   auto nodesTalked = 0;
 
@@ -75,21 +80,33 @@ void NodeSync::sync(
 
       // extracting all expired spec from existing blocks on this node
       // make a copy since it's possible to be removed.
-      BlockSet blocks = bm->all(node);
+      const auto& states = bm->states(node);
 
       // recording expired block ID for given node
-      std::list<std::string> expired;
+      std::unordered_set<std::pair<std::string, std::string>> expired;
       size_t memorySize = 0;
-      for (auto itr = blocks.begin(); itr != blocks.end(); ++itr) {
-        auto& sign = itr->signature();
-        // assign existing spec, expire it if not assigned
-        if (!sign.isEphemeral() && !specRepo.assign(sign.spec, itr->residence())) {
-          expired.push_back(sign.toString());
+      for (auto itr = states.begin(); itr != states.end(); ++itr) {
+        const auto& state = itr->second;
+        auto pairs = state->expired([&specRepo](bool ephemeral,
+                                                const std::string& table,
+                                                const std::string& spec,
+                                                const nebula::meta::NNode& node) -> bool {
+          // for ephemeral data, expire them only when their table is gone (TTL).
+          if (ephemeral) {
+            return !TableService::singleton()->exists(table);
+          }
+
+          // otherwise let spec repo to decide if we should expire it
+          return !specRepo.confirm(spec, node);
+        });
+
+        if (!pairs.empty()) {
+          expired.merge(pairs);
         }
 
         // TODO(cao): use memory size rather than data raw size
         // accumulate memory usage for this node
-        memorySize += itr->state().rawSize;
+        memorySize += state->rawBytes();
       }
 
       // sync expire task to node
@@ -97,7 +114,7 @@ void NodeSync::sync(
       if (expireSize > 0) {
         Task t(TaskType::EXPIRATION, std::shared_ptr<Signable>(new BlockExpire(std::move(expired))));
         TaskState state = client->task(t);
-        LOG(INFO) << fmt::format("Expire {0} blocks in node {1}: {2}", expireSize, node.server, (char)state);
+        LOG(INFO) << fmt::format("Expire {0} specs in node {1}: {2}", expireSize, node.server, (char)state);
       }
 
       // call node state with expired spec list
@@ -109,9 +126,6 @@ void NodeSync::sync(
       nodes.push_back(std::move(n));
     }
   }
-
-  // after state update
-  bm->updateTableMetrics();
 
   // assign unassigned specs
   // assign each spec to a node if it needs to be processed
@@ -129,7 +143,7 @@ void NodeSync::sync(
     if (sp->assigned()) {
       // TODO(cao): handle node reset event. SpecRepo needs to reset spec state if a node reset
       // if assigned to a node, but the node doesn't have the spec, we reset the spec state to
-      if (!bm->hasSpec(sp->affinity(), sp->signature())) {
+      if (!bm->hasSpec(sp->affinity(), sp->table()->name, sp->signature())) {
         sp->setState(SpecState::RENEW);
       }
 

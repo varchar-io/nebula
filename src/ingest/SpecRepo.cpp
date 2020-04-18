@@ -271,7 +271,7 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) noe
   }
 }
 
-bool SpecRepo::assign(const std::string& spec, const nebula::meta::NNode& node) noexcept {
+bool SpecRepo::confirm(const std::string& spec, const nebula::meta::NNode& node) noexcept {
   auto f = specs_.find(spec);
   // not found
   if (f == specs_.end()) {

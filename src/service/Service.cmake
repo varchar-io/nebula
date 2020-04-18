@@ -75,8 +75,8 @@ add_library(${NEBULA_SERVICE} STATIC
     ${ngrpc_srcs}
     ${nodegrpc_srcs})
 target_link_libraries(${NEBULA_SERVICE}
-    PUBLIC ${NEBULA_API}
     PUBLIC ${NEBULA_INGEST}
+    PUBLIC ${NEBULA_API}
     PUBLIC libgrpc++
     PUBLIC ${GLOG_LIBRARY}
     PUBLIC ${XXH_LIBRARY}

@@ -16,8 +16,9 @@
 #pragma once
 
 #include <fmt/format.h>
-#include <list>
+#include <unordered_set>
 
+#include "common/Hash.h"
 #include "common/Task.h"
 #include "execution/BlockManager.h"
 
@@ -27,11 +28,20 @@
 namespace nebula {
 namespace ingest {
 
-// a task to expire list of blocks
+// a task to expire list of specs
+// why we expire spec instead of individual blocks?
+// it may look we can do better granularity at block level,
+// but it actually increases the management cost with little foreable benefits
 class BlockExpire : public nebula::common::Signable {
 public:
-  BlockExpire(std::list<std::string> blocks) : blocks_{ std::move(blocks) } {
-    sign_ = fmt::format("{0}", blocks_.size());
+  BlockExpire(std::unordered_set<std::pair<std::string, std::string>> specs) : specs_{ std::move(specs) } {
+    size_t mix = std::accumulate(specs_.begin(), specs_.end(), 0, [](size_t v, const auto& str) {
+      return v ^ nebula::common::Hasher::hashString(str.second);
+    });
+
+    // TODO(cao) - signature equals mix hash and size - it is still not guranteed to be unique
+    // which implies if collision happens, some expire task may not be executed.
+    sign_ = fmt::format("{0}_{1}", mix, specs_.size());
   }
   virtual ~BlockExpire() = default;
 
@@ -39,8 +49,8 @@ public:
     return sign_;
   }
 
-  inline const std::list<std::string>& blocks() const {
-    return blocks_;
+  inline const std::unordered_set<std::pair<std::string, std::string>>& specs() const {
+    return specs_;
   }
 
   bool work() const {
@@ -48,18 +58,18 @@ public:
 
     // process the block expire list
     auto removed = 0;
-    for (auto& bid : blocks_) {
+    for (auto& spec : specs_) {
       // if system has this block, remove it, otherwise skip it
-      removed += bm->removeById(bid);
+      removed += bm->removeBySpec(spec.first, spec.second);
     }
 
-    // TODO(cao) - we need to update task states so data can be ingested again.
-    LOG(INFO) << "Removed expired blocks: " << removed;
-    return true;
+    LOG(INFO) << "Removed expired specs: " << removed;
+    return removed > 0;
   }
 
 private:
-  std::list<std::string> blocks_;
+  // table-spec pairs
+  std::unordered_set<std::pair<std::string, std::string>> specs_;
   std::string sign_;
 };
 

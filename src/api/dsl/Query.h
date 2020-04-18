@@ -45,7 +45,7 @@ enum class SortType {
 class Query {
 public:
   Query(const std::string& table, const std::shared_ptr<nebula::meta::MetaService> ms)
-    : ms_{ ms }, table_{ ms_->query(table) }, filter_{ nullptr }, limit_{ 0 } {}
+    : ms_{ ms }, table_{ ms_->query(table).table() }, filter_{ nullptr }, limit_{ 0 } {}
 
   // The copy constructor is actually a move constructor
   // We do this is to favor DSL chain method

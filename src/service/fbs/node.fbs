@@ -150,10 +150,15 @@ table IngestTask {
   date: uint64;
 }
 
+table Spec{
+  tbl: string;
+  spec: string;
+}
+
 // expire blocks 
 table ExpireTask {
   // list of blocks by block ID (toString)
-  blocks: [string];
+  specs: [Spec];
 }
 
 // fast communicate one single command specified by command value
@@ -165,6 +170,9 @@ table TaskSpec {
 
   // this is directly mapping to nebula::common::TaskType
   type: byte;
+
+  // indicate executor to execute the task right away in sync or not
+  sync: bool;
 
   // present super set fields here for each type to choose
   ingest: IngestTask;

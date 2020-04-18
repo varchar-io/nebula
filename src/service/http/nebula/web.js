@@ -267,7 +267,7 @@ const restore = () => {
     }
 
     // get parameters from URL
-    const p = JSON.parse(decodeURI(h.substr(1)));
+    const p = JSON.parse(decodeURIComponent(h.substr(1)));
     const set = (N, V) => ds(N).property('value', V);
     if (p.t) {
         set('#tables', p.t);

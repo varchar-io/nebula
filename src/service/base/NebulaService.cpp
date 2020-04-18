@@ -322,8 +322,9 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
   flatbuffers::grpc::MessageBuilder mb;
 
   // this is an ingestion type
-  const auto tt = task.type();
-  if (tt == TaskType::INGESTION) {
+  const auto type = task.type();
+  const auto sync = task.sync();
+  if (type == TaskType::INGESTION) {
     auto spec = task.spec<IngestSpec>();
 
     // create ingest task
@@ -394,42 +395,42 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
                                spec->macroDate());
 
     // create task spec
-    auto ts = CreateTaskSpec(mb, tt, it);
+    auto ts = CreateTaskSpec(mb, type, sync, it);
     mb.Finish(ts);
     return mb.ReleaseMessage<TaskSpec>();
   }
 
   // serialize task of expiration
-  if (tt == TaskType::EXPIRATION) {
+  if (type == TaskType::EXPIRATION) {
     auto spec = task.spec<BlockExpire>();
 
-    // create ingest task
-    auto blocks = spec->blocks();
-    std::vector<flatbuffers::Offset<flatbuffers::String>> fbBlocks;
-    fbBlocks.reserve(blocks.size());
-    for (auto& itr : blocks) {
-      fbBlocks.push_back(mb.CreateString(itr));
+    // serialize expire task
+    const auto& specs = spec->specs();
+    std::vector<flatbuffers::Offset<Spec>> fbSpecs;
+    fbSpecs.reserve(specs.size());
+    for (auto& itr : specs) {
+      fbSpecs.push_back(CreateSpec(mb, mb.CreateString(itr.first), mb.CreateString(itr.second)));
     }
 
-    auto et = CreateExpireTask(mb, mb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(fbBlocks));
+    auto et = CreateExpireTask(mb, mb.CreateVector<flatbuffers::Offset<Spec>>(fbSpecs));
 
     // create task spec
-    auto ts = CreateTaskSpec(mb, tt, 0, et);
+    auto ts = CreateTaskSpec(mb, type, sync, 0, et);
     mb.Finish(ts);
     return mb.ReleaseMessage<TaskSpec>();
   }
 
-  if (tt == TaskType::COMMAND) {
+  if (type == TaskType::COMMAND) {
     auto spec = task.spec<SingleCommandTask>();
     auto ct = CreateCommandTaskDirect(mb, spec->signature().c_str());
 
     // create task spec
-    auto ts = CreateTaskSpec(mb, tt, 0, 0, ct);
+    auto ts = CreateTaskSpec(mb, type, sync, 0, 0, ct);
     mb.Finish(ts);
     return mb.ReleaseMessage<TaskSpec>();
   }
 
-  throw NException(fmt::format("Unhandled task type: {0}", tt));
+  throw NException(fmt::format("Unhandled task type: {0}", type));
 }
 
 // parse a task spec into an ingest spec
@@ -437,8 +438,9 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
   auto ptr = ts->GetRoot();
 
   const auto tst = ptr->type();
-  auto tt = static_cast<TaskType>(tst);
-  if (tt == TaskType::INGESTION) {
+  const auto type = static_cast<TaskType>(tst);
+  const auto sync = ptr->sync();
+  if (type == TaskType::INGESTION) {
     auto it = ptr->ingest();
 
     // NOTE: here incurs string copy in IngestSpec constructor, better to avoid it
@@ -528,25 +530,25 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
       (SpecState)it->state(),
       it->date());
 
-    return Task(tt, is);
+    return Task(type, is, sync);
   }
 
-  if (tt == TaskType::EXPIRATION) {
-    auto blocks = ptr->expire()->blocks();
-    std::list<std::string> idList;
-    for (auto itr = blocks->begin(); itr != blocks->end(); ++itr) {
-      idList.emplace_back(itr->data(), itr->size());
+  if (type == TaskType::EXPIRATION) {
+    auto expires = ptr->expire()->specs();
+    std::unordered_set<std::pair<std::string, std::string>> specs;
+    for (auto itr = expires->begin(); itr != expires->end(); ++itr) {
+      specs.emplace(itr->tbl()->str(), itr->spec()->str());
     }
 
     // move this list into a new object
-    auto be = std::make_shared<BlockExpire>(std::move(idList));
-    return Task(tt, be);
+    auto be = std::make_shared<BlockExpire>(std::move(specs));
+    return Task(type, be, sync);
   }
 
-  if (tt == TaskType::COMMAND) {
+  if (type == TaskType::COMMAND) {
     std::string cmd = ptr->command()->command()->str();
     auto sct = std::make_shared<SingleCommandTask>(std::move(cmd));
-    return Task(tt, sct);
+    return Task(type, sct, sync);
   }
 
   throw NException(fmt::format("Unhandled task type: {0}", tst));

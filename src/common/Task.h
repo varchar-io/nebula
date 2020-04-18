@@ -33,7 +33,8 @@ enum TaskState : int8_t {
   PROCESSING = 'P',
   FAILED = 'F',
   QUEUE = 'Q',
-  SUCCEEDED = 'S'
+  SUCCEEDED = 'S',
+  NOTFOUND = 'N'
 };
 
 class Signable {
@@ -49,19 +50,30 @@ class Task {
 public:
   // a task is an instance owning the passed in spec pointer
   // release this spec when task exits
-  Task(TaskType type, std::shared_ptr<Signable> spec)
+  // sync indicates the task needs to be executed in a synchronized way
+  // client is waiting for the task to complete
+  Task(TaskType type, std::shared_ptr<Signable> spec, bool sync = false)
     : type_{ type },
       spec_{ spec },
-      sign_{ fmt::format("{0}_{1}", spec_->signature(), (char)type) } {}
+      sync_{ sync },
+      sign_{ sign(spec_->signature(), type) } {}
   virtual ~Task() = default;
 
 public:
+  static inline std::string sign(const std::string& spec, TaskType type) {
+    return fmt::format("{0}_{1}", spec, (char)type);
+  }
+
   inline const std::string& signature() const {
     return sign_;
   }
 
   inline TaskType type() const {
     return type_;
+  }
+
+  inline bool sync() const {
+    return sync_;
   }
 
   template <typename T>
@@ -72,6 +84,7 @@ public:
 private:
   TaskType type_;
   std::shared_ptr<Signable> spec_;
+  bool sync_;
   std::string sign_;
 };
 

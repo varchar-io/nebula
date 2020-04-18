@@ -32,12 +32,12 @@ namespace execution {
 namespace io {
 
 using BatchBlock = nebula::meta::NBlock<nebula::memory::Batch>;
-using BlockList = std::forward_list<BatchBlock>;
+using BlockList = std::forward_list<std::shared_ptr<BatchBlock>>;
 
 // load a NBlock into memory
 class BlockLoader {
 public:
-  static BatchBlock from(const nebula::meta::BlockSignature&, std::shared_ptr<nebula::memory::Batch>);
+  static std::shared_ptr<BatchBlock> from(const nebula::meta::BlockSignature&, std::shared_ptr<nebula::memory::Batch>);
 
 public:
   BlockList load(const nebula::meta::BlockSignature&);

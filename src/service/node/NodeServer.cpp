@@ -152,17 +152,17 @@ grpc::Status NodeServerImpl::Poll(
   // usage is the same as usual.
   const auto bm = BlockManager::init();
   flatbuffers::grpc::MessageBuilder mb;
-  auto blocks = bm->all();
-
   std::vector<flatbuffers::Offset<DataBlock>> db;
-  db.reserve(blocks.size());
-  std::transform(blocks.cbegin(), blocks.cend(),
-                 std::back_inserter(db), [&mb](const BatchBlock& bb) {
-                   const auto& state = bb.state();
-                   return CreateDataBlockDirect(
-                     mb, bb.getTable().c_str(), bb.getId(), bb.start(), bb.end(),
-                     bb.spec().c_str(), bb.storage().c_str(), state.numRows, state.rawSize);
-                 });
+  db.reserve(bm->numBlocks());
+  const auto& states = bm->states();
+  for (const auto& s : states) {
+    s.second->iterate([&mb, &db](const BatchBlock& bb) {
+      const auto& state = bb.state();
+      db.push_back(CreateDataBlockDirect(
+        mb, bb.table().c_str(), bb.getId(), bb.start(), bb.end(),
+        bb.spec().c_str(), bb.storage().c_str(), state.numRows, state.rawSize));
+    });
+  }
 
   mb.Finish(CreateNodeStateReplyDirect(mb, &db));
 
@@ -181,8 +181,16 @@ grpc::Status NodeServerImpl::Task(
   const flatbuffers::grpc::Message<TaskSpec>* req,
   flatbuffers::grpc::Message<TaskReply>* rep) {
   // deserialze a task
-  TaskState result = TaskExecutor::singleton().enqueue(
-    TaskSerde::deserialize(req));
+  auto task = TaskSerde::deserialize(req);
+
+  // execute it now and return result to client.
+  // otherwise enqueue it to async task completion
+  TaskState result = TaskState::UNKNOWN;
+  if (task.sync()) {
+    result = TaskExecutor::singleton().execute(std::move(task));
+  } else {
+    result = TaskExecutor::singleton().enqueue(std::move(task));
+  }
 
   flatbuffers::grpc::MessageBuilder mb;
   mb.Finish(CreateTaskReply(mb, result));

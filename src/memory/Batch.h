@@ -175,6 +175,7 @@ private:
   bool sealed_;
 };
 
+using BatchPtr = std::shared_ptr<Batch>;
 using EvaledBlock = std::pair<Batch*, nebula::surface::eval::BlockEval>;
 
 class RowAccessor : public nebula::surface::RowData {

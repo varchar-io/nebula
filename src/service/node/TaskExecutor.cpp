@@ -66,7 +66,7 @@ void TaskExecutor::process(std::function<void()> shutdown, folly::ThreadPoolExec
     // if the task failed, the task state may stay as "PROCESSING" forever.
     pool.addWithPriority(
       [this, s = std::move(sign), t = *task]() {
-        setState(s, process(t) ? TaskState::SUCCEEDED : TaskState::FAILED);
+        setState(t.type(), s, process(t) ? TaskState::SUCCEEDED : TaskState::FAILED);
       },
       FLAGS_TASK_PRIORITY);
 
@@ -75,18 +75,32 @@ void TaskExecutor::process(std::function<void()> shutdown, folly::ThreadPoolExec
   }
 }
 
+// execute the task now in current service thread
+TaskState TaskExecutor::execute(Task task) {
+  // unique ID in the running system to avoid duplicate task
+  const auto& sign = task.signature();
+  TaskState found = search(sign);
+  if (found != TaskState::NOTFOUND) {
+    return found;
+  }
+
+  // execute the task and record its state
+  auto state = process(task) ? TaskState::SUCCEEDED : TaskState::FAILED;
+  setState(task.type(), sign, state);
+
+  return state;
+}
+
 // enqueue could be called by multiple session, need sync
-TaskState TaskExecutor::enqueue(const Task& task) {
+TaskState TaskExecutor::enqueue(Task task) {
   std::lock_guard<std::mutex> guard(stateLock_);
 
   // unique ID in the running system to avoid duplicate task
-  const auto sign = task.signature();
-  auto itr = state_.find(sign);
-
-  // found this task, it is already acked
-  if (itr != state_.end()) {
-    VLOG(1) << "Task already in node, state=" << (char)itr->second;
-    return itr->second;
+  const auto& sign = task.signature();
+  TaskState found = search(sign);
+  if (found != TaskState::NOTFOUND) {
+    VLOG(1) << "Task already in node, state=" << (char)found;
+    return found;
   }
 
   // if not found, we queue this task, and set its state as waiting
@@ -96,7 +110,7 @@ TaskState TaskExecutor::enqueue(const Task& task) {
   }
 
   // enqueue it for sure
-  if (!queue_.write(task)) {
+  if (!queue_.write(std::move(task))) {
     LOG(ERROR) << "Failed to enqueue the task, unknown reason.";
     return TaskState::FAILED;
   }
@@ -121,7 +135,18 @@ bool TaskExecutor::process(const Task& task) {
   if (task.type() == TaskType::EXPIRATION) {
     auto be = task.spec<BlockExpire>();
 
-    return be->work();
+    if (be->work()) {
+      for (const auto& spec : be->specs()) {
+        auto task = Task::sign(spec.second, TaskType::INGESTION);
+        if (state_.erase(task) > 0) {
+          LOG(INFO) << "Spec is reset: " << spec.second;
+        }
+      }
+
+      return true;
+    }
+
+    return false;
   }
 
   return false;

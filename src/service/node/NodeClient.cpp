@@ -27,10 +27,11 @@ namespace node {
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::execution::BlockManager;
-using nebula::execution::BlockSet;
 using nebula::execution::ExecutionPlan;
+using nebula::execution::TableStates;
 using nebula::execution::io::BatchBlock;
 using nebula::meta::BlockSignature;
+using nebula::meta::BlockState;
 using nebula::service::base::BatchSerde;
 using nebula::service::base::QuerySerde;
 using nebula::service::base::TaskSerde;
@@ -128,7 +129,6 @@ void NodeClient::state() {
   flatbuffers::grpc::Message<NodeStateReply> nsReply;
 
   grpc::ClientContext context;
-
   auto status = stub_->Poll(&context, nsRequest, &nsReply);
   if (status.ok()) {
     const NodeStateReply* response = nsReply.GetRoot();
@@ -136,18 +136,21 @@ void NodeClient::state() {
     size_t size = blocks->size();
 
     // update into current server block management
-    auto bm = BlockManager::init();
-    BlockSet nBlocks;
+    TableStates states;
     for (size_t i = 0; i < size; ++i) {
       const DataBlock* db = blocks->Get(i);
-      nBlocks.emplace(BatchBlock{
+      auto block = std::make_shared<BatchBlock>(
         BlockSignature{ db->tbl()->str(), db->id(), db->ts(), db->te(), db->spec()->str() },
         node_,
-        { db->rows(), db->rsize() } });
+        BlockState{ db->rows(), db->rsize() });
+
+      // add this block in the new states
+      BlockManager::addBlock(states, block);
     }
 
-    // do swap with existing node
-    bm->set(node_, std::move(nBlocks));
+    // TODO(cao): only swap when there is change?
+    // swap the new states in
+    BlockManager::init()->swap(node_, states);
     return;
   }
 

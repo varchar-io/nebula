@@ -79,7 +79,7 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
   // launch block executor on each in parallel
   // TODO(cao): this table service instance potentially can be carried by a query context on each node
   auto ts = TableService::singleton();
-  const FilteredBlocks blocks = blockManager_->query(*ts->query(blockPhase.table()), plan, pool);
+  const FilteredBlocks blocks = blockManager_->query(*ts->query(blockPhase.table()).table(), plan, pool);
 
   LOG(INFO) << "Processing total blocks: " << blocks.size();
   std::vector<folly::Future<RowCursorPtr>> results;

@@ -51,43 +51,14 @@ std::shared_ptr<BlockManager> BlockManager::init() {
   return inst;
 }
 
-void BlockManager::collectBlockMetrics(const io::BatchBlock& meta, TableStates& states) {
-  const auto& table = meta.getTable();
-  if (states.find(table) == states.end()) {
-    states[table] = { 0, 0, 0, std::numeric_limits<size_t>::max(), 0 };
-  }
-
-  auto& tuple = states.at(table);
-  const auto& state = meta.state();
-  std::get<0>(tuple) += 1;
-  std::get<1>(tuple) += state.numRows;
-  std::get<2>(tuple) += state.rawSize;
-  std::get<3>(tuple) = std::min(std::get<3>(tuple), meta.start());
-  std::get<4>(tuple) = std::max(std::get<4>(tuple), meta.end());
-}
-
-bool BlockManager::tableInBlockSet(const std::string& table, const BlockSet& bs) {
-  for (auto& b : bs) {
-    if (table == b.getTable()) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 // query all nodes that hold data for given table
 const std::vector<NNode> BlockManager::query(const std::string& table) {
   std::vector<NNode> nodes;
 
-  // all blocks in proc
-  if (tableInBlockSet(table, blocks_)) {
-    nodes.push_back(NNode::inproc());
-  }
-
   // go through all nodes's block set
-  for (auto n = remotes_.begin(); n != remotes_.end(); ++n) {
-    if (tableInBlockSet(table, n->second)) {
+  for (auto n = data_.begin(); n != data_.end(); ++n) {
+    const auto& states = n->second;
+    if (states.find(table) != states.end()) {
       nodes.push_back(n->first);
     }
   }
@@ -135,18 +106,20 @@ const FilteredBlocks BlockManager::query(const Table& table, const ExecutionPlan
   std::vector<folly::Future<FilteredBlocks>> futures;
   futures.reserve(1024);
 
-  auto index = 0;
-  for (auto& b : blocks_) {
-    if (b.getTable() == table.name()) {
-      ++total;
-      if (b.overlap(window)) {
-        list[index++] = b.data().get();
+  const auto& self = local();
+  auto ts = self.find(table.name());
+  if (ts == self.end()) {
+    return {};
+  }
 
-        if (index == BATCH_SIZE) {
-          futures.push_back(batch(pool, filter, list, index));
-          index = 0;
-        }
-      }
+  auto index = 0;
+  for (auto& b : ts->second->query(window)) {
+    ++total;
+    list[index++] = b.get();
+
+    if (index == BATCH_SIZE) {
+      futures.push_back(batch(pool, filter, list, index));
+      index = 0;
     }
   }
 
@@ -174,116 +147,66 @@ const FilteredBlocks BlockManager::query(const Table& table, const ExecutionPlan
   return tableBlocks;
 }
 
-bool BlockManager::add(const BlockSignature& sign) {
-  // load data should happening somehwere elese
-  nebula::execution::io::BlockLoader loader;
-  auto block = loader.load(sign);
-  return this->add(block);
-}
-
-bool BlockManager::add(const BatchBlock& block) {
-  // collect metrics anyways.
-  collectBlockMetrics(block, tableStates_);
-
-  const auto& node = block.residence();
-  // ensure the block is not in memory
-  if (node.isInProc()) {
-    blocks_.insert(block);
+// add block into the target table states
+// look for the correct table state object and add this block into it
+bool BlockManager::addBlock(TableStates& target, std::shared_ptr<io::BatchBlock> block) {
+  const auto& table = block->table();
+  auto ts = target.find(table);
+  TableState* ptr = nullptr;
+  if (ts == target.end()) {
+    ptr = new TableState(table);
+    target.emplace(table, std::shared_ptr<TableState>(ptr));
   } else {
-
-    // remote blocks
-    N_ENSURE(block.data() == nullptr, "remote block won't have data pointer.");
-
-    auto itr = remotes_.find(node);
-    if (itr != remotes_.end()) {
-      itr->second.insert(block);
-    } else {
-      remotes_[node] = {};
-      remotes_.at(node).insert(block);
-    }
+    ptr = ts->second.get();
   }
 
-  return true;
+  // add this block into the table state object
+  return ptr->add(block);
 }
 
-bool BlockManager::add(BlockList range) {
-  std::move(range.begin(), range.end(), std::inserter(blocks_, blocks_.begin()));
-  return true;
-}
+bool BlockManager::add(std::shared_ptr<io::BatchBlock> block) {
+  const auto& node = block->residence();
 
-bool BlockManager::remove(const BatchBlock&) {
-  throw NException("Not implemeneted yet");
-}
-
-// remove block that share the given ID
-// NOTE: thread-unsafe~!
-size_t BlockManager::removeById(const std::string& id) {
-  //TODO(cao) - perf issue: we should not iterate all
-  // instead, leverage the hash set nature by converting id into a BlockSignature
-  auto itr = blocks_.begin();
-  while (itr != blocks_.end()) {
-    if (itr->signature().toString() == id) {
-      itr = blocks_.erase(itr);
-      return 1;
-    }
-
-    ++itr;
+  // remote blocks will not have data pointer
+  if (!node.isInProc()) {
+    N_ENSURE(block->data() == nullptr, "remote block won't have data pointer.");
   }
 
-  return 0;
+  // counter - note that this may be used for appromimate only, not for accurate internal state
+  ++blocks_;
+
+  auto itr = data_.find(node);
+  if (itr != data_.end()) {
+    return addBlock(itr->second, block);
+  }
+
+  data_.emplace(node, TableStates{});
+  return addBlock(data_.at(node), block);
 }
 
-// swap a new block set for given node
-void BlockManager::set(const NNode& node, BlockSet set) {
-  // just overwrite the existing key
-  remotes_[node] = std::move(set);
+bool BlockManager::add(BlockList& range) {
+  bool result = true;
+  for (auto itr = range.begin(); itr != range.end(); ++itr) {
+    result = result && add(*itr);
+  }
+
+  return result;
 }
 
 // remove all blocks that share the given spec
 // NOTE: thread-unsafe~!
-size_t BlockManager::removeSameSpec(const nebula::meta::BlockSignature& bs) {
+size_t BlockManager::removeBySpec(const std::string& table, const std::string& spec) {
   size_t count = 0;
-  auto itr = blocks_.begin();
-  while (itr != blocks_.end()) {
-    if (bs.sameSpec(itr->signature())) {
-      itr = blocks_.erase(itr);
-      count++;
-      continue;
-    }
-
-    ++itr;
+  auto& self = local();
+  auto state = self.find(table);
+  if (state != self.end()) {
+    count += state->second->remove(spec);
   }
+
+  // decrement blocks counter
+  blocks_ -= count;
 
   return count;
-}
-
-void BlockManager::updateTableMetrics() {
-  // remove existing states
-  TableStates states;
-  NodeSpecs specs;
-
-  // go through all blocks and do the aggregation again
-  for (auto i = blocks_.begin(); i != blocks_.end(); ++i) {
-    collectBlockMetrics(*i, states);
-  }
-
-  // go through all nodes's block set
-  for (auto n = remotes_.begin(); n != remotes_.end(); ++n) {
-    std::unordered_set<std::string> specSet;
-    const auto& bs = n->second;
-    for (auto i = bs.begin(); i != bs.end(); ++i) {
-      collectBlockMetrics(*i, states);
-      specSet.emplace(i->spec());
-    }
-
-    // set the spec set to the current node
-    specs.emplace(n->first, specSet);
-  }
-
-  // TODO(cao) - update table states_ for those entry changes, otherwise, keep it no change.
-  // do atomic swap?
-  std::swap(states, tableStates_);
-  std::swap(specs, specs_);
 }
 
 } // namespace execution

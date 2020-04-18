@@ -59,7 +59,7 @@ public:
 
   // try to assign a node to a spec
   // assign the spec for given node
-  bool assign(const std::string& spec, const nebula::meta::NNode& node) noexcept;
+  bool confirm(const std::string& spec, const nebula::meta::NNode& node) noexcept;
 
 private:
   // process a table spec and generate all specs into the given specs container
