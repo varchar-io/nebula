@@ -41,6 +41,23 @@ public:
   XXH_FORCE_INLINE size_t hash64(const void* p, const size_t len) noexcept {
     return XXH3_64bits(p, len);
   }
+
+  XXH_FORCE_INLINE std::vector<size_t> hash64(const void* p, size_t len, size_t count) noexcept {
+    XXH3_state_t state;
+    if (XXH3_64bits_reset(&state) == XXH_ERROR) {
+      return {};
+    }
+
+    std::vector<size_t> hashes;
+    hashes.reserve(count);
+
+    for (size_t i = 0; i < count; ++i) {
+      XXH3_64bits_update(&state, p, len);
+      hashes.push_back(XXH3_64bits_digest(&state));
+    }
+
+    return hashes;
+  }
 };
 
 } // namespace common

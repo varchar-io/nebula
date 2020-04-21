@@ -18,11 +18,15 @@
 #include <fmt/format.h>
 #include <folly/stats/Histogram.h>
 #include <folly/stats/TDigest.h>
+#include <fstream>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <sstream>
 
+#include "common/CountMin.h"
 #include "common/Evidence.h"
+#include "common/Hash.h"
+#include "common/Memory.h"
 
 /**
  * Test all stats algorithms provided by folly/stats package
@@ -181,6 +185,201 @@ TEST(StatsTest, TestTDigest) {
       auto percentile = i * 10.0 / 100;
       LOG(INFO) << "verify percentile before / after serde: " << percentile;
       EXPECT_NEAR(digest.estimateQuantile(percentile), digest2.estimateQuantile(percentile), 1e-14);
+    }
+  }
+}
+
+template <typename CM>
+void queryFrequency(const CM& sketch, bool top20Only = true) {
+  LOG(INFO) << "Query top 20 items: ";
+  // we know the top list in final result, and let's compare them
+  std::array<size_t, 20> top20 = { 922203297757ul,
+                                   905860166503ul,
+                                   902065567321ul,
+                                   899049071324ul,
+                                   961238559656ul,
+                                   898037969690ul,
+                                   918644201389ul,
+                                   935249274030ul,
+                                   940816893800ul,
+                                   901468450490ul,
+                                   918105274631ul,
+                                   930494031304ul,
+                                   948192800438ul,
+                                   907002707958ul,
+                                   952015364871ul,
+                                   905661505034ul,
+                                   908182459161ul,
+                                   938071044570ul,
+                                   906224180441ul,
+                                   903212673711ul };
+  // top 20 items real frequency
+  std::array<uint32_t, 20> f20 = {
+    12034u,
+    9367u,
+    7623u,
+    6597u,
+    6400u,
+    5900u,
+    5736u,
+    5332u,
+    4657u,
+    4046u,
+    3969u,
+    3849u,
+    3814u,
+    3689u,
+    3630u,
+    3393u,
+    3255u,
+    3068u,
+    3051u,
+    3012u
+  };
+
+  // let's query their frequency
+  LOG(INFO) << "Top 20 items: value | frequency | fact | diff";
+  for (size_t i = 0, size = std::size(top20); i < size; ++i) {
+    auto v = top20[i];
+    auto f = sketch.query(v);
+    auto e = f20[i];
+    LOG(INFO) << v << '\t' << f << '\t' << e << '\t' << std::fixed << (f - e) * 100.0f / f << "%";
+  }
+
+  if (!top20Only) {
+    // above value are exactly the same with real value!!
+    // let us check another range 96~100
+    LOG(INFO) << "Query range 96-100 items: ";
+    auto r96100 = {
+      907597569023ul,
+      936735925371ul,
+      913679799510ul,
+      918093243960ul,
+      912627836830ul
+    };
+
+    // let's query their frequency
+    for (auto v : r96100) {
+      LOG(INFO) << v << '\t' << sketch.query(v);
+    }
+
+    LOG(INFO) << "Query range 406-410 items: ";
+    auto r40610 = {
+      953149521481ul,
+      919419135649ul,
+      910354020924ul,
+      922393050504ul,
+      894556912866ul
+    };
+    for (auto v : r40610) {
+      LOG(INFO) << v << '\t' << sketch.query(v);
+    }
+  }
+}
+
+TEST(FrequencyTest, TestCountMin) {
+  nebula::common::CountMin sketch;
+  sketch.add(944760692332ul, 5);
+  sketch.add(899429799057ul, 500);
+  sketch.add(954939770857ul, 135);
+  sketch.add(920236059316ul, 443);
+  sketch.add(954939770857ul, 23);
+  sketch.add(944760692332ul, 14);
+
+  LOG(INFO) << "Total count: " << sketch.count();
+  LOG(INFO) << "944760692332ul: 19 = " << sketch.query(944760692332ul);
+  LOG(INFO) << "899429799057ul: 500 = " << sketch.query(899429799057ul);
+  LOG(INFO) << "954939770857ul: 158 = " << sketch.query(954939770857ul);
+  LOG(INFO) << "920236059316ul: 443 = " << sketch.query(920236059316ul);
+}
+
+TEST(FrequencyTest, TestCountMinOnFile) {
+  // this file is just a list of long integers
+  // the algo is trying to compute frequency of each item (more specifically top items)
+  std::ifstream fstream("/Users/shawncao/ig1.csv");
+  std::string line;
+  nebula::common::CountMin sketch;
+  while (std::getline(fstream, line)) {
+    sketch.add(folly::to<size_t>(line));
+  }
+
+  queryFrequency(sketch);
+}
+
+TEST(FrequencyTest, TestCountMinM63OnFile) {
+  // this file is just a list of long integers
+  // the algo is trying to compute frequency of each item (more specifically top items)
+  std::ifstream fstream("test/data/ig1.csv");
+  std::string line;
+
+  // 2.5K sketch
+  nebula::common::CountMin<5, 63> sketch;
+  while (std::getline(fstream, line)) {
+    sketch.add(folly::to<size_t>(line));
+  }
+
+  queryFrequency(sketch);
+}
+
+TEST(FrequencyTest, TestCountMinMergeOnFile) {
+  // this file is just a list of long integers
+  // the algo is trying to compute frequency of each item (more specifically top items)
+  std::ifstream fstream("test/data/ig1.csv");
+  std::string line;
+
+  // space got to be the same to be mergeable
+  using SketchType = nebula::common::CountMin<5, 256, uint32_t>;
+  SketchType sketch;
+  auto items = std::make_unique<SketchType>();
+
+  // measure compressed storage size
+  auto blocks = 0;
+  auto sizeSum = 0;
+  while (std::getline(fstream, line)) {
+    items->add(folly::to<size_t>(line));
+
+    // every 1000 items, we merge it into summary sketch and start a new one
+    if (items->count() == 1000) {
+      auto slice = items->compress();
+      // LOG(INFO) << "items size: " << items->size() << ", slice size: " << slice->size();
+      ++blocks;
+      sizeSum += slice->size();
+
+      // merge this into main sketch
+      sketch.merge(*items);
+      items = std::make_unique<SketchType>();
+    }
+  }
+
+  // calculate storage cost
+  LOG(INFO) << SketchType::name()
+            << " = total blocks: " << blocks
+            << ", sum_bytes: " << sizeSum
+            << ", avg bytes per block:" << sizeSum / blocks;
+
+  // merge last time
+  sketch.merge(*items);
+
+  // test out top 20 queries
+  queryFrequency(sketch);
+}
+
+TEST(HashTest, TestXxhVector) {
+  std::array<size_t, 2> v = { 944760692332ul, 899429799057ul };
+
+  // simulate 20x5 matrix
+  constexpr auto MOD = 20;
+  constexpr auto SIZE = 5;
+
+  for (auto k = 0; k < v.size(); ++k) {
+    auto vk = v.at(k);
+    auto hashes = nebula::common::Hasher::hash64(&vk, sizeof(vk), SIZE);
+    EXPECT_EQ(SIZE, hashes.size());
+
+    LOG(INFO) << "Hashes for v" << k;
+    for (auto i = 0; i < SIZE; ++i) {
+      auto h = hashes.at(i);
+      LOG(INFO) << "h=" << h << ", mod=" << h % MOD;
     }
   }
 }

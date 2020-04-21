@@ -328,3 +328,7 @@ set(NRES
 foreach(i ${NRES})
   configure_file(${NEBULA_SRC}/${i} ${CMAKE_CURRENT_BINARY_DIR}/${i} COPYONLY)
 endforeach()
+
+# ensure test folder are all copied into build folder to test resources
+# configure_file(${NEBULA_ROOT}/test ${CMAKE_CURRENT_BINARY_DIR}/test COPYONLY)
+file(COPY ${NEBULA_ROOT}/test DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
