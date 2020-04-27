@@ -388,7 +388,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
                                serde,
                                fbColProps,
                                mb.CreateString(spec->version()),
-                               mb.CreateString(spec->id()),
+                               mb.CreateString(spec->path()),
                                mb.CreateString(spec->domain()),
                                spec->size(),
                                (int8_t)spec->state(),
@@ -422,7 +422,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
 
   if (type == TaskType::COMMAND) {
     auto spec = task.spec<SingleCommandTask>();
-    auto ct = CreateCommandTaskDirect(mb, spec->signature().c_str());
+    auto ct = CreateCommandTaskDirect(mb, spec->id().c_str());
 
     // create task spec
     auto ts = CreateTaskSpec(mb, type, sync, 0, 0, ct);
@@ -524,7 +524,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     auto is = std::make_shared<IngestSpec>(
       table,
       it->version()->str(),
-      it->id()->str(),
+      it->path()->str(),
       it->domain()->str(),
       it->size(),
       (SpecState)it->state(),

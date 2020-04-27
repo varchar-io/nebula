@@ -25,6 +25,7 @@
 #include "common/Chars.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
+#include "common/Finally.h"
 #include "common/Fold.h"
 #include "common/Format.h"
 #include "common/Hash.h"
@@ -973,6 +974,12 @@ TEST(CommonTest, TestBitsOps) {
   for (auto i = 0; i < 8; ++i) {
     EXPECT_EQ(nebula::common::Byte::read(&byte, i, 1), i % 2);
   }
+}
+
+TEST(CommonTest, TestFinally) {
+  nebula::common::Finally exit([]() { LOG(INFO) << "3"; });
+  LOG(INFO) << "1";
+  LOG(INFO) << "2";
 }
 
 } // namespace test

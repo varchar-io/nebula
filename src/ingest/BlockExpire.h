@@ -32,7 +32,7 @@ namespace ingest {
 // why we expire spec instead of individual blocks?
 // it may look we can do better granularity at block level,
 // but it actually increases the management cost with little foreable benefits
-class BlockExpire : public nebula::common::Signable {
+class BlockExpire : public nebula::common::Identifiable {
 public:
   BlockExpire(std::unordered_set<std::pair<std::string, std::string>> specs) : specs_{ std::move(specs) } {
     size_t mix = std::accumulate(specs_.begin(), specs_.end(), 0, [](size_t v, const auto& str) {
@@ -45,7 +45,7 @@ public:
   }
   virtual ~BlockExpire() = default;
 
-  virtual const std::string& signature() const override {
+  virtual const std::string& id() const override {
     return sign_;
   }
 

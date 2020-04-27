@@ -3,7 +3,7 @@ set(NEBULA_COMMON NCommon)
 # build nebula.common library
 # target_include_directories(${NEBULA_COMMON} INTERFACE src/common)
 add_library(${NEBULA_COMMON} STATIC 
-    ${NEBULA_SRC}/common/Errors.cpp 
+    ${NEBULA_SRC}/common/Errors.cpp
     ${NEBULA_SRC}/common/Memory.cpp
     ${NEBULA_SRC}/common/Int128.cpp)
 target_link_libraries(${NEBULA_COMMON}
@@ -15,6 +15,7 @@ target_link_libraries(${NEBULA_COMMON}
 add_executable(CommonTests 
     ${NEBULA_SRC}/common/test/TestCommon.cpp
     ${NEBULA_SRC}/common/test/TestCompression.cpp
+    ${NEBULA_SRC}/common/test/TestDistAlgo.cpp
     ${NEBULA_SRC}/common/test/TestExts.cpp
     ${NEBULA_SRC}/common/test/TestSimd.cpp
     ${NEBULA_SRC}/common/test/TestStatsAlgo.cpp)

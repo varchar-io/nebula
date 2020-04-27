@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <array>
 #include <string>
 #include <xxh3.h>
 
@@ -24,7 +25,6 @@
  * It may have differnet variants to apply for different scenarios.
  * So expect more than one API.
  */
-
 namespace nebula {
 namespace common {
 
@@ -42,18 +42,18 @@ public:
     return XXH3_64bits(p, len);
   }
 
-  XXH_FORCE_INLINE std::vector<size_t> hash64(const void* p, size_t len, size_t count) noexcept {
+  template <size_t N>
+  XXH_FORCE_INLINE std::array<size_t, N> hash64(const void* p, size_t len) noexcept {
     XXH3_state_t state;
     if (XXH3_64bits_reset(&state) == XXH_ERROR) {
       return {};
     }
 
-    std::vector<size_t> hashes;
-    hashes.reserve(count);
+    std::array<size_t, N> hashes;
 
-    for (size_t i = 0; i < count; ++i) {
+    for (size_t i = 0; i < N; ++i) {
       XXH3_64bits_update(&state, p, len);
-      hashes.push_back(XXH3_64bits_digest(&state));
+      hashes[i] = (XXH3_64bits_digest(&state));
     }
 
     return hashes;

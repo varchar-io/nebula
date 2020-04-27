@@ -371,9 +371,9 @@ TEST(HashTest, TestXxhVector) {
   constexpr auto MOD = 20;
   constexpr auto SIZE = 5;
 
-  for (auto k = 0; k < v.size(); ++k) {
+  for (size_t k = 0; k < v.size(); ++k) {
     auto vk = v.at(k);
-    auto hashes = nebula::common::Hasher::hash64(&vk, sizeof(vk), SIZE);
+    auto hashes = nebula::common::Hasher::hash64<SIZE>(&vk, sizeof(vk));
     EXPECT_EQ(SIZE, hashes.size());
 
     LOG(INFO) << "Hashes for v" << k;

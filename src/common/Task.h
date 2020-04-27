@@ -18,6 +18,8 @@
 
 #include <fmt/format.h>
 
+#include "Identifiable.h"
+
 namespace nebula {
 namespace common {
 
@@ -37,11 +39,6 @@ enum TaskState : int8_t {
   NOTFOUND = 'N'
 };
 
-class Signable {
-public:
-  virtual const std::string& signature() const = 0;
-};
-
 /**
  * A task represent a task to be executed on any node in the nebula.
  * Task is passed around in the queue system, make sure it is cheap to copy.
@@ -52,11 +49,11 @@ public:
   // release this spec when task exits
   // sync indicates the task needs to be executed in a synchronized way
   // client is waiting for the task to complete
-  Task(TaskType type, std::shared_ptr<Signable> spec, bool sync = false)
+  Task(TaskType type, std::shared_ptr<Identifiable> spec, bool sync = false)
     : type_{ type },
       spec_{ spec },
       sync_{ sync },
-      sign_{ sign(spec_->signature(), type) } {}
+      sign_{ sign(spec_->id(), type) } {}
   virtual ~Task() = default;
 
 public:
@@ -83,28 +80,28 @@ public:
 
 private:
   TaskType type_;
-  std::shared_ptr<Signable> spec_;
+  std::shared_ptr<Identifiable> spec_;
   bool sync_;
   std::string sign_;
 };
 
 // A single command task used for single command communication.
 // such as node shutdown.
-class SingleCommandTask : public Signable {
+class SingleCommandTask : public Identifiable {
 public:
   SingleCommandTask(std::string command) : command_{ std::move(command) } {}
   virtual ~SingleCommandTask() = default;
 
-  virtual const std::string& signature() const override {
+  virtual const std::string& id() const override {
     return command_;
   }
 
   inline bool isShutdown() const noexcept {
-    return shutdown()->signature() == command_;
+    return shutdown()->id() == command_;
   }
 
 public:
-  static std::shared_ptr<Signable> shutdown() noexcept {
+  static std::shared_ptr<Identifiable> shutdown() noexcept {
     static std::shared_ptr<SingleCommandTask> SHUTDOWN = std::make_shared<SingleCommandTask>("SHUTDOWN");
     return SHUTDOWN;
   }

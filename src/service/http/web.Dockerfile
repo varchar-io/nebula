@@ -1,17 +1,18 @@
-FROM node:12-alpine
+FROM node:14-alpine
 
 COPY http/nebula /etc/web/nebula
 
 WORKDIR /etc/web/nebula
 
-# install node
+# install node packages
 # RUN chmod -R 777 /etc/web/nebula
-# RUN apk --no-cache add g++ gcc libgcc libstdc++ linux-headers make python
-RUN npm config set package-lock false
-RUN npm install --save --production
-
-# why do we need to switch user? Just use root
-# USER prod
+# RUN apk add --no-cache make gcc g++ linux-headers python
+# RUN npm config set package-lock false
+# RUN npm install --save --production
+# A way to support native addon build as well after clean to keep image size small
+RUN apk add --no-cache --virtual .build-deps alpine-sdk python \
+ && npm install --production --silent \
+ && apk del .build-deps
 
 # run the simple web server
 ARG NODE_PORT=8088

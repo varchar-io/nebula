@@ -225,7 +225,7 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) noe
   for (auto itr = specs.cbegin(), end = specs.cend(); itr != end; ++itr) {
     // check if we have this spec already?
     auto specPtr = (*itr);
-    const auto& sign = specPtr->signature();
+    const auto& sign = specPtr->id();
     auto found = specs_.find(sign);
     if (found == specs_.end()) {
       ++brandnew;

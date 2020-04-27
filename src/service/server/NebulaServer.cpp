@@ -328,7 +328,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
     threadPool.add([promise, connector, spec, &threadPool]() {
       auto client = connector->makeClient(spec->affinity(), threadPool);
       // build a task out of this spec
-      Task t(TaskType::INGESTION, std::static_pointer_cast<nebula::common::Signable>(spec), true);
+      Task t(TaskType::INGESTION, std::static_pointer_cast<nebula::common::Identifiable>(spec), true);
       nebula::common::TaskState state = client->task(t);
       if (state == nebula::common::TaskState::SUCCEEDED) {
         spec->setState(SpecState::READY);

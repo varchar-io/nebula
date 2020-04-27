@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include "common/Evidence.h"
+#include "common/Identifiable.h"
 #include "execution/BlockManager.h"
 #include "execution/meta/TableService.h"
 #include "ingest/BlockExpire.h"
@@ -36,7 +37,7 @@ namespace service {
 namespace server {
 
 using nebula::common::Evidence;
-using nebula::common::Signable;
+using nebula::common::Identifiable;
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
@@ -112,7 +113,7 @@ void NodeSync::sync(
       // sync expire task to node
       const auto expireSize = expired.size();
       if (expireSize > 0) {
-        Task t(TaskType::EXPIRATION, std::shared_ptr<Signable>(new BlockExpire(std::move(expired))));
+        Task t(TaskType::EXPIRATION, std::shared_ptr<Identifiable>(new BlockExpire(std::move(expired))));
         TaskState state = client->task(t);
         LOG(INFO) << fmt::format("Expire {0} specs in node {1}: {2}", expireSize, node.server, (char)state);
       }
@@ -143,7 +144,7 @@ void NodeSync::sync(
     if (sp->assigned()) {
       // TODO(cao): handle node reset event. SpecRepo needs to reset spec state if a node reset
       // if assigned to a node, but the node doesn't have the spec, we reset the spec state to
-      if (!bm->hasSpec(sp->affinity(), sp->table()->name, sp->signature())) {
+      if (!bm->hasSpec(sp->affinity(), sp->table()->name, sp->id())) {
         sp->setState(SpecState::RENEW);
       }
 
@@ -154,7 +155,7 @@ void NodeSync::sync(
         auto client = connector->makeClient(sp->affinity(), pool);
 
         // build a task out of this spec
-        Task t(TaskType::INGESTION, std::static_pointer_cast<Signable>(sp));
+        Task t(TaskType::INGESTION, std::static_pointer_cast<Identifiable>(sp));
         TaskState state = client->task(t);
 
         // udpate spec state so that it won't be resent

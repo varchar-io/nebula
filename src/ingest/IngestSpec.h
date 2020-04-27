@@ -56,34 +56,34 @@ enum class SpecState : char {
 };
 
 // a ingest spec defines a task specification to ingest some data
-class IngestSpec : public nebula::common::Signable {
+class IngestSpec : public nebula::common::Identifiable {
 public:
   IngestSpec(
     nebula::meta::TableSpecPtr table,
     const std::string& version,
-    const std::string& id,
+    const std::string& path,
     const std::string& domain,
     size_t size,
     SpecState state,
     size_t date)
     : table_{ table },
       version_{ version },
-      id_{ id },
+      path_{ path },
       domain_{ domain },
       size_{ size },
       state_{ state },
       mdate_{ date },
       node_{ nebula::meta::NNode::invalid() },
-      signature_{ fmt::format("{0}@{1}@{2}", table_->name, id_, size_) } {}
+      id_{ fmt::format("{0}@{1}@{2}", table_->name, path_, size_) } {}
   virtual ~IngestSpec() = default;
 
   inline std::string toString() const {
-    return fmt::format("[IS {0} - {1}]", version_, id_);
+    return fmt::format("[IS {0} - {1}]", version_, path_);
   }
 
-  inline virtual const std::string& signature() const override {
+  inline virtual const std::string& id() const override {
     // TODO(cao) - use file+size as unique signature?
-    return signature_;
+    return id_;
   }
 
   inline void setState(SpecState state) {
@@ -97,10 +97,6 @@ public:
 
   inline const std::string& version() const {
     return version_;
-  }
-
-  inline const std::string& id() const {
-    return id_;
   }
 
   inline size_t size() const {
@@ -129,6 +125,10 @@ public:
 
   inline const std::string& domain() const {
     return domain_;
+  }
+
+  inline const std::string& path() const {
+    return path_;
   }
 
   inline size_t macroDate() const {
@@ -161,7 +161,7 @@ private:
 private:
   nebula::meta::TableSpecPtr table_;
   std::string version_;
-  std::string id_;
+  std::string path_;
   // could be s3 bucket or other protocol
   std::string domain_;
   size_t size_;
@@ -174,7 +174,7 @@ private:
 
   // global unique identifier.
   // not like id which is unique for a given table
-  std::string signature_;
+  std::string id_;
 };
 
 } // namespace ingest

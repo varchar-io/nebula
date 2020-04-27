@@ -56,7 +56,7 @@ public:
     total_ += count;
 
     // get N hashes for given value
-    auto hashes = nebula::common::Hasher::hash64(&v, sizeof(T), H);
+    auto hashes = nebula::common::Hasher::hash64<H>(&v, sizeof(T));
 
     // distribute each hash to the table
     for (size_t i = 0; i < H; ++i) {
@@ -67,7 +67,7 @@ public:
   // query given value
   template <typename T = size_t>
   CT query(T v) const {
-    auto hashes = nebula::common::Hasher::hash64(&v, sizeof(T), H);
+    auto hashes = nebula::common::Hasher::hash64<H>(&v, sizeof(T));
     // distribute each hash to the table
     CT min = std::numeric_limits<CT>::max();
     for (size_t i = 0; i < H; ++i) {
