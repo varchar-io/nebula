@@ -261,8 +261,11 @@ include(ext/Msgpack_Ext.cmake)
 # include perf tools
 include(ext/Perf_Ext.cmake)
 
-#include kafka library
+# include kafka library
 include(ext/Kafka_Ext.cmake)
+
+# include JS execution engine
+include(ext/JS_Ext.cmake)
 
 # "brew install conan" first - it's great after migrating to conan
 # at least for folly - thanks conan, how to solve conflicts with existing lib like gflags?.
