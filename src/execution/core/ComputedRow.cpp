@@ -30,10 +30,10 @@ bool ComputedRow::isNull(IndexType) const {
 
 // TODO(cao) - need to implement isNull (maybe cache to ensure evaluate once)
 // otherwise - this may return invalid values
-#define FORWARD_EVAL_FIELD(TYPE, NAME)              \
-  TYPE ComputedRow::NAME(IndexType index) const {   \
-    bool valid = true;                              \
-    return ctx_.eval<TYPE>(*fields_[index], valid); \
+#define FORWARD_EVAL_FIELD(TYPE, NAME)               \
+  TYPE ComputedRow::NAME(IndexType index) const {    \
+    bool valid = true;                               \
+    return ctx_->eval<TYPE>(*fields_[index], valid); \
   }
 
 FORWARD_EVAL_FIELD(bool, readBool)

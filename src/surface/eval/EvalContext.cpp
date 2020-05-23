@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "ValueEval.h"
+#include "EvalContext.h"
 
 /**
  * Value evaluation context.
@@ -31,11 +31,21 @@ void EvalContext::reset(const nebula::surface::RowData& row) {
   // std::addressof ?
   this->row_ = &row;
 
-  if (UNLIKELY(cache_)) {
+  if (UNLIKELY(cache_ != nullptr)) {
     // clear t he evaluation map
-    cursor_ = 1;
-    map_.clear();
+    cache_.reset();
   }
+}
+
+void EvalContext::setSchema(nebula::type::Schema schema) {
+  const size_t size = schema->size();
+  auto map = std::make_unique<std::unordered_map<std::string, nebula::type::Kind>>(size);
+  for (size_t i = 0; i < size; ++i) {
+    auto f = schema->childType(i);
+    map->emplace(f->name(), f->k());
+  }
+
+  std::swap(map, name2type_);
 }
 
 template <>
@@ -46,9 +56,13 @@ std::string_view EvalContext::eval(const ValueEval& ve, bool& valid) {
 
   const auto& sign = ve.signature();
 
-  // if in evaluated list
-  auto itr = map_.find(sign);
-  if (itr != map_.end()) {
+  // missing language feature like python/js to assign multiple vars from object?
+  auto& map = cache_->map;
+  auto& slice = cache_->slice;
+  auto& cursor = cache_->cursor;
+
+  auto itr = map.find(sign);
+  if (itr != map.end()) {
     // offset length
     const auto& ol = itr->second;
     valid = ol.first > 0;
@@ -56,22 +70,22 @@ std::string_view EvalContext::eval(const ValueEval& ve, bool& valid) {
       return "";
     }
 
-    return slice_.read(ol.first, ol.second);
+    return slice.read(ol.first, ol.second);
   }
 
   N_ENSURE_NOT_NULL(row_, "reference a row object before evaluation.");
   const auto value = ve.eval<std::string_view>(*this, valid);
   if (!valid) {
-    map_[sign] = { 0, 0 };
+    map[sign] = { 0, 0 };
     return "";
   }
 
-  const auto offset = cursor_;
+  const auto offset = cursor;
   const auto size = value.size();
-  map_[sign] = { offset, size };
-  cursor_ += slice_.write(cursor_, value.data(), value.size());
+  map[sign] = { offset, size };
+  cursor += slice.write(cursor, value.data(), value.size());
 
-  return slice_.read(offset, size);
+  return slice.read(offset, size);
 }
 
 } // namespace eval

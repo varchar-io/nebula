@@ -8,44 +8,20 @@ find_package(Threads REQUIRED)
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html
 SET(AWS_CMAKE_BUILD_OPTIONS
   -DBUILD_SHARED_LIBS:BOOL=OFF
+  -DENABLE_UNITY_BUILD=ON
   -DBUILD_DEPS:BOOL=ON
   -DBUILD_ONLY:STRING=s3
-  -DCMAKE_BUILD_TYPE=Release)
+  -DCPP_STANDARD=17
+  -DCMAKE_BUILD_TYPE=Release
+  -DCUSTOM_MEMORY_MANAGEMENT=0)
 
 # https://cmake.org/cmake/help/latest/module/ExternalProject.html
 include(ExternalProject)
-
-# aws common
-ExternalProject_Add(aws-common
-  PREFIX aws-common
-  GIT_REPOSITORY https://github.com/awslabs/aws-c-common.git
-  UPDATE_COMMAND ""
-  INSTALL_COMMAND ""
-  LOG_DOWNLOAD ON
-  LOG_CONFIGURE ON
-  LOG_BUILD ON)
-
-  # set up properties for AWS S3 module 
-ExternalProject_Get_Property(aws-common SOURCE_DIR)
-ExternalProject_Get_Property(aws-common BINARY_DIR)
-
-# add AWS core
-set(AWS_COMMON_INCLUDE_DIRS ${SOURCE_DIR}/include)
-file(MAKE_DIRECTORY ${AWS_COMMON_INCLUDE_DIRS})
-set(AWS_COMMON_LIBRARY_PATH ${BINARY_DIR}/libaws-c-common.a)
-set(AWS_COMMON_LIBRARY awscommon)
-add_library(${AWS_COMMON_LIBRARY} UNKNOWN IMPORTED)
-set_target_properties(${AWS_COMMON_LIBRARY} PROPERTIES
-    "IMPORTED_LOCATION" "${AWS_COMMON_LIBRARY_PATH}"
-    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-    "INTERFACE_INCLUDE_DIRECTORIES" "${AWS_COMMON_INCLUDE_DIRS}")
-
-add_dependencies(${AWS_COMMON_LIBRARY} aws-common)
-
+# aws sdk
 ExternalProject_Add(aws
   PREFIX aws
   GIT_REPOSITORY https://github.com/aws/aws-sdk-cpp.git
-  GIT_TAG 1.6.53
+  GIT_TAG 1.7.344
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   CMAKE_ARGS ${AWS_CMAKE_BUILD_OPTIONS}
@@ -53,9 +29,41 @@ ExternalProject_Add(aws
   LOG_CONFIGURE ON
   LOG_BUILD ON)
 
-# set up properties for AWS S3 module 
+# set up properties for AWS S3 module
 ExternalProject_Get_Property(aws SOURCE_DIR)
 ExternalProject_Get_Property(aws BINARY_DIR)
+
+# set up dependencies - common
+set(DEP_ROOT ${BINARY_DIR}/.deps/install)
+set(AWS_COMMON_INCLUDE_DIR ${DEP_ROOT}/include)
+file(MAKE_DIRECTORY ${AWS_COMMON_INCLUDE_DIR})
+set(AWS_COMMON_LIBRARY_PATH ${DEP_ROOT}/lib/libaws-c-common.a)
+set(AWS_COMMON_LIBRARY awscommon)
+add_library(${AWS_COMMON_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${AWS_COMMON_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${AWS_COMMON_LIBRARY_PATH}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES" "${AWS_COMMON_INCLUDE_DIR}")
+
+# set up dependencies - checksums
+set(AWS_CHECKSUMS_INCLUDE_DIR ${DEP_ROOT}/include)
+set(AWS_CHECKSUMS_LIBRARY_PATH ${DEP_ROOT}/lib/libaws-checksums.a)
+set(AWS_CHECKSUMS_LIBRARY awschecksums)
+add_library(${AWS_CHECKSUMS_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${AWS_CHECKSUMS_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${AWS_CHECKSUMS_LIBRARY_PATH}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES" "${AWS_CHECKSUMS_INCLUDE_DIR}")
+
+# set up dependencies - eventstream
+set(AWS_EVENTSTREAM_INCLUDE_DIR ${DEP_ROOT}/include)
+set(AWS_EVENTSTREAM_LIBRARY_PATH ${DEP_ROOT}/lib/libaws-c-event-stream.a)
+set(AWS_EVENTSTREAM_LIBRARY awseventstream)
+add_library(${AWS_EVENTSTREAM_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${AWS_EVENTSTREAM_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${AWS_EVENTSTREAM_LIBRARY_PATH}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES" "${AWS_EVENTSTREAM_INCLUDE_DIR}")
 
 # add AWS core
 set(AWS_CORE_INCLUDE_DIRS ${SOURCE_DIR}/aws-cpp-sdk-core/include)
@@ -124,13 +132,22 @@ if(NOT APPLE)
     INTERFACE psl)
 endif()
 
+if(APPLE)
+  # libresolve is needed by libcares.a - why put it here?
+  # because we want 2 special APPLE libraries sounding hacky.
+  set(AWS_FRAMEWORK "-framework corefoundation /usr/lib/libresolv.dylib")
+endif()
+
 # add a bundle
 set(AWS_LIBRARY awslib)
 add_library(${AWS_LIBRARY} INTERFACE IMPORTED)
 target_link_libraries(${AWS_LIBRARY} 
-  INTERFACE ${AWS_COMMON_LIBRARY}
   INTERFACE ${AWS_S3_LIBRARY}
   INTERFACE ${AWS_CORE_LIBRARY}
+  INTERFACE ${AWS_EVENTSTREAM_LIBRARY}
+  INTERFACE ${AWS_COMMON_LIBRARY}
+  INTERFACE ${AWS_CHECKSUMS_LIBRARY}
   INTERFACE ${CURL_LIBRARY}
   INTERFACE ${OPENSSL_LIBRARY}
-  INTERFACE ${CRYPTO_LIBRARY})
+  INTERFACE ${CRYPTO_LIBRARY}
+  ${AWS_FRAMEWORK})

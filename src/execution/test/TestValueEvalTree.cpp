@@ -20,23 +20,23 @@
 #include <gtest/gtest.h>
 
 #include "common/Evidence.h"
-#include "surface/eval/ValueEval.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
+#include "surface/eval/ValueEval.h"
 
 namespace nebula {
 namespace execution {
 namespace test {
 
 using nebula::common::Evidence;
+using nebula::surface::MockRowData;
+using nebula::surface::RowData;
 using nebula::surface::eval::column;
 using nebula::surface::eval::constant;
 using nebula::surface::eval::eq;
 using nebula::surface::eval::EvalContext;
 using nebula::surface::eval::gt;
 using nebula::surface::eval::TypeValueEval;
-using nebula::surface::MockRowData;
-using nebula::surface::RowData;
 using nebula::surface::eval::ValueEval;
 
 class MockRow : public nebula::surface::MockRowData {
@@ -57,7 +57,7 @@ TEST(ValueEvalTest, TestValueEval) {
   EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
   // int = 3 + col('a')
-  EvalContext ctx;
+  EvalContext ctx{ false };
   ctx.reset(row);
   auto b1 = nebula::surface::eval::constant(ivalue);
   bool valid = true;
@@ -95,7 +95,7 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
     EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
     EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
-    EvalContext ctx;
+    EvalContext ctx{ false };
     ctx.reset(row);
 
     auto b1 = nebula::surface::eval::constant(cvalue);
@@ -114,7 +114,7 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
     EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
     EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
-    EvalContext ctx;
+    EvalContext ctx{ false };
     ctx.reset(row);
     auto b1 = nebula::surface::eval::constant(cvalue);
     auto b2 = nebula::surface::eval::column<float>("y");
@@ -132,7 +132,7 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
     EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
     EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
-    EvalContext ctx;
+    EvalContext ctx{ false };
     ctx.reset(row);
     auto b1 = nebula::surface::eval::constant(cvalue);
     auto b2 = nebula::surface::eval::column<float>("z");
@@ -150,7 +150,7 @@ TEST(ValueEvalTest, TestValueEvalArthmetic) {
     EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
     EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
-    EvalContext ctx;
+    EvalContext ctx{ false };
     ctx.reset(row);
     auto b1 = nebula::surface::eval::constant(cvalue);
     auto b2 = nebula::surface::eval::column<float>("d");
@@ -171,7 +171,7 @@ TEST(ValueEvalTest, TestValueEvalLogical) {
     EXPECT_CALL(row, readFloat(testing::_)).WillRepeatedly(testing::Return(cvalue));
     EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
-    EvalContext ctx;
+    EvalContext ctx{ false };
     ctx.reset(row);
     auto b1 = nebula::surface::eval::constant(cvalue);
     auto b2 = nebula::surface::eval::column<float>("x");
@@ -200,7 +200,7 @@ TEST(ValueEvalTest, TestStringValues) {
   EXPECT_CALL(row, readString(testing::_)).WillRepeatedly(testing::Return(c));
   EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
-  EvalContext ctx;
+  EvalContext ctx{ false };
   ctx.reset(row);
   bool valid = true;
 
@@ -258,7 +258,7 @@ TEST(ValueEvalTest, TestStringValues) {
 }
 
 TEST(ValueEvalTest, TestEvaluationContext) {
-  EvalContext context;
+  EvalContext ctx{ false };
   auto b1 = nebula::surface::eval::constant(2);
   auto b2 = nebula::surface::eval::column<float>("x");
   auto b3 = nebula::surface::eval::mul<float, int, float>(std::move(b1), std::move(b2));
@@ -271,14 +271,14 @@ TEST(ValueEvalTest, TestEvaluationContext) {
     EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
     // 1*2 < 3
-    context.reset(row);
+    ctx.reset(row);
     bool valid = true;
     // value cached by the same row, so no matter how many calls.
     // evaluate result should be the same
     LOG(INFO) << "signature of b5=" << b5->signature();
     for (auto i = 0; i < 1000; ++i) {
       EXPECT_EQ(valid, true);
-      EXPECT_EQ(context.eval<bool>(*b5, valid), false);
+      EXPECT_EQ(ctx.eval<bool>(*b5, valid), false);
     }
   }
 
@@ -290,9 +290,9 @@ TEST(ValueEvalTest, TestEvaluationContext) {
 
     // 2*2 > 3
     bool valid = true;
-    context.reset(row);
+    ctx.reset(row);
     for (auto i = 0; i < 1000; ++i) {
-      auto result = context.eval<bool>(*b5, valid);
+      auto result = ctx.eval<bool>(*b5, valid);
       EXPECT_EQ(valid, true);
       EXPECT_EQ(result, true);
     }
@@ -305,10 +305,10 @@ TEST(ValueEvalTest, TestEvaluationContext) {
     EXPECT_CALL(row, isNull(testing::_)).WillRepeatedly(testing::Return(true));
 
     // 2*2 > 3
-    context.reset(row);
+    ctx.reset(row);
     for (auto i = 0; i < 1000; ++i) {
       bool valid = true;
-      auto result = context.eval<bool>(*b5, valid);
+      auto result = ctx.eval<bool>(*b5, valid);
       EXPECT_EQ(valid, false);
       if (valid) {
         EXPECT_EQ(result, true);

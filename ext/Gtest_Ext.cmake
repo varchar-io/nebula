@@ -2,9 +2,12 @@ if(APPLE)
     find_package(Threads REQUIRED)
 
     include(ExternalProject)
-    ExternalProject_Add(
-    googletest
+    SET(GTEST_OPTS
+        -DCMAKE_CXX_STANDARD=17)
+    ExternalProject_Add(googletest
+    PREFIX gtest
     GIT_REPOSITORY https://github.com/google/googletest.git
+    CMAKE_ARGS ${GTEST_OPTS}
     UPDATE_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON

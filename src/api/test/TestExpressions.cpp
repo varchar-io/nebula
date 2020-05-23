@@ -155,7 +155,7 @@ TEST(ExpressionsTest, TestExpressionEval) {
 
     auto eval = idvalue.asEval();
     nebula::surface::MockRowData mr;
-    nebula::surface::eval::EvalContext ctx;
+    nebula::surface::eval::EvalContext ctx{ false };
     ctx.reset(mr);
     bool valid = true;
     bool res = eval->eval<bool>(ctx, valid);
@@ -168,7 +168,7 @@ TEST(ExpressionsTest, TestExpressionEval) {
 
     auto eval = eventValue.asEval();
     nebula::surface::MockRowData mr;
-    nebula::surface::eval::EvalContext ctx;
+    nebula::surface::eval::EvalContext ctx{ false };
     ctx.reset(mr);
     bool valid = true;
     bool res = eval->eval<bool>(ctx, valid);
@@ -235,7 +235,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
   // verify the mocked data has expected result
   EXPECT_EQ(rowData.readString("event"), "abcdefg");
 
-  nebula::surface::eval::EvalContext ctx;
+  nebula::surface::eval::EvalContext ctx{ false };
   ctx.reset(rowData);
   // evaluate like
   {
@@ -296,7 +296,7 @@ public:
 TEST(ExpressionsTest, TestSerde) {
   auto ms = TableService::singleton();
   auto tbl = ms->query("nebula.test").table();
-  nebula::surface::eval::EvalContext ctx;
+  nebula::surface::eval::EvalContext ctx{ false };
   MockRow3 rowData;
   EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
   EXPECT_CALL(rowData, readByte(testing::_)).WillRepeatedly(testing::Return(20));

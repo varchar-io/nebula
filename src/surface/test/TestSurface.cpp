@@ -21,6 +21,7 @@
 #include "fmt/format.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
+#include "surface/eval/Script.h"
 
 namespace nebula {
 namespace memory {
@@ -73,6 +74,45 @@ TEST(SurfaceTest, TestInt128Surface) {
 
   for (auto i = 0; i < 1024; ++i) {
     EXPECT_EQ(mock1.readInt128("b"), mock2.readInt128("b"));
+  }
+}
+
+TEST(SurfaceTest, TestScriptContext) {
+  const auto seed = Evidence::unix_timestamp();
+  nebula::surface::MockRowData mock1(seed);
+  nebula::surface::MockRowData mock2(seed);
+  nebula::surface::eval::ScriptContext script(
+    [&mock1]() -> const nebula::surface::RowData& {
+      return mock1;
+    },
+    [](const std::string& col) -> auto {
+      if (col == "c") {
+        return nebula::type::Kind::INTEGER;
+      }
+      if (col == "str") {
+        return nebula::type::Kind::VARCHAR;
+      }
+
+      return nebula::type::Kind::INVALID;
+    });
+
+  // define the function in current eval context
+  // int 32 value overflow:
+  // C++: (1896463358 * 2 - 2147483648-2147483648)
+  // JS: ??
+  bool valid;
+  script.eval<int32_t>("var x = () => nebula.column('c') - 100;", valid);
+  script.eval<bool>("var y = () => nebula.column('str').length;", valid);
+  for (auto i = 0; i < 16; ++i) {
+    auto x = script.eval<int32_t>("x();", valid);
+    auto col_c = mock2.readInt("c");
+    EXPECT_TRUE(valid);
+    EXPECT_EQ(x, col_c - 100);
+
+    auto y = script.eval<int32_t>("y();", valid);
+    auto col_str = mock2.readString("str");
+    EXPECT_TRUE(valid);
+    EXPECT_EQ(y, col_str.size());
   }
 }
 

@@ -1,7 +1,8 @@
----
----
-
 @import "{{ site.theme }}";
+
+* {
+    font-family: sans-serif !important;
+}
 
 ul li {
     margin: 10px 0;

@@ -73,7 +73,7 @@ EvalBlock buildEvalBlock<LogicalOp::GT>(const std::unique_ptr<ValueEval>& left,
     // const expr signature is compsoed by "C:{col}"
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
-      EvalContext ctx;
+      EvalContext ctx{ false };
       bool valid;
       // logic
       auto ct = b.columnType(name);
@@ -111,7 +111,7 @@ EvalBlock buildEvalBlock<LogicalOp::GE>(const std::unique_ptr<ValueEval>& left,
     // const expr signature is compsoed by "C:{col}"
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
-      EvalContext ctx;
+      EvalContext ctx{ false };
       bool valid;
       // logic
       auto ct = b.columnType(name);
@@ -149,7 +149,7 @@ EvalBlock buildEvalBlock<LogicalOp::LT>(const std::unique_ptr<ValueEval>& left,
     // const expr signature is compsoed by "C:{col}"
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
-      EvalContext ctx;
+      EvalContext ctx{ false };
       bool valid;
       // logic
       auto ct = b.columnType(name);
@@ -187,7 +187,7 @@ EvalBlock buildEvalBlock<LogicalOp::LE>(const std::unique_ptr<ValueEval>& left,
     // const expr signature is compsoed by "C:{col}"
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
-      EvalContext ctx;
+      EvalContext ctx{ false };
       bool valid;
       // logic
       auto ct = b.columnType(name);
@@ -265,7 +265,7 @@ EvalBlock buildEvalBlock<LogicalOp::EQ>(const std::unique_ptr<ValueEval>& left,
     // const expr signature is compsoed by "C:{col}"
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
-      EvalContext ctx;
+      EvalContext ctx{ false };
       bool valid;
       // logic
       auto ct = b.columnType(name);
@@ -301,7 +301,7 @@ EvalBlock buildEvalBlock<LogicalOp::NEQ>(const std::unique_ptr<ValueEval>& left,
     // const expr signature is compsoed by "C:{col}"
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
-      EvalContext ctx;
+      EvalContext ctx{ false };
       bool valid;
       // logic
       auto ct = b.columnType(name);

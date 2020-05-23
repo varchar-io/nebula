@@ -39,7 +39,6 @@ using nebula::surface::MockRowData;
 using nebula::surface::RowData;
 using nebula::surface::eval::column;
 using nebula::surface::eval::constant;
-using nebula::surface::eval::EvalContext;
 using nebula::surface::eval::UDAF;
 using nebula::type::TypeSerializer;
 

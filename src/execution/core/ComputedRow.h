@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include "execution/ExecutionPlan.h"
+#include "memory/Batch.h"
 #include "surface/SchemaRow.h"
 #include "surface/eval/ValueEval.h"
 
@@ -23,18 +25,14 @@ namespace nebula {
 namespace execution {
 namespace core {
 
-// TODO(cao) - we should remove this constructor.
-// Feels expensive to construct every one for each row.
 // computed row use index based interfaces rather than name based interface.
 class ComputedRow : public nebula::surface::SchemaRow {
   using IndexType = nebula::surface::IndexType;
 
 public:
-  ComputedRow(
-    const nebula::type::Schema& schema,
-    nebula::surface::eval::EvalContext& ctx,
-    const nebula::surface::eval::Fields& fields)
-    : SchemaRow(schema), ctx_{ ctx }, fields_{ fields } {}
+  ComputedRow(const nebula::execution::BlockPhase& plan,
+              std::shared_ptr<nebula::surface::eval::EvalContext> ctx)
+    : SchemaRow(plan.outputSchema()), fields_{ plan.fields() }, ctx_{ ctx } {}
   virtual ~ComputedRow() = default;
 
 public:
@@ -54,8 +52,10 @@ public:
   std::unique_ptr<nebula::surface::MapData> readMap(IndexType) const override;
 
 private:
-  nebula::surface::eval::EvalContext& ctx_;
   const nebula::surface::eval::Fields& fields_;
+
+  // evaluation context and wrapped row
+  std::shared_ptr<nebula::surface::eval::EvalContext> ctx_;
 
   // TODO(cao) - we have been struggling on whether to use std::optional as RowData interface
   // There are basically two situations for providing RowData interface:

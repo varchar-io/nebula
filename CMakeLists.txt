@@ -34,7 +34,7 @@ include_directories(include ${NEBULA_SRC})
 # rm -rf CMakeFiles && rm -rf *.cmake && rm CMakeCache.txt
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_VERBOSE_MAKEFILE on)
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # a switch to use clang or g++
 # clang or g++

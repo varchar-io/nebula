@@ -161,7 +161,11 @@ template <>
 class Phase<PhaseType::COMPUTE> : public ExecutionPhase {
 public:
   Phase(const nebula::type::Schema input, const nebula::type::Schema output)
-    : ExecutionPhase(input), input_{ input }, output_{ output } {}
+    : ExecutionPhase(input),
+      input_{ input },
+      output_{ output },
+      numAggregates_{ 0 },
+      limit_{ std::numeric_limits<size_t>::max() } {}
   virtual ~Phase() = default;
 
 public:
@@ -179,8 +183,8 @@ public:
     fields_ = std::move(fields);
     return *this;
   }
-  Phase& keys(std::vector<size_t> keys) {
 
+  Phase& keys(std::vector<size_t> keys) {
     keys_ = std::move(keys);
     return *this;
   }
@@ -257,6 +261,24 @@ public:
 
   inline bool hasAggregation() const {
     return numAggregates_ > 0;
+  }
+
+  // TODO(cao): current implementation is not correct because it only checks the top value eval object
+  // consider moving the tree structure ("children") from TypeValueEval into ValueEval
+  // in fact, every value eval is a tree, it should be recursive method to check any node is script expression
+  inline bool hasCustom() const {
+    constexpr auto ETS = nebula::surface::eval::ExpressionType::SCRIPT;
+    if (filter_ && filter_->expressionType() == ETS) {
+      return true;
+    }
+
+    for (auto& f : fields_) {
+      if (f->expressionType() == ETS) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
 private:

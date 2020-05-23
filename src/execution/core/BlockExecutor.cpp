@@ -35,6 +35,7 @@ using nebula::surface::RowCursorPtr;
 using nebula::surface::eval::BlockEval;
 using nebula::surface::eval::EvalContext;
 using nebula::type::Kind;
+using nebula::type::Schema;
 
 RowCursorPtr compute(const EvaledBlock& data, const nebula::execution::BlockPhase& plan) {
   if (plan.hasAggregation()) {
@@ -51,7 +52,13 @@ void BlockExecutor::compute() {
   const auto& filter = plan_.filter();
 
   // build context and computed row associated with this context
-  EvalContext ctx(plan_.cacheEval());
+  auto hasCustom = plan_.hasCustom();
+  auto ctx = std::make_shared<EvalContext>(plan_.cacheEval(), hasCustom);
+
+  // custom evaluation requires input schema
+  if (hasCustom) {
+    ctx->setSchema(plan_.inputSchema());
+  }
 
   // predicate pushdown evaluation on block metadata
   auto result = data_.second;
@@ -59,7 +66,7 @@ void BlockExecutor::compute() {
   // if all rows needed, we don't need to evaluate row by row
   bool scanAll = result == BlockEval::ALL;
 
-  ComputedRow cr(plan_.outputSchema(), ctx, fields);
+  ComputedRow cr(plan_, ctx);
   result_ = std::make_unique<HashFlat>(plan_.outputSchema(), fields);
 
   // we want to evaluate here for the whole block before we go to iterations of computing
@@ -74,13 +81,13 @@ void BlockExecutor::compute() {
   // So we need an special operator to be implemented to have this function
 
   for (size_t i = 0, size = data_.first->getRows(); i < size; ++i) {
-    ctx.reset(accessor->seek(i));
+    ctx->reset(accessor->seek(i));
 
     // if not fullfil the condition
     // ignore valid here - if system can't determine how to act on NULL value
     // we don't know how to make decision here too
     bool valid = true;
-    if (!scanAll && !ctx.eval<bool>(filter, valid)) {
+    if (!scanAll && !ctx->eval<bool>(filter, valid)) {
       continue;
     }
 
@@ -96,13 +103,6 @@ void BlockExecutor::compute() {
 void SamplesExecutor::compute() {
   // build context and computed row associated with this context
   samples_ = std::make_unique<ReferenceRows>(plan_, *data_.first);
-
-  for (size_t i = 0, size = data_.first->getRows(); i < size; ++i) {
-    // if we have enough samples, just return
-    if (samples_->check(i) >= plan_.top()) {
-      break;
-    }
-  }
 
   // after the compute flat should contain all the data we need.
   index_ = 0;

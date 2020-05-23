@@ -35,6 +35,7 @@
 namespace nebula {
 namespace meta {
 
+using nebula::type::Kind;
 using nebula::type::Schema;
 
 // only save partition values as string
@@ -64,6 +65,15 @@ struct BucketInfo {
   static BucketInfo empty() {
     return BucketInfo{ 0, "" };
   }
+};
+
+struct CustomColumn {
+  explicit CustomColumn(const std::string& n, Kind k, const std::string& e)
+    : name{ n }, kind{ k }, expr{ e } {}
+
+  std::string name;
+  Kind kind;
+  std::string expr;
 };
 
 /**

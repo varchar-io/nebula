@@ -5,9 +5,12 @@ find_package(Threads REQUIRED)
 
 # https://cmake.org/cmake/help/latest/module/ExternalProject.html
 include(ExternalProject)
-ExternalProject_Add(
-  yomm2
+SET(YOMM2_OPTS
+  -DCMAKE_CXX_STANDARD=17)
+ExternalProject_Add(yomm2
+  PREFIX yomm2
   GIT_REPOSITORY https://github.com/jll63/yomm2.git
+  CMAKE_ARGS ${YOMM2_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   LOG_DOWNLOAD ON

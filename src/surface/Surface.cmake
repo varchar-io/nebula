@@ -9,7 +9,8 @@ add_library(${NEBULA_SURFACE} STATIC
 target_link_libraries(${NEBULA_SURFACE}
     PUBLIC ${NEBULA_TYPE}
     PUBLIC ${NEBULA_COMMON}
-    PUBLIC ${FMT_LIBRARY})
+    PUBLIC ${FMT_LIBRARY}
+    PUBLIC ${QJS_LIBRARY})
 
 # build test binary
 add_executable(SurfaceTests 

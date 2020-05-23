@@ -40,13 +40,10 @@ using nebula::surface::RowData;
 using nebula::surface::eval::BlockEval;
 using nebula::surface::eval::column;
 using nebula::surface::eval::constant;
-using nebula::surface::eval::EvalContext;
+using nebula::surface::eval::custom;
 using nebula::surface::eval::UDAF;
+using nebula::type::Kind;
 using nebula::type::TypeSerializer;
-
-TEST(ExecutionTest, TestOperator) {
-  LOG(INFO) << "Execution provides physical executuin units at any stage";
-}
 
 static constexpr auto line = [](const RowData& r) {
   return fmt::format("({0}, {1}, {2})",
@@ -123,7 +120,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
     f.emplace_back(nebula::surface::eval::constant(true));
 
     auto fb = nebula::execution::serde::asBuffer(rowCursor, schema, f);
-    EXPECT_EQ(fb->getRows(), 8);
+    EXPECT_EQ(fb->getRows(), 8L);
   }
 
   // construct a SamplesExecutor to run a samples query
@@ -204,6 +201,43 @@ TEST(ExecutionTest, TestRowCursorSerde) {
     EXPECT_EQ(fb->getRows(), 1);
     const auto& rf = fb->row(0);
     EXPECT_EQ(rf.readInt("key"), 20);
+  }
+}
+
+TEST(ExecutionTest, TestCustomColumn) {
+  nebula::meta::TestTable test;
+  auto size = 1;
+  Batch batch(test, size);
+  MockRowData row;
+  MockRowData sameRow;
+  for (auto i = 0; i < size; ++i) {
+    batch.add(row);
+  }
+
+  LOG(INFO) << "build up a block compute result with custom column";
+
+  // 2x of id value for id2 -
+  // cautious about the int32 overflow value difference between JS and CPP
+  // using safer arthmetic operations like "-2000"
+  auto expr = "const id2 = () => nebula.column(\"id\") - 2000;";
+  auto outputSchema = TypeSerializer::from("ROW<id:int, id2:int>");
+  nebula::execution::BlockPhase plan(test.schema(), outputSchema);
+
+  nebula::surface::eval::Fields selects;
+  selects.reserve(2);
+  selects.push_back(column<int32_t>("id"));
+  selects.push_back(custom<int32_t>("id2", expr));
+  plan.scan(test.name())
+    .compute(std::move(selects))
+    .filter(constant<bool>(true));
+
+  EvaledBlock eb{ &batch, BlockEval::PARTIAL };
+  auto cursor = nebula::execution::core::compute(eb, plan);
+  while (cursor->hasNext()) {
+    const auto& row = cursor->next();
+    auto id = row.readInt("id");
+    auto id2 = row.readInt("id2");
+    EXPECT_TRUE(id - 2000 == id2);
   }
 }
 

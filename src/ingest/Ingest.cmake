@@ -41,10 +41,7 @@ target_link_libraries(IngestTests
     PRIVATE ${THRIFT_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${SNAPPY_LIBRARY}
-    PRIVATE ${XXH_LIBRARY}
-    PRIVATE ${AWS_COMMON_LIBRARY}
-    PRIVATE ${AWS_S3_LIBRARY}
-    PRIVATE ${AWS_CORE_LIBRARY})
+    PRIVATE ${XXH_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

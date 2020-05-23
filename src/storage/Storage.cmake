@@ -19,7 +19,6 @@ target_link_libraries(${NEBULA_STORAGE}
     PUBLIC ${ARROW_LIBRARY}
     PUBLIC ${AWS_LIBRARY}
     PUBLIC ${KAFKA_LIBRARY}
-    PUBLIC ${CURL_LIBRARY}
     PUBLIC ${THRIFT_LIBRARY})
 
 #build test binary
@@ -52,9 +51,7 @@ target_link_libraries(StorageTests
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${SNAPPY_LIBRARY}
     PRIVATE ${XXH_LIBRARY}
-    PRIVATE ${AWS_COMMON_LIBRARY}
-    PRIVATE ${AWS_S3_LIBRARY}
-    PRIVATE ${AWS_CORE_LIBRARY}
+    PRIVATE ${AWS_LIBRARY}
     PRIVATE ${KAFKA_LIBRARY})
 
 # discover all gtests in this module

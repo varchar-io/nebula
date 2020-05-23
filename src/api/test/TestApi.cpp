@@ -184,7 +184,7 @@ TEST(ApiTest, TestExprValueEval) {
   auto v1 = expr.asEval();
   auto v2 = expr2.asEval();
 
-  EvalContext ctx;
+  EvalContext ctx{ false };
   ctx.reset(rowData);
   bool valid = true;
   auto x = v1->eval<bool>(ctx, valid);

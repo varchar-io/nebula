@@ -30,7 +30,8 @@ enum ExpressionType {
   COLUMN,
   ARTHMETIC,
   LOGICAL,
-  FUNCTION
+  FUNCTION,
+  SCRIPT
 };
 
 // supported arthmetic operations

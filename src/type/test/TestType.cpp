@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
 #include <any>
 #include <cstddef>
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
+
 #include "common/Errors.h"
-#include "fmt/format.h"
 #include "type/Serde.h"
 #include "type/Tree.h"
 #include "type/Type.h"
@@ -237,7 +238,7 @@ TEST(TypeTest, TestSerdeRoundTrip) {
     // assign node ID to the schema
     LOG(INFO) << "Total Nodes: " << type->assignNodeId(0);
     type->walk<size_t>([](auto& v) { LOG(INFO) << "NODE: n=" << v.getNode() << ",id=" << v.getId(); },
-                           {});
+                       {});
     auto serialized = TypeSerializer::to(type);
     LOG(INFO) << "Serialize the tree to schema: " << serialized;
 
@@ -334,7 +335,7 @@ TEST(TupleTest, TestTuple) {
 template <class... Ts>
 struct overloaded : Ts... { using Ts::operator()...; };
 template <class... Ts>
-overloaded(Ts...)->overloaded<Ts...>;
+overloaded(Ts...) -> overloaded<Ts...>;
 TEST(OverloadPatternTest, TestOverload) {
   auto PrintVisitor = [](const auto& t) { std::cout << t << '\n'; };
   std::variant<int, float, std::string> intFloatString{ "Hello" };
