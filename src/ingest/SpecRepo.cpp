@@ -44,10 +44,17 @@ using nebula::meta::TableSpecPtr;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
 using nebula::storage::FileInfo;
+using nebula::storage::kafka::KafkaSegment;
 using nebula::storage::kafka::KafkaTopic;
 
 constexpr auto HOUR_SECONDS = 3600;
 constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
+
+// specified batch size in table config - not kafka specific
+constexpr auto S_BATCH = "batch";
+// specified kafka partition /offset to consume - kafka specific
+constexpr auto S_PARTITION = "k.partition";
+constexpr auto S_OFFSET = "k.offset";
 
 // generate a list of ingestion spec based on cluster info
 void SpecRepo::refresh(const ClusterInfo& ci) noexcept {
@@ -160,15 +167,39 @@ void genKafkaSpec(const std::string& version,
   // a stable spec generation based on offsets, every N (eg. 10K) records per spec
   KafkaTopic topic(table->location, table->name, table->serde, FLAGS_KAFKA_TIMEOUT_MS);
 
-  // set start time
-  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * HOUR_SECONDS);
-  auto segments = topic.segmentsByTimestamp(startMs, FLAGS_KAFKA_SPEC_ROWS);
+  // check if this table has set batch size to overwrite the default one
+  const auto& settings = table->settings;
+  auto batch = FLAGS_KAFKA_SPEC_ROWS;
+  auto itr = settings.find(S_BATCH);
+  if (itr != settings.end()) {
+    batch = folly::to<size_t>(itr->second);
+    LOG(INFO) << "Table " << table->name << " overwrite batch size as " << batch;
+  }
 
   // turn these segments into ingestion spec
-  for (auto itr = segments.cbegin(), end = segments.cend(); itr != end; ++itr) {
-    specs.push_back(std::make_shared<IngestSpec>(
-      table, version, itr->id(), "kafka", itr->size, SpecState::NEW, 0));
+  auto convert = [&specs, &table, &version](const std::list<KafkaSegment>& segments) {
+    // turn these segments into ingestion spec
+    for (auto itr = segments.cbegin(), end = segments.cend(); itr != end; ++itr) {
+      specs.push_back(std::make_shared<IngestSpec>(
+        table, version, itr->id(), "kafka", itr->size, SpecState::NEW, 0));
+    }
+  };
+
+  // if specific partition / offset specified, we only consume it.
+  // this is usually for debugging purpose
+  auto itr_p = settings.find(S_PARTITION);
+  auto itr_o = settings.find(S_OFFSET);
+  if (itr_p != settings.end() && itr_o != settings.end()) {
+    std::list<KafkaSegment> segments;
+    segments.emplace_back(folly::to<int32_t>(itr_p->second), folly::to<int64_t>(itr_o->second), batch);
+    convert(segments);
+    return;
   }
+
+  // set start time
+  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * HOUR_SECONDS);
+  auto segments = topic.segmentsByTimestamp(startMs, batch);
+  convert(segments);
 }
 
 void SpecRepo::process(

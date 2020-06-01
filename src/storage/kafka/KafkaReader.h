@@ -18,9 +18,12 @@
 
 #include "KafkaProvider.h"
 #include "KafkaTopic.h"
+
 #include "common/Errors.h"
 #include "memory/FlatRow.h"
 #include "meta/TableSpec.h"
+#include "storage/JsonReader.h"
+#include "storage/ThriftReader.h"
 #include "surface/DataSurface.h"
 
 /**
@@ -42,23 +45,18 @@ public:
       table_{ table },
       segment_{ std::move(segment) },
       timeoutMs_{ timeoutMs },
-      includeTime_{ false },
-      row_{ SLICE_SIZE } {
-
-    // reverse mapping of name -> id
-    const auto& cmap = table_->serde.cmap;
-    for (auto itr = cmap.begin(); itr != cmap.end(); ++itr) {
-      fields_.emplace(itr->second, itr->first);
-      if (itr->first == nebula::meta::Table::TIME_COLUMN) {
-        includeTime_ = true;
-      }
-    }
-
-    // load all desired messages through this consumer
-    load(KafkaProvider::getConsumer(table_->location, table_->settings));
+      row_{ SLICE_SIZE, true } {
+    // initialize consumer and parser
+    init();
   }
 
-  virtual ~KafkaReader() = default;
+  virtual ~KafkaReader() {
+    // unassign the partition
+    consumer_->unassign();
+    // consumer->unsubscribe();
+    // TODO(cao): calling close will hanging forever.
+    consumer_->close();
+  }
 
 public:
   // next row data of CsvRow
@@ -70,32 +68,26 @@ public:
 
 private:
   // load all messages in the repo
-  void load(RdKafka::KafkaConsumer*);
+  void init();
 
-  // populate current message into flat row with thrift and bianry protocol
-  void populateThriftBinary(const RdKafka::Message&);
-
-  void nullifyRow() noexcept {
-    // write everything a null if encoutering an invalid message
-    row_.reset();
-    row_.write(nebula::meta::Table::TIME_COLUMN, 0l);
-    for (auto itr = fields_.cbegin(); itr != fields_.cend(); ++itr) {
-      row_.writeNull(itr->second);
-    }
-  }
+  // next message
+  std::unique_ptr<RdKafka::Message> message();
 
 private:
   nebula::meta::TableSpecPtr table_;
   KafkaSegment segment_;
   size_t timeoutMs_;
-  bool includeTime_;
 
   // queue of messages, when reader starts it will pumping messages into this queue
-  std::vector<std::unique_ptr<RdKafka::Message>> messages_;
   nebula::memory::FlatRow row_;
 
-  // reverse the fields mapping from field ID -> name
-  std::unordered_map<uint32_t, std::string> fields_;
+  // kafka consumer and parser
+  std::unique_ptr<RdKafka::TopicPartition> partition_;
+  std::unique_ptr<RdKafka::KafkaConsumer> consumer_;
+  std::unique_ptr<RowParser> parser_;
+  int64_t max_;
+  size_t errors_;
+  std::unique_ptr<RdKafka::Message> msg_;
 };
 
 } // namespace kafka

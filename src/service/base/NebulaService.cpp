@@ -16,6 +16,7 @@
 
 #include "NebulaService.h"
 
+#include <msgpack.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
@@ -372,6 +373,15 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     }
     auto fbColProps = mb.CreateVector<flatbuffers::Offset<ColumnProp>>(colProps);
 
+    // serialize table settings
+    std::string settings;
+    if (!table->settings.empty()) {
+      std::stringstream ss;
+      msgpack::pack(ss, table->settings);
+      ss.seekg(0);
+      settings = ss.str();
+    }
+
     // serialize the ingest task
     auto it = CreateIngestTask(mb,
                                mb.CreateString(table->name),
@@ -381,6 +391,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
                                mb.CreateString(table->location),
                                mb.CreateString(table->format),
                                mb.CreateString(table->schema),
+                               mb.CreateString(settings),
                                (int8_t)time.type,
                                time.unixTimeValue,
                                mb.CreateString(time.colName),
@@ -500,6 +511,11 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     // such as SSL cert settings to enable ingester read data properly
     // build key-value settings
     std::unordered_map<std::string, std::string> settings;
+    auto s = it->settings();
+    if (s->size() > 0) {
+      msgpack::object_handle oh = msgpack::unpack(s->data(), s->size());
+      oh.get().convert(settings);
+    }
 
     // build table spec
     std::string tbName = it->name()->str();

@@ -65,8 +65,9 @@ tables:
   #     type: static
   #     # date +%s --date='2019-09-10'
   #     value: 1571875200
-  ## all kafka table name will start with "k." followed by topic name
-  ## to indicating its a kafka data source
+
+  # # all kafka table name will start with "k." followed by topic name
+  # # to indicating its a kafka data source
   # k.<topic>:
   #   max-mb: 200000
   #   max-hr: 12
@@ -100,3 +101,38 @@ tables:
   #       default_value: 0
   #   time:
   #     type: current
+
+  # # another kafka real time example in json format
+  # k.reporting:
+  #   max-mb: 200000
+  #   max-hr: 1
+  #   schema: "ROW<time:long, ct:int, actor_id:string, pid:long, app:byte, eventtype:string, owner:long, root_id:long, crated:long, version:short, slot:int>"
+  #   data: kafka
+  #   topic: <topic>
+  #   loader: Roll
+  #   source: <brokers>
+  #   backup: s3://nebula/n115/
+  #   format: json
+  #   columns:
+  #     pid:
+  #       bloom_filter: true
+  #     owner:
+  #       bloom_filter: true
+  #     root_id:
+  #       bloom_filter: true
+  #     version:
+  #       bloom_filter: true
+  #     eventtype:
+  #       dict: true
+  #   time:
+  #     type: column
+  #     column: time
+  #     pattern: UNIXTIME_NANO
+  #   settings:
+  #     batch: 1000000
+  #     # k.partition: 11
+  #     # k.offset: 3986000000
+  #     # "kafka." is preserved prefix for kafka configs
+  #     # kafka.queued.min.messages: 50000
+  #     # kafka.queued.max.messages.kbytes: 102400
+  #     # kafka.fetch.message.max.bytes: 10240

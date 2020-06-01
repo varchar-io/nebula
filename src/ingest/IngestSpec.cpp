@@ -19,6 +19,7 @@
 #include <gflags/gflags.h>
 #include <gperftools/heap-profiler.h>
 
+#include "TimeRow.h"
 #include "common/Evidence.h"
 #include "execution/BlockManager.h"
 #include "execution/meta/TableService.h"
@@ -222,9 +223,16 @@ bool IngestSpec::loadApi() noexcept {
 
 // current is a kafka spec
 bool IngestSpec::loadKafka() noexcept {
+#ifdef PPROF
+  HeapProfilerStart("/tmp/heap_ingest_kafka.out");
+#endif
   // build up the segment to consume
-  auto segment = KafkaSegment::from(id_);
+  // note that: Kafka path is composed by this pattern: "{partition}_{offset}_{size}"
+  auto segment = KafkaSegment::from(path_);
   KafkaReader reader(table_, std::move(segment));
+
+  // time function
+  TimeRow timeRow(table_->timeSpec, mdate_);
 
   // get a table definition
   auto table = table_->to();
@@ -237,19 +245,19 @@ bool IngestSpec::loadKafka() noexcept {
 
   auto lowTime = std::numeric_limits<size_t>::max();
   auto highTime = std::numeric_limits<size_t>::min();
-  while (reader.hasNext()) {
-    auto& row = reader.next();
 
-    // update time range before adding the row to the batch
-    // get time column value
-    size_t time = row.readLong(Table::TIME_COLUMN);
+  while (reader.hasNext()) {
+    auto& r = reader.next();
+    const auto& row = timeRow.set(&r);
 
     // TODO(cao) - Kafka may produce NULL row due to corruption or exception
     // ideally we can handle nulls in our system, however, let's skip null row for now.
+    size_t time = row.readLong(Table::TIME_COLUMN);
     if (time == 0) {
       continue;
     }
 
+    // update time range before adding the row to the batch
     if (time < lowTime) {
       lowTime = time;
     }
@@ -268,61 +276,13 @@ bool IngestSpec::loadKafka() noexcept {
     BlockLoader::from(
       BlockSignature{ table->name(), 0, lowTime, highTime, id_ }, batch));
 
+#ifdef PPROF
+  HeapProfilerStop();
+#endif
+
   // iterate this read until it reaches end of the segment - blocking queue?
   return true;
 }
-
-// row wrapper to translate "date" string into reserved "_time_" column
-class RowWrapperWithTime : public nebula::surface::RowData {
-public:
-  RowWrapperWithTime(std::function<int64_t(const RowData*)> timeFunc)
-    : timeFunc_{ std::move(timeFunc) } {}
-  ~RowWrapperWithTime() = default;
-  bool set(const RowData* row) {
-    row_ = row;
-    return true;
-  }
-
-// raw date to _time_ columm in ingestion time
-#define TRANSFER(TYPE, FUNC)                           \
-  TYPE FUNC(const std::string& field) const override { \
-    return row_->FUNC(field);                          \
-  }
-
-  TRANSFER(bool, readBool)
-  TRANSFER(int8_t, readByte)
-  TRANSFER(int16_t, readShort)
-  TRANSFER(int32_t, readInt)
-  TRANSFER(std::string_view, readString)
-  TRANSFER(float, readFloat)
-  TRANSFER(double, readDouble)
-  TRANSFER(int128_t, readInt128)
-  TRANSFER(std::unique_ptr<nebula::surface::ListData>, readList)
-  TRANSFER(std::unique_ptr<nebula::surface::MapData>, readMap)
-
-  bool isNull(const std::string& field) const override {
-    if (UNLIKELY(field == Table::TIME_COLUMN)) {
-      // timestamp in string 2016-07-15 14:38:03
-      return false;
-    }
-
-    return row_->isNull(field);
-  }
-
-  // _time_ is in long type and it's coming from date string
-  int64_t readLong(const std::string& field) const override {
-    if (UNLIKELY(field == Table::TIME_COLUMN)) {
-      // timestamp in string 2016-07-15 14:38:03
-      return timeFunc_(row_);
-    }
-
-    return row_->readLong(field);
-  }
-
-private:
-  std::function<int64_t(const RowData*)> timeFunc_;
-  const RowData* row_;
-};
 
 bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 #ifdef PPROF
@@ -331,76 +291,8 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   // TODO(cao) - support column selection in ingestion and expand time column
   // to other columns for simple transformation
   // but right now, we're expecting the same schema of data
-
   // based on time spec, we need to replace or append time column
-  auto timeType = table_->timeSpec.type;
-  std::function<int64_t(const RowData*)> timeFunc;
-
-  // static time spec
-  switch (timeType) {
-  case TimeType::STATIC: {
-    timeFunc = [value = table_->timeSpec.unixTimeValue](const RowData*) { return value; };
-    break;
-  }
-  case TimeType::CURRENT: {
-    timeFunc = [](const RowData*) { return Evidence::unix_timestamp(); };
-    break;
-  }
-  case TimeType::COLUMN: {
-    const auto& ts = table_->timeSpec;
-    // TODO(cao) - currently only support string column with time pattern
-    // and unix time stamp value as bigint if pattern is absent.
-    // ts.pattern is required: time string pattern or special value such as UNIXTIME
-
-    // Note: time column can not be NULL
-    // unfortunately if the data has it as null, we return 1 as indicator
-    // we can not use 0, because Nebula doesn't allow query time range fall into 0 start/end.
-    static constexpr size_t NULL_TIME = 1;
-    constexpr auto UNIX_TS = "UNIXTIME";
-    constexpr auto UNIX_MS = "UNIXTIME_MS";
-    if (ts.pattern == UNIX_TS) {
-      timeFunc = [&ts](const RowData* r) {
-        if (UNLIKELY(r->isNull(ts.colName))) {
-          return NULL_TIME;
-        }
-
-        return (size_t)r->readLong(ts.colName);
-      };
-    } else if (ts.pattern == UNIX_MS) {
-      timeFunc = [&ts](const RowData* r) {
-        if (UNLIKELY(r->isNull(ts.colName))) {
-          return NULL_TIME;
-        }
-
-        return (size_t)r->readLong(ts.colName) / 1000;
-      };
-    } else {
-      timeFunc = [&ts](const RowData* r) {
-        if (UNLIKELY(r->isNull(ts.colName))) {
-          return NULL_TIME;
-        }
-
-        return Evidence::time(r->readString(ts.colName), ts.pattern);
-      };
-    }
-    break;
-  }
-  case TimeType::MACRO: {
-    const auto& ts = table_->timeSpec;
-    // TODO(cao) - support only one macro for now, need to generalize it
-    if (ts.pattern == "date") {
-      timeFunc = [d = mdate_](const RowData*) { return d; };
-    } else {
-      timeFunc = [](const RowData*) { return 0; };
-    }
-    break;
-  }
-  default: {
-    LOG(ERROR) << "Unsupported time type: " << (int)timeType;
-    return {};
-  }
-  }
-
+  TimeRow timeRow(table_->timeSpec, mdate_);
   auto table = table_->to();
 
   // enroll the table in case it is the first time
@@ -437,7 +329,6 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
   // limit at 1b on single host
   const size_t bRows = FLAGS_NBLOCK_MAX_ROWS;
-  RowWrapperWithTime rw{ std::move(timeFunc) };
   std::pair<size_t, size_t> range{ std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
 
   // a lambda to build batch block
@@ -464,14 +355,14 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   auto pod = table->pod();
 
   while (source->hasNext()) {
-    auto& row = source->next();
-    rw.set(&row);
+    auto& r = source->next();
+    const auto& row = timeRow.set(&r);
 
     // for non-partitioned, all batch's pid will be 0
     size_t pid = 0;
     BessType bess = -1;
     if (pod) {
-      pid = pod->pod(rw, bess);
+      pid = pod->pod(row, bess);
     }
 
     // get the batch
@@ -494,7 +385,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
     // update time range before adding the row to the batch
     // get time column value
-    size_t time = rw.readLong(Table::TIME_COLUMN);
+    size_t time = row.readLong(Table::TIME_COLUMN);
     if (time < range.first) {
       range.first = time;
     }
@@ -504,7 +395,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
     }
 
     // add a new entry
-    batch->add(rw, bess);
+    batch->add(row, bess);
   }
 
   // move all blocks in map into block manager

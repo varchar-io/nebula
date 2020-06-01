@@ -38,6 +38,25 @@ using nebula::surface::MockRowData;
 using nebula::type::ROOT;
 using nebula::type::TypeSerializer;
 
+TEST(BatchTest, TestBatchSize) {
+  // empty batch should not allocate much memory
+  nebula::meta::TestTable test;
+
+  auto print = [](Batch& b) {
+    LOG(INFO) << "batch size= " << sizeof(b);
+    LOG(INFO) << "batch state= " << b.state();
+    LOG(INFO) << "batch memory= " << b.getMemory();
+  };
+
+  Batch batch1(test, 1000);
+  LOG(INFO) << "batch1 size= " << sizeof(batch1);
+  print(batch1);
+
+  Batch batch2(test, 1000000);
+  LOG(INFO) << "batch2 size= " << sizeof(batch2);
+  print(batch2);
+}
+
 TEST(BatchTest, TestBatch) {
   nebula::meta::TestTable test;
   // add 10 rows

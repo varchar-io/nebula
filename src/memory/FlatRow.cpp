@@ -23,6 +23,13 @@ using nebula::surface::ListData;
 using nebula::surface::MapData;
 
 bool FlatRow::isNull(const std::string& field) const {
+  // Note: this is a convinient method but is it performant?
+  // we're adding this check for all isNull calls,
+  // the advantage is we don't need to ensure all fields are present by purpose.
+  if (nullIfMissing_ && meta_.find(field) == meta_.end()) {
+    return true;
+  }
+
   auto offset = meta_.at(field);
   // it is null if value at current offset is 0
   return slice_.read<int8_t>(offset) == 0;

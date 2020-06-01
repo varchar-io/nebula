@@ -6,6 +6,7 @@ add_library(${NEBULA_STORAGE} STATIC
     ${NEBULA_SRC}/storage/CsvReader.cpp
     ${NEBULA_SRC}/storage/NFS.cpp
     ${NEBULA_SRC}/storage/ParquetReader.cpp
+    ${NEBULA_SRC}/storage/ThriftReader.cpp
     ${NEBULA_SRC}/storage/aws/S3.cpp
     ${NEBULA_SRC}/storage/kafka/KafkaProvider.cpp
     ${NEBULA_SRC}/storage/kafka/KafkaReader.cpp

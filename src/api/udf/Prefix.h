@@ -18,6 +18,7 @@
 
 #include <glog/logging.h>
 
+#include "common/Chars.h"
 #include "surface/eval/UDF.h"
 
 /**
@@ -40,27 +41,16 @@ public:
     const std::string& prefix,
     bool caseSensitive = true)
     : UdfPrefixBase(
-        name,
-        std::move(expr),
-        [prefix, caseSensitive](const InputType& source, bool& valid) -> NativeType {
-          if (valid) {
-            const auto prefixSize = prefix.size();
-            if (source.size() < prefixSize) {
-              return false;
-            }
+      name,
+      std::move(expr),
+      [prefix, caseSensitive](const InputType& source, bool& valid) -> NativeType {
+        if (valid) {
+          return nebula::common::Chars::prefix(
+            source.data(), source.size(), prefix.data(), prefix.size(), !caseSensitive);
+        }
 
-            bool (*eqf)(char a, char b) = caseSensitive ? &eq : &ieq;
-            for (size_t i = 0; i < prefixSize; ++i) {
-              if (!(*eqf)(source.at(i), prefix.at(i))) {
-                return false;
-              }
-            }
-
-            return true;
-          }
-
-          return false;
-        }) {}
+        return false;
+      }) {}
   virtual ~Prefix() = default;
 };
 

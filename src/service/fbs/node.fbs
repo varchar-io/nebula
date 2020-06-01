@@ -123,6 +123,9 @@ table IngestTask {
   // ref: TableSpec.schema 
   schema: string;
 
+  // ref: TableSpec.settings
+  settings: string;
+
   // ref: TimeType
   time_type: byte;
 

@@ -74,7 +74,8 @@ public:
   static constexpr NByte STRING_FLAG = 127;
   static constexpr int16_t LIST_FLAG = 99 << 8;
 
-  FlatRow(size_t initSliceSize) : slice_{ initSliceSize }, cursor_{ 0 } {}
+  FlatRow(size_t initSliceSize, bool nullIfMissing = false)
+    : slice_{ initSliceSize }, nullIfMissing_{ nullIfMissing }, cursor_{ 0 } {}
   virtual ~FlatRow() = default;
 
   // initialize states for writing a new row
@@ -218,6 +219,8 @@ private:
 private:
   // data containers
   ExtendableSlice slice_;
+  // a flag to help answering isNull question
+  bool nullIfMissing_;
 
   // write states
   size_t cursor_;

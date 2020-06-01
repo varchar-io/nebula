@@ -29,7 +29,7 @@ namespace test {
 
 using nebula::memory::FlatRow;
 
-TEST(RowTest, TestFlatRow) {
+TEST(FlatRowTest, TestFlatRow) {
   // initialize a flat row with given schema
   FlatRow row(1024);
 
@@ -77,6 +77,16 @@ TEST(RowTest, TestFlatRow) {
     }
   }
 }
+
+TEST(FlatRowTest, TestFlatRowTreatMissingAsNulls) {
+  // initialize a flat row with given schema
+  FlatRow row(1024);
+  EXPECT_THROW(row.isNull("abc"), std::out_of_range);
+
+  FlatRow rowTreatsMissingAsNull(1024, true);
+  EXPECT_TRUE(rowTreatsMissingAsNull.isNull("abc"));
+}
+
 } // namespace test
 } // namespace memory
 } // namespace nebula

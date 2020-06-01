@@ -86,7 +86,8 @@ target_link_libraries(${NEBULA_SERVICE}
     PUBLIC ${THRIFT_LIBRARY}
     PUBLIC ${SNAPPY_LIBRARY}
     PUBLIC ${BOOST_REGEX_LIBRARY}
-    PUBLIC ${ROARING_LIBRARY})
+    PUBLIC ${ROARING_LIBRARY}
+    PUBLIC ${MSGPACK_LIBRARY})
 if(APPLE)
     target_compile_options(${NEBULA_SERVICE} 
       PRIVATE -Wno-error=unknown-warning-option

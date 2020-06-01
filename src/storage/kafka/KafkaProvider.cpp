@@ -16,6 +16,8 @@
 
 #include "KafkaProvider.h"
 
+#include "common/Chars.h"
+
 /**
  * Provide common kafka handles creation.
  */
@@ -23,18 +25,17 @@ namespace nebula {
 namespace storage {
 namespace kafka {
 
+using nebula::common::Chars;
+
+// most likely the high memory consumption caused by this
 // thread local collection to provide kafka consumer per broker string
-thread_local std::unordered_map<std::string, std::unique_ptr<RdKafka::KafkaConsumer>> consumers;
+// thread_local std::unordered_map<std::string, std::unique_ptr<RdKafka::KafkaConsumer>> consumers;
 
 // Kafka consumer handle is expensive resource which is supposed to reuse
 // in the same thread.
-RdKafka::KafkaConsumer* KafkaProvider::getConsumer(const std::string& brokers,
-                                                   const std::unordered_map<std::string, std::string>& settings) {
-  auto cache = consumers.find(brokers);
-  if (cache != consumers.end()) {
-    return cache->second.get();
-  }
-
+std::unique_ptr<RdKafka::KafkaConsumer> KafkaProvider::getConsumer(
+  const std::string& brokers,
+  const std::unordered_map<std::string, std::string>& settings) {
   // set up the kafka configurations
   std::string error;
   auto conf = std::unique_ptr<RdKafka::Conf>(RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL));
@@ -47,8 +48,15 @@ RdKafka::KafkaConsumer* KafkaProvider::getConsumer(const std::string& brokers,
   }
 
   // for kafka - the configs are all go to consumers
+  constexpr std::string_view KAFKA_PFX = "kafka.";
+  constexpr auto KAFKA_PFX_LEN = KAFKA_PFX.size();
   for (auto itr = settings.begin(); itr != settings.end(); ++itr) {
-    SET_KEY_VALUE_CHECK(itr->first, itr->second)
+    const auto& key = itr->first;
+    if (Chars::prefix(key.data(), key.size(), KAFKA_PFX.data(), KAFKA_PFX_LEN)) {
+      std::string realKey(key.data() + KAFKA_PFX_LEN, key.size() - KAFKA_PFX_LEN);
+      LOG(INFO) << "Set kafka config from user settings: " << realKey;
+      SET_KEY_VALUE_CHECK(realKey, itr->second);
+    }
   }
 
   // set up gzip
@@ -74,8 +82,7 @@ RdKafka::KafkaConsumer* KafkaProvider::getConsumer(const std::string& brokers,
 
   auto ptr = RdKafka::KafkaConsumer::create(conf.get(), error);
   N_ENSURE_NOT_NULL(ptr, error);
-  consumers.emplace(brokers, std::unique_ptr<RdKafka::KafkaConsumer>(ptr));
-  return ptr;
+  return std::unique_ptr<RdKafka::KafkaConsumer>(ptr);
 }
 
 } // namespace kafka

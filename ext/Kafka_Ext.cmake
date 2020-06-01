@@ -11,7 +11,7 @@ SET(KAFKA_OPTS
   -DENABLE_LZ4_EXT=OFF
   -DWITH_SSL=OFF
   -DWITH_SASL=OFF)
-ExternalProject_Add(Kafka
+ExternalProject_Add(kafka
   PREFIX kafka
   GIT_REPOSITORY https://github.com/edenhill/librdkafka.git
   UPDATE_COMMAND ""
@@ -22,8 +22,8 @@ ExternalProject_Add(Kafka
   LOG_BUILD ON)
 
 # get source dir after download step
-ExternalProject_Get_Property(Kafka SOURCE_DIR)
-ExternalProject_Get_Property(Kafka BINARY_DIR)
+ExternalProject_Get_Property(kafka SOURCE_DIR)
+ExternalProject_Get_Property(kafka BINARY_DIR)
 
 # kafka C
 set(KC_INCLUDE_DIRS ${SOURCE_DIR}/src)

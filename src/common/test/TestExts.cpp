@@ -272,6 +272,19 @@ TEST(CommonTest, TestMsgpack) {
     EXPECT_EQ(dst, dst2);
   }
 
+  // pack a hash map
+  {
+    std::unordered_map<std::string, std::string> map = { { "abc", "xyz" }, { "123", "456" } };
+    std::stringstream buffer2;
+    msgpack::pack(buffer2, map);
+    buffer2.seekg(0);
+    std::string result = buffer2.str();
+    msgpack::object_handle oh2 = msgpack::unpack(result.data(), result.size());
+    std::unordered_map<std::string, std::string> map2;
+    oh2.get().convert(map2);
+    LOG(INFO) << "abc: " << map2["abc"];
+  }
+
   // single double tuple
   {
     using TT = std::tuple<double>;

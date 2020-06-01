@@ -61,6 +61,31 @@ public:
 
     return set;
   }
+
+  // char equals
+  static inline bool eq(char a, char b) {
+    return a == b;
+  }
+
+  // char equlas ignoring case
+  static inline bool ieq(char a, char b) {
+    return a == b || std::tolower(a) == std::tolower(b);
+  }
+
+  static bool prefix(const char* src, size_t s_size, const char* target, size_t t_size, bool ignoreCase = true) {
+    if (s_size < t_size) {
+      return false;
+    }
+
+    bool (*eqf)(char a, char b) = ignoreCase ? &ieq : &eq;
+    for (size_t i = 0; i < t_size; ++i) {
+      if (!(*eqf)(*(src + i), *(target + i))) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 };
 } // namespace common
 } // namespace nebula
