@@ -44,7 +44,7 @@ Basically, on this new platform, you can write short lines of JS code like below
     const schema = "ROW<a:int, b:string, c:bigint>";
 
     // define an customized column
-    const expr = (r) => r.readInt("a") * 2 + 3;
+    const colx = () => nebula.column("a") % 3;
     nebula.def("colx", nebula.Types.INT, expr);
 
     // get a data set from data set stored in HTTPS or S3
