@@ -81,6 +81,8 @@ TaskState TaskExecutor::execute(Task task) {
   const auto& sign = task.signature();
   TaskState found = search(sign);
   if (found != TaskState::NOTFOUND) {
+    // TODO(cao) - if a task failed once, it may never get retried.
+    // state stored with a timestamp and use a timer to scan and change states
     return found;
   }
 

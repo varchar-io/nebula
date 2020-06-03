@@ -133,7 +133,7 @@ bool IngestSpec::load(BlockList& blocks) noexcept {
   auto fs = nebula::storage::makeFS("s3", domain_);
 
   // id is the file path, copy it from s3 to a local folder
-  std::string tmpFile = fs->copy(id_);
+  std::string tmpFile = fs->copy(path_);
 
   // there might be S3 error which returns tmpFile as empty
   if (tmpFile.empty()) {

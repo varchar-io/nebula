@@ -49,6 +49,20 @@ tables:
       # get it from linux by "date +%s"
       value: 1565994194
 
+  # # basic S3 file in csv format  
+  # bucket.size:
+  #   max-mb: 40000
+  #   max-hr: 0
+  #   schema: "ROW<size:long>"
+  #   data: s3
+  #   loader: Swap
+  #   source: s3://bucket/nebula/bucket-fs.txt
+  #   backup: s3://nebula/n202/
+  #   format: csv
+  #   time:
+  #     type: current
+
+  # # basic example to consume parquet file from S3
   # <table name>:
   #   max-mb: 10000
   #   max-hr: 0
@@ -66,6 +80,7 @@ tables:
   #     # date +%s --date='2019-09-10'
   #     value: 1571875200
 
+  # # basic kafka stream in thrift format
   # # all kafka table name will start with "k." followed by topic name
   # # to indicating its a kafka data source
   # k.<topic>:
@@ -102,6 +117,7 @@ tables:
   #   time:
   #     type: current
 
+  # # basic kafka stream in json format
   # # another kafka real time example in json format
   # k.reporting:
   #   max-mb: 200000

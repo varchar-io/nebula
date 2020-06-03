@@ -45,6 +45,7 @@ const Aws::S3::S3Client& s3client() {
 
   static Aws::Client::ClientConfiguration conf;
   conf.maxConnections = std::thread::hardware_concurrency();
+  // conf.verifySSL = false;
   static const Aws::S3::S3Client S3C{ conf };
   return S3C;
 }
@@ -153,6 +154,7 @@ std::string S3::copy(const std::string& key) {
   });
 
   // Get the object
+  LOG(INFO) << "Download S3 object: bucket=" << this->bucket_ << ", key=" << key << ", to=" << f;
   auto result = s3client().GetObject(objReq);
   if (result.IsSuccess()) {
     // Get an Aws::IOStream reference to the retrieved file
@@ -169,7 +171,7 @@ std::string S3::copy(const std::string& key) {
   }
 
   auto error = result.GetError();
-  LOG(ERROR) << "ERROR: " << error.GetExceptionName() << ": " << error.GetMessage();
+  LOG(ERROR) << "ERROR: " << error;
   return {};
 }
 

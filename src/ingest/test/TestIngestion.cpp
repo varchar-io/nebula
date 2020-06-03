@@ -41,6 +41,12 @@ TEST(IngestTest, TestIngestSpec) {
     std::move(as), std::move(bi), std::move(settings));
   nebula::ingest::IngestSpec spec(table, "1.0", "nebula/v1.x", "nebula", 10, SpecState::NEW, 0);
   LOG(INFO) << "SPEC: " << spec.toString();
+  EXPECT_EQ(spec.id(), "test@nebula/v1.x@10");
+  EXPECT_EQ(spec.size(), 10);
+  EXPECT_EQ(spec.path(), "nebula/v1.x");
+  EXPECT_EQ(spec.domain(), "nebula");
+  EXPECT_EQ(spec.table()->name, "test");
+  EXPECT_EQ(spec.version(), "1.0");
 }
 
 TEST(IngestTest, TestSpecGeneration) {
