@@ -58,7 +58,7 @@ public:
       inner_{ nullptr },
       row_{ nullptr },
       transformers_{ transformers },
-      values_{ FLAGS_FOWARD_ROW_CACHE_SIZE } {
+      cache_{ FLAGS_FOWARD_ROW_CACHE_SIZE } {
   }
   ForwardRowData(const nebula::type::Schema& input,
                  const TransformerVector& transformers,
@@ -67,7 +67,7 @@ public:
       inner_{ std::move(inner) },
       row_{ inner_.get() },
       transformers_{ transformers },
-      values_{ FLAGS_FOWARD_ROW_CACHE_SIZE } {
+      cache_{ FLAGS_FOWARD_ROW_CACHE_SIZE } {
   }
 
 public:
@@ -75,41 +75,35 @@ public:
     return row_->isNull(i);
   }
 
-  // TODO(cao): only support int128 for now
-  // TOOD(cao): flatrow supports string key only, should support int key too
-#define DISPATCH_TRANSFORM_TYPE(T, F)      \
-  T F(IndexType i) const override {        \
-    auto transform = transformers_.at(i);  \
-    if (transform) {                       \
-      auto key = std::to_string(i);        \
-      if (values_.hasKey(key)) {           \
-        LOG(INFO) << "cache hit: " << key; \
-        return values_.F(key);             \
-      }                                    \
-      T v;                                 \
-      transform(row_, &v);                 \
-      values_.write(key, v);               \
-      return v;                            \
-    }                                      \
-    return row_->F(i);                     \
+#define DISPATCH_TRANSFORM_TYPE(T, F, C)  \
+  T F(IndexType i) const override {       \
+    auto transform = transformers_.at(i); \
+    if (transform) {                      \
+      auto key = std::to_string(i);       \
+      if (cache_.hasKey(key)) {           \
+        return cache_.F(key);             \
+      }                                   \
+      T v;                                \
+      transform(row_, &v);                \
+      C;                                  \
+      return v;                           \
+    }                                     \
+    return row_->F(i);                    \
   }
 
-  DISPATCH_TRANSFORM_TYPE(bool, readBool)
-  DISPATCH_TRANSFORM_TYPE(int8_t, readByte)
-  DISPATCH_TRANSFORM_TYPE(int16_t, readShort)
-  DISPATCH_TRANSFORM_TYPE(int32_t, readInt)
-  DISPATCH_TRANSFORM_TYPE(int64_t, readLong)
-  DISPATCH_TRANSFORM_TYPE(float, readFloat)
-  DISPATCH_TRANSFORM_TYPE(double, readDouble)
+  DISPATCH_TRANSFORM_TYPE(bool, readBool, cache_.write(key, v))
+  DISPATCH_TRANSFORM_TYPE(int8_t, readByte, cache_.write(key, v))
+  DISPATCH_TRANSFORM_TYPE(int16_t, readShort, cache_.write(key, v))
+  DISPATCH_TRANSFORM_TYPE(int32_t, readInt, cache_.write(key, v))
+  DISPATCH_TRANSFORM_TYPE(int64_t, readLong, cache_.write(key, v))
+  DISPATCH_TRANSFORM_TYPE(float, readFloat, cache_.write(key, v))
+  DISPATCH_TRANSFORM_TYPE(double, readDouble, cache_.write(key, v))
+  DISPATCH_TRANSFORM_TYPE(std::string_view, readString, cache_.write(key, v.data(), v.size()))
 
 #undef DISPATCH_TRANSFORM_TYPE
 
   int128_t readInt128(IndexType i) const override {
     return row_->readInt128(i);
-  }
-
-  std::string_view readString(IndexType i) const override {
-    return row_->readString(i);
   }
 
   // compound types
@@ -123,7 +117,7 @@ public:
 public:
   inline void set(const RowData& row) {
     row_ = const_cast<RowData*>(&row);
-    values_.reset();
+    cache_.reset();
   }
 
 private:
@@ -132,7 +126,7 @@ private:
   const TransformerVector& transformers_;
 
   // value cache so it don't call into transformer repeatedly
-  mutable FlatRow values_;
+  mutable FlatRow cache_;
 };
 
 class ForwardRowCursor : public RowCursor {
@@ -159,6 +153,15 @@ public:
   }
 
 private:
+  template <Kind O, Kind I>
+  static void finalize(const RowData* r, void* t, size_t i) {
+    using OutputType = typename TypeTraits<O>::CppType;
+    auto sketch = r->getAggregator(i);
+    N_ENSURE_NOT_NULL(sketch, "transformer only built on sketch type");
+    auto agg = std::static_pointer_cast<Aggregator<O, I>>(sketch);
+    *static_cast<OutputType*>(t) = agg->finalize();
+  }
+
   void buildTransformers() {
     auto input = phase_.inputSchema();
     auto output = phase_.outputSchema();
@@ -173,17 +176,11 @@ private:
 
       if (phase_.isAggregateColumn(i)) {
 // below provides a template to write core logic for all input / output type combinations
-#define LOGIC_BY_IO(O, I)                                                        \
-  case Kind::I: {                                                                \
-    transformers_[i] = [i](const RowData* r, void* t) {                          \
-      using OutputType = TypeTraits<Kind::O>::CppType;                           \
-      auto sketch = r->getAggregator(i);                                         \
-      N_ENSURE_NOT_NULL(sketch, "transformer only built on sketch type");        \
-      auto agg = std::static_pointer_cast<Aggregator<Kind::O, Kind::I>>(sketch); \
-      *static_cast<OutputType*>(t) = agg->finalize();                            \
-    };                                                                           \
-    break;                                                                       \
-  }
+#define LOGIC_BY_IO(O, I)                                                                                                         \
+  case Kind::I: {                                                                                                                 \
+    transformers_[i] = std::bind(&ForwardRowCursor::finalize<Kind::O, Kind::I>, std::placeholders::_1, std::placeholders::_2, i); \
+  };                                                                                                                              \
+    break;
 
         ITERATE_BY_IO(oType, iType)
 

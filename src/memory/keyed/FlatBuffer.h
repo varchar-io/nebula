@@ -241,6 +241,15 @@ protected:
   inline bool isAggregate(size_t col) const noexcept {
     return cops_.at(col).isAggregate();
   }
+
+  // read a string from given row offset and col offset
+  inline std::string_view read(size_t rowOffset, size_t colOffset) const noexcept {
+    auto so = rowOffset + colOffset;
+    auto r = nebula::common::PRange::make(main_->slice, so);
+
+    // read the real data from data_
+    return data_->slice.read(r.offset, r.size);
+  }
 };
 
 class RowAccessor : public nebula::surface::RowData {

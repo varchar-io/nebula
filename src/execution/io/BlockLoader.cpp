@@ -79,10 +79,27 @@ public:
 
   virtual std::string_view readString(const std::string& field) const override {
     static std::array<std::string, 4> VALUES{ "a", "b", "c", "d" };
+    static std::array<std::string, 10> STACKS{
+      "a\nb\nc",
+      "x\ny\nz",
+      "a\nb\nd",
+      "a\nx",
+      "a\nx\ny",
+      "x\nk\nz",
+      "x\ny\nm",
+      "a\nb\nc\nd",
+      "a\nb\nc\nd\ne",
+      "a\nb\nx"
+    };
+
     // make all id are sequentially sorted
     if (field == "tag") {
       auto index = std::abs(rRand_()) % 4;
       return VALUES[index];
+    }
+
+    if (field == "stack") {
+      return STACKS[std::abs(rRand_()) % STACKS.size()];
     }
 
     return MockRowData::readString(field);

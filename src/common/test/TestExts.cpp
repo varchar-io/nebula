@@ -306,6 +306,47 @@ TEST(CommonTest, TestMsgpack) {
   }
 }
 
+template <typename X, typename Y>
+struct TestFunc {
+  std::string func(int a, int b, int c) {
+    X x = 0;
+    Y y = 0;
+    LOG(INFO) << "General";
+    LOG(INFO) << "a=" << a << ", b=" << b << ", c=" << c << ", x=" << x << ", y=" << y;
+    return "g";
+  }
+
+  std::function<std::string(int, int)> getFunc() {
+    return std::bind(&TestFunc<X, Y>::func, this, std::placeholders::_1, std::placeholders::_2, 5);
+  }
+};
+
+template <typename X>
+struct TestFunc<X, std::string_view> {
+  std::string func(int a, int b, int c) {
+    LOG(INFO) << "Special";
+    X x = 0;
+    std::string_view y = "abc";
+    LOG(INFO) << "a=" << a << ", b=" << b << ", c=" << c << ",x=" << x << ", y=" << y;
+    return "s";
+  }
+
+  std::function<std::string(int, int)> getFunc() {
+    return std::bind(&TestFunc<X, std::string_view>::func, this, std::placeholders::_1, std::placeholders::_2, 6);
+  }
+};
+
+TEST(CommonTest, TestFuncBind) {
+  // special func
+  std::function<std::string(int, int)> f = TestFunc<int, std::string_view>{}.getFunc();
+  EXPECT_EQ(f(0, 1), "s");
+
+  // generic func
+  std::function<std::string(int, int)> f2 = TestFunc<int, int>{}.getFunc();
+  EXPECT_EQ(f2(0, 1), "g");
+  EXPECT_EQ(f2(4, 3), "g");
+}
+
 } // namespace test
 } // namespace common
 } // namespace nebula

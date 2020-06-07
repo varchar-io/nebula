@@ -238,6 +238,32 @@ export class Charts {
             svg.append("g").call(d3.axisLeft(y));
         };
 
+        this.displayFlame = (data, key) => {
+            if (data && data.length) {
+                const blob = JSON.parse(data[0][key]);
+
+                // set the dimensions and margins of the graph
+                const margin = {
+                    top: 20,
+                    right: 60,
+                    bottom: 20,
+                    left: 60
+                };
+
+                // clear the area first
+                const area = ds('#show');
+                const width = area.node().scrollWidth - margin.left - margin.right;
+
+                // define flame graph routine
+                const flame = NebulaClient.flamegraph()
+                    .width(width)
+                    .sort(true);
+                area.html("")
+                    .datum(blob)
+                    .call(flame);
+            }
+        };
+
         this.displayTimeline = (data, key, value, start) => {
             // clear the area first
             const area = ds('#show');

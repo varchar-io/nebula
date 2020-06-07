@@ -57,13 +57,13 @@ public:
 
   UDF(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, Logic&& logic, EvalBlock&& eb = uncertain)
     : BaseType(
-        fmt::format("{0}({1})", name, expr->signature()),
-        ExpressionType::FUNCTION,
-        [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
-          // call the UDF to evalue the result
-          return logic_(expr_->eval<InputType>(ctx, valid), valid);
-        },
-        std::move(eb)),
+      fmt::format("{0}({1})", name, expr->signature()),
+      ExpressionType::FUNCTION,
+      [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
+        // call the UDF to evalue the result
+        return logic_(expr_->eval<InputType>(ctx, valid), valid);
+      },
+      std::move(eb)),
       expr_{ std::move(expr) },
       logic_{ std::move(logic) } {}
   virtual ~UDF() = default;
@@ -96,15 +96,15 @@ public:
        std::unique_ptr<ValueEval> expr,
        SketchMaker&& maker)
     : BaseType(
-        fmt::format("{0}({1})", name, expr->signature()),
-        ExpressionType::FUNCTION,
-        [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
-          // call the UDF to evalue the result
-          return expr_->eval<InputType>(ctx, valid);
-        },
-        uncertain,
-        std::move(maker),
-        {}),
+      fmt::format("{0}({1})", name, expr->signature()),
+      ExpressionType::FUNCTION,
+      [this](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid) -> decltype(auto) {
+        // call the UDF to evalue the result
+        return expr_->eval<InputType>(ctx, valid);
+      },
+      uncertain,
+      std::move(maker),
+      {}),
       expr_{ std::move(expr) } {
   }
   virtual ~UDAF() = default;
@@ -127,7 +127,8 @@ enum class UDFType {
   AVG,
   COUNT,
   SUM,
-  PCT
+  PCT,
+  TPM
 };
 
 // UDF traits tells us:
@@ -271,6 +272,21 @@ UDF_NOT_SUPPORT(PCT, nebula::type::Kind::INVALID)
 UDF_NOT_SUPPORT(PCT, nebula::type::Kind::BOOLEAN)
 UDF_NOT_SUPPORT(PCT, nebula::type::Kind::VARCHAR)
 UDF_NOT_SUPPORT(PCT, nebula::type::Kind::INT128)
+
+// TPM (Tree Path Merge) only supports merge string of stack and output to a binary/varchar
+STATIC_TRAITS(TPM, true)
+UDF_TRAITS(TPM, nebula::type::Kind::VARCHAR, nebula::type::Kind::VARCHAR)
+
+// we do not support sum bool, string or int128
+UDF_NOT_SUPPORT(TPM, nebula::type::Kind::INVALID)
+UDF_NOT_SUPPORT(TPM, nebula::type::Kind::BOOLEAN)
+UDF_NOT_SUPPORT(TPM, nebula::type::Kind::TINYINT)
+UDF_NOT_SUPPORT(TPM, nebula::type::Kind::SMALLINT)
+UDF_NOT_SUPPORT(TPM, nebula::type::Kind::INTEGER)
+UDF_NOT_SUPPORT(TPM, nebula::type::Kind::BIGINT)
+UDF_NOT_SUPPORT(TPM, nebula::type::Kind::REAL)
+UDF_NOT_SUPPORT(TPM, nebula::type::Kind::DOUBLE)
+UDF_NOT_SUPPORT(TPM, nebula::type::Kind::INT128)
 
 #undef UDF_SAME_AS_INPUT_ALL
 #undef UDF_SAME_AS_INPUT

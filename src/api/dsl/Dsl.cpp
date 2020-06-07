@@ -67,7 +67,7 @@ std::vector<std::shared_ptr<Expression>> Query::preprocess(
 }
 
 // execute current query to get result list
-std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) noexcept {
+std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) {
   // compile the query into an execution plan
   // a valid query (single data source query - no join support at the moment) should be
   // 1. aggregation query, should have more than 1 UDAF in selects

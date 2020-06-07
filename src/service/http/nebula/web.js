@@ -80,8 +80,8 @@ const onTableState = (state, stats, callback) => {
     });
 
     // populate dimension columns
-    const dimensions = state.dl.filter((v) => v !== timeCol);
-    let metrics = state.ml.filter((v) => v !== timeCol);
+    const dimensions = (state.dl || []).filter((v) => v !== timeCol);
+    let metrics = (state.ml || []).filter((v) => v !== timeCol);
     const all = dimensions.concat(metrics);
     let rollups = Object.keys(NebulaClient.Rollup);
 
@@ -107,14 +107,16 @@ const onTableState = (state, stats, callback) => {
     }
 
     // populate metrics columns
-    ds('#mcolumns')
+    const setm = (values) =>
+        ds('#mcolumns')
         .html("")
         .selectAll("option")
-        .data(metrics)
+        .data(values)
         .enter()
         .append('option')
         .text(d => d)
         .attr("value", d => d);
+    setm(all);
 
     // populate all display types
     ds('#display')
@@ -135,6 +137,18 @@ const onTableState = (state, stats, callback) => {
         .append('option')
         .text(k => k.toLowerCase())
         .attr("value", k => NebulaClient.Rollup[k]);
+
+    // when rollup method changed to methods that support dimenions
+    // we can refresh metrics colummn
+    // if user change the table selection, initialize it again
+    // ds('#ru').on('change', () => {
+    //     const v = $$('#ru');
+    //     if (v === proto.nebula.service.Rollup.TREEMERGE.toString()) {
+    //         setm(all);
+    //     } else {
+    //         setm(metrics);
+    //     }
+    // });
 
     // order type 
     ds('#ob')
@@ -251,6 +265,12 @@ const build = () => {
     if (!Q.s || !Q.e) {
         alert('please enter start and end time');
         return;
+    }
+
+    // when display is flame, we don't allow group by
+    if (+Q.d === NebulaClient.DisplayType.FLAME) {
+        Q.ds = "";
+        ds('#dcolumns').html("");
     }
 
     // change hash will trigger query
@@ -475,6 +495,8 @@ const onQueryResult = (q, r, msg) => {
             case NebulaClient.DisplayType.LINE:
                 charts.displayLine(json, keys.d, keys.m);
                 break;
+            case NebulaClient.DisplayType.FLAME:
+                charts.displayFlame(json, keys.m);
         }
     };
 

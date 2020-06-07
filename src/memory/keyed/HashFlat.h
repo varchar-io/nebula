@@ -104,6 +104,55 @@ private:
   Hasher genHasher(size_t) noexcept;
   Copier genCopier(size_t) noexcept;
 
+  // merge template to merge row1 into row2
+  template <nebula::type::Kind O, nebula::type::Kind I>
+  void merge(size_t row1, size_t row2, size_t i) {
+    using InputType = typename nebula::type::TypeTraits<I>::CppType;
+    const auto& row1Props = rows_.at(row1);
+    const auto& row2Props = rows_.at(row2);
+    const auto& colProps1 = row1Props.colProps.at(i);
+    auto& colProps2 = row2Props.colProps.at(i);
+    N_ENSURE_NOT_NULL(colProps2.sketch, "merge row should have sketch");
+    if (UNLIKELY(row1 != row2 && colProps1.sketch != nullptr)) {
+      colProps2.sketch->mix(*colProps1.sketch);
+      return;
+    }
+    if (colProps1.isNull) {
+      return;
+    }
+    InputType value = main_->slice.read<InputType>(row1Props.offset + colProps1.offset);
+    auto agg = std::static_pointer_cast<nebula::surface::eval::Aggregator<O, I>>(colProps2.sketch);
+    agg->merge(value);
+  }
+
+  template <nebula::type::Kind O>
+  void merge_string(size_t row1, size_t row2, size_t i) {
+    const auto& row1Props = rows_.at(row1);
+    const auto& row2Props = rows_.at(row2);
+    const auto& colProps1 = row1Props.colProps.at(i);
+    auto& colProps2 = row2Props.colProps.at(i);
+    N_ENSURE_NOT_NULL(colProps2.sketch, "merge row should have sketch");
+    if (UNLIKELY(row1 != row2 && colProps1.sketch != nullptr)) {
+      colProps2.sketch->mix(*colProps1.sketch);
+      return;
+    }
+    if (colProps1.isNull) {
+      return;
+    }
+    std::string_view value = read(row1Props.offset, colProps1.offset);
+    auto agg = std::static_pointer_cast<nebula::surface::eval::Aggregator<O, nebula::type::Kind::VARCHAR>>(colProps2.sketch);
+    agg->merge(value);
+  }
+
+  template <nebula::type::Kind O, nebula::type::Kind I>
+  Copier bind(size_t col) {
+    if constexpr (I == nebula::type::Kind::VARCHAR) {
+      return std::bind(&HashFlat::merge_string<O>, this, std::placeholders::_1, std::placeholders::_2, col);
+    } else {
+      return std::bind(&HashFlat::merge<O, I>, this, std::placeholders::_1, std::placeholders::_2, col);
+    }
+  }
+
 private:
   std::unordered_set<size_t> keys_;
   std::unordered_set<size_t> values_;
@@ -115,7 +164,7 @@ private:
   // https://engineering.fb.com/developer-tools/f14/
   // folly::F14FastSet<Key, Hash, Equal> rowKeys_;
   std::unordered_set<Key, Hash, Equal> rowKeys_;
-};
+}; // namespace keyed
 } // namespace keyed
 } // namespace memory
 } // namespace nebula

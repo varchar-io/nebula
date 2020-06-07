@@ -390,7 +390,6 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }
-  N_ENSURE_NOT_NULL(plan, "Incorrect query compile");
 
   // create a remote connector and execute the query plan
   auto connector = std::make_shared<RemoteNodeConnector>(query);

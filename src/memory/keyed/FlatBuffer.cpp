@@ -562,12 +562,7 @@ READ_FIELD(int128_t, readInt128)
 
 std::string_view RowAccessor::readString(IndexType index) const {
   auto colOffset = rowProps_.colProps[index].offset;
-  // read 4 bytes offset and 4 bytes length
-  auto so = rowProps_.offset + colOffset;
-  auto r = Range::make(fb_.main_->slice, so);
-
-  // read the real data from data_
-  return fb_.data_->slice.read(r.offset, r.size);
+  return fb_.read(rowProps_.offset, colOffset);
 }
 
 // compound types

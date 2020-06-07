@@ -122,6 +122,7 @@ public:
       LOGIC_BY_IO(O, REAL)                                            \
       LOGIC_BY_IO(O, DOUBLE)                                          \
       LOGIC_BY_IO(O, INT128)                                          \
+      LOGIC_BY_IO(O, VARCHAR)                                         \
     default:                                                          \
       LOG(ERROR) << "Unsupported aggregation types (#O, " << (int)IT; \
       break;                                                          \

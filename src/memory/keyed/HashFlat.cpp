@@ -200,29 +200,8 @@ Copier HashFlat::genCopier(size_t i) noexcept {
   const auto it = f->inputType();
 
 // below provides a template to write core logic for all input / output type combinations
-#define LOGIC_BY_IO(O, I)                                                                  \
-  case Kind::I: {                                                                          \
-    return [this, i](size_t row1, size_t row2) {                                           \
-      using InputType = TypeTraits<Kind::I>::CppType;                                      \
-      const auto& row1Props = rows_.at(row1);                                              \
-      const auto& row2Props = rows_.at(row2);                                              \
-      const auto& colProps1 = row1Props.colProps.at(i);                                    \
-      auto& colProps2 = row2Props.colProps.at(i);                                          \
-      N_ENSURE_NOT_NULL(colProps2.sketch, "merge row should have sketch");                 \
-      if (UNLIKELY(row1 != row2 && colProps1.sketch != nullptr)) {                         \
-        colProps2.sketch->mix(*colProps1.sketch);                                          \
-        return;                                                                            \
-      }                                                                                    \
-      if (colProps1.isNull) {                                                              \
-        return;                                                                            \
-      }                                                                                    \
-      auto row1Offset = row1Props.offset + colProps1.offset;                               \
-      auto value = main_->slice.read<InputType>(row1Offset);                               \
-      auto agg = std::static_pointer_cast<Aggregator<Kind::O, Kind::I>>(colProps2.sketch); \
-      agg->merge(value);                                                                   \
-    };                                                                                     \
-    break;                                                                                 \
-  }
+#define LOGIC_BY_IO(O, I) \
+  case Kind::I: return bind<Kind::O, Kind::I>(i);
 
   ITERATE_BY_IO(ot, it)
 

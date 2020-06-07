@@ -29,11 +29,13 @@
 #include "common/Fold.h"
 #include "common/Format.h"
 #include "common/Hash.h"
+#include "common/IStream.h"
 #include "common/Int128.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
 #include "common/Params.h"
 #include "common/Spark.h"
+#include "common/StackTree.h"
 
 namespace nebula {
 namespace common {
@@ -977,9 +979,157 @@ TEST(CommonTest, TestBitsOps) {
 }
 
 TEST(CommonTest, TestFinally) {
-  nebula::common::Finally exit([]() { LOG(INFO) << "3"; });
-  LOG(INFO) << "1";
-  LOG(INFO) << "2";
+  auto x = 0;
+  {
+    EXPECT_EQ(x, 0);
+    nebula::common::Finally exit([&x]() { LOG(INFO) << "3"; x = 0; });
+    LOG(INFO) << "1";
+    x = 1;
+    EXPECT_EQ(x, 1);
+    LOG(INFO) << "2";
+    x = 2;
+    EXPECT_EQ(x, 2);
+  }
+
+  EXPECT_EQ(x, 0);
+}
+
+TEST(CommonTest, TestStackTree) {
+  // run 1K times to measure perf diff between vector and hash set for children
+  constexpr auto count = 1000;
+
+  nebula::common::Evidence::Duration dur;
+  for (auto i = 0; i < count; ++i) {
+    // run the stack tree merge methods
+    nebula::common::StackTree<std::string, true> stack{ false };
+    stack.merge(std::vector<std::string>{ "C", "B", "A" });
+    stack.merge(std::vector<std::string>{ "D", "B", "A" });
+    stack.merge(std::vector<std::string>{ "X", "A" });
+    std::stringstream buffer;
+    buffer << stack;
+
+    // hash set doesn't retain an order for children
+    EXPECT_EQ(buffer.str(),
+              "NODE: d=, c=3, l=0\n"
+              "NODE: d=A, c=3, l=1\n"
+              "NODE: d=X, c=1, l=2\n"
+              "NODE: d=B, c=2, l=2\n"
+              "NODE: d=D, c=1, l=3\n"
+              "NODE: d=C, c=1, l=3\n");
+
+    // run the stack tree merge methods
+    nebula::common::StackTree<std::string, true> stack2{ false };
+    stack2.merge(std::vector<std::string>{ "C", "B", "A" });
+    stack2.merge(std::vector<std::string>{ "E", "B", "A" });
+    stack2.merge(std::vector<std::string>{ "Y", "A" });
+
+    // now let's merge two stack tree
+    stack.merge(stack2);
+    buffer.seekp(0);
+    buffer.seekg(0);
+    buffer << stack;
+    EXPECT_EQ(buffer.str(),
+              "NODE: d=, c=6, l=0\n"
+              "NODE: d=A, c=6, l=1\n"
+              "NODE: d=Y, c=1, l=2\n"
+              "NODE: d=X, c=1, l=2\n"
+              "NODE: d=B, c=4, l=2\n"
+              "NODE: d=E, c=1, l=3\n"
+              "NODE: d=D, c=1, l=3\n"
+              "NODE: d=C, c=2, l=3\n");
+  }
+
+  LOG(INFO) << "Complete 1K rounds of HashFrame: " << dur.elapsedMs();
+  dur.reset();
+
+  for (auto i = 0; i < count; ++i) {
+    // run the stack tree merge methods
+    nebula::common::StackTree<std::string, false> stack{ false };
+    stack.merge(std::vector<std::string>{ "C", "B", "A" });
+    stack.merge(std::vector<std::string>{ "D", "B", "A" });
+    stack.merge(std::vector<std::string>{ "X", "A" });
+    std::stringstream buffer;
+    buffer << stack;
+
+    // hash set doesn't retain an order for children
+    EXPECT_EQ(buffer.str(),
+              "NODE: d=, c=3, l=0\n"
+              "NODE: d=A, c=3, l=1\n"
+              "NODE: d=B, c=2, l=2\n"
+              "NODE: d=X, c=1, l=2\n"
+              "NODE: d=C, c=1, l=3\n"
+              "NODE: d=D, c=1, l=3\n");
+
+    // run the stack tree merge methods
+    nebula::common::StackTree<std::string, false> stack2{ false };
+    stack2.merge(std::vector<std::string>{ "C", "B", "A" });
+    stack2.merge(std::vector<std::string>{ "E", "B", "A" });
+    stack2.merge(std::vector<std::string>{ "Y", "A" });
+
+    // now let's merge two stack tree
+    stack.merge(stack2);
+    buffer.seekp(0);
+    buffer.seekg(0);
+    buffer << stack;
+    EXPECT_EQ(buffer.str(),
+              "NODE: d=, c=6, l=0\n"
+              "NODE: d=A, c=6, l=1\n"
+              "NODE: d=B, c=4, l=2\n"
+              "NODE: d=X, c=1, l=2\n"
+              "NODE: d=Y, c=1, l=2\n"
+              "NODE: d=C, c=2, l=3\n"
+              "NODE: d=D, c=1, l=3\n"
+              "NODE: d=E, c=1, l=3\n");
+  }
+
+  LOG(INFO) << "Complete 1K rounds of VectorFrame: " << dur.elapsedMs();
+
+  {
+    // run the stack tree merge methods
+    nebula::common::StackTree<std::string, false> stack3{ true };
+
+    std::istringstream s1{ "A\nB\nC" };
+    stack3.merge(s1);
+    std::istringstream s2{ "A\nB\nD\n" };
+    stack3.merge(s2);
+    std::istringstream s3{ "A\nX" };
+    stack3.merge(s3);
+
+    std::stringstream buffer;
+    buffer << stack3;
+
+    // hash set doesn't retain an order for children
+    EXPECT_EQ(buffer.str(),
+              "NODE: d=, c=3, l=0\n"
+              "NODE: d=A, c=3, l=1\n"
+              "NODE: d=B, c=2, l=2\n"
+              "NODE: d=X, c=1, l=2\n"
+              "NODE: d=C, c=1, l=3\n"
+              "NODE: d=D, c=1, l=3\n");
+
+    // test json serde
+    auto j = stack3.jsonfy();
+    LOG(INFO) << j;
+
+    // use the json blob to initialize a new stack tree
+    std::string_view sv(j);
+    nebula::common::StackTree<std::string, false> stack4(sv);
+    auto j2 = stack4.jsonfy();
+    EXPECT_EQ(j, j2);
+  }
+}
+
+TEST(CommonTest, TestIStream) {
+  std::string_view view = "abc\nxyz";
+  nebula::common::IStream stream(view);
+  auto count = 0;
+  std::string line;
+  while (std::getline(stream, line)) {
+    LOG(INFO) << line;
+    count++;
+  }
+
+  EXPECT_EQ(count, 2);
 }
 
 } // namespace test

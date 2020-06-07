@@ -205,7 +205,7 @@ add_custom_target(nebula_web_client ALL
 # here we are using webpack:
 # $ ~nebula/src/service/http/nebula > npm install (based on package.json - can be reused for all service)
 # $ ~nebula/src/service/http/nebula > npx webpack
-# $ in web/main.js, prepend "export" in it to export NebulaClient.
+# $ in dist/web/main.js, prepend "export" in it to export NebulaClient.
 
 # build test binary
 add_executable(ServiceTests 

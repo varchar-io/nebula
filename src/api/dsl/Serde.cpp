@@ -254,6 +254,7 @@ std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::sh
     COM_UDF(MIN)
     COM_UDF(COUNT)
     COM_UDF(SUM)
+    COM_UDF(TPM)
 
 #undef COM_UDF
 

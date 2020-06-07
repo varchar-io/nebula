@@ -81,8 +81,19 @@ std::unique_ptr<ExecutionPlan> QueryHandler::compile(
   }
 
   // 2. build query out of the request
-  std::unique_ptr<ExecutionPlan> plan = query->compile(queryContext);
-  auto error = queryContext.getError();
+  std::unique_ptr<ExecutionPlan> plan = nullptr;
+  auto error = Error::NONE;
+
+  // even though compile is marked as "noexcept", there are still possible failure
+  // that we should catch here to prevent crashing nebula server
+  try {
+    plan = query->compile(queryContext);
+    error = queryContext.getError();
+  } catch (std::exception& ex) {
+    LOG(ERROR) << "query compile error: " << ex.what();
+    error = Error::INVALID_QUERY;
+  }
+
   if (error != Error::NONE) {
     LOG(ERROR) << "Error in building query: " << (int)error;
     // translate into service error code
@@ -311,6 +322,7 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
     BUILD_METRIC_CASE(P99, pct, 99)
     BUILD_METRIC_CASE(P99_9, pct, 99.9)
     BUILD_METRIC_CASE(P99_99, pct, 99.99)
+    BUILD_METRIC_CASE(TreeMerge, tpm)
   default:
     throw NException("Rollup method not supported");
   }

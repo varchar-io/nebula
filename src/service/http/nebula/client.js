@@ -1,4 +1,5 @@
 import * as d3 from './c/d3.v5.min.js';
+import * as flamegraph from './c/d3-flamegraph.min.js';
 
 const {
     EchoRequest,
@@ -73,5 +74,6 @@ export default {
     DataType,
     QueryResponse,
     bytes2utf8,
-    d3
+    d3,
+    flamegraph
 };

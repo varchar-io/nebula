@@ -25,6 +25,7 @@
 #include "api/udf/Not.h"
 #include "api/udf/Pct.h"
 #include "api/udf/Prefix.h"
+#include "api/udf/Tpm.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "surface/eval/ValueEval.h"
@@ -599,6 +600,48 @@ TEST(UDFTest, TestPct) {
   EXPECT_NEAR(td4, 217, 1);
   auto json = static_cast<CType::Aggregator*>(td1.get())->jsonfy();
   LOG(INFO) << "sketch in json: " << json;
+}
+
+TEST(UDFTest, TestTpm) {
+  using CType = nebula::api::udf::Tpm<nebula::type::Kind::VARCHAR>;
+  // paths to merge
+  std::string_view stacks[] = {
+    "A\nB\nC",
+    "A\nB\nD",
+    "A\nX",
+    "A\nX\nY",
+  };
+
+  // simulate the run times 11 for c1 and 22 for c2
+  nebula::surface::eval::EvalContext ctx{ false };
+  bool invalid;
+  auto v1 = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>("");
+  CType tpm("tmp1", v1->asEval());
+
+  auto sketch = tpm.sketch();
+  for (size_t i = 0, size = std::size(stacks); i < size; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(stacks[i]);
+    CType ci("tmp", vi->asEval());
+    sketch->merge(ci.eval(ctx, invalid));
+  }
+
+  auto sketch2 = tpm.sketch();
+  for (size_t i = 0, size = std::size(stacks); i < size; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(stacks[i]);
+    CType ci("tmp2", vi->asEval());
+    sketch2->merge(ci.eval(ctx, invalid));
+  }
+
+  // partial merge
+  sketch->mix(*sketch2);
+
+  // we will ask itself for finalize
+  CType::NativeType json = sketch->finalize();
+  EXPECT_EQ(json,
+            "{\"name\":\"\",\"value\":8,\"children\":"
+            "[{\"name\":\"A\",\"value\":8,\"children\":[{\"name\":\"B\",\"value\":4,\"children\":"
+            "[{\"name\":\"C\",\"value\":2},{\"name\":\"D\",\"value\":2}]},{\"name\":\"X\",\"value\":4,\"children\":"
+            "[{\"name\":\"Y\",\"value\":2}]}]}]}");
 }
 
 } // namespace test

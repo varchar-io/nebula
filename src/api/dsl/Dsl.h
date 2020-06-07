@@ -105,6 +105,11 @@ static UDFExpression<nebula::surface::eval::UDFType::PCT, double> pct(const T& e
 }
 
 template <typename T>
+static UDFExpression<nebula::surface::eval::UDFType::TPM> tpm(const T& expr) {
+  return UDFExpression<nebula::surface::eval::UDFType::TPM>(std::shared_ptr<Expression>(new T(expr)));
+}
+
+template <typename T>
 static LikeExpression like(const T& expr, const std::string& pattern, bool caseSensitive = true) {
   // TODO(cao) - model UDAF/UDF with existing expression
   return LikeExpression(std::shared_ptr<Expression>(new T(expr)), pattern, caseSensitive);

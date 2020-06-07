@@ -124,6 +124,8 @@ enum Rollup {
   P99 = 10;
   P99_9 = 11;
   P99_99 = 12;
+  // call stack merge
+  TreeMerge = 13;
 }
 
 // A metric is defined by rollup method on a column
@@ -155,6 +157,7 @@ enum DisplayType {
   BAR = 3;
   PIE = 4;
   LINE = 5;
+  FLAME = 6;
 }
 
 // define query request 
