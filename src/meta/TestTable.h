@@ -65,7 +65,7 @@ public:
                       CP(),
                       {}) {
     // make a test value eval list for testing
-    fields_.reserve(9);
+    fields_.reserve(10);
     fields_.emplace_back(nebula::surface::eval::constant(1));
     fields_.emplace_back(nebula::surface::eval::constant(2));
     fields_.emplace_back(nebula::surface::eval::constant("3"));
@@ -77,6 +77,7 @@ public:
     fields_.emplace_back(nebula::surface::eval::constant((int8_t)0));
     fields_.emplace_back(nebula::surface::eval::constant(0.1));
     fields_.emplace_back(nebula::surface::eval::constant((int128_t)1));
+    fields_.emplace_back(nebula::surface::eval::constant("a\nb"));
   }
 
   const nebula::surface::eval::Fields& testFields() const {
