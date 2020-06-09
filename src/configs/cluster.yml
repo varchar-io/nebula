@@ -49,7 +49,33 @@ tables:
       # get it from linux by "date +%s"
       value: 1565994194
 
-  # # basic S3 file in csv format  
+  # one example message looks like:
+  # {"service":"test", "host":"dev-shawncao", "tag":"dev", "lang":"java", "stack":"a\nb\nc"}
+  # k.pinterest-code:
+  #   max-mb: 200000
+  #   max-hr: 48
+  #   schema: "ROW<service:string, host:string, tag:string, lang:string, stack:string>"
+  #   data: kafka
+  #   topic: <topic>
+  #   loader: Roll
+  #   source: <brokers>
+  #   backup: s3://nebula/n116/
+  #   format: json
+  #   columns:
+  #     service:
+  #       dict: true
+  #     host:
+  #       dict: true
+  #     tag:
+  #       dict: true
+  #     lang:
+  #       dict: true
+  #   time:
+  #     # kafka will inject a time column when specified provided
+  #     type: provided
+  #   settings:
+  #     batch: 500
+  # # basic S3 file in csv format
   # bucket.size:
   #   max-mb: 40000
   #   max-hr: 0
@@ -61,7 +87,6 @@ tables:
   #   format: csv
   #   time:
   #     type: current
-
   # # basic example to consume parquet file from S3
   # <table name>:
   #   max-mb: 10000
@@ -79,7 +104,6 @@ tables:
   #     type: static
   #     # date +%s --date='2019-09-10'
   #     value: 1571875200
-
   # # basic kafka stream in thrift format
   # # all kafka table name will start with "k." followed by topic name
   # # to indicating its a kafka data source
@@ -116,7 +140,6 @@ tables:
   #       default_value: 0
   #   time:
   #     type: current
-
   # # basic kafka stream in json format
   # # another kafka real time example in json format
   # k.reporting:

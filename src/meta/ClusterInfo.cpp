@@ -155,6 +155,10 @@ TimeSpec asTimeSpec(const YAML::Node& node) {
     return { TimeType::MACRO, 0, "", node["pattern"].as<std::string>() };
   }
 
+  if (timeType == "provided") {
+    return { TimeType::PROVIDED, 0, "", "" };
+  }
+
   throw NException("Misconfigured time spec");
 }
 

@@ -238,10 +238,8 @@ export class Charts {
             svg.append("g").call(d3.axisLeft(y));
         };
 
-        this.displayFlame = (data, key) => {
+        this.displayFlame = (data, group, key) => {
             if (data && data.length) {
-                const blob = JSON.parse(data[0][key]);
-
                 // set the dimensions and margins of the graph
                 const margin = {
                     top: 20,
@@ -252,15 +250,27 @@ export class Charts {
 
                 // clear the area first
                 const area = ds('#show');
+                area.html("");
                 const width = area.node().scrollWidth - margin.left - margin.right;
 
-                // define flame graph routine
-                const flame = NebulaClient.flamegraph()
-                    .width(width)
-                    .sort(true);
-                area.html("")
-                    .datum(blob)
-                    .call(flame);
+                for (var i = 0; i < data.length; ++i) {
+                    const title = group ? data[i][group] : null;
+                    const blob = JSON.parse(data[i][key]);
+
+                    // define flame graph routine
+                    const flame = NebulaClient.flamegraph()
+                        .width(width)
+                        .sort(true);
+
+                    // if we have title
+                    if (title) {
+                        flame.title(title);
+                    }
+
+                    area.append("div")
+                        .datum(blob)
+                        .call(flame);
+                }
             }
         };
 

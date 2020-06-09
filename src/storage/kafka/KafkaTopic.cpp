@@ -158,6 +158,18 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
     // any future updates will cover uncovered ranges
     auto start = startOffset / width;
     auto end = highOffset / width;
+    // if no segements to generate, log a warning
+    if (start >= end) {
+      LOG(WARNING) << "No segments to produce: batch=" << width
+                   << ", start-off=" << startOffset << ", low-off=" << lowOffset << ", high-off=" << highOffset
+                   << ", partition=" << part << ", topic=" << topic_;
+    }
+
+    // Here places an interesting case, because end=(highOffset/width), 
+    // so any message in current band not full to a batch will not be consumed.
+    // for example, width is 1000, the last number of message passing x*1000, 
+    // let's say 900 won't be consumed until it's filled up 
+    // This problem potentially will apply a latency between latest message and time when it show up in Nebula.
     while (start < end) {
       segments.emplace_back(part, width * start++, width);
     }

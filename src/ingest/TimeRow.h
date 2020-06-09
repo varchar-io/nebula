@@ -134,6 +134,9 @@ private:
       }
       break;
     }
+    case nebula::meta::TimeType::PROVIDED: {
+      return [](const nebula::surface::RowData* r) { return r->readLong(nebula::meta::Table::TIME_COLUMN); };
+    }
     default: {
       LOG(ERROR) << "Unsupported time type: " << (int)ts.type;
       return {};

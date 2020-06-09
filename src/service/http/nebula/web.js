@@ -99,12 +99,12 @@ const onTableState = (state, stats, callback) => {
         persist: false
     });
 
-    // if the table has no metrics column (no value columns)
-    // we only allow count on first column then
-    if (metrics.length == 0) {
-        metrics = [dimensions[0]];
-        rollups = ['COUNT'];
-    }
+    // // if the table has no metrics column (no value columns)
+    // // we only allow count on first column then
+    // if (metrics.length == 0) {
+    //     metrics = [dimensions[0]];
+    //     rollups = ['COUNT'];
+    // }
 
     // populate metrics columns
     const setm = (values) =>
@@ -265,12 +265,6 @@ const build = () => {
     if (!Q.s || !Q.e) {
         alert('please enter start and end time');
         return;
-    }
-
-    // when display is flame, we don't allow group by
-    if (+Q.d === NebulaClient.DisplayType.FLAME) {
-        Q.ds = "";
-        ds('#dcolumns').html("");
     }
 
     // change hash will trigger query
@@ -496,7 +490,7 @@ const onQueryResult = (q, r, msg) => {
                 charts.displayLine(json, keys.d, keys.m);
                 break;
             case NebulaClient.DisplayType.FLAME:
-                charts.displayFlame(json, keys.m);
+                charts.displayFlame(json, keys.d, keys.m);
         }
     };
 

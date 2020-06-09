@@ -50,7 +50,10 @@ enum class TimeType {
   // time is from a given column
   COLUMN,
   // system defined macro named by pattern
-  MACRO
+  MACRO,
+  // system will provide depending on sub-system behavior
+  // such as, Kafka will fill message timestamp for it
+  PROVIDED
 };
 
 struct TimeSpec {
