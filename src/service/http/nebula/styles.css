@@ -1,6 +1,18 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+*,
+::after,
+::before {
+    box-sizing: border-box;
+}
+
 h1 {
     margin: 8pt;
     text-align: center;
+    font-size: 2.5rem;
+    font-weight: 500;
 }
 
 a {
@@ -8,8 +20,12 @@ a {
 }
 
 h1 a {
-    color: inherit;
+    color: mediumpurple;
     text-decoration: none;
+}
+
+h1 a img {
+    width: 2rem;
 }
 
 .message {
@@ -28,17 +44,16 @@ h1 a {
 }
 
 .left {
-    width: 320pt;
+    width: 255pt;
     display: table-cell;
-    border-right: #888 1px dotted;
-    padding: 4pt 8pt;
+    border-right: #ccc 1px dotted;
+    padding: 0 4pt;
 }
 
 #dwrapper {
     display: inline-block;
     vertical-align: middle;
-    width: 220pt;
-    margin: 0 5pt;
+    width: 160pt;
 }
 
 .right {
@@ -64,39 +79,39 @@ div .text,
 }
 
 hr {
-    border-top: dotted 1px;
+    border-top: #ccc dotted 1px;
     margin: 10pt 0;
 }
 
 #display {
     font-size: 1em;
-    margin: 5pt;
     background: azure;
 }
 
 select {
-    font-size: 0.8em;
-    margin: 0 5pt;
+    margin: 1pt 0;
     height: 2em;
+    border: 0;
 }
 
 input {
-    margin: 5pt;
+    margin: 5pt 0;
     font-size: 0.8em;
+    border: 0;
 }
 
 button {
-    margin: 5pt 2pt;
-    padding: 5pt;
     width: 80pt;
-    background-color: #4CAF50;
-    font-size: 1.2em;
+    background-color: mediumpurple;
+    font-size: 1.5em;
     float: right;
+    border: 0;
 }
 
 table {
     width: 100%;
     margin: auto;
+    border-collapse: inherit;
 }
 
 tr {
@@ -191,7 +206,7 @@ div.tooltip {
 .crule .values {
     display: inline-block;
     vertical-align: middle;
-    width: 130pt;
+    width: 100pt;
 }
 
 .del {

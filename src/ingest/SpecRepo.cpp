@@ -96,6 +96,12 @@ void genSpecPerFile(const TableSpecPtr& table,
                     size_t macroDate) noexcept {
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
     if (!itr->isDir) {
+      // we do not generate empty files
+      if (itr->size == 0) {
+        VLOG(1) << "Skip an empty file to scan: " << itr->name;
+        continue;
+      }
+
       // generate a ingest spec from given file info
       // use name as its identifier
       auto spec = std::make_shared<IngestSpec>(
