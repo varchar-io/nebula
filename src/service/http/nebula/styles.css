@@ -84,20 +84,19 @@ hr {
 }
 
 #display {
-    font-size: 1em;
     width: 100pt;
 }
 
 #mcolumns {
-    width: 95pt;
+    width: 90pt;
 }
 
 select {
     margin: 1pt 0;
     height: 2em;
+    font-size: 1em;
     border: 0;
     color: mediumpurple;
-    background-color: azure;
 }
 
 input {
