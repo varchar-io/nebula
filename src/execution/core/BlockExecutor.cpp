@@ -34,6 +34,7 @@ using nebula::memory::keyed::HashFlat;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::eval::BlockEval;
 using nebula::surface::eval::EvalContext;
+using nebula::surface::eval::ScriptData;
 using nebula::type::Kind;
 using nebula::type::Schema;
 
@@ -52,13 +53,7 @@ void BlockExecutor::compute() {
   const auto& filter = plan_.filter();
 
   // build context and computed row associated with this context
-  auto hasCustom = plan_.hasCustom();
-  auto ctx = std::make_shared<EvalContext>(plan_.cacheEval(), hasCustom);
-
-  // custom evaluation requires input schema
-  if (hasCustom) {
-    ctx->setSchema(plan_.inputSchema());
-  }
+  auto ctx = std::make_shared<EvalContext>(plan_.cacheEval(), makeScriptData(plan_));
 
   // predicate pushdown evaluation on block metadata
   auto result = data_.second;

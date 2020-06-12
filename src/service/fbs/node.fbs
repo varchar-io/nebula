@@ -22,6 +22,7 @@ table QueryPlan {
   uuid: string;
   tbl: string;
   filter: string;
+  customs: string;
   fields: [string];
   groups: [uint32];
   sorts: [uint32];

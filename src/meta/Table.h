@@ -116,6 +116,8 @@ struct Column {
 
 using ColumnProps = std::unordered_map<std::string, Column>;
 
+using TypeLookup = std::function<nebula::type::Kind(const std::string&)>;
+
 class Table {
 public:
   Table(const std::string& name) : Table(name, nullptr, {}, {}) {}
@@ -135,6 +137,17 @@ public:
       }
     }
     pod_ = keys.size() == 0 ? nullptr : std::make_shared<Pod>(std::move(keys));
+
+    // define type lookup
+    lookup_ = [this](const std::string& col) {
+      auto node = schema_->find(col);
+      // found in existing schema
+      if (node) {
+        return node->k();
+      }
+
+      return nebula::type::Kind::INVALID;
+    };
   }
 
   virtual ~Table() = default;
@@ -174,6 +187,10 @@ public:
     return EMPTY;
   }
 
+  inline const TypeLookup& lookup() const noexcept {
+    return lookup_;
+  }
+
   virtual std::shared_ptr<nebula::meta::Pod> pod() const noexcept {
     return pod_;
   }
@@ -193,6 +210,7 @@ protected:
   // such as "nebula.test"
   std::string name_;
   Schema schema_;
+  TypeLookup lookup_;
   ColumnProps columns_;
 
   // access rules, can be empty

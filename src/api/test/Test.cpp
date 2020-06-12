@@ -16,6 +16,7 @@
 
 #include "Test.hpp"
 
+#include "api/dsl/Serde.h"
 #include "common/Evidence.h"
 #include "execution/BlockManager.h"
 #include "meta/NBlock.h"
@@ -25,6 +26,7 @@ namespace nebula {
 namespace api {
 namespace test {
 
+using nebula::api::dsl::CustomColumn;
 using nebula::common::Evidence;
 using nebula::execution::BlockManager;
 using nebula::meta::BlockSignature;

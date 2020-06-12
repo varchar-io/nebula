@@ -72,6 +72,11 @@ static constexpr auto LOADER_SWAP = "Swap";
 static constexpr auto LOADER_ROLL = "Roll";
 static constexpr auto LOADER_API = "Api";
 
+// reading settings if it has special delimeter, by default tab "\t"
+static constexpr auto CSV_DELIMITER_KEY = "csv.delimiter";
+// a setting indicates if the csv file has header, by default true
+static constexpr auto CSV_HEADER_KEY = "csv.header";
+
 // load some nebula test data into current process
 void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
   // load test data to run this query
@@ -305,6 +310,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
   // get table schema and create a table
   const auto schema = TypeSerializer::from(table_->schema);
+
   // list all columns describing the current file
   std::vector<std::string> columns;
   columns.reserve(schema->size());
@@ -316,7 +322,23 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   // depends on the type
   std::unique_ptr<RowCursor> source = nullptr;
   if (table_->format == "csv") {
-    source = std::make_unique<CsvReader>(file, '\t', columns);
+    auto delimiter = '\t';
+    {
+      auto itr = table_->settings.find(CSV_DELIMITER_KEY);
+      if (itr != table_->settings.end()) {
+        delimiter = itr->second.at(0);
+      }
+    }
+
+    auto withHeader = true;
+    {
+      auto itr = table_->settings.find(CSV_HEADER_KEY);
+      if (itr != table_->settings.end()) {
+        withHeader = folly::to<bool>(itr->second);
+      }
+    }
+
+    source = std::make_unique<CsvReader>(file, delimiter, withHeader, columns);
   } else if (table_->format == "json") {
     source = std::make_unique<JsonReader>(file, schema);
   } else if (table_->format == "parquet") {

@@ -92,7 +92,7 @@ hr {
 }
 
 #mcolumns {
-    width: 90pt;
+    width: 80pt;
 }
 
 #ob,
@@ -112,6 +112,7 @@ input {
     margin: 5pt 0;
     font-size: 0.8em;
     border: 0;
+    color: mediumpurple;
 }
 
 button {
@@ -229,7 +230,7 @@ div.tooltip {
 
 .cgroup input[type=radio] {
     font: icon;
-    margin: 5pt;
+    margin-right: 5pt;
 }
 
 .cgroup select {

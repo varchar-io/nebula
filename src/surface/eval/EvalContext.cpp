@@ -37,17 +37,6 @@ void EvalContext::reset(const nebula::surface::RowData& row) {
   }
 }
 
-void EvalContext::setSchema(nebula::type::Schema schema) {
-  const size_t size = schema->size();
-  auto map = std::make_unique<std::unordered_map<std::string, nebula::type::Kind>>(size);
-  for (size_t i = 0; i < size; ++i) {
-    auto f = schema->childType(i);
-    map->emplace(f->name(), f->k());
-  }
-
-  std::swap(map, name2type_);
-}
-
 template <>
 std::string_view EvalContext::eval(const ValueEval& ve, bool& valid) {
   if (LIKELY(!cache_)) {

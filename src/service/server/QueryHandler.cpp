@@ -23,7 +23,7 @@
 #include "service/node/NodeClient.h"
 #include "service/node/RemoteNodeConnector.h"
 
-DEFINE_uint32(AUTO_WINDOW_SIZE, 1000, "maximum data point when selecting auto window");
+DEFINE_uint32(AUTO_WINDOW_SIZE, 100, "maximum data point when selecting auto window");
 
 /**
  * Define some basic sharable proerpties for nebula service

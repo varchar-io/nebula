@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "Test.hpp"
 
 #include "api/dsl/Dsl.h"
 #include "api/dsl/Expressions.h"
+#include "api/dsl/Serde.h"
 #include "common/Cursor.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
@@ -30,13 +33,10 @@
 #include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/meta/TableService.h"
-#include "fmt/format.h"
-#include "gmock/gmock.h"
 #include "meta/NBlock.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "surface/eval/ValueEval.h"
-#include "type/Serde.h"
 
 namespace nebula {
 namespace api {
@@ -50,6 +50,36 @@ using nebula::surface::RowData;
 using nebula::surface::eval::EvalContext;
 using nebula::type::Schema;
 using nebula::type::TypeSerializer;
+
+TEST(ApiTest, TestCustomColumnSerde) {
+  // serde single custom column
+  {
+    CustomColumn cc("column", nebula::type::Kind::VARCHAR, "nebula");
+    auto ser = CustomColumn::serialize(cc);
+    auto cc2 = CustomColumn::deserialize(ser.data(), ser.size());
+    EXPECT_EQ(cc2.name, cc.name);
+    EXPECT_EQ(cc2.kind, cc.kind);
+    EXPECT_EQ(cc2.script, cc.script);
+  }
+
+  // serde vector of cc
+  {
+    std::vector<CustomColumn> customs;
+    customs.reserve(2);
+    customs.emplace_back("a", nebula::type::Kind::BOOLEAN, "abc");
+    customs.emplace_back("x", nebula::type::Kind::BIGINT, "xyz");
+
+    auto ser = Serde::serialize(customs);
+    LOG(INFO) << "vector of customs: " << ser;
+
+    auto c2 = Serde::deserialize(ser.data(), ser.size());
+    EXPECT_EQ(c2.size(), 2);
+    auto cc = c2.at(0);
+    EXPECT_EQ(cc.name, "a");
+    EXPECT_EQ(cc.kind, nebula::type::Kind::BOOLEAN);
+    EXPECT_EQ(cc.script, "abc");
+  }
+}
 
 TEST(ApiTest, TestQueryStructure) {
   auto data = genData();
@@ -179,8 +209,8 @@ TEST(ApiTest, TestExprValueEval) {
 
   auto ms = TableService::singleton();
   auto tbl = ms->query("nebula.test").table();
-  expr.type(*tbl);
-  expr2.type(*tbl);
+  expr.type(tbl->lookup());
+  expr2.type(tbl->lookup());
   auto v1 = expr.asEval();
   auto v2 = expr2.asEval();
 
@@ -196,7 +226,7 @@ TEST(ApiTest, TestExprValueEval) {
   // test UDF expression evaluation
   {
     auto udf = reverse(expr);
-    auto type = udf.type(*tbl);
+    auto type = udf.type(tbl->lookup());
     EXPECT_EQ(type.native, nebula::type::Kind::BOOLEAN);
     auto v3 = udf.asEval();
     auto colrefs = udf.columnRefs();
@@ -215,7 +245,7 @@ TEST(ApiTest, TestExprValueEval) {
     LOG(INFO) << "test max UDAF";
     auto modexp = col("id") % 100;
     auto udaf = max(modexp);
-    auto type = udaf.type(*tbl);
+    auto type = udaf.type(tbl->lookup());
     EXPECT_EQ(type.native, nebula::type::Kind::INTEGER);
     auto v4up = udaf.asEval();
     auto v4 = static_cast<nebula::surface::eval::TypeValueEval<int32_t, int32_t, true>*>(v4up.get());
@@ -245,7 +275,7 @@ TEST(ApiTest, TestExprValueEval) {
     LOG(INFO) << "test avg UDAF";
     auto modexp = col("id") % 100;
     auto udaf = avg(modexp);
-    auto type = udaf.type(*tbl);
+    auto type = udaf.type(tbl->lookup());
     EXPECT_EQ(type.native, nebula::type::Kind::INTEGER);
     EXPECT_EQ(type.store, nebula::type::Kind::INTEGER);
     auto v5up = udaf.asEval();

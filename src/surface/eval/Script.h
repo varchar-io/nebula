@@ -224,9 +224,10 @@ public: // API
   T eval(const std::string& script, bool& valid, bool cache = false) noexcept {
     // if once is set, it means this script should be evaluated once
     // return instantly if this script evaluated before already
+    constexpr auto dv = nebula::type::TypeDetect<T>::value;
     if (cache && flags_.count(script) > 0) {
       // for this type of operation, we assume caller doesn't care what return value is
-      return T(0);
+      return dv;
     }
 
     JSValue val = eval_buf(ctx_, script);
@@ -236,7 +237,7 @@ public: // API
 
     if (JS_IsException(val)) {
       valid = false;
-      return T(0);
+      return dv;
     }
 
     // record the evaluation if success
@@ -273,7 +274,7 @@ public: // API
     // throw?
     LOG(INFO) << "do not support this type, return a default value";
     valid = false;
-    return T(0);
+    return dv;
   }
 
 private:

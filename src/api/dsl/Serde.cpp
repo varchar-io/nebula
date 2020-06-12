@@ -59,6 +59,12 @@ std::string ser(const ExpressionData& data) {
     addstring(json, "c_value", data.c_value);
     break;
   }
+  // it reuses the same fields as constant expression
+  case ExpressionType::SCRIPT: {
+    addstring(json, "c_type", data.c_type);
+    addstring(json, "c_value", data.c_value);
+    break;
+  }
   case ExpressionType::COLUMN: {
     addstring(json, "c_name", data.c_name);
     break;
@@ -101,6 +107,18 @@ std::string ser(const ExpressionData& data) {
   return buffer.GetString();
 }
 
+std::string Serde::serialize(const std::vector<CustomColumn>& customs) {
+  std::stringstream buffer;
+  msgpack::pack(buffer, customs);
+  buffer.seekg(0);
+  return buffer.str();
+}
+
+std::vector<CustomColumn> Serde::deserialize(const char* data, size_t size) {
+  msgpack::object_handle oh = msgpack::unpack(data, size);
+  return oh.get().as<std::vector<CustomColumn>>();
+}
+
 std::string Serde::serialize(const Expression& expr) {
   auto ptr = expr.serialize();
   return ser(*ptr);
@@ -138,6 +156,32 @@ std::shared_ptr<Expression> c_expr(
 
 #undef STRING_CONST
 #undef TYPED_CONST
+
+#define TYPE_SCRIPT(T)                                          \
+  if (type == TypeDetect<T>::tid()) {                           \
+    return std::make_shared<ScriptExpression<T>>(alias, value); \
+  }
+
+std::shared_ptr<Expression> s_expr(
+  const std::string& alias,
+  const std::string& type,
+  const std::string& value) {
+  TYPE_SCRIPT(bool)
+  TYPE_SCRIPT(int8_t)
+  TYPE_SCRIPT(int16_t)
+  TYPE_SCRIPT(int32_t)
+  TYPE_SCRIPT(int64_t)
+  TYPE_SCRIPT(float)
+  TYPE_SCRIPT(double)
+  TYPE_SCRIPT(const char*)
+  TYPE_SCRIPT(char*)
+  TYPE_SCRIPT(std::string_view)
+  TYPE_SCRIPT(std::string)
+
+  throw NException(fmt::format("Not recognized type: {0}", type));
+}
+
+#undef TYEP_SCRIPT
 
 #define LOGIC_FORM(OP)                                                                                         \
   case LogicalOp::OP: {                                                                                        \
@@ -276,6 +320,9 @@ std::shared_ptr<Expression> Serde::deserialize(const std::string& data) {
   switch (type) {
   case ExpressionType::CONSTANT: {
     return c_expr(alias, document["c_type"].GetString(), document["c_value"].GetString());
+  }
+  case ExpressionType::SCRIPT: {
+    return s_expr(alias, document["c_type"].GetString(), document["c_value"].GetString());
   }
   case ExpressionType::COLUMN: {
     return as(alias, std::make_shared<ColumnExpression>(document["c_name"].GetString()));

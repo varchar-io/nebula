@@ -34,11 +34,14 @@ using nebula::meta::AccessType;
 using nebula::meta::ActionType;
 using nebula::meta::NNode;
 using nebula::meta::Table;
+using nebula::meta::TypeLookup;
 using nebula::surface::RowData;
 using nebula::surface::eval::ValueEval;
+using nebula::type::Kind;
 using nebula::type::RowType;
 using nebula::type::Schema;
 using nebula::type::TreeNode;
+using nebula::type::TypeTraits;
 
 // TODO(cao) - a better way to handle this is to have struct expression type
 // which automatically represents a struct value. Hence col(*) => struct expression.
@@ -96,6 +99,25 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) {
   // validate
   auto schema = table_->schema();
 
+  // we need a column type look up callback for existing schema and customized columns
+  TypeLookup lookup = [this](const std::string& col) {
+    // look up the table schema to deduce the table
+    const auto& schema = table_->schema();
+    auto node = schema->find(col);
+    // found in existing schema
+    if (node) {
+      return node->k();
+    }
+
+    // try to see if this is in the custom column
+    auto itr = std::find_if(customs_.begin(), customs_.end(), [&col](const auto& x) { return x.name == col; });
+    if (itr != customs_.end()) {
+      return itr->kind;
+    }
+
+    return nebula::type::Kind::INVALID;
+  };
+
   // build output schema tree
   const auto numOutputFields = this->selects_.size();
   if (numOutputFields == 0) {
@@ -122,7 +144,7 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) {
   // process each select item
   for (auto& itr : selects_) {
     // ensure this expression type is populated
-    auto type = itr->type(*table_);
+    auto type = itr->type(lookup);
     if (type.native != type.store) {
       differentSchema = true;
     }
@@ -162,13 +184,13 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) {
       selects.push_back(itr);
     } else if (action == ActionType::MASK) {
       LOG(INFO) << "Mask a column due to access policy: " << columnImpacted;
-#define MASK_TYPE(K, V)                                                 \
-  case nebula::type::Kind::K: {                                         \
-    using X = nebula::type::TypeTraits<nebula::type::Kind::K>::CppType; \
-    auto exp = std::make_shared<ConstExpression<X>>((X)V);              \
-    exp->as(itr->alias());                                              \
-    selects.push_back(exp);                                             \
-    break;                                                              \
+#define MASK_TYPE(K, V)                                    \
+  case Kind::K: {                                          \
+    using X = TypeTraits<Kind::K>::CppType;                \
+    auto exp = std::make_shared<ConstExpression<X>>((X)V); \
+    exp->as(itr->alias());                                 \
+    selects.push_back(exp);                                \
+    break;                                                 \
   }
       switch (type.native) {
         MASK_TYPE(BOOLEAN, false)
@@ -267,15 +289,48 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) {
   }
 
   auto block = std::make_unique<BlockPhase>(schema, tempOutput);
-  filter_->type(*table_);
+  filter_->type(lookup);
   // a query can have aggregation but no keys, such as "select count(1)"
   auto filterEv = filter_->asEval();
   if (filterEv == nullptr) {
     END_ERROR(Error::INVALID_QUERY)
   }
 
+// custom columns attached to execution plan
+#define KIND_VALUE(K, CC)                                        \
+  case Kind::K: {                                                \
+    using X = TypeTraits<Kind::K>::CppType;                      \
+    return nebula::surface::eval::custom<X>(CC.name, CC.script); \
+  }
+
+  std::vector<std::unique_ptr<ValueEval>> customs;
+  bool notSupported = false;
+  std::transform(customs_.begin(), customs_.end(), std::back_inserter(customs),
+                 [&notSupported](const CustomColumn& cc) -> std::unique_ptr<ValueEval> {
+                   switch (cc.kind) {
+                     KIND_VALUE(BOOLEAN, cc)
+                     KIND_VALUE(TINYINT, cc)
+                     KIND_VALUE(SMALLINT, cc)
+                     KIND_VALUE(INTEGER, cc)
+                     KIND_VALUE(BIGINT, cc)
+                     KIND_VALUE(REAL, cc)
+                     KIND_VALUE(DOUBLE, cc)
+                     KIND_VALUE(VARCHAR, cc)
+                   default:
+                     notSupported = true;
+                     return {};
+                   }
+                 });
+
+  // some custom column is not supported
+  if (notSupported) {
+    END_ERROR(Error::NOT_SUPPORT)
+  }
+#undef KIND_VALUE
+
   (*block)
     .scan(table_->name())
+    .custom(std::move(customs))
     .filter(std::move(filterEv))
     .keys(std::move(zbKeys))
     .compute(std::move(fields))

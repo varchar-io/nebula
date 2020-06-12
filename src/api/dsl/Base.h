@@ -104,6 +104,10 @@ struct TypeInfo {
   nebula::type::Kind store;
 };
 
+// We need a generic way to look type of given column, physical or virtual
+// virtual column could be represented by a transformer, a script or any supported customized column
+// The parameter is column identifier - a string in nebula system
+
 // NOTE:
 // TODO(cao) - we put all these operator definitions in each concrete types
 // IS only because the THIS_TYPE resolusion
@@ -120,7 +124,7 @@ public:
 public:
   // TODO(cao): need to rework to introduce context and visitor pattern
   // to deduce the type of this expression
-  virtual TypeInfo type(const nebula::meta::Table& table) = 0;
+  virtual TypeInfo type(const nebula::meta::TypeLookup&) = 0;
   virtual bool isAgg() const = 0;
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const = 0;
   virtual std::vector<std::string> columnRefs() const {

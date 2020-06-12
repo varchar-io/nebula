@@ -39,7 +39,8 @@ namespace dsl {
 // table to fetch a table - a unique identifier of a data set/category in nebula system
 // the largest data unit to be ingested and computed.
 // Nebula will enforce every single table to have time-stamp column, explicitly (user-defined) or implicitly (nebula-defined)
-__attribute__((unused)) static Query table(const std::string& name, const std::shared_ptr<nebula::meta::MetaService> metaservice = nullptr) {
+__attribute__((unused)) static Query table(
+  const std::string& name, const std::shared_ptr<nebula::meta::MetaService> metaservice = nullptr) {
 
   auto ms = metaservice;
   if (ms == nullptr) {
@@ -63,25 +64,21 @@ __attribute__((unused)) static ColumnExpression col(const std::string& column) {
 // by default, max works for int type
 template <typename T>
 static UDFExpression<nebula::surface::eval::UDFType::MAX> max(const T& expr) {
-  // TODO(cao) - model UDAF/UDF with existing expression
   return UDFExpression<nebula::surface::eval::UDFType::MAX>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>
 static UDFExpression<nebula::surface::eval::UDFType::MIN> min(const T& expr) {
-  // TODO(cao) - model UDAF/UDF with existing expression
   return UDFExpression<nebula::surface::eval::UDFType::MIN>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>
 static UDFExpression<nebula::surface::eval::UDFType::COUNT> count(const T& expr) {
-  // TODO(cao) - we may support column expression as well for count
   return UDFExpression<nebula::surface::eval::UDFType::COUNT>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <>
 __attribute__((unused)) UDFExpression<nebula::surface::eval::UDFType::COUNT> count<int>(const int& expr) {
-  // TODO(cao) - we may support column expression as well for count
   auto c = std::make_shared<ConstExpression<int>>(expr);
   c->as("count");
   return UDFExpression<nebula::surface::eval::UDFType::COUNT>(c);
@@ -89,13 +86,11 @@ __attribute__((unused)) UDFExpression<nebula::surface::eval::UDFType::COUNT> cou
 
 template <typename T>
 static UDFExpression<nebula::surface::eval::UDFType::SUM> sum(const T& expr) {
-  // TODO(cao) - model UDAF/UDF with existing expression
   return UDFExpression<nebula::surface::eval::UDFType::SUM>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T>
 static UDFExpression<nebula::surface::eval::UDFType::AVG> avg(const T& expr) {
-  // TODO(cao) - model UDAF/UDF with existing expression
   return UDFExpression<nebula::surface::eval::UDFType::AVG>(std::shared_ptr<Expression>(new T(expr)));
 }
 
@@ -110,14 +105,23 @@ static UDFExpression<nebula::surface::eval::UDFType::TPM> tpm(const T& expr) {
 }
 
 template <typename T>
+static UDFExpression<nebula::surface::eval::UDFType::NOT> reverse(const T& expr) {
+  return UDFExpression<nebula::surface::eval::UDFType::NOT>(std::shared_ptr<Expression>(new T(expr)));
+}
+
+// script expression is expressed by a script snippet
+template <typename T>
+static ScriptExpression<T> script(const std::string& name, const std::string& script) {
+  return ScriptExpression<T>(name, script);
+}
+
+template <typename T>
 static LikeExpression like(const T& expr, const std::string& pattern, bool caseSensitive = true) {
-  // TODO(cao) - model UDAF/UDF with existing expression
   return LikeExpression(std::shared_ptr<Expression>(new T(expr)), pattern, caseSensitive);
 }
 
 template <typename T>
 static PrefixExpression starts(const T& expr, const std::string& prefix, bool caseSensitive = true) {
-  // TODO(cao) - model UDAF/UDF with existing expression
   return PrefixExpression(std::shared_ptr<Expression>(new T(expr)), prefix, caseSensitive);
 }
 
@@ -129,13 +133,6 @@ static InExpression<U> in(const T& expr, const std::vector<U>& values) {
 template <typename T, typename U>
 static InExpression<U> nin(const T& expr, const std::vector<U>& values) {
   return InExpression(std::shared_ptr<Expression>(new T(expr)), values, false);
-}
-
-// TODO(cao) - we should move UDF creation out of DSL as it's logical concept
-// follow example of UDAF to be consistent
-template <typename T>
-static UDFExpression<nebula::surface::eval::UDFType::NOT> reverse(const T& expr) {
-  return UDFExpression<nebula::surface::eval::UDFType::NOT>(std::shared_ptr<Expression>(new T(expr)));
 }
 
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>

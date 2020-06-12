@@ -102,15 +102,21 @@ std::istream& operator>>(std::istream&, CsvRow&);
 
 class CsvReader : public nebula::surface::RowCursor {
 public:
-  CsvReader(const std::string& file, char delimiter = ',', const std::vector<std::string>& columns = {})
+  CsvReader(const std::string& file, char delimiter, bool withHeader, const std::vector<std::string>& columns)
     : nebula::surface::RowCursor(0), fstream_{ file }, row_{ delimiter }, cacheRow_{ delimiter } {
+
     LOG(INFO) << "Reading a delimiter separated file: " << file << " by " << delimiter;
+    bool headerRead = false;
     // if the schema is given
     if (columns.size() > 0) {
       for (size_t i = 0, size = columns.size(); i < size; ++i) {
         columns_[columns.at(i)] = i;
       }
     } else if (fstream_ >> row_) {
+      headerRead = true;
+      // parse the header as column list
+      N_ENSURE(withHeader, "Header must be present if schema not provided.");
+
       // row_ has headers - build the name-index mapping
       const auto& raw = row_.rawData();
       for (size_t i = 0, size = raw.size(); i < size; ++i) {
@@ -121,6 +127,11 @@ public:
     cacheRow_.setSchema([this](const std::string& name) -> size_t {
       return columns_.at(name);
     });
+
+    // if data has header and header was not consumed yet (to build schema), we have to skip the first row
+    if (withHeader && !headerRead) {
+      fstream_ >> row_;
+    }
 
     // read one row
     if (fstream_ >> row_) {

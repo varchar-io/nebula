@@ -36,9 +36,6 @@ namespace nebula {
 namespace surface {
 namespace eval {
 
-// define a global type to represent runtime fields in schema
-using Fields = std::vector<std::unique_ptr<ValueEval>>;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // NOTE - in GCC 7, even it is template, we can't define a static method in header
 // otherwise the GCC linker will treat it as deleted function during link time
@@ -63,84 +60,28 @@ std::unique_ptr<ValueEval> constant(T v) {
       uncertain));
 }
 
-#define NULL_CHECK(R)               \
-  if (UNLIKELY(row.isNull(name))) { \
-    valid = false;                  \
-    return R;                       \
-  }
-
 template <typename T>
 std::unique_ptr<ValueEval> column(const std::string& name) {
+  // this column name could be from custom result
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
       fmt::format("F:{0}", name),
       ExpressionType::COLUMN,
       [name](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid)
         -> T {
-        // This is the only place we need row object
-        const auto& row = ctx.row();
-
-        // compile time branching based on template type T
-        // I think it's better than using template specialization for this case
-        if constexpr (std::is_same<T, bool>::value) {
-          NULL_CHECK(false)
-          return row.readBool(name);
-        }
-
-        if constexpr (std::is_same<T, int8_t>::value) {
-          NULL_CHECK(0)
-          return row.readByte(name);
-        }
-
-        if constexpr (std::is_same<T, int16_t>::value) {
-          NULL_CHECK(0)
-          return row.readShort(name);
-        }
-
-        if constexpr (std::is_same<T, int32_t>::value) {
-          NULL_CHECK(0)
-          return row.readInt(name);
-        }
-
-        if constexpr (std::is_same<T, int64_t>::value) {
-          NULL_CHECK(0)
-          return row.readLong(name);
-        }
-
-        if constexpr (std::is_same<T, float>::value) {
-          NULL_CHECK(0)
-          return row.readFloat(name);
-        }
-
-        if constexpr (std::is_same<T, double>::value) {
-          NULL_CHECK(0)
-          return row.readDouble(name);
-        }
-
-        if constexpr (std::is_same<T, int128_t>::value) {
-          NULL_CHECK(0)
-          return row.readInt128(name);
-        }
-
-        if constexpr (std::is_same<T, std::string_view>::value) {
-          NULL_CHECK("")
-          return row.readString(name);
-        }
-
-        // TODO(cao): other types supported in DSL? for example: UDF on list or map
-        throw NException("not supported template type");
+        // dedicate the read function to context as it knows how to handle special cases
+        return ctx.read<T>(name, valid);
       },
       uncertain));
 }
 
-#undef NULL_CHECK
-
 // run script to compute custom value
+// For now - script signature is its column name
 template <typename T>
 std::unique_ptr<ValueEval> custom(const std::string& name, const std::string& expr) {
   return std::unique_ptr<ValueEval>(
     new TypeValueEval<T>(
-      fmt::format("S:{0}", name),
+      name,
       ExpressionType::SCRIPT,
       [name, expr](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid)
         -> T {
@@ -155,7 +96,8 @@ std::unique_ptr<ValueEval> custom(const std::string& name, const std::string& ex
           return ctx.script().eval<T>(fmt::format("{0}();", name), valid);
         }
 
-        return T(0);
+        // return the default value of this type
+        return nebula::type::TypeDetect<T>::value;
       },
       uncertain));
 }

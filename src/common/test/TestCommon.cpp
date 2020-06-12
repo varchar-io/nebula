@@ -231,6 +231,14 @@ TEST(CommonTest, TestTimeParsing) {
     LOG(INFO) << "time1: " << time1 << ", time2:" << time2;
     EXPECT_EQ(Evidence::date(time1), time2);
   }
+
+  // time pattern with AM/PM
+  {
+    auto time1 = Evidence::time("07/20/2013 14:33:47 PM", "%m/%d/%Y %H:%M:%S");
+    LOG(INFO) << "time1: " << time1;
+    auto time2 = Evidence::time("ENDANGERED", "%m/%d/%Y %H:%M:%S");
+    LOG(INFO) << "time2: " << time2;
+  }
 }
 
 TEST(CommonTest, TestTimeFormatting) {

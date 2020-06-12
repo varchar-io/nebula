@@ -174,6 +174,12 @@ public:
     return *this;
   }
 
+  // customs
+  Phase& custom(nebula::surface::eval::Fields customs) {
+    customs_ = std::move(customs);
+    return *this;
+  }
+
   Phase& filter(std::unique_ptr<nebula::surface::eval::ValueEval> filter) {
     filter_ = std::move(filter);
     return *this;
@@ -230,6 +236,10 @@ public:
     return fields_;
   }
 
+  inline const nebula::surface::eval::Fields& customs() const {
+    return customs_;
+  }
+
   inline bool isAggregateColumn(size_t index) const {
     return aggregateMap_.at(index);
   }
@@ -266,12 +276,20 @@ public:
   // TODO(cao): current implementation is not correct because it only checks the top value eval object
   // consider moving the tree structure ("children") from TypeValueEval into ValueEval
   // in fact, every value eval is a tree, it should be recursive method to check any node is script expression
-  inline bool hasCustom() const {
+  inline bool hasScript() const {
     constexpr auto ETS = nebula::surface::eval::ExpressionType::SCRIPT;
+
+    // all custom fields registered at custom
+    if (customs_.size() > 0) {
+      return true;
+    }
+
+    // custom expression used in filter (... where script(x, int, "<script>") > 5)
     if (filter_ && filter_->expressionType() == ETS) {
       return true;
     }
 
+    // custom expressed used in select field directly (select script(), ... from).
     for (auto& f : fields_) {
       if (f->expressionType() == ETS) {
         return true;
@@ -287,6 +305,7 @@ private:
 
   std::string table_;
   nebula::surface::eval::Fields fields_;
+  nebula::surface::eval::Fields customs_;
   std::unique_ptr<nebula::surface::eval::ValueEval> filter_;
   std::vector<size_t> keys_;
 

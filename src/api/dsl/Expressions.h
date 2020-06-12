@@ -222,9 +222,9 @@ public: // all operations
     return merge;
   }
 
-  virtual TypeInfo type(const nebula::meta::Table& table) override {
-    auto opt1 = op1_->type(table);
-    auto opt2 = op2_->type(table);
+  virtual TypeInfo type(const nebula::meta::TypeLookup& lookup) override {
+    auto opt1 = op1_->type(lookup);
+    auto opt2 = op2_->type(lookup);
 
     // arthmetic operation only cares native type
     type_ = TypeInfo{
@@ -290,14 +290,14 @@ public: // all logical operations
     return logical_forward()(op, op1_->typeInfo().native, op2_->typeInfo().native, std::move(v1), std::move(v2));
   }
 
-  virtual TypeInfo type(const nebula::meta::Table& table) override {
-    op1_->type(table);
-    op2_->type(table);
+  virtual TypeInfo type(const nebula::meta::TypeLookup& lookup) override {
+    op1_->type(lookup);
+    op2_->type(lookup);
 
     // validate non-comparison case.
     // unlike programming language, we don't allow implicity type conversion
     // so for AND and OR operations, we have to validate left and right are both bool type
-    validate(table);
+    validate();
 
     // logical expression will always in bool type
     type_ = TypeInfo{ nebula::type::Kind::BOOLEAN };
@@ -319,7 +319,7 @@ public: // all logical operations
   N_ENSURE_EQ(op2_->typeInfo().native, nebula::type::Kind::BOOLEAN,            \
               "AND/OR operations requires bool typed left and right oprands");
 
-  void validate(const nebula::meta::Table&) {
+  void validate() {
     if constexpr (op == LogicalOp::AND || op == LogicalOp::OR) {
       BOTH_OPRANDS_BOOL()
     }
@@ -369,7 +369,7 @@ public: // all logical operations
   IS_AGG(false)
 
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override;
-  virtual TypeInfo type(const nebula::meta::Table& table) override;
+  virtual TypeInfo type(const nebula::meta::TypeLookup&) override;
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override;
   inline virtual std::vector<std::string> columnRefs() const override {
     return std::vector<std::string>{ column_ };
@@ -398,7 +398,7 @@ public:
     return nebula::surface::eval::constant(value_);
   }
 
-  virtual TypeInfo type(const nebula::meta::Table&) override {
+  virtual TypeInfo type(const nebula::meta::TypeLookup&) override {
     // duduce from T to nebula::type::Type
     type_ = TypeInfo{ nebula::type::TypeDetect<T>::kind };
     return type_;
@@ -414,6 +414,60 @@ public:
 
 private:
   T value_;
+};
+
+// A script expression is like a new column defined by script snippet
+// which can be executed in a row context to gain the value for specified type
+
+template <typename T>
+class ScriptExpression : public Expression {
+public:
+  ScriptExpression(const std::string& column, const std::string& script)
+    : script_{ script } {
+    // script column is its alias
+    alias_ = column;
+  }
+
+  ScriptExpression(const ScriptExpression& other) = default;
+  ScriptExpression& operator=(const ScriptExpression& other) = default;
+  virtual ~ScriptExpression() = default;
+
+public: // all logical operations
+  ALL_ARTHMETIC_LOGICAL_OPS()
+
+  ALIAS()
+
+  // for performance and complexity consideration, we are supporting script for data transform only
+  IS_AGG(false)
+
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
+    // type detect will convert all string literal type such as char*, std::string to standard string type std::stirng_view
+    using ST = typename nebula::type::TypeDetect<std::remove_reference_t<std::remove_cv_t<T>>>::StandardType;
+    return nebula::surface::eval::custom<ST>(alias_, script_);
+  }
+
+  virtual TypeInfo type(const nebula::meta::TypeLookup&) override {
+    // duduce from T to nebula::type::Type
+    type_ = TypeInfo{ nebula::type::TypeDetect<T>::kind };
+    return type_;
+  }
+
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = Expression::serialize();
+    data->type = ExpressionType::SCRIPT;
+    data->c_type = nebula::type::TypeDetect<T>::tid();
+    data->c_value = script_;
+    return data;
+  }
+
+  inline virtual std::vector<std::string> columnRefs() const override {
+    // TODO(cao) - column refs are used for column-level access control
+    // We should parse out column reference from script context
+    return {};
+  }
+
+private:
+  std::string script_;
 };
 
 // An UDAF expression - some UDAF knows its type regardless inner type
@@ -439,9 +493,9 @@ public:
 
   IS_AGG(nebula::surface::eval::UdfTraits<UT>::UDAF)
 
-  virtual TypeInfo type(const nebula::meta::Table& table) override {
+  virtual TypeInfo type(const nebula::meta::TypeLookup& lookup) override {
     // always call inner_ type since it's going to change its state
-    auto innerType = inner_->type(table);
+    auto innerType = inner_->type(lookup);
 
     // if this UDF has pre-defined type, we don't need to get it from inner expression then
     type_ = TypeInfo{
@@ -520,8 +574,8 @@ public:
 public:
   IS_AGG(nebula::surface::eval::UdfTraits<UDF>::UDAF)
 
-  virtual TypeInfo type(const nebula::meta::Table& table) override {
-    expr_->type(table);
+  virtual TypeInfo type(const nebula::meta::TypeLookup& lookup) override {
+    expr_->type(lookup);
 
     // inner type is
     type_ = TypeInfo{ nebula::type::Kind::BOOLEAN };

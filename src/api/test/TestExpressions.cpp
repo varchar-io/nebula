@@ -104,45 +104,45 @@ TEST(ExpressionsTest, TestExpressionType) {
   nebula::api::dsl::ConstExpression<int> a(1);
   auto K = [](const nebula::api::dsl::TypeInfo& node) { return node.native; };
 
-  EXPECT_EQ(K(a.type(*tbl)), nebula::type::INTEGER);
+  EXPECT_EQ(K(a.type(tbl->lookup())), nebula::type::INTEGER);
   LOG(INFO) << "PASS: constant expr";
 
   // column expression
   auto cid = nebula::api::dsl::col("id");
   auto cflag = nebula::api::dsl::col("flag");
-  EXPECT_EQ(K(cid.type(*tbl)), nebula::type::INTEGER);
-  EXPECT_EQ(K(cflag.type(*tbl)), nebula::type::BOOLEAN);
+  EXPECT_EQ(K(cid.type(tbl->lookup())), nebula::type::INTEGER);
+  EXPECT_EQ(K(cflag.type(tbl->lookup())), nebula::type::BOOLEAN);
   LOG(INFO) << "PASS: column expr";
 
   // logical expression
   // && (cid == 3);
   auto c1 = cflag == true;
-  EXPECT_EQ(K(c1.type(*tbl)), nebula::type::BOOLEAN);
+  EXPECT_EQ(K(c1.type(tbl->lookup())), nebula::type::BOOLEAN);
   auto c2 = cid == 3;
-  EXPECT_EQ(K(c2.type(*tbl)), nebula::type::BOOLEAN);
+  EXPECT_EQ(K(c2.type(tbl->lookup())), nebula::type::BOOLEAN);
   auto c3 = c1 && c2;
-  EXPECT_EQ(K(c3.type(*tbl)), nebula::type::BOOLEAN);
+  EXPECT_EQ(K(c3.type(tbl->lookup())), nebula::type::BOOLEAN);
   // auto c4 = cid == 50;
-  // EXPECT_EQ(K(c4.type(*tbl)), nebula::type::BOOLEAN);
+  // EXPECT_EQ(K(c4.type(tbl->lookup())), nebula::type::BOOLEAN);
   LOG(INFO) << "PASS: logical expr";
 
   // arthmetic expression
   auto trans = cid * 10;
-  EXPECT_EQ(K(trans.type(*tbl)), nebula::type::INTEGER);
+  EXPECT_EQ(K(trans.type(tbl->lookup())), nebula::type::INTEGER);
   LOG(INFO) << "PASS: arthmetic expr 1";
 
   auto transF = trans * 3.5f;
-  EXPECT_EQ(K(transF.type(*tbl)), nebula::type::REAL);
+  EXPECT_EQ(K(transF.type(tbl->lookup())), nebula::type::REAL);
   LOG(INFO) << "PASS: arthmetic expr 2";
 
   // mix up arthemtic and logical
   auto mix = ((cid * 5 / 7 - 10) > 100) && cflag;
-  EXPECT_EQ(K(mix.type(*tbl)), nebula::type::BOOLEAN);
+  EXPECT_EQ(K(mix.type(tbl->lookup())), nebula::type::BOOLEAN);
   LOG(INFO) << "PASS: mix arthemtic and logical";
 
   // test alias
   auto c = nebula::api::dsl::v("xyz").as("fake");
-  EXPECT_EQ(K(c.type(*tbl)), nebula::type::VARCHAR);
+  EXPECT_EQ(K(c.type(tbl->lookup())), nebula::type::VARCHAR);
   LOG(INFO) << "PASS: constant string with alias";
 }
 
@@ -151,7 +151,7 @@ TEST(ExpressionsTest, TestExpressionEval) {
   auto tbl = ms->query("nebula.test").table();
   {
     auto idvalue = (nebula::api::dsl::col("id") * 0) != 0;
-    idvalue.type(*tbl);
+    idvalue.type(tbl->lookup());
 
     auto eval = idvalue.asEval();
     nebula::surface::MockRowData mr;
@@ -164,7 +164,7 @@ TEST(ExpressionsTest, TestExpressionEval) {
 
   {
     auto eventValue = nebula::api::dsl::col("event") == "abc";
-    eventValue.type(*tbl);
+    eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
     nebula::surface::MockRowData mr;
@@ -240,7 +240,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
   // evaluate like
   {
     auto eventValue = nebula::api::dsl::like(nebula::api::dsl::col("event"), "abc%");
-    eventValue.type(*tbl);
+    eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
     bool valid = true;
@@ -250,7 +250,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
   {
     auto eventValue = nebula::api::dsl::like(nebula::api::dsl::col("event"), "bc%");
-    eventValue.type(*tbl);
+    eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
     bool valid = true;
@@ -261,7 +261,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
   // evaluate prefix
   {
     auto eventValue = nebula::api::dsl::starts(nebula::api::dsl::col("event"), "abc");
-    eventValue.type(*tbl);
+    eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
     bool valid = true;
@@ -271,7 +271,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
   {
     auto eventValue = nebula::api::dsl::starts(nebula::api::dsl::col("event"), "bc");
-    eventValue.type(*tbl);
+    eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
     bool valid = true;
@@ -314,8 +314,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), i1.alias());
 
     // verify kind
-    i1.type(*tbl);
-    exp->type(*tbl);
+    i1.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), i1.typeInfo());
 
     // verify value evaluation
@@ -339,8 +339,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), s1.alias());
 
     // verify kind
-    s1.type(*tbl);
-    exp->type(*tbl);
+    s1.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), s1.typeInfo());
 
     // verify value evaluation
@@ -365,8 +365,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), "cid");
 
     // verify kind
-    cid.type(*tbl);
-    exp->type(*tbl);
+    cid.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), cid.typeInfo());
 
     // verify value evaluation
@@ -389,8 +389,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), "eid");
 
     // verify kind
-    cid.type(*tbl);
-    exp->type(*tbl);
+    cid.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), cid.typeInfo());
 
     // verify value evaluation
@@ -415,8 +415,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), "id");
 
     // verify kind
-    cid.type(*tbl);
-    exp->type(*tbl);
+    cid.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), cid.typeInfo());
 
     // verify value evaluation
@@ -441,8 +441,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), "event");
 
     // verify kind
-    cevent.type(*tbl);
-    exp->type(*tbl);
+    cevent.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), cevent.typeInfo());
 
     // verify value evaluation
@@ -467,8 +467,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), "weight");
 
     // verify kind
-    cw.type(*tbl);
-    exp->type(*tbl);
+    cw.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), cw.typeInfo());
 
     // verify value evaluation
@@ -493,8 +493,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), "value");
 
     // verify kind
-    cv.type(*tbl);
-    exp->type(*tbl);
+    cv.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), cv.typeInfo());
 
     // verify value evaluation
@@ -519,8 +519,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), "el");
 
     // verify kind
-    cl.type(*tbl);
-    exp->type(*tbl);
+    cl.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), cl.typeInfo());
 
     // verify value evaluation
@@ -546,8 +546,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), "ei");
 
     // verify kind
-    ci.type(*tbl);
-    exp->type(*tbl);
+    ci.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), ci.typeInfo());
 
     // verify value evaluation
@@ -573,8 +573,8 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->alias(), "p99");
 
     // verify kind
-    ci.type(*tbl);
-    exp->type(*tbl);
+    ci.type(tbl->lookup());
+    exp->type(tbl->lookup());
     EXPECT_EQ(exp->typeInfo(), ci.typeInfo());
 
     // verify value evaluation

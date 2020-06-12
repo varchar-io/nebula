@@ -27,22 +27,25 @@ namespace nebula {
 namespace execution {
 namespace core {
 
+static std::shared_ptr<nebula::surface::eval::ScriptData> makeScriptData(const BlockPhase& plan) noexcept {
+  if (plan.hasScript()) {
+    return std::make_shared<nebula::surface::eval::ScriptData>(plan.inputSchema(), plan.customs());
+  }
+
+  return {};
+}
+
 class ReferenceRows : public nebula::surface::RowCursor {
 public:
   explicit ReferenceRows(const BlockPhase& plan, const nebula::memory::Batch& data)
     : nebula::surface::RowCursor(0),
       plan_{ plan },
+      scriptData_{ makeScriptData(plan) },
       data_{ data },
       accessor_{ data.makeAccessor() },
-      ctx_{ std::make_shared<nebula::surface::eval::EvalContext>(plan.cacheEval(), plan.hasCustom()) },
+      ctx_{ std::make_shared<nebula::surface::eval::EvalContext>(plan.cacheEval(), scriptData_) },
       filter_{ plan.filter() },
       runtime_{ plan, ctx_ } {
-
-    // custom plan requires input schema
-    if (plan_.hasCustom()) {
-      ctx_->setSchema(plan_.inputSchema());
-    }
-
     // populate all reference rows
     for (size_t i = 0, size = data_.getRows(); i < size; ++i) {
       // if we have enough samples, just return
@@ -68,7 +71,7 @@ public:
     a->seek(row);
 
     // a computed row with a wrapped row only
-    return std::make_unique<ComputedRow>(plan_, std::make_shared<nebula::surface::eval::EvalContext>(std::move(a)));
+    return std::make_unique<ComputedRow>(plan_, std::make_shared<nebula::surface::eval::EvalContext>(std::move(a), scriptData_));
   }
 
 private:
@@ -89,6 +92,7 @@ private:
 
 private:
   const BlockPhase& plan_;
+  const std::shared_ptr<nebula::surface::eval::ScriptData> scriptData_;
   const nebula::memory::Batch& data_;
   std::unique_ptr<nebula::memory::RowAccessor> accessor_;
   std::shared_ptr<nebula::surface::eval::EvalContext> ctx_;

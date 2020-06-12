@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "Base.h"
+#include "Query.h"
 
 /**
  * Define serialization functions to ser/de expressions to be transferred through network bounds.
@@ -24,11 +24,18 @@
 namespace nebula {
 namespace api {
 namespace dsl {
+
 class Serde {
 public:
+  // expression serde
   static std::string serialize(const Expression&);
   static std::shared_ptr<Expression> deserialize(const std::string&);
+
+  // custom column object serde
+  static std::string serialize(const std::vector<CustomColumn>&);
+  static std::vector<CustomColumn> deserialize(const char*, size_t);  
 };
+
 } // namespace dsl
 } // namespace api
 } // namespace nebula

@@ -47,7 +47,6 @@
 #include "nebula.grpc.pb.h"
 #include "service/base/NebulaService.h"
 #include "service/node/RemoteNodeConnector.h"
-#include "storage/CsvReader.h"
 #include "storage/NFS.h"
 #include "storage/NFileSystem.h"
 
@@ -87,7 +86,6 @@ using nebula::meta::TableSpecPtr;
 using nebula::service::base::ErrorCode;
 using nebula::service::base::ServiceProperties;
 using nebula::service::node::RemoteNodeConnector;
-using nebula::storage::CsvReader;
 using nebula::storage::NFileSystem;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;

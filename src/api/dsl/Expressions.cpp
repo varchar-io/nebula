@@ -45,16 +45,12 @@ LOGICAL_OP_STRING(<=, LE)
 
 #undef LOGICAL_OP_STRING
 
-TypeInfo ColumnExpression::type(const Table& table) {
+TypeInfo ColumnExpression::type(const nebula::meta::TypeLookup& lookup) {
   // look up the table schema to deduce the table
-  const auto& schema = table.schema();
-  TreeNode nodeType;
-  schema->onChild(column_, [&nodeType](const TypeNode& found) {
-    nodeType = std::dynamic_pointer_cast<TreeBase>(found);
-  });
+  const auto kind = lookup(column_);
 
-  N_ENSURE_NOT_NULL(nodeType, fmt::format("column not found: {0}", column_));
-  type_ = TypeInfo{ TypeBase::k(nodeType) };
+  N_ENSURE(kind != Kind::INVALID, fmt::format("column not found: {0}", column_));
+  type_ = TypeInfo{ kind };
   return type_;
 }
 

@@ -349,6 +349,142 @@ TEST(ApiTest, TestTreePathMerge) {
   }
 }
 
+TEST(ApiTest, TestScript) {
+  auto data = genData();
+
+  // query this table
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+
+  auto expr = "const id2 = () => nebula.column(\"id\") - 2000;";
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end)
+                 .select(
+                   col("id"),
+                   script<int32_t>("id2", expr))
+                 .sortby({ 1 }, SortType::DESC)
+                 .limit(10);
+
+  // compile the query into an execution plan
+  QueryContext ctx{ "nebula", { "nebula-users" } };
+  auto plan = query.compile(ctx);
+  plan->setWindow({ start, end });
+
+  // print out the plan through logging
+  plan->display();
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << fmt::format("col: {0:20} | {1:20}", "id", "id2");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << fmt::format("row: {0:20} | {1:20}",
+                             row.readInt("id"),
+                             row.readInt("id2"));
+  }
+}
+
+// TODO(cao) - not support scripted column in nested expression yet.
+// such as: sum(script<int32_t>("id2", expr)),
+// to support that, we need to register the column first.
+TEST(ApiTest, TestScriptAggregate) {
+  auto data = genData();
+
+  // query this table
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+
+  auto expr = "const id2 = () => nebula.column(\"id\") % 5;";
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end)
+                 .select(
+                   script<int32_t>("id2", expr),
+                   count(col("id")).as("count"))
+                 .groupby({ 1 })
+                 .sortby({ 2 }, SortType::DESC)
+                 .limit(10);
+
+  // compile the query into an execution plan
+  QueryContext ctx{ "nebula", { "nebula-users" } };
+  auto plan = query.compile(ctx);
+  plan->setWindow({ start, end });
+
+  // print out the plan through logging
+  plan->display();
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << fmt::format("col: {0:20} | {1:20}", "id2", "count");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << fmt::format("row: {0:20} | {1:20}",
+                             row.readInt("id2"),
+                             row.readInt("count"));
+  }
+}
+
+// if a custom column is registered first, then it can be used like normal columns
+TEST(ApiTest, TestScriptRegisterColumn) {
+  auto data = genData();
+
+  // query this table
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+
+  auto expr = "const id2 = () => nebula.column(\"id\") % 5;";
+  auto query = table(tableName, ms)
+                 .apply("id2", nebula::type::Kind::INTEGER, expr)
+                 .where(col("_time_") > start && col("_time_") < end)
+                 .select(
+                   col("tag"),
+                   sum(col("id2")).as("sum"))
+                 .groupby({ 1 })
+                 .sortby({ 2 }, SortType::DESC)
+                 .limit(10);
+
+  // compile the query into an execution plan
+  QueryContext ctx{ "nebula", { "nebula-users" } };
+  auto plan = query.compile(ctx);
+  plan->setWindow({ start, end });
+
+  // print out the plan through logging
+  plan->display();
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << fmt::format("col: {0:20} | {1:20}", "tag", "sum");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << fmt::format("row: {0:20} | {1:20}",
+                             row.readString("tag"),
+                             row.readInt("sum"));
+  }
+}
+
 TEST(ApiTest, TestAccessControl) {
   auto data = genData();
 

@@ -48,7 +48,6 @@ tables:
       type: static
       # get it from linux by "date +%s"
       value: 1565994194
-
   # one example message looks like:
   # {"service":"test", "host":"dev-shawncao", "tag":"dev", "lang":"java", "stack":"a\nb\nc"}
   # k.pinterest-code:
@@ -76,17 +75,25 @@ tables:
   #   settings:
   #     batch: 500
   # # basic S3 file in csv format
-  # bucket.size:
+  # seattle.calls:
   #   max-mb: 40000
   #   max-hr: 0
-  #   schema: "ROW<size:long>"
+  #   schema: "ROW<cad:long, clearence:string, type:string, priority:int, init_type:string, final_type:string, queue_time:string, arrive_time:string, precinct:string, sector:string, beat:string>"
   #   data: s3
   #   loader: Swap
-  #   source: s3://bucket/nebula/bucket-fs.txt
+  #   source: s3://nebula/seattle_calls.10k.tsv
   #   backup: s3://nebula/n202/
   #   format: csv
   #   time:
-  #     type: current
+  #     type: column
+  #     column: queue_time
+  #     pattern: "%m/%d/%Y %H:%M:%S"
+  #   settings:
+  #     # csv delimiter - it defaults to tab key, so have to specify
+  #     # try to use tab rather than comma - nebula CSV reader may have bug if column value contains comma
+  #     # csv.delimiter: ","
+  #     # the data has header - it defaults to true hence can be ommited.
+  #     csv.header: true
   # # basic example to consume parquet file from S3
   # <table name>:
   #   max-mb: 10000

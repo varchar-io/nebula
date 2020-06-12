@@ -17,15 +17,17 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <msgpack.hpp>
 
 #include "Context.h"
 #include "Expressions.h"
-#include "api/udf/Not.h"
 #include "common/Cursor.h"
 #include "execution/ExecutionPlan.h"
 #include "meta/MetaService.h"
 #include "meta/Table.h"
 #include "surface/DataSurface.h"
+
+MSGPACK_ADD_ENUM(nebula::type::Kind)
 
 /**
  * Define query strucuture.
@@ -37,6 +39,29 @@ namespace dsl {
 enum class SortType {
   ASC,
   DESC
+};
+
+struct CustomColumn {
+  CustomColumn() = default;
+  CustomColumn(const std::string& n, nebula::type::Kind k, const std::string& s)
+    : name{ n }, kind{ k }, script{ s } {}
+  std::string name;
+  nebula::type::Kind kind;
+  std::string script;
+
+  MSGPACK_DEFINE(name, kind, script);
+
+  static std::string serialize(const CustomColumn& cc) {
+    std::stringstream buffer;
+    msgpack::pack(buffer, cc);
+    buffer.seekg(0);
+    return buffer.str();
+  }
+
+  static CustomColumn deserialize(const char* data, size_t size) {
+    msgpack::object_handle oh = msgpack::unpack(data, size);
+    return oh.get().as<CustomColumn>();
+  }
 };
 
 /**
@@ -51,6 +76,7 @@ public:
   // We do this is to favor DSL chain method
   Query(Query& q) : ms_{ q.ms_ },
                     table_{ q.table_ },
+                    customs_{ std::move(q.customs_) },
                     filter_{ std::move(q.filter_) },
                     selects_{ std::move(q.selects_) },
                     groups_{ std::move(q.groups_) },
@@ -62,6 +88,15 @@ public:
   virtual ~Query() = default;
 
 public:
+  // apply for a new column with given  type and computational script in JS.
+  // one option is to extend the new column into table or schema in table.
+  // but we want to keep table object sharalbe and lightweigth in serde.
+  // we will let new columns go with query / execution plan indicating it is query level feature.
+  Query& apply(const std::string& name, nebula::type::Kind kind, const std::string& expr) {
+    customs_.emplace_back(name, kind, expr);
+    return *this;
+  }
+
   // a filter accepts a bool expression as its parameter to evaluate.
   template <typename T>
   Query& where(const T& filter) {
@@ -111,6 +146,8 @@ public:
   std::shared_ptr<nebula::meta::Table> table_;
 
   // expressions of each category
+  std::vector<CustomColumn> customs_;
+
   // let's use sahred_ptr to tracking all expressions in the query
   std::shared_ptr<Expression> filter_;
   std::vector<std::shared_ptr<Expression>> selects_;

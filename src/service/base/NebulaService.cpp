@@ -178,8 +178,6 @@ const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Sche
 // serialize a query and meta data
 flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, const std::string& id, const QueryWindow& window) {
   flatbuffers::grpc::MessageBuilder mb;
-  auto tbl = q.table_->name();
-  auto filter = Serde::serialize(*q.filter_);
   std::vector<flatbuffers::Offset<flatbuffers::String>> fields;
   fields.reserve(q.selects_.size());
   for (auto& f : q.selects_) {
@@ -198,13 +196,19 @@ flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, cons
     sorts.push_back(i);
   }
 
+  auto tbl = q.table_->name();
+  auto filter = Serde::serialize(*q.filter_);
+  // customs serialization
+  auto customs = Serde::serialize(q.customs_);
   auto request_offset = CreateQueryPlanDirect(
-    mb, id.c_str(), tbl.c_str(), filter.c_str(), &fields, &groups, &sorts,
+    mb, id.c_str(), tbl.c_str(), filter.c_str(), customs.c_str(), &fields, &groups, &sorts,
     q.sortType_ == SortType::DESC, q.limit_, window.first, window.second);
   mb.Finish(request_offset);
   return mb.ReleaseMessage<QueryPlan>();
 }
 
+// TODO(cao) - new fields are serialized by msgpack for simplicity such as "customs"
+// consider to convert all other fields using msgpack instead dealing with complex types in flatbuffer
 nebula::api::dsl::Query QuerySerde::deserialize(
   const std::shared_ptr<nebula::meta::MetaService> ms,
   const flatbuffers::grpc::Message<QueryPlan>* query) {
@@ -216,6 +220,12 @@ nebula::api::dsl::Query QuerySerde::deserialize(
   // set filter
   {
     q.filter_ = Serde::deserialize(plan->filter()->c_str());
+  }
+
+  // set customs
+  {
+    auto cc = plan->customs();
+    q.customs_ = Serde::deserialize(cc->data(), cc->size());
   }
 
   // set fields

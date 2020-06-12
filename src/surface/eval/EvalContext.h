@@ -223,14 +223,54 @@ struct EvalCache {
   nebula::common::ExtendableSlice slice;
 };
 
+// define a global type to represent runtime fields in schema
+using Fields = std::vector<std::unique_ptr<ValueEval>>;
+
+// cache sharable script context data
+struct ScriptData {
+  explicit ScriptData(nebula::type::Schema schema, const Fields& c)
+    : name2type{ nullptr }, customs{ c } {
+    if (schema) {
+      const size_t size = schema->size();
+      auto map = std::make_unique<std::unordered_map<std::string, nebula::type::Kind>>(size);
+      for (size_t i = 0; i < size; ++i) {
+        auto f = schema->childType(i);
+        map->emplace(f->name(), f->k());
+      }
+
+      std::swap(map, name2type);
+    }
+  }
+
+  bool valid() const noexcept {
+    return name2type != nullptr;
+  }
+
+  ValueEval* column(const std::string& col) const noexcept {
+    for (auto& c : customs) {
+      if (c->signature() == col) {
+        return c.get();
+      }
+    }
+
+    return nullptr;
+  }
+
+  // column name to type mapping - set by external
+  std::unique_ptr<std::unordered_map<std::string, nebula::type::Kind>> name2type;
+
+  // reference to custom fields
+  const Fields& customs;
+};
+
 class EvalContext {
 public:
   // standard shared context across rows through reset row object interface
-  EvalContext(bool cache, bool script = false)
+  EvalContext(bool cache, std::shared_ptr<ScriptData> script = nullptr)
     : EvalContext(cache, script, nullptr) {}
 
   // case to wrap a single row without cache, cheap to create an instance of eval context
-  EvalContext(std::unique_ptr<nebula::surface::RowData> data, bool script = false)
+  EvalContext(std::unique_ptr<nebula::surface::RowData> data, std::shared_ptr<ScriptData> script = nullptr)
     : EvalContext(false, script, std::move(data)) {}
 
   virtual ~EvalContext() = default;
@@ -277,30 +317,100 @@ public:
     return slice.read<T>(offset);
   }
 
-  inline const nebula::surface::RowData& row() const {
-    return *row_;
+#define NULL_CHECK(R)                \
+  if (UNLIKELY(row_->isNull(col))) { \
+    valid = false;                   \
+    return R;                        \
   }
+
+  template <typename T>
+  inline T read(const std::string& col, bool& valid) {
+    // TODO(cao) - not ideal branching. we should be able to compile this before execution
+    // fast lookup - best to turn all column's value materialization into a function pointer - type agnostic?
+    // we exactly know what method to call for every single column
+    ValueEval* ve = nullptr;
+    if (scriptData_ && (ve = scriptData_->column(col)) != nullptr) {
+      return ve->eval<T>(*this, valid);
+    }
+
+    // return *row_;
+    // compile time branching based on template type T
+    // I think it's better than using template specialization for this case
+    if constexpr (std::is_same<T, bool>::value) {
+      NULL_CHECK(false)
+      return row_->readBool(col);
+    }
+
+    if constexpr (std::is_same<T, int8_t>::value) {
+      NULL_CHECK(0)
+      return row_->readByte(col);
+    }
+
+    if constexpr (std::is_same<T, int16_t>::value) {
+      NULL_CHECK(0)
+      return row_->readShort(col);
+    }
+
+    if constexpr (std::is_same<T, int32_t>::value) {
+      NULL_CHECK(0)
+      return row_->readInt(col);
+    }
+
+    if constexpr (std::is_same<T, int64_t>::value) {
+      NULL_CHECK(0)
+      return row_->readLong(col);
+    }
+
+    if constexpr (std::is_same<T, float>::value) {
+      NULL_CHECK(0)
+      return row_->readFloat(col);
+    }
+
+    if constexpr (std::is_same<T, double>::value) {
+      NULL_CHECK(0)
+      return row_->readDouble(col);
+    }
+
+    if constexpr (std::is_same<T, int128_t>::value) {
+      NULL_CHECK(0)
+      return row_->readInt128(col);
+    }
+
+    if constexpr (std::is_same<T, std::string_view>::value) {
+      NULL_CHECK("")
+      return row_->readString(col);
+    }
+
+    // TODO(cao): other types supported in DSL? for example: UDF on list or map
+    throw NException("not supported template type");
+  }
+
+#undef NULL_CHECK
 
   inline ScriptContext& script() const {
     return *script_;
   }
 
-  void setSchema(nebula::type::Schema);
-
 private:
-  EvalContext(bool cache, bool script, std::unique_ptr<nebula::surface::RowData> data)
+  EvalContext(bool cache,
+              std::shared_ptr<ScriptData> scriptData,
+              std::unique_ptr<nebula::surface::RowData> data)
     : cache_{ !cache ? nullptr : std::make_unique<EvalCache>(1024) },
-      script_{ !script ? nullptr :
-                         std::make_unique<ScriptContext>(
-                           [this]() -> const nebula::surface::RowData& { return this->row(); },
-                           [this](const std::string& col) -> auto {
-                             return name2type_->at(col);
-                           }) },
+      scriptData_{ scriptData },
+      script_{ scriptData == nullptr ? nullptr :
+                                       std::make_unique<ScriptContext>(
+                                         [this]() -> const nebula::surface::RowData& { return *row_; },
+                                         [this](const std::string& col) -> auto {
+                                           return scriptData_->name2type->at(col);
+                                         }) },
       data_{ std::move(data) },
       row_{ data_ ? data_.get() : nullptr } {}
 
 private:
   std::unique_ptr<EvalCache> cache_;
+
+  // script cache
+  std::shared_ptr<ScriptData> scriptData_;
 
   // script context to evaluate script for value residing in current context
   std::unique_ptr<ScriptContext> script_;
@@ -310,9 +420,6 @@ private:
 
   // row object pointer
   const nebula::surface::RowData* row_;
-
-  // column name to type mapping - set by external
-  std::unique_ptr<std::unordered_map<std::string, nebula::type::Kind>> name2type_;
 };
 
 template <>
