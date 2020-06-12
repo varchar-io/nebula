@@ -79,19 +79,25 @@ div .text,
 }
 
 hr {
-    border-top: #ccc dotted 1px;
+    border-top: #ccc 1px;
     margin: 10pt 0;
 }
 
 #display {
     font-size: 1em;
-    background: azure;
+    width: 100pt;
+}
+
+#mcolumns {
+    width: 95pt;
 }
 
 select {
     margin: 1pt 0;
     height: 2em;
     border: 0;
+    color: mediumpurple;
+    background-color: azure;
 }
 
 input {
