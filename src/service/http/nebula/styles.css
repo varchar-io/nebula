@@ -83,12 +83,21 @@ hr {
     margin: 10pt 0;
 }
 
+#tables {
+    width: 100%;
+}
+
 #display {
     width: 100pt;
 }
 
 #mcolumns {
     width: 90pt;
+}
+
+#ob,
+#limit {
+    width: 100pt;
 }
 
 select {
@@ -211,7 +220,7 @@ div.tooltip {
 .crule .values {
     display: inline-block;
     vertical-align: middle;
-    width: 100pt;
+    width: 90pt;
 }
 
 .del {
@@ -220,6 +229,7 @@ div.tooltip {
 
 .cgroup input[type=radio] {
     font: icon;
+    margin: 5pt;
 }
 
 .cgroup select {
