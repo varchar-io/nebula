@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Nebula - soaring in your data</title>
+    <script src="a/ace.js"></script>
+    <script src="m/cm.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="styles.min.css?v=1">
+    <link rel="shortcut icon" href="nebula.png">
+    <style type="text/css" media="screen">
+        #code {
+            margin: 0;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <pre id="code">// reference nebula SDK doc @</pre>
+    <hr>
+    <textarea id="code2" name="code2">// reference nebula SDK doc @</textarea>
+    <script>
+        const editor = ace.edit("code", {
+            theme: "ace/theme/dracula",
+            mode: "ace/mode/javascript",
+            autoScrollEditorIntoView: true,
+            maxLines: 30,
+            minLines: 30
+        });
+
+        const editor2 = CodeMirror.fromTextArea(document.getElementById("code2"), {
+            lineNumbers: true,
+            styleActiveLine: true,
+            matchBrackets: true,
+            mode: "javascript",
+            theme: "dracula"
+        });
+
+        // evaluate the 
+    </script>
+</body>
+
+</html>

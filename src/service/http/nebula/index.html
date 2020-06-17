@@ -7,8 +7,9 @@
     <script src="s/jquery.min.js"></script>
     <script src="s/selectize.min.js"></script>
     <script src="f/flatpickr.js"></script>
-    <script type="module" src="web.min.js?v=1"></script>
-    <link rel="stylesheet" type="text/css" href="styles.min.css?v=1">
+    <script src="m/cm.min.js"></script>
+    <script type="module" src="web.min.js?v=2"></script>
+    <link rel="stylesheet" type="text/css" href="styles.min.css?v=2">
     <link rel="shortcut icon" href="nebula.png">
 </head>
 
@@ -20,62 +21,75 @@
             </div>
             <div id="stats"></div>
             <hr />
-            <div>
-                <select id="display"></select>
-                <button id="btn">Soar</button>
-            </div>
+            <div class="code-tune">{code}<a id="ui" class="code-tap">⇌</a></div>
             <hr />
-            <div>
-                <label class="lbl">Time Start:</label>
-                <input type="text" id="start">
-                <a id="startc"><img src="f/ct.png" class="calendar"></a>
+            <!-- code editor tap off by default -->
+            <div class="tap-off">
+                <textarea id="code" name="code">// Reference SDK @ http://nebula.bz</textarea>
+                <div>
+                    <hr>
+                    <button id="exec">Soar</button>
+                </div>
             </div>
-            <div>
-                <label class="lbl">Time End:</label>
-                <input type="text" id="end">
-                <a id="endc"><img src="f/ct.png" class="calendar"></a>
-            </div>
-            <div>
-                <label class="lbl">Time Window:</label>
-                <select id="window">
-                    <option value="0">auto</option>
-                    <option value="60">1 minute</option>
-                    <option value="3600">1 hour</option>
-                    <option value="21600">6 hrs</option>
-                    <option value="86400">1 day</option>
-                    <option value="604800">1 week</option>
-                </select>
-            </div>
-            <hr />
-            <div>
-                <label class="lbl">Dimensions:</label>
-                <div id="dwrapper"></div>
+            <!-- all visual interface tap on by default -->
+            <div class="tap-on">
+                <div>
+                    <select id="display"></select>
+                    <button id="soar">Soar</button>
+                </div>
+                <hr />
+                <div>
+                    <label class="lbl">Time Start:</label>
+                    <input type="text" id="start">
+                    <a id="startc"><img src="f/ct.png" class="calendar"></a>
+                </div>
+                <div>
+                    <label class="lbl">Time End:</label>
+                    <input type="text" id="end">
+                    <a id="endc"><img src="f/ct.png" class="calendar"></a>
+                </div>
+                <div>
+                    <label class="lbl">Time Window:</label>
+                    <select id="window">
+                        <option value="0">auto</option>
+                        <option value="60">1 minute</option>
+                        <option value="3600">1 hour</option>
+                        <option value="21600">6 hrs</option>
+                        <option value="86400">1 day</option>
+                        <option value="604800">1 week</option>
+                    </select>
+                </div>
+                <hr />
+                <div>
+                    <label class="lbl">Dimensions:</label>
+                    <div id="dwrapper"></div>
 
-                <label class="lbl">Metric:</label>
-                <select id="ru"></select>
-                <select id="mcolumns"></select>
-            </div>
-            <hr />
-            <div>
-                <label class="lbl">Order:</label>
-                <select id="ob"></select>
-            </div>
-            <div>
-                <label class="lbl">Limit:</label>
-                <select id="limit">
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                    <option value="500">500</option>
-                    <option value="2000">2000</option>
-                    <option value="10000">10000</option>
-                </select>
-            </div>
-            <hr />
-            <div>
-                <label class="lbl">Filters:</label>
-                <div id="filters"></div>
+                    <label class="lbl">Metric:</label>
+                    <select id="ru"></select>
+                    <select id="mcolumns"></select>
+                </div>
+                <hr />
+                <div>
+                    <label class="lbl">Order:</label>
+                    <select id="ob"></select>
+                </div>
+                <div>
+                    <label class="lbl">Limit:</label>
+                    <select id="limit">
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                        <option value="500">500</option>
+                        <option value="2000">2000</option>
+                        <option value="10000">10000</option>
+                    </select>
+                </div>
+                <hr />
+                <div>
+                    <label class="lbl">Filters:</label>
+                    <div id="filters"></div>
+                </div>
             </div>
         </div>
         <div class="right">

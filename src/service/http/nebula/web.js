@@ -1,6 +1,26 @@
+/*
+ * Copyright 2017-present Shawn Cao
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import {
     NebulaClient
 } from "/dist/web/main.js";
+
+import {
+    Nebula
+} from './sdk.min.js';
 
 import {
     Charts
@@ -27,6 +47,7 @@ const serviceAddr = `${window.location.protocol}//${window.location.hostname}:80
 const v1Client = new NebulaClient.V1Client(serviceAddr);
 const timeCol = "_time_";
 const charts = new Charts();
+const nebula = new Nebula();
 const formatTime = charts.formatTime;
 
 // arch mode indicates the web architecture mode
@@ -546,7 +567,38 @@ const execute = () => {
     }
 };
 
-ds('#btn').on("click", build);
+ds('#soar').on("click", build);
+
+/** switch user interface between UI elemments and coding editor */
+const editor = CodeMirror.fromTextArea($("#code").get(0), {
+    lineNumbers: false,
+    styleActiveLine: true,
+    matchBrackets: true,
+    mode: "javascript",
+    theme: "dracula"
+});
+
+const ide = () => {
+    const c_on = "tap-on";
+    const c_off = "tap-off";
+    const on = $(`.${c_on}`);
+    const off = $(`.${c_off}`);
+    on.removeClass(c_on).addClass(c_off);
+    off.removeClass(c_off).addClass(c_on);
+};
+
+ds('#ui').on("click", ide);
+
+
+/** execute the code written by user */
+const exec = () => {
+    // evaluate the code in the editor
+    // build nebula object out of it
+    // translate it into a service call with build
+    // call service to get results back
+    console.log(`code to eval: ${editor.getValue()}`);
+};
+ds('#exec').on("click", exec);
 // $("#sdw").hide();
 
 // hook up hash change event
