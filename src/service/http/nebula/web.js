@@ -19,7 +19,21 @@ import {
 } from "/dist/web/main.js";
 
 import {
-    Nebula
+    Nebula,
+    count,
+    sum,
+    min,
+    max,
+    avg,
+    tree,
+    p10,
+    p25,
+    p50,
+    p75,
+    p90,
+    p99,
+    p99_9,
+    p99_99
 } from './sdk.min.js';
 
 import {
@@ -36,7 +50,6 @@ const $$ = (e) => $(e).val();
 
 // global value represents current data set
 let json = [];
-let newdata = false;
 
 // two calendar instances
 let fpcs, fpce;
@@ -49,6 +62,8 @@ const timeCol = "_time_";
 const charts = new Charts();
 const nebula = new Nebula();
 const formatTime = charts.formatTime;
+const log = console.log;
+const msg = (text) => ds('#qr').text(text);
 
 // arch mode indicates the web architecture mode
 // 1: v1 - web client will query nebula server directly
@@ -226,19 +241,17 @@ const initTable = (table, callback) => {
 // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019] 
 // place basic check before sending to server
 // return true if failed the check
-const checkRequest = () => {
+const checkRequest = (state) => {
     // 1. timeline query
-    const display = $$("#display");
+    const display = state.display;
     if (display == NebulaClient.DisplayType.TIMELINE) {
-        const windowSize = $$("#window");
+        const windowSize = state.window;
         // window size == 0: auto
         if (windowSize > 0) {
-            const start = new Date($$("#start")).getTime();
-            const end = new Date($$("#end")).getTime();
-            const rangeSeconds = (end - start) / 1000;
+            const rangeSeconds = (state.end - state.start) / 1000;
             const buckets = rangeSeconds / windowSize;
             if (buckets > 1000) {
-                ds("#qr").text(`Too many data points to return ${buckets}, please increase window granularity.`);
+                msg(`Too many data points to return ${buckets}, please increase window granularity.`);
                 return true;
             }
         }
@@ -246,9 +259,8 @@ const checkRequest = () => {
 
     if (display == NebulaClient.DisplayType.SAMPLES) {
         // TODO(cao) - support * when user doesn't select any dimemsions
-        const dimensions = $$("#dcolumns");
-        if (dimensions.length == 0) {
-            ds("#qr").text(`Please specify dimensions for samples`);
+        if (state.keys.length == 0) {
+            msg(`Please specify dimensions for samples`);
             return true;
         }
     }
@@ -265,61 +277,59 @@ const hash = (v) => {
     return window.location.hash;
 };
 
-const build = () => {
+const build = (s) => {
     // build URL and set URL
-    const Q = {
-        t: $$('#tables'),
-        s: $$('#start'),
-        e: $$('#end'),
-        fv: $$('#fvalue'),
-        fo: $$('#fop'),
-        ff: filters.expr(),
-        ds: $$('#dcolumns'),
-        w: $$("#window"),
-        d: $$('#display'),
-        m: $$('#mcolumns'),
-        r: $$('#ru'),
-        o: $$('#ob'),
-        l: $$('#limit')
+    const state = s || {
+        table: $$('#tables'),
+        start: $$('#start'),
+        end: $$('#end'),
+        filter: filters.expr(),
+        keys: $$('#dcolumns'),
+        window: $$("#window"),
+        display: $$('#display'),
+        metrics: $$('#mcolumns'),
+        rollup: $$('#ru'),
+        sort: $$('#ob'),
+        limit: $$('#limit')
     };
 
-    if (!Q.s || !Q.e) {
+    if (!state.start || !state.end) {
         alert('please enter start and end time');
         return;
     }
 
     // change hash will trigger query
-    hash('#' + encodeURIComponent(JSON.stringify(Q)));
+    hash('#' + encodeURIComponent(JSON.stringify(state)));
 };
 
 const restore = () => {
     // if no hash value - use the first table as the hash
     let h = hash();
     if (!h || h.length < 10) {
-        console.log(`Bad URL: ${h}`);
         const tb = $$('#tables');
-        h = `?{"t": "${tb}"}`;
+        h = `?{"table": "${tb}"}`;
     }
 
     // get parameters from URL
-    const p = JSON.parse(decodeURIComponent(h.substr(1)));
+    const state = JSON.parse(decodeURIComponent(h.substr(1)));
     const set = (N, V) => ds(N).property('value', V);
-    if (p.t) {
-        set('#tables', p.t);
-        initTable(p.t, (cols) => {
+    const table = state.table;
+    if (table) {
+        set('#tables', table);
+        initTable(table, (cols) => {
             // set other fields
-            set('#start', p.s);
-            set('#end', p.e);
-            set("#window", p.w);
-            set('#display', p.d);
-            set('#mcolumns', p.m);
-            set('#ru', p.r);
-            set('#ob', p.o);
-            set('#limit', p.l);
+            set('#start', state.start);
+            set('#end', state.end);
+            set("#window", state.window);
+            set('#display', state.display);
+            set('#mcolumns', state.metrics);
+            set('#ru', state.rollup);
+            set('#ob', state.sort);
+            set('#limit', state.limit);
 
             // set value of dimensions if there is one
-            if ($sdc && p.ds) {
-                $sdc[0].selectize.setValue(p.ds);
+            if ($sdc && state.keys) {
+                $sdc[0].selectize.setValue(state.keys);
             }
 
             // populate all operations
@@ -334,14 +344,19 @@ const restore = () => {
 
             const ops = {};
             for (var k in NebulaClient.Operation) {
-                let value = NebulaClient.Operation[k];
-                ops[value] = om[k];
+                ops[NebulaClient.Operation[k]] = om[k];
             }
 
             // TODO(cao): due to protobuf definition, we can't build nested group.
             // Should update to support it, then we can turn this flag to true
             // create a filter
-            filters = new Constraints(false, "filters", cols, ops, p.ff);
+            filters = new Constraints(false, "filters", cols, ops, state.filter);
+
+            // if code is specified, set code content and switch to IDE
+            if (state.code && state.code.length > 0) {
+                editor.setValue(state.code);
+                ide();
+            }
 
             // the URL needs to be executed
             execute();
@@ -352,42 +367,40 @@ const restore = () => {
 const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
 
 // extract X-Y for line charts based on json result and query object
-const extractXY = (json, q) => {
+const extractXY = (json, state) => {
     // extract X-Y (dimension - metric) columns to display
     // TODO(cao) - revisit this if there are multiple X or multiple Y
-    const dims = q.getDimensionList();
-
     // dumb version of first dimension and first metric 
     let metric = "";
     for (const key in json[0]) {
-        if (!dims.includes(key)) {
+        if (!state.keys.includes(key)) {
             metric = key;
         }
     }
 
     return {
-        "d": dims[0],
+        "d": state.keys[0],
         "m": metric
     };
 };
 
-const buildRequest = (queryStr) => {
-    const p = JSON.parse(decodeURIComponent(queryStr));
+const buildRequest = (state) => {
     // switch between different arch mode
-    if (p.arch) {
-        archMode = parseInt(p.arch);
+    if (state.arch) {
+        archMode = parseInt(state.arch);
     }
 
     // URL decoding the string and json object parsing
     const q = new NebulaClient.QueryRequest();
-    q.setTable(p.t);
-    q.setStart(seconds(p.s));
-    q.setEnd(seconds(p.e));
+    q.setTable(state.table);
+    q.setStart(seconds(state.start));
+    q.setEnd(seconds(state.end));
 
     // the filter can be much more complex
-    if (p.ff) {
+    const filter = state.filter;
+    if (filter) {
         // all rules under this group
-        const rules = p.ff.r;
+        const rules = filter.r;
         if (rules && rules.length > 0) {
             const predicates = [];
             $.each(rules, (i, r) => {
@@ -402,64 +415,66 @@ const buildRequest = (queryStr) => {
 
 
             if (predicates.length > 0) {
-                if (p.ff.l === "AND") {
-                    const filter = new NebulaClient.PredicateAnd();
-                    filter.setExpressionList(predicates);
-                    q.setFiltera(filter);
-                } else if (p.ff.l === "OR") {
-                    const filter = new NebulaClient.PredicateOr();
-                    filter.setExpressionList(predicates);
-                    q.setFiltero(filter);
+                if (filter.l === "AND") {
+                    const f = new NebulaClient.PredicateAnd();
+                    f.setExpressionList(predicates);
+                    q.setFiltera(f);
+                } else if (filter.l === "OR") {
+                    const f = new NebulaClient.PredicateOr();
+                    f.setExpressionList(predicates);
+                    q.setFiltero(f);
                 }
             }
         }
     }
 
     // set dimension
-    const dimensions = p.ds;
-    if (p.d == NebulaClient.DisplayType.SAMPLES) {
-        dimensions.unshift(timeCol);
+    const SAMPLES = NebulaClient.DisplayType.SAMPLES;
+    const display = +state.display;
+    const keys = state.keys;
+    if (display == SAMPLES) {
+        keys.unshift(timeCol);
     }
-    q.setDimensionList(dimensions);
+    q.setDimensionList(keys);
 
 
     // set query type and window
-    q.setDisplay(p.d);
-    q.setWindow(p.w);
+    q.setDisplay(state.display);
+    q.setWindow(state.window);
 
     // set metric for non-samples query 
     // (use implicit type convert != instead of !==)
-    if (p.d != NebulaClient.DisplayType.SAMPLES) {
+    if (display != SAMPLES) {
         const m = new NebulaClient.Metric();
-        const mcol = p.m;
+        const mcol = state.metrics;
         m.setColumn(mcol);
-        m.setMethod(p.r);
+        m.setMethod(state.rollup);
         q.setMetricList([m]);
 
         // set order on metric only means we don't order on samples for now
         const o = new NebulaClient.Order();
         o.setColumn(mcol);
-        o.setType(p.o);
+        o.setType(state.sort);
         q.setOrder(o);
     }
 
     // set limit
-    q.setTop(p.l);
+    q.setTop(state.limit);
 
     return q;
 };
 
-const onQueryResult = (q, r, msg) => {
+const onQueryResult = (state, r) => {
     if (r.error) {
-        msg.text(`[query: error=${r.error}, latency=${r.duration} ms]`);
+        msg(`[query: error=${r.error}, latency=${r.duration} ms]`);
         return;
     }
 
-    msg.html(`[query time: ${r.duration} ms]`);
+    msg(`[query time: ${r.duration} ms]`);
 
     // JSON result
     json = JSON.parse(NebulaClient.bytes2utf8(r.data));
-    newdata = true;
+    // newdata = true;
 
     // clear table data
     ds('#table_head').html("");
@@ -474,8 +489,8 @@ const onQueryResult = (q, r, msg) => {
 
     const draw = () => {
         // enum value are number and switch/case are strong typed match
-        const display = +$$('#display');
-        const keys = extractXY(json, q);
+        const display = +state.display;
+        const keys = extractXY(json, state);
         switch (display) {
             case NebulaClient.DisplayType.SAMPLES:
             case NebulaClient.DisplayType.TABLE:
@@ -483,7 +498,7 @@ const onQueryResult = (q, r, msg) => {
                 break;
             case NebulaClient.DisplayType.TIMELINE:
                 const WINDOW_KEY = '_window_';
-                const start = new Date($$('#start'));
+                const start = new Date(state.start);
                 let data = {
                     default: json
                 };
@@ -527,22 +542,22 @@ const execute = () => {
         return;
     }
 
-    if (checkRequest()) {
+    // build the request object
+    const queryStr = h.substr(1);
+    const state = JSON.parse(decodeURIComponent(queryStr));
+    if (checkRequest(state)) {
         return;
     }
 
     // display message indicating processing
-    const msg = ds('#qr');
-    msg.text("soaring in nebula to land...");
+    msg("soaring in nebula to land...");
 
-    // build the request object
-    const queryStr = h.substr(1);
-    const q = buildRequest(queryStr);
+    const q = buildRequest(state);
 
     if (archMode === 1) {
         v1Client.query(q, {}, (err, reply) => {
             if (reply == null || err) {
-                msg.text(`Failed to get reply: ${err}`);
+                msg(`Failed to get reply: ${err}`);
                 return;
             }
 
@@ -554,15 +569,15 @@ const execute = () => {
             };
 
             // display data
-            onQueryResult(q, r, msg);
+            onQueryResult(state, r);
         });
     } else if (archMode === 2) {
         $.ajax({
             url: "/?api=query&start=0&end=0&query=" + queryStr
         }).fail((err) => {
-            msg.text("Error: " + err);
+            msg(`Error: ${err}`);
         }).done((data) => {
-            onQueryResult(q, data, msg);
+            onQueryResult(state, data);
         });
     }
 };
@@ -572,6 +587,7 @@ ds('#soar').on("click", build);
 /** switch user interface between UI elemments and coding editor */
 const editor = CodeMirror.fromTextArea($("#code").get(0), {
     lineNumbers: false,
+    lineWrapping: true,
     styleActiveLine: true,
     matchBrackets: true,
     mode: "javascript",
@@ -596,7 +612,34 @@ const exec = () => {
     // build nebula object out of it
     // translate it into a service call with build
     // call service to get results back
-    console.log(`code to eval: ${editor.getValue()}`);
+    const code = editor.getValue();
+
+    // reset the nebula context object and call eval
+    nebula.reset();
+
+    // try to eval user's code
+    try {
+        eval(code);
+    } catch (e) {
+        msg(`Code Error: ${e.message}`);
+        return;
+    }
+
+    // based on the code, let's build a model from it
+    const error = nebula.validate();
+    if (error) {
+        msg(`Validation Error: ${error}`);
+        return;
+    }
+
+    // convert the SDK data into a web request object
+    const state = nebula.build();
+
+    // append the source code to this query state
+    state.code = code;
+
+    // build this state as a query
+    build(state);
 };
 ds('#exec').on("click", exec);
 // $("#sdw").hide();

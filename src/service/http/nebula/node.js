@@ -32,7 +32,9 @@ const promoted_pins = "pin.promote.rich";
 const client = NebulaClient.qc(serviceAddr);
 const grpc = NebulaClient.grpc;
 const timeCol = "_time_";
-const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
+const seconds = (ds) => (+ds == ds) ?
+    Math.round(new Date(+ds).getTime() / 1000) :
+    Math.round(new Date(ds).getTime() / 1000);
 const error = (msg) => {
     return JSON.stringify({
         "error": msg,
@@ -498,20 +500,18 @@ const getTableState = (q, handler) => {
  * Please refer two different modes on how to architecture web component in Nebula.
  */
 const webq = (q, handler) => {
-    // the query object
-    // t: table
-    // s: start
-    // e: end
-    const p = JSON.parse(q.query);
+    // the query object schema is defined in state.js
+    const state = JSON.parse(q.query);
     const req = new NebulaClient.QueryRequest();
-    req.setTable(p.t);
-    req.setStart(seconds(p.s));
-    req.setEnd(seconds(p.e));
+    req.setTable(state.table);
+    req.setStart(seconds(state.start));
+    req.setEnd(seconds(state.end));
 
     // the filter can be much more complex
-    if (p.ff) {
+    const filter = state.filter;
+    if (filter) {
         // all rules under this group
-        const rules = p.ff.r;
+        const rules = filter.r;
         if (rules && rules.length > 0) {
             const predicates = [];
             rules.forEach(r => {
@@ -525,49 +525,64 @@ const webq = (q, handler) => {
             });
 
             if (predicates.length > 0) {
-                if (p.ff.l === "AND") {
-                    const filter = new NebulaClient.PredicateAnd();
-                    filter.setExpressionList(predicates);
-                    req.setFiltera(filter);
-                } else if (p.ff.l === "OR") {
-                    const filter = new NebulaClient.PredicateOr();
-                    filter.setExpressionList(predicates);
-                    req.setFiltero(filter);
+                if (filter.l === "AND") {
+                    const f = new NebulaClient.PredicateAnd();
+                    f.setExpressionList(predicates);
+                    req.setFiltera(f);
+                } else if (filter.l === "OR") {
+                    const f = new NebulaClient.PredicateOr();
+                    f.setExpressionList(predicates);
+                    req.setFiltero(f);
                 }
             }
         }
     }
 
     // set dimension
-    const dimensions = p.ds;
-    if (p.d == NebulaClient.DisplayType.SAMPLES) {
-        dimensions.unshift(timeCol);
+    const keys = state.keys;
+    const display = state.display;
+    if (display == NebulaClient.DisplayType.SAMPLES) {
+        keys.unshift(timeCol);
     }
-    req.setDimensionList(dimensions);
+    req.setDimensionList(keys);
 
 
     // set query type and window
-    req.setDisplay(p.d);
-    req.setWindow(p.w);
+    req.setDisplay(display);
+    req.setWindow(state.window);
+
+    // TODO(cao) - this part logic does not exist in web mode (arch=1)
+    const columns = state.customs;
+    if (columns || columns.length > 0) {
+        const cc = [];
+        columns.forEach(c => {
+            const col = new NebulaClient.CustomColumn();
+            col.setColumn(c.name);
+            col.setExpr(c.expr);
+            col.setType(c.type);
+            cc.push(col);
+        });
+        req.setCustomList(cc);
+    }
 
     // set metric for non-samples query 
     // (use implicit type convert != instead of !==)
-    if (p.d != NebulaClient.DisplayType.SAMPLES) {
+    if (display != NebulaClient.DisplayType.SAMPLES) {
         const m = new NebulaClient.Metric();
-        const mcol = p.m;
+        const mcol = state.metrics;
         m.setColumn(mcol);
-        m.setMethod(p.r);
+        m.setMethod(state.rollup);
         req.setMetricList([m]);
 
         // set order on metric only means we don't order on samples for now
         const o = new NebulaClient.Order();
         o.setColumn(mcol);
-        o.setType(p.o);
+        o.setType(state.sort);
         req.setOrder(o);
     }
 
     // set limit
-    req.setTop(p.l);
+    req.setTop(state.limit);
 
     // send request to service to get result
     client.query(req, handler.metadata, (err, reply) => {

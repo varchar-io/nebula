@@ -195,6 +195,23 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     q->where(timeFilter && expr);
   }
 
+  // apply custom columns if any sent
+  const auto ctc = [](CustomType ct) {
+    switch (ct) {
+    case CustomType::INT: return nebula::type::Kind::INTEGER;
+    case CustomType::LONG: return nebula::type::Kind::BIGINT;
+    case CustomType::FLOAT: return nebula::type::Kind::REAL;
+    case CustomType::DOUBLE: return nebula::type::Kind::DOUBLE;
+    case CustomType::STRING: return nebula::type::Kind::VARCHAR;
+    default: throw NException("Custom type not supported.");
+    }
+  };
+
+  for (auto i = 0, size = req.custom_size(); i < size; ++i) {
+    const auto& m = req.custom(i);
+    q->apply(m.column(), ctc(m.type()), m.expr());
+  }
+
   // build all columns to be selected
   std::vector<std::shared_ptr<Expression>> fields;
   std::vector<size_t> keys;

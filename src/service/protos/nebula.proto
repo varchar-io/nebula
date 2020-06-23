@@ -160,6 +160,22 @@ enum DisplayType {
   FLAME = 6;
 }
 
+// define supported custom column type which is a sub set of nebula types
+enum CustomType {
+  INT = 0;
+  LONG = 1;
+  FLOAT = 2;
+  DOUBLE = 3;
+  STRING = 4;
+}
+
+// define custom column described by a script
+message CustomColumn {
+  string column = 1;
+  CustomType type = 2;
+  string expr = 3;
+}
+
 // define query request 
 message QueryRequest {
   string table = 1;
@@ -194,6 +210,9 @@ message QueryRequest {
 
   // display type for query result
   DisplayType display = 11;
+
+  // custom column list
+  repeated CustomColumn custom = 12;
 }
 
 // define query processing metrics

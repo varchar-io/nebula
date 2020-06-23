@@ -44,7 +44,7 @@ h1 a img {
 }
 
 .left {
-    width: 255pt;
+    width: 300pt;
     display: table-cell;
     border-right: #ccc 1px dotted;
     padding: 0 4pt;
@@ -53,7 +53,7 @@ h1 a img {
 #dwrapper {
     display: inline-block;
     vertical-align: middle;
-    width: 160pt;
+    width: 200pt;
 }
 
 .right {
@@ -92,7 +92,8 @@ hr {
 }
 
 #mcolumns {
-    width: 80pt;
+    width: 100pt;
+    margin-left: 20pt;
 }
 
 #ob,
@@ -165,6 +166,7 @@ tbody {
 .tap-on {
     opacity: 1;
     transition: opacity 1.5s;
+    width: inherit;
 }
 
 .tap-off {
@@ -243,7 +245,7 @@ div.tooltip {
 .crule .values {
     display: inline-block;
     vertical-align: middle;
-    width: 90pt;
+    width: 150pt;
 }
 
 .del {
@@ -2218,7 +2220,7 @@ span.CodeMirror-selectedtext {
 }
 
 .cm-s-dracula .CodeMirror-selected {
-    background: rgba(255, 255, 255, 0.10);
+    background: rgba(255, 255, 255, 0.5);
 }
 
 .cm-s-dracula .CodeMirror-line::selection,
