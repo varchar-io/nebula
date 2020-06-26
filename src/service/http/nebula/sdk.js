@@ -69,16 +69,23 @@ const log = console.log;
 
 const CT = NebulaClient.CustomType;
 const DT = NebulaClient.DisplayType;
+const OT = NebulaClient.OrderType;
 const RU = NebulaClient.Rollup;
 export class Nebula {
     constructor() {
         // types supported by nebula JS SDK
-        this.Types = {
-            INT: 51,
-            LONG: 52,
-            FLOAT: 53,
-            DOUBLE: 54,
-            STRING: 55
+        this.Type = {
+            INT: CT.INT,
+            LONG: CT.LONG,
+            FLOAT: CT.FLOAT,
+            DOUBLE: CT.DOUBLE,
+            STRING: CT.STRING
+        };
+
+        this.Sort = {
+            ASC: OT.ASC,
+            DESC: OT.DESC,
+            NONE: OT.NONE
         };
 
         // reset current object
@@ -91,6 +98,8 @@ export class Nebula {
             this.end_ = 0;
             this.columns_ = [];
             this.display_ = -1;
+            this.sort_ = this.Sort.ASC;
+            this.limit_ = 100;
 
             // only useful for timeline
             this.window_ = 0;
@@ -151,50 +160,37 @@ export class Nebula {
             return this;
         };
 
+        // TODO(cao): need to support complex sorting scheme
+        // right now, only sort by first column, set sort dir only here
+        // set sort by prop 
+        this.sortby = (x) => {
+            this.sort_ = x;
+            return this;
+        };
+
+        // set limit of the result
+        this.limit = (l) => {
+            this.limit_ = l;
+            return this;
+        }
+
         // column definition API - register a new column with specified logic
         // example:
         // const expr = () => nebula.column("value") % 5;
         this.apply = (name, type, expr) => {
             assert(isString(name));
-            assert(isNumber(type) && (type >= this.Types.INT, this.Types.STRING));
+            assert(isNumber(type) && (type >= this.Type.INT && type <= this.Type.STRING));
             assert(isFunction(expr));
-
-            let ct = 0;
-            // INT = 0;
-            // LONG = 1;
-            // FLOAT = 2;
-            // DOUBLE = 3;
-            // STRING = 4;
-            switch (type) {
-                case this.Types.INT:
-                    ct = CT.INT;
-                    break;
-                case this.Types.LONG:
-                    ct = CT.LONG;
-                    break;
-                case this.Types.FLOAT:
-                    ct = CT.FLOAT;
-                    break;
-                case this.Types.DOUBLE:
-                    ct = CT.DOUBLE;
-                    break;
-                case this.Types.STRING:
-                    ct = CT.STRING;
-                    break;
-                default:
-                    throw `Not supported type: ${type}`;
-            }
 
             // no matter the target is a function or a lambda, 
             // we assign its handle to the named variable so that this can be looked up in script context
             // for lambda, the expr will be 
             //         "const {name} = () => {...};"
             // or function, the expr will be
-            //         "const {name} = function abc(){...};"
-            log(expr.toString());
+            //         "const {name} = function abc(){...};
             this.columns_.push({
                 name: name,
-                type: ct,
+                type: type,
                 expr: `const ${name} = ${expr.toString()};`
             });
 
@@ -266,6 +262,20 @@ export class Nebula {
                 return "No metrics allowed in samples mode.";
             }
 
+            // limit needs to be a valid value 
+            if (this.limit_ < 1) {
+                log(`Invalid limit: ${this.limit_}`);
+                return "Invalid limit value.";
+            }
+
+            // sort value needs to be in range
+            if (this.sort_ != this.Sort.ASC &&
+                this.sort_ != this.Sort.DESC &&
+                this.sort_ != this.Sort.NONE) {
+                log(`Invalid sort value: ${this.sort_}`);
+                return "Invalid sort option.";
+            }
+
             return null;
         };
 
@@ -280,6 +290,8 @@ export class Nebula {
             s.keys = this.keys_;
             s.window = this.window_;
             s.display = this.display_;
+            s.limit = this.limit_;
+            s.sort = this.sort_;
 
             // set metrics - only supporting one for now
             if (this.metrics_.length > 0) {

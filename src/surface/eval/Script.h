@@ -54,11 +54,11 @@ class ScriptContext final {
         val = JS_EvalFunction(ctx, val);
       }
     } else {
-      val = JS_Eval(ctx, buf.c_str(), buf.size(), file.c_str(), eval_flags);
+      val = JS_Eval(ctx, buf.data(), buf.size(), file.c_str(), eval_flags);
     }
 
     if (JS_IsException(val)) {
-      js_std_dump_error(ctx);
+      // js_std_dump_error(ctx);
       return JS_EXCEPTION;
     }
 
@@ -77,7 +77,9 @@ class ScriptContext final {
       return {};
     }
 
-    return T(str);
+    T t(str);
+    JS_FreeCString(ctx, str);
+    return t;
   }
 
   static JSValue js_column(JSContext* ctx, JSValue, int, JSValue* args) {
@@ -129,8 +131,8 @@ class ScriptContext final {
     case nebula::type::Kind::VARCHAR: {
       // TODO(cao): potential perf hit - we're using std::string copy here
       // to get a null-terminated c_str for JS_NewString API.
-      std::string value(r.readString(col));
-      return JS_NewString(ctx, value.c_str());
+      auto value = r.readString(col);
+      return JS_NewStringLen(ctx, value.data(), value.size());
     }
 
     default: {
@@ -191,11 +193,15 @@ public:
 
     // evaluate the script, load the module nebula to be available to all scripts to be evaluated
     // all future script can call functions like "nebula.column('a') to get value of column 'a'"
-    eval_buf(ctx_,
-             "import * as nebula from 'nebula';"
-             "globalThis.nebula = nebula;",
-             "<nebula-module>",
-             JS_EVAL_TYPE_MODULE);
+    auto result = eval_buf(ctx_,
+                           "import * as nebula from 'nebula';"
+                           "globalThis.nebula = nebula;",
+                           "<nebula-module>",
+                           JS_EVAL_TYPE_MODULE);
+
+    if (JS_IsException(result)) {
+      js_std_dump_error(ctx_);
+    }
   }
 
   ~ScriptContext() {

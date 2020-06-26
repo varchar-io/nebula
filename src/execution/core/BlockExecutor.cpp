@@ -39,7 +39,9 @@ using nebula::type::Kind;
 using nebula::type::Schema;
 
 RowCursorPtr compute(const EvaledBlock& data, const nebula::execution::BlockPhase& plan) {
-  if (plan.hasAggregation()) {
+  // TODO(cao) - SamplesExecutor seems having trouble evaluating scripts
+  // see TestQuery: ApiTest.TestScriptSamples for repro
+  if (plan.hasAggregation() || plan.hasScript()) {
     return std::make_shared<BlockExecutor>(data, plan);
   }
 

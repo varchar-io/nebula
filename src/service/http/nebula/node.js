@@ -538,10 +538,19 @@ const webq = (q, handler) => {
         }
     }
 
+    // set sort by first key for samples or first metric for aggregations
+    const setOrder = (col, order, req) => {
+        const o = new NebulaClient.Order();
+        o.setColumn(col);
+        o.setType(order);
+        req.setOrder(o);
+    };
+
     // set dimension
     const keys = state.keys;
     const display = state.display;
     if (display == NebulaClient.DisplayType.SAMPLES) {
+        setOrder(keys[0], state.sort, req);
         keys.unshift(timeCol);
     }
     req.setDimensionList(keys);
@@ -553,7 +562,7 @@ const webq = (q, handler) => {
 
     // TODO(cao) - this part logic does not exist in web mode (arch=1)
     const columns = state.customs;
-    if (columns || columns.length > 0) {
+    if (columns && columns.length > 0) {
         const cc = [];
         columns.forEach(c => {
             const col = new NebulaClient.CustomColumn();
@@ -575,10 +584,7 @@ const webq = (q, handler) => {
         req.setMetricList([m]);
 
         // set order on metric only means we don't order on samples for now
-        const o = new NebulaClient.Order();
-        o.setColumn(mcol);
-        o.setType(state.sort);
-        req.setOrder(o);
+        setOrder(mcol, state.sort, req);
     }
 
     // set limit
