@@ -5,7 +5,7 @@ Nebula is designed for high-performance tabular data serving gateway. It serves 
 - Extreme Fast Data Analytics
 - Tiered Storage Between Compute Cluster And Blob Storage For Best Efficiency
 
-Details could be found in the [project site](https://shawncao.github.io/nebula/). 
+Details could be found in the [project site](https://nebula.bz).
 Design, Art & Techniques will be shared through posts in the page.
 
 
