@@ -38,6 +38,7 @@ The basic idea is to allow user to define any new column through a ES6 JS functi
 All SDK functions are defined inside nebula "namespace".
 
 To simplify code user to write, we also defined aliases for all native aggregation functions, they are
+
 | Function |                      Definition                       |                                                                                     Note |
 | -------- | :---------------------------------------------------: | ---------------------------------------------------------------------------------------: |
 | count    |                 count number of rows                  | column name is required to be consistent with all other functions, though it is not used |
@@ -91,6 +92,7 @@ SORT type is another enum object defined in nebula. Referenced by `nebula.Sort.A
   
 ### display
 `nebula` defines a list of APIs to allow display the query result in selected visual type.
+
 | Function |                  Definition                  |                                                                                              Note |
 | -------- | :------------------------------------------: | ------------------------------------------------------------------------------------------------: |
 | samples  |    browes sample rows of selected columns    |                                                 no aggregation function is allowed in select list |
