@@ -8,6 +8,10 @@ Nebula is designed for high-performance tabular data serving gateway. It serves 
 Details could be found in the [project site](https://shawncao.github.io/nebula/). 
 Design, Art & Techniques will be shared through posts in the page.
 
+
+[![Click to watch a 3 minutes short video of Nebula Quick Play](https://img.youtube.com/vi/ZstsfiUQYOc/0.jpg)](https://youtu.be/ZstsfiUQYOc "Nebula Quick Play")
+
+
 # Get Started
 ## Run It!
 Get **Nebula** run on your linux machine (Only Ubuntu Tested) in one minute through docker.
@@ -34,10 +38,12 @@ Run analytics on Nebula to serve queries in this ephemeral data's life time.
 Highly break down input data into huge small data cubes living in Nebula nodes, usually a simple predicate (filter) will massively 
 prune dowm data to scan for super low latency in your analytics.
 
-## Ad-hoc Data Analytics Platform
-This is a public platform facing to individuals, its goal is to enable every single user to write a few lines of javascript code to analyze terabytes of data in seconds. (Not Online Yet. Keep an eye on the launch event.)
+## Nebula Is Programmable
+Through the great projecct QuickJS, Nebula is able to support full ES6 programing through its simple UI code editor.
+Below is an snippet code that generates a pie charts for your SQL-like query code in JS.
 
-Basically, on this new platform, you can write short lines of JS code like below to analyze your big data in seconds.
+On the page top, the demo video shows how nebula client SDK is used and tables and charts are generated in milliseconds!
+
 ```javascript
     // const values
     const name = "test";
@@ -45,16 +51,16 @@ Basically, on this new platform, you can write short lines of JS code like below
 
     // define an customized column
     const colx = () => nebula.column("a") % 3;
-    nebula.def("colx", nebula.Types.INT, expr);
+    nebula.apply("colx", nebula.Type.INT, colx);
 
     // get a data set from data set stored in HTTPS or S3
-    const data = nebula.csv("https://varchar.io/test/data.csv")
-                     .table(name, schema)
-                     .select(col("colx"), count(1).as("count"))
-                     .where(col("_time_") >= 104598762 && col("_time_") <= 108598762)
-                     .groupby(1)
-                     .orderby(2, nebula.SORT.DESC);
+    const query = nebula.csv("https://varchar.io/test/data.csv")
+                     .source(name)
+                     .time("2020-06-22 15:00:00", "2020-06-25 15:00:00")
+                     .select("colx", count("id"))
+                     .sortby(nebula.Sort.DESC)
+                     .limit(100);
 
-    // render the data result with PIE chart with x-axis from "colx" and y-axis from "count"
-    data.pie("colx", "count");
+    // render the data result with PIE chart
+    query.pie();
 ```
