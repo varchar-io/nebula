@@ -109,6 +109,7 @@ message PredicateOr {
 
 
 // This defines all the aggregate metric methods suppored in nebula
+// 
 enum Rollup {
   SUM = 0;
   COUNT = 1;
@@ -125,7 +126,7 @@ enum Rollup {
   P99_9 = 11;
   P99_99 = 12;
   // call stack merge
-  TreeMerge = 13;
+  TREEMERGE = 13;
 }
 
 // A metric is defined by rollup method on a column

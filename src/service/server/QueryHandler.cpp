@@ -339,7 +339,7 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
     BUILD_METRIC_CASE(P99, pct, 99)
     BUILD_METRIC_CASE(P99_9, pct, 99.9)
     BUILD_METRIC_CASE(P99_99, pct, 99.99)
-    BUILD_METRIC_CASE(TreeMerge, tpm)
+    BUILD_METRIC_CASE(TREEMERGE, tpm)
   default:
     throw NException("Rollup method not supported");
   }

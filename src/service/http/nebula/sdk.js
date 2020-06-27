@@ -368,7 +368,7 @@ export const avg = (col) => ({
 });
 
 export const tree = (col) => ({
-    M: RU.TreeMerge,
+    M: RU.TREEMERGE,
     C: col,
     A: col,
     as: function (alias) {
