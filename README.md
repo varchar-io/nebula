@@ -8,14 +8,22 @@ Nebula is designed for high-performance tabular data serving gateway. It serves 
 Details could be found in the [project site](https://nebula.bz).
 Design, Art & Techniques will be shared through posts in the page.
 
-
-[![Click to watch a 3 minutes short video of Nebula Quick Play](https://img.youtube.com/vi/ZstsfiUQYOc/0.jpg)](https://youtu.be/ZstsfiUQYOc "Nebula Quick Play")
+### A quick intro video, click to watch
+[![Click To Watch Nebula Demo Video](./test/nebula-rep.png)](https://youtu.be/ciYD73z6Eiw "Nebula Demo")
 
 
 # Get Started
 ## Run It!
 Get **Nebula** run on your linux machine (Only Ubuntu Tested) in one minute through docker.
-Follow the 3 simple steps documented here [test/README.md](./test/README.md)
+Follow the `3 simple steps` to get a local run (Linux box),  or see more details documented here [test/README.md](./test/README.md)
+
+0. Clone "Nebula" repo.
+> And assume you're in ~/nebula/test directory.
+1. Edit [cluster config](local-cluster.yml) by put current host as the one only node.
+> Replace &lt;hostname&gt; with your host.
+2. Run Nebula
+> ./local-run.sh
+3. Check it out through Nebula UI at: http://&lt;hostname&gt;:8088
 
 ## Build Source
 Please refer [Developer Guide](./dev.md) for building nebula from source code.

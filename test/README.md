@@ -24,8 +24,8 @@ From here, you can query the selected table (nebula-test for demo) for different
 3. Pie Chart Of Event Distribution By Count
 ![Pie](./nebula-pie.png)
 
-4. Using Awesome Sanddance Library To Explore Data Samples
-![Sand](./nebula-sand.png)
+4. Using Nebula Analyzing Perf
+![Sand](./nebula-flame.png)
 
 ## Filters / Metrics
 Try to apply different filters in your query. 
