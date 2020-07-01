@@ -48,6 +48,7 @@ tables:
       type: static
       # get it from linux by "date +%s"
       value: 1565994194
+
   # one example message looks like:
   # {"service":"test", "host":"dev-shawncao", "tag":"dev", "lang":"java", "stack":"a\nb\nc"}
   # k.pinterest-code:

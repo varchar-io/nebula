@@ -16,13 +16,12 @@
 
 #pragma once
 
-#include <folly/Conv.h>
-#include <folly/String.h>
 #include <fstream>
 #include <iostream>
 #include <rapidjson/document.h>
 #include <string>
 #include <unordered_map>
+#include "common/Conv.h"
 
 #include "RowParser.h"
 #include "common/Errors.h"
@@ -46,8 +45,8 @@ public:
   JsonRow(nebula::type::Schema schema, bool nullDefault = true)
     : schema_{ schema }, nullDefault_{ nullDefault }, hasTime_{ false } {
 
-    // define how each column read and write to row object
-// if the provided value is string, we use folly::to to convert it to desired type
+// define how each column read and write to row object
+// if the provided value is string, we use safe_to to convert it to desired type without exception
 // other excpetions, we let it throw
 #define CASE_POP(K, F)                                                                              \
   case nebula::type::Kind::K: {                                                                     \
@@ -57,7 +56,7 @@ public:
                     if (v.IsNull()) {                                                               \
                       r.write(n, nebula::type::TypeDetect<T::CppType>::value);                      \
                     } else if (v.IsString()) {                                                      \
-                      r.write(n, folly::to<T::CppType>(v.GetString()));                             \
+                      r.write(n, nebula::common::safe_to<T::CppType>(v.GetString()));               \
                     } else {                                                                        \
                       r.write(n, (T::CppType)v.F());                                                \
                     }                                                                               \
@@ -82,7 +81,9 @@ public:
       case nebula::type::Kind::VARCHAR:
         func_.emplace(name,
                       [](nebula::memory::FlatRow& r, const std::string& n, const rapidjson::Value& v) {
-                        if (v.IsNull()) {
+                        // is null or is not expected string type (malformed data) - Nebula enforce types.
+                        // we have chance to compatible with other types and convert them into string, such as numbers.
+                        if (v.IsNull() || !v.IsString()) {
                           r.write(n, "");
                         } else {
                           r.write(n, v.GetString(), v.GetStringLength());

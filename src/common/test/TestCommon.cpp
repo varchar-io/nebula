@@ -23,6 +23,7 @@
 
 #include "common/Bits.h"
 #include "common/Chars.h"
+#include "common/Conv.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
 #include "common/Finally.h"
@@ -1138,6 +1139,14 @@ TEST(CommonTest, TestIStream) {
   }
 
   EXPECT_EQ(count, 2);
+}
+
+TEST(CommonTest, TestConv) {
+  std::string_view view = "abc\nxyz";
+  EXPECT_EQ(safe_to<int>(view), 0);
+
+  auto x = 33;
+  EXPECT_EQ(safe_to<std::string>(x), "33");
 }
 
 } // namespace test
