@@ -19,10 +19,10 @@ Follow the `3 simple steps` to get a local run (Linux box),  or see more details
 
 0. Clone "Nebula" repo.
 > And assume you're in ~/nebula/test directory.
-1. Edit [cluster config](./test/local-cluster.yml) by put current host as the one only node.
+1. Edit [cluster config](./test/local-cluster.yml) by replace `dev-shawncao` with your running hosts.
 > Replace &lt;hostname&gt; with your host.
-2. Run Nebula
-> ./local-run.sh
+1. Run Nebula (requires docker/docker-compose installeds)
+> ./local-run.sh  (may need `chmod +777 ./local-run.sh` before run)
 3. Check it out through Nebula UI at: http://&lt;hostname&gt;:8088
 
 ## Build Source

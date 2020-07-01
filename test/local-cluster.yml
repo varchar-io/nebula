@@ -2,24 +2,48 @@ version: 1.0
 
 # server configs
 server:
+  # as node will treat server to run as a node
+  # if false, server will not load any data in itself.
+  # NOTE that, there are maybe missing functions to fully compatible for server as node.
+  # such as task execution may not be implemented.
   anode: false
+
+  # this field indicates if current deployment requires auth or not
+  # if set as true, auth (such as oAuth) is required to set up to make query executable
+  auth: false
 
 # will be provided by enviroment
 nodes:
   - node:
-      host: <ip-address>
+      host: dev-shawncao
       port: 9199
 
 tables:
   nebula.test:
+    # max 10G RAM assigment
     max-mb: 10000
+    # max 10 days assignment
     max-hr: 240
-    schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    schema: "ROW<id:int, event:string, tag:string, items:list<string>, flag:bool, value:tinyint>"
     data: custom
     loader: NebulaTest
     source: ""
     backup: s3://nebula/n100/
     format: none
+    # NOTE: refernece only, column properties defined here will not take effect
+    # because they are overwritten/decided by definition of TestTable.h
+    columns:
+      id:
+        bloom_filter: true
+      event:
+        access:
+          read:
+            groups: ["nebula-users"]
+            action: mask
+      tag:
+        partition:
+          values: ["a", "b", "c"]
+          chunk: 1
     time:
       type: static
       # get it from linux by "date +%s"
