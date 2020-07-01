@@ -19,7 +19,7 @@ Follow the `3 simple steps` to get a local run (Linux box),  or see more details
 
 0. Clone "Nebula" repo.
 > And assume you're in ~/nebula/test directory.
-1. Edit [cluster config](local-cluster.yml) by put current host as the one only node.
+1. Edit [cluster config](./test/local-cluster.yml) by put current host as the one only node.
 > Replace &lt;hostname&gt; with your host.
 2. Run Nebula
 > ./local-run.sh
