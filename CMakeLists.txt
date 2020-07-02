@@ -66,6 +66,11 @@ else()
       set(PPROF 2)
     endif()
 
+    # by default - do not stripe symbols in release, only when specified to reduce binary size
+    if(SSYMB)
+      set(SSYMB "-s")
+    endif()
+
     # build flag -DGPROF
     if (GPROF STREQUAL "1")
       # using gprof  
@@ -110,7 +115,13 @@ else()
     # dump flags for o1: gcc -O1 -Q --help=optimizers -xc - < /dev/null > o1.txt
     # dump flags for o2: gcc -O2 -Q --help=optimizers -xc - < /dev/null > o2.txt
     # diff them
-    set(NCFLAGS_RELEASE "-Ofast -march=native -s")
+    # for libfmt, build with header only, we can append this at the tail "-DFMT_HEADER_ONLY=1"
+    # About compability, if we specify -march=native, gcc will optimize code for current build machine
+    # we can use this command to figure out what the real vaue of arch is `gcc -march=native -Q --help=target|grep march`
+    # On my daily dev machine, it gives me this value: skylake-avx512
+    # In another machine, I found it as "haswell", and this may lead crash with `illegal instruction` failure.
+    # So to make sure the published image works more broadly, we may want to remove this `-march=native`, or specify the target value
+    set(NCFLAGS_RELEASE "-Ofast ${SSYMB}")
   endif()
 endif()
 
