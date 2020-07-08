@@ -9,7 +9,7 @@ git clone https://github.com/shawncao/nebula.git
 cd nebula/test
 
 # replace the single node with current host name
-sed -i "s/<host>/$HOSTNAME/g" local-cluster.yml
+sed -i "s/<hostname>/$HOSTNAME/g" local-cluster.yml
 
 # pull images and fire them up
 docker pull caoxhua/nebula.server
