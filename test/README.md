@@ -4,9 +4,11 @@ This instructions will show you how to get a test data set run with Nebula on yo
 
 ## Quick Steps
 0. Clone "Nebula" repo. And assume you're in ~/nebula/test directory.
-1. Run Nebula
+1. Edit [cluster config](local-cluster.yml) by put current host as the one only node.
+> or run `sed -i "s/<hostname>/$HOSTNAME/g" local-cluster.yml`
+2. Run Nebula
 > ./local-run.sh
-2. Check it out through Nebula UI at: http://&lt;hostname&gt;:8088
+3. Check it out through Nebula UI at: http://&lt;hostname&gt;:8088
 
 ## Explore Nebula Through Its UI
 You should be able to see something like this
