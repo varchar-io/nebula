@@ -276,7 +276,8 @@ export class Charts {
                     // define flame graph routine
                     const flame = NebulaClient.flamegraph()
                         .width(width)
-                        .sort(true);
+                        .sort(true)
+                        .minFrameSize(1);
 
                     // if we have title
                     if (title) {

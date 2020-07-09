@@ -19,6 +19,10 @@
  */
 const http = require('http');
 const url = require('url');
+const zlib = require('zlib');
+const {
+    Readable
+} = require('stream');
 
 // service call module
 const NebulaClient = require('./dist/node/main');
@@ -29,9 +33,11 @@ const signatures_table = "pin.signatures";
 const advertisers_table = "advertisers";
 const advertisers_spend_table = "advertisers.spend";
 const promoted_pins = "pin.promote.rich";
+const s3_cost = "s3_cost";
 const client = NebulaClient.qc(serviceAddr);
 const grpc = NebulaClient.grpc;
 const timeCol = "_time_";
+const compressBar = 8 * 1024;
 const seconds = (ds) => (+ds == ds) ?
     Math.round(new Date(+ds).getTime() / 1000) :
     Math.round(new Date(ds).getTime() / 1000);
@@ -60,8 +66,11 @@ const GroupHeader = "x-forwarded-groups";
  * res: http response
  */
 class Handler {
-    constructor() {
-        this.response = null;
+    constructor(response, heads, encoding, encoder) {
+        this.response = response;
+        this.heads = heads;
+        this.encoding = encoding;
+        this.encoder = encoder;
         this.metadata = {};
         this.onError = (err) => {
             this.response.write(error(`${err}`));
@@ -72,6 +81,25 @@ class Handler {
             this.response.end();
         };
         this.onSuccess = (data) => {
+            // comress data only when it's more than the compression bar
+            if (this.encoder && data.length > compressBar) {
+                var s = new Readable();
+                s.push(data);
+                s.push(null);
+                let bufs = [];
+                s.pipe(this.encoder).on('data', (c) => {
+                    bufs.push(c);
+                }).on('end', () => {
+                    const buf = Buffer.concat(bufs);
+                    this.heads["Content-Encoding"] = this.encoding;
+                    this.heads["Content-Length"] = buf.length;
+                    console.log(`Data compressed: before=${data.length}, after=${buf.length}`);
+                    data = buf;
+                });
+            }
+
+            // write heads, data and end it
+            this.response.writeHead(200, this.heads);
             this.response.write(data);
             this.response.end();
         };
@@ -291,11 +319,9 @@ const getAdvertisersWithSpendByKey = (q, handler) => {
     if (q.pattern && q.pattern.length > 1) {
         const MAX_ITEMS = 1000;
         // search advertisers by keyword
-        // set handler to do the second query
-        const tempHandler = new Handler();
+        // set handler to do the second query with the same response
+        const tempHandler = new Handler(handler.response);
 
-        // share the same resposne stream
-        tempHandler.response = handler.response;
         tempHandler.onSuccess = (dataStr) => {
             const data = JSON.parse(dataStr);
             const idArray = data.map(e => e['id']);
@@ -311,9 +337,7 @@ const getAdvertisersWithSpendByKey = (q, handler) => {
             o.setType(1);
 
             // search advertisers id list = > "id in [id1, id2, ...]"
-            const spendHandler = new Handler();
-            // share the same response handler
-            spendHandler.response = handler.response;
+            const spendHandler = new Handler(handler.response);
             spendHandler.onSuccess = (spendStr) => {
                 const spend = JSON.parse(spendStr);
                 // set spend data to each data item if not 
@@ -414,6 +438,51 @@ const getPinsByKeyword = (q, handler) => {
     }
 
     handler.endWithMessage("Missing key");
+};
+
+const getEc2Instance = (q, handler) => {
+    console.log(`querying instance details for name ${q.name}`);
+    if (q.name) {
+        const time = seconds('2020-07-07');
+        const req = new NebulaClient.QueryRequest();
+        req.setTable(s3_cost);
+        req.setStart(time);
+        req.setEnd(time);
+
+        const conditions = [];
+        // apply the filter on different columns using OR
+        const p = new NebulaClient.Predicate();
+        p.setColumn("name");
+        p.setOp("0");
+        p.setValueList([q.name]);
+        conditions.push(p);
+
+        const filter = new NebulaClient.PredicateAnd();
+        filter.setExpressionList(conditions);
+        req.setFiltera(filter);
+
+        // set dimension
+        req.setDimensionList(["name", "vcpu", "memory", "cost_per_hour"]);
+
+        // set limit to 1K results
+        req.setTop(1000);
+
+        // do the query
+        client.query(req, handler.metadata, (err, reply) => {
+            if (err !== null) {
+                return handler.onError(err);
+            }
+
+            if (reply == null) {
+                return handler.onNull();
+            }
+            return handler.onSuccess(NebulaClient.bytes2utf8(reply.getData()));
+        });
+
+        return;
+    }
+
+    handler.endWithMessage("Missing instance name");
 };
 
 /**
@@ -625,7 +694,8 @@ const api_handlers = {
     "keyed_advertisers": getAdvertisersMatchingKey,
     "advertisers_spend": getAdvertisersSpend,
     "keyed_advertisers_with_spend": getAdvertisersWithSpendByKey,
-    "search_promoted_pins": getPinsByKeyword
+    "search_promoted_pins": getPinsByKeyword,
+    "ec2_cost_by_name": getEc2Instance
 };
 
 /**
@@ -683,34 +753,64 @@ const load = (table, json, ttl, handler) => {
     });
 };
 
+const cmd_handlers = {
+    "list": (req, res, q) => res.write(listApi(q)),
+    "user": (req, res, q) => res.write(JSON.stringify(userInfo(q, req.headers))),
+    "nuclear": (req, res, q) => res.write(shutdown()),
+    "load": (req, res, q) => load(q.table, q.json, q.ttl || 3600, new Handler(res))
+};
+
+const compression = (req) => {
+    // figure out accept encoding, and do some compression
+    let acceptEncoding = req.headers['accept-encoding'];
+    if (!acceptEncoding) {
+        acceptEncoding = '';
+    }
+
+    if (acceptEncoding.match(/\bdeflate\b/)) {
+        return {
+            encoding: 'deflate',
+            encoder: zlib.createDeflate()
+        };
+    } else if (acceptEncoding.match(/\bgzip\b/)) {
+        return {
+            encoding: 'gzip',
+            encoder: zlib.createGzip()
+        };
+    }
+
+    return {
+        encoding: null,
+        encoder: null
+    };
+};
+
 //create a server object listening at 80:
 http.createServer(async function (req, res) {
     const q = url.parse(req.url, true).query;
     if (q.api) {
-        res.writeHead(200, {
+        const heads = {
             'Content-Type': 'application/json'
-        });
+        };
+
+        const c = compression(req);
 
         // routing generic query through web UI
-        if (q.api === "list") {
-            res.write(listApi(q));
-        } else if (q.api === "user") {
-            res.write(JSON.stringify(userInfo(q, req.headers)));
-        } else if (q.api === "nuclear") {
-            res.write(shutdown());
-        } else if (q.api === "load") {
-            const handler = new Handler();
-            handler.response = res;
-            return load(q.table, q.json, q.ttl || 3600, handler);
+        if (q.api in cmd_handlers) {
+            res.writeHead(200, heads);
+            cmd_handlers[q.api](req, res, q);
+            if (q.api === "load") {
+                return;
+            }
         } else if (q.api in api_handlers) {
             // basic requirement
             if (!q.start || !q.end) {
                 res.write(error(`start and end time required for every api: ${q.api}`));
             } else {
                 try {
-                    // build a handler 
-                    const handler = new Handler();
-                    handler.response = res;
+                    // build a handler, all data will be compressed based on encoder
+                    const handler = new Handler(res, heads, c.encoding, c.encoder);
+                    // add user meta data for security
                     handler.metadata = toMetadata(userInfo(q, req.headers));
                     api_handlers[q.api](q, handler);
                     return;

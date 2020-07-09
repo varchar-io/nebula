@@ -33,8 +33,10 @@ const sstatic = require('serve-static');
 const fh = require('finalhandler');
 const grpc = require('grpc');
 const qc = (service) => {
+    // set the maximum message size as 20MB
     return new V1Client(service, grpc.credentials.createInsecure(), {
-        "nebula": "node"
+        "nebula": "node",
+        'grpc.max_receive_message_length': 20 * 1024 * 1024
     });
 };
 

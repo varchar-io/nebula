@@ -601,6 +601,9 @@ const ide = () => {
     const off = $(`.${c_off}`);
     on.removeClass(c_on).addClass(c_off);
     off.removeClass(c_off).addClass(c_on);
+
+    // refresh editor to get focus
+    setTimeout(() => editor.refresh(), 5);
 };
 
 ds('#ui').on("click", ide);
