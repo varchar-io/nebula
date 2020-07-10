@@ -73,10 +73,12 @@ class Handler {
         this.encoder = encoder;
         this.metadata = {};
         this.onError = (err) => {
+            this.response.writeHead(200, this.heads);
             this.response.write(error(`${err}`));
             this.response.end();
         };
         this.onNull = () => {
+            this.response.writeHead(200, this.heads);
             this.response.write(error("Failed to get reply"));
             this.response.end();
         };
@@ -104,6 +106,7 @@ class Handler {
             this.response.end();
         };
         this.endWithMessage = (message) => {
+            this.response.writeHead(200, this.heads);
             this.response.write(error(message));
             this.response.end();
         }
