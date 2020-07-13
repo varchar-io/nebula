@@ -82,6 +82,12 @@ class Handler {
             this.response.write(error("Failed to get reply"));
             this.response.end();
         };
+        this.flush = (buf) => {
+            // write heads, data and end it
+            this.response.writeHead(200, this.heads);
+            this.response.write(buf);
+            this.response.end();
+        };
         this.onSuccess = (data) => {
             // comress data only when it's more than the compression bar
             if (this.encoder && data.length > compressBar) {
@@ -96,14 +102,12 @@ class Handler {
                     this.heads["Content-Encoding"] = this.encoding;
                     this.heads["Content-Length"] = buf.length;
                     console.log(`Data compressed: before=${data.length}, after=${buf.length}`);
-                    data = buf;
+                    this.flush(buf);
                 });
+            } else {
+                // uncompressed and sync approach
+                this.flush(data);
             }
-
-            // write heads, data and end it
-            this.response.writeHead(200, this.heads);
-            this.response.write(data);
-            this.response.end();
         };
         this.endWithMessage = (message) => {
             this.response.writeHead(200, this.heads);
