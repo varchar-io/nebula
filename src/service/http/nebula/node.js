@@ -23,17 +23,11 @@ const zlib = require('zlib');
 const {
     Readable
 } = require('stream');
+const NebulaClient = require('./dist/node/main');
+const APIS = require('./api');
 
 // service call module
-const NebulaClient = require('./dist/node/main');
 const serviceAddr = process.env.NS_ADDR || "dev-shawncao:9190";
-const comments_table = "pin.comments";
-const pins_table = "pin.pins";
-const signatures_table = "pin.signatures";
-const advertisers_table = "advertisers";
-const advertisers_spend_table = "advertisers.spend";
-const promoted_pins = "pin.promote.rich";
-const s3_cost = "s3_cost";
 const client = NebulaClient.qc(serviceAddr);
 const grpc = NebulaClient.grpc;
 const timeCol = "_time_";
@@ -117,381 +111,6 @@ class Handler {
     }
 };
 
-const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, handler) => {
-    const req = new NebulaClient.QueryRequest();
-    req.setTable(table);
-    req.setStart(seconds(start));
-    req.setEnd(seconds(end));
-
-    // single filter
-    const p2 = new NebulaClient.Predicate();
-    p2.setColumn(fc);
-    p2.setOp(op);
-    p2.setValueList(Array.isArray(fv) ? fv : [fv]);
-    const filter = new NebulaClient.PredicateAnd();
-    filter.setExpressionList([p2]);
-    req.setFiltera(filter);
-
-    // set dimension
-    req.setDimensionList(cols);
-
-    if (metrics.length > 0) {
-        req.setMetricList(metrics);
-    }
-
-    if (order) {
-        req.setOrder(order);
-    }
-
-    // set limit
-    req.setTop(limit);
-
-    // do the query
-    client.query(req, handler.metadata, (err, reply) => {
-        if (err !== null) {
-            return handler.onError(err);
-        }
-
-        if (reply == null) {
-            return handler.onNull();
-        }
-        return handler.onSuccess(NebulaClient.bytes2utf8(reply.getData()));
-    });
-};
-
-/**
- * Count pins per domain given time range with filter 
- */
-const getPinsPerDomainWithKey = (q, handler) => {
-    console.log(`querying pins for details like ${q.key}`);
-    if (q.key) {
-        // build metrics
-        const m = new NebulaClient.Metric();
-        m.setColumn("id");
-        m.setMethod(1);
-
-        // set order on metric only means we don't order on samples for now
-        const o = new NebulaClient.Order();
-        o.setColumn("id");
-        o.setType(1);
-        // search user Id
-        query(pins_table, q.start, q.end, "details", "4", `%${q.key}%`,
-            ["_time_", "link_domain"],
-            [m], o,
-            q.limit || 10000, handler);
-        return;
-    }
-
-    handler.endWithMessage("Missing key");
-};
-
-/**
- * get all comments for given user id
- */
-const getCommentsByUserId = (q, handler) => {
-    console.log(`querying comments for user_id=${q.user_id}`);
-    if (q.user_id) {
-        // search user Id
-        query(comments_table, q.start, q.end, "user_id", "0", q.user_id,
-            ["_time_", "pin_signature", "comments"],
-            [], null,
-            q.limit || 100, handler);
-        return;
-    }
-
-    handler.endWithMessage("Missing user_id.");
-};
-
-/**
- * get all comments for given pin id
- */
-const getCommentsByPinSignature = (q, handler) => {
-    console.log(`querying comments for pin_signature=${q.pin_signature}`);
-    if (q.pin_signature) {
-        // search pin Id
-        query(comments_table, q.start, q.end, "pin_signature", "0", q.pin_signature,
-            ["_time_", "user_id", "comments"],
-            [], null,
-            q.limit || 100, handler);
-        return;
-    }
-
-    handler.endWithMessage("Missing pin_signature.");
-};
-
-/**
- * get all pins for given pin signature
- */
-const getPinsBySignature = (q, handler) => {
-    console.log(`querying comments for pin_signature=${q.pin_signature}`);
-    if (q.pin_signature) {
-        // search pin Id
-        query(signatures_table, q.start, q.end, "pin_signature", "0", q.pin_signature,
-            ["pin_id"],
-            [], null,
-            q.limit || 100, handler);
-        return;
-    }
-
-    handler.endWithMessage("Missing pin_signature.");
-};
-
-/**
- * get signature for given pin
- */
-const getSignatureByPin = (q, handler) => {
-    console.log(`querying comments for pin_id=${q.pin_id}`);
-    if (q.pin_id) {
-        // search pin Id
-        query(signatures_table, q.start, q.end, "pin_id", "0", q.pin_id,
-            ["pin_signature"],
-            [], null,
-            q.limit || 100, handler);
-        return;
-    }
-
-    handler.endWithMessage("Missing pin_id.");
-};
-
-/**
- * get all comments for given pin id
- */
-const getCommentsByPattern = (q, handler) => {
-    console.log(`querying comments for comments like ${q.pattern}`);
-    if (q.pattern) {
-        // search comments like
-        query(comments_table, q.start, q.end, "comments", "4", q.pattern,
-            ["_time_", "user_id", "pin_signature", "comments"],
-            [], null,
-            q.limit || 100, handler);
-        return;
-    }
-
-    handler.endWithMessage("Missing pattern.");
-};
-
-/**
- * get all advertisers matching given key
- */
-const getAdvertisersMatchingKey = (q, handler) => {
-    console.log(`querying advertisers for name like ${q.key}`);
-    if (q.key && q.key.length > 1) {
-        // search advertisers by keyword
-        query(advertisers_table, q.start, q.end, "name", "4", `%${q.key}%`,
-            ["id", "name", "active", "country"],
-            [], null,
-            q.limit || 1000, handler);
-        return;
-    }
-
-    handler.endWithMessage("Missing key.");
-};
-
-/**
- * get spend of each advertiser
- */
-const getAdvertisersSpend = (q, handler) => {
-    console.log(`querying advertisers spend`);
-    if (q.ids && q.ids.length > 0) {
-        // expect an JSON array
-        const idArray = JSON.parse(q.ids);
-        if (idArray && idArray.length > 0) {
-            // build metrics sum(spend)
-            const m = new NebulaClient.Metric();
-            m.setColumn("spend");
-            m.setMethod(0);
-
-            // order by sum(spend) desc
-            const o = new NebulaClient.Order();
-            o.setColumn("spend");
-            o.setType(1);
-
-            // search advertisers id list = > "id in [id1, id2, ...]"
-            query(advertisers_spend_table, q.start, q.end, "id", "0", `${idArray}`,
-                ["id"],
-                [m], o,
-                q.limit || 1000, handler);
-            return;
-        }
-    }
-
-    handler.endWithMessage("Missing id list.");
-};
-
-/**
- * get advertisers with spend by given key
- */
-const getAdvertisersWithSpendByKey = (q, handler) => {
-    console.log(`querying advertisers for name like ${q.pattern}`);
-    if (q.pattern && q.pattern.length > 1) {
-        const MAX_ITEMS = 1000;
-        // search advertisers by keyword
-        // set handler to do the second query with the same response
-        const tempHandler = new Handler(handler.response);
-
-        tempHandler.onSuccess = (dataStr) => {
-            const data = JSON.parse(dataStr);
-            const idArray = data.map(e => e['id']);
-            // query all spend for this id list
-            // build metrics sum(spend)
-            const m = new NebulaClient.Metric();
-            m.setColumn("spend");
-            m.setMethod(0);
-
-            // order by sum(spend) desc
-            const o = new NebulaClient.Order();
-            o.setColumn("spend");
-            o.setType(1);
-
-            // search advertisers id list = > "id in [id1, id2, ...]"
-            const spendHandler = new Handler(handler.response);
-            spendHandler.onSuccess = (spendStr) => {
-                const spend = JSON.parse(spendStr);
-                // set spend data to each data item if not 
-                // convert this spend array to key-value dictionary
-                const spendMap = {};
-                for (var i = 0; i < spend.length; ++i) {
-                    var item = spend[i];
-                    spendMap[item.id] = item['spend.sum'];
-                }
-
-                // for all data items, 
-                for (var i = 0; i < data.length; ++i) {
-                    var obj = data[i];
-                    if (obj.id in spendMap) {
-                        obj['spend'] = spendMap[obj.id];
-                    } else {
-                        // no spend, assign 0 to it.
-                        obj['spend'] = 0;
-                    }
-                }
-
-                // write data out like normal
-                handler.onSuccess(JSON.stringify(data));
-            };
-
-            const sstart = q.sstart || q.start;
-            const send = q.send || q.end;
-            query(advertisers_spend_table, sstart, send, "id", "0", idArray,
-                ["id"],
-                [m], o,
-                q.limit || MAX_ITEMS, spendHandler);
-        };
-
-        query(advertisers_table, q.start, q.end, "name", "5", q.pattern,
-            ["id", "name", "active", "country", "owner_id", "billing_profile_id"],
-            [], null,
-            q.limit || MAX_ITEMS, tempHandler);
-        return;
-    }
-
-    handler.endWithMessage("Missing pattern.");
-};
-
-/**
- * Search all promoted pins with specified keyword
- */
-const getPinsByKeyword = (q, handler) => {
-    console.log(`querying promoted pins for details/annotations like ${q.key}`);
-    if (q.key) {
-        const req = new NebulaClient.QueryRequest();
-        req.setTable(promoted_pins);
-        req.setStart(seconds(q.start));
-        req.setEnd(seconds(q.end));
-
-        const conditions = [];
-        // apply the filter on different columns using OR
-        let columnsToSearch = ["title", "details", "annotations"];
-        if (q.c2s) {
-            // if user specify what columns to search on, use it
-            // accept json array
-            columnsToSearch = JSON.parse(q.c2s);
-        }
-
-        for (let i = 0; i < columnsToSearch.length; ++i) {
-            let p = new NebulaClient.Predicate();
-            p.setColumn(columnsToSearch[i]);
-            p.setOp("5");
-            p.setValueList([`%${q.key}%`]);
-            conditions.push(p);
-        }
-
-        const filter = new NebulaClient.PredicateOr();
-        filter.setExpressionList(conditions);
-        req.setFiltero(filter);
-
-        // set dimension
-        req.setDimensionList([
-            "id", "image_signature", "title", "advertiser", "link", "private", "user_id", "board_id",
-            "likes", "engages", "impressions", "clicks", "repins", "_time_"
-        ]);
-
-        // set limit to 1K results
-        req.setTop(1000);
-
-        // do the query
-        client.query(req, handler.metadata, (err, reply) => {
-            if (err !== null) {
-                return handler.onError(err);
-            }
-
-            if (reply == null) {
-                return handler.onNull();
-            }
-            return handler.onSuccess(NebulaClient.bytes2utf8(reply.getData()));
-        });
-
-        return;
-    }
-
-    handler.endWithMessage("Missing key");
-};
-
-const getEc2Instance = (q, handler) => {
-    console.log(`querying instance details for name ${q.name}`);
-    if (q.name) {
-        const time = seconds('2020-07-07');
-        const req = new NebulaClient.QueryRequest();
-        req.setTable(s3_cost);
-        req.setStart(time);
-        req.setEnd(time);
-
-        const conditions = [];
-        // apply the filter on different columns using OR
-        const p = new NebulaClient.Predicate();
-        p.setColumn("name");
-        p.setOp("0");
-        p.setValueList([q.name]);
-        conditions.push(p);
-
-        const filter = new NebulaClient.PredicateAnd();
-        filter.setExpressionList(conditions);
-        req.setFiltera(filter);
-
-        // set dimension
-        req.setDimensionList(["name", "vcpu", "memory", "cost_per_hour"]);
-
-        // set limit to 1K results
-        req.setTop(1000);
-
-        // do the query
-        client.query(req, handler.metadata, (err, reply) => {
-            if (err !== null) {
-                return handler.onError(err);
-            }
-
-            if (reply == null) {
-                return handler.onNull();
-            }
-            return handler.onSuccess(NebulaClient.bytes2utf8(reply.getData()));
-        });
-
-        return;
-    }
-
-    handler.endWithMessage("Missing instance name");
-};
-
 /**
  * List all apis
  */
@@ -532,7 +151,7 @@ const toMetadata = (info) => {
 /** 
  * get all available tables in nebula.
  */
-const getTables = (q, handler) => {
+const getTables = (query, handler, client) => {
     const listReq = new NebulaClient.ListTables();
     listReq.setLimit(100);
     client.tables(listReq, {}, (err, reply) => {
@@ -547,9 +166,9 @@ const getTables = (q, handler) => {
     });
 };
 
-const getTableState = (q, handler) => {
+const getTableState = (query, handler, client) => {
     const req = new NebulaClient.TableStateRequest();
-    req.setTable(q.table);
+    req.setTable(query.table);
     client.state(req, {}, (err, reply) => {
         if (err !== null) {
             return handler.onError(err);
@@ -575,9 +194,9 @@ const getTableState = (q, handler) => {
  * This supports invoking nebula service behind web server rather than from web client directly.
  * Please refer two different modes on how to architecture web component in Nebula.
  */
-const webq = (q, handler) => {
+const webq = (query, handler, client) => {
     // the query object schema is defined in state.js
-    const state = JSON.parse(q.query);
+    const state = JSON.parse(query.query);
     const req = new NebulaClient.QueryRequest();
     req.setTable(state.table);
     req.setStart(seconds(state.start));
@@ -690,19 +309,8 @@ const api_handlers = {
     "tables": getTables,
     "state": getTableState,
     "query": webq,
-
-    // TODO(cao): move these customized API into a plugin module for extension
-    "comments_by_userid": getCommentsByUserId,
-    "comments_by_pinsignature": getCommentsByPinSignature,
-    "comments_by_pattern": getCommentsByPattern,
-    "pins_by_signature": getPinsBySignature,
-    "signature_of_pin": getSignatureByPin,
-    "keyed_pins_per_domain": getPinsPerDomainWithKey,
-    "keyed_advertisers": getAdvertisersMatchingKey,
-    "advertisers_spend": getAdvertisersSpend,
-    "keyed_advertisers_with_spend": getAdvertisersWithSpendByKey,
-    "search_promoted_pins": getPinsByKeyword,
-    "ec2_cost_by_name": getEc2Instance
+    // load extended api into this api handlers list
+    ...APIS
 };
 
 /**
@@ -819,7 +427,7 @@ http.createServer(async function (req, res) {
                     const handler = new Handler(res, heads, c.encoding, c.encoder);
                     // add user meta data for security
                     handler.metadata = toMetadata(userInfo(q, req.headers));
-                    api_handlers[q.api](q, handler);
+                    api_handlers[q.api](q, handler, client);
                     return;
                 } catch (e) {
                     res.write(error(`api ${q.api} handler exception: ${e}`));
