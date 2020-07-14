@@ -98,10 +98,8 @@ const seconds = (ds) => {
     return ms(ds);
 };
 
-// export API - hack to make it work for both require and es6 import
-// consumer can use it like this
-// const time= require();
-// time.seconds("2020-07-07")
-module.exports = {
+// same copy as time.js - 
+// need a hack to make it work for both require and es6 import
+export const time = {
     seconds: seconds
 };

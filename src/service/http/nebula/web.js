@@ -44,6 +44,10 @@ import {
     Constraints
 } from "/c/constraints.min.js";
 
+import {
+    time
+} from './time-es6.js';
+
 // define jquery style selector 
 const ds = NebulaClient.d3.select;
 const $$ = (e) => $(e).val();
@@ -62,7 +66,6 @@ const timeCol = "_time_";
 const charts = new Charts();
 const nebula = new Nebula();
 const formatTime = charts.formatTime;
-const log = console.log;
 const msg = (text) => ds('#qr').text(text);
 
 // arch mode indicates the web architecture mode
@@ -364,8 +367,6 @@ const restore = () => {
     }
 };
 
-const seconds = (ds) => Math.round(new Date(ds).getTime() / 1000);
-
 // extract X-Y for line charts based on json result and query object
 const extractXY = (json, state) => {
     // extract X-Y (dimension - metric) columns to display
@@ -393,8 +394,8 @@ const buildRequest = (state) => {
     // URL decoding the string and json object parsing
     const q = new NebulaClient.QueryRequest();
     q.setTable(state.table);
-    q.setStart(seconds(state.start));
-    q.setEnd(seconds(state.end));
+    q.setStart(time.seconds(state.start));
+    q.setEnd(time.seconds(state.end));
 
     // the filter can be much more complex
     const filter = state.filter;
@@ -498,7 +499,7 @@ const onQueryResult = (state, r) => {
                 break;
             case NebulaClient.DisplayType.TIMELINE:
                 const WINDOW_KEY = '_window_';
-                const start = new Date(state.start);
+                const beginMs = time.seconds(state.start) * 1000;
                 let data = {
                     default: json
                 };
@@ -514,7 +515,7 @@ const onQueryResult = (state, r) => {
                     data = groupBy(json, keys.d);
                 }
 
-                charts.displayTimeline(data, WINDOW_KEY, keys.m, +start);
+                charts.displayTimeline(data, WINDOW_KEY, keys.m, beginMs);
                 break;
             case NebulaClient.DisplayType.BAR:
                 charts.displayBar(json, keys.d, keys.m);

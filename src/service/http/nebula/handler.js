@@ -31,7 +31,7 @@ const {
 const compressBar = 8 * 1024;
 
 class Handler {
-    // static error message
+    // static error message - do not use lambda since some runtime does not support it
     static error = (msg) => {
         return JSON.stringify({
             "error": msg,
