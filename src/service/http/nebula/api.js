@@ -21,6 +21,7 @@
 // DO NOT USE IMPORT for better compability.
 const NebulaClient = require('./dist/node/main');
 const time = require('./time');
+const Handler = require('./handler');
 
 // utility function used by most of the API methods
 const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, handler, client) => {

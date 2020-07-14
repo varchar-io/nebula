@@ -20,94 +20,23 @@
 const http = require('http');
 const url = require('url');
 const zlib = require('zlib');
-const {
-    Readable
-} = require('stream');
 const NebulaClient = require('./dist/node/main');
 const APIS = require('./api');
 const time = require('./time');
+const Handler = require('./handler');
 
 // service call module
 const serviceAddr = process.env.NS_ADDR || "dev-shawncao:9190";
 const client = NebulaClient.qc(serviceAddr);
 const grpc = NebulaClient.grpc;
 const timeCol = "_time_";
-const compressBar = 8 * 1024;
-const error = (msg) => {
-    return JSON.stringify({
-        "error": msg,
-        "duration": 0
-    });
-};
+const error = Handler.error;
 
 // TODO(cao): these should go more flexible way to figure user info after auth
 // Right now, it is only one example way.
 const AuthHeader = "authorization";
 const UserHeader = "x-forwarded-user";
 const GroupHeader = "x-forwarded-groups";
-
-/**
- * Query API
- * start: 2019-04-01
- * end: 2019-06-20
- * fc: user_id
- * op: 0=, 1!=, 2>,3<, 4like
- * fv: 23455554444
- * cols: ["user_id", "pin_id"]
- * limit: 1000
- * res: http response
- */
-class Handler {
-    constructor(response, heads, encoding, encoder) {
-        this.response = response;
-        this.heads = heads;
-        this.encoding = encoding;
-        this.encoder = encoder;
-        this.metadata = {};
-        this.onError = (err) => {
-            this.response.writeHead(200, this.heads);
-            this.response.write(error(`${err}`));
-            this.response.end();
-        };
-        this.onNull = () => {
-            this.response.writeHead(200, this.heads);
-            this.response.write(error("Failed to get reply"));
-            this.response.end();
-        };
-        this.flush = (buf) => {
-            // write heads, data and end it
-            this.response.writeHead(200, this.heads);
-            this.response.write(buf);
-            this.response.end();
-        };
-        this.onSuccess = (data) => {
-            // comress data only when it's more than the compression bar
-            if (this.encoder && data.length > compressBar) {
-                var s = new Readable();
-                s.push(data);
-                s.push(null);
-                let bufs = [];
-                s.pipe(this.encoder).on('data', (c) => {
-                    bufs.push(c);
-                }).on('end', () => {
-                    const buf = Buffer.concat(bufs);
-                    this.heads["Content-Encoding"] = this.encoding;
-                    this.heads["Content-Length"] = buf.length;
-                    console.log(`Data compressed: before=${data.length}, after=${buf.length}`);
-                    this.flush(buf);
-                });
-            } else {
-                // uncompressed and sync approach
-                this.flush(data);
-            }
-        };
-        this.endWithMessage = (message) => {
-            this.response.writeHead(200, this.heads);
-            this.response.write(error(message));
-            this.response.end();
-        }
-    }
-};
 
 /**
  * List all apis
