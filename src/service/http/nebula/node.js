@@ -25,6 +25,7 @@ const {
 } = require('stream');
 const NebulaClient = require('./dist/node/main');
 const APIS = require('./api');
+const time = require('./time');
 
 // service call module
 const serviceAddr = process.env.NS_ADDR || "dev-shawncao:9190";
@@ -32,9 +33,6 @@ const client = NebulaClient.qc(serviceAddr);
 const grpc = NebulaClient.grpc;
 const timeCol = "_time_";
 const compressBar = 8 * 1024;
-const seconds = (ds) => (+ds == ds) ?
-    Math.round(new Date(+ds).getTime() / 1000) :
-    Math.round(new Date(ds).getTime() / 1000);
 const error = (msg) => {
     return JSON.stringify({
         "error": msg,
@@ -199,8 +197,8 @@ const webq = (query, handler, client) => {
     const state = JSON.parse(query.query);
     const req = new NebulaClient.QueryRequest();
     req.setTable(state.table);
-    req.setStart(seconds(state.start));
-    req.setEnd(seconds(state.end));
+    req.setStart(time.seconds(state.start));
+    req.setEnd(time.seconds(state.end));
 
     // the filter can be much more complex
     const filter = state.filter;

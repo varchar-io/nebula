@@ -20,13 +20,14 @@
 
 // DO NOT USE IMPORT for better compability.
 const NebulaClient = require('./dist/node/main');
+const time = require('./time');
 
 // utility function used by most of the API methods
 const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, handler, client) => {
     const req = new NebulaClient.QueryRequest();
     req.setTable(table);
-    req.setStart(seconds(start));
-    req.setEnd(seconds(end));
+    req.setStart(time.seconds(start));
+    req.setEnd(time.seconds(end));
 
     // single filter
     const p2 = new NebulaClient.Predicate();
