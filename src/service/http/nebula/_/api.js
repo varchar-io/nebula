@@ -19,23 +19,39 @@
  */
 
 // DO NOT USE IMPORT for better compability.
-const NebulaClient = require('./dist/node/main');
-const time = require('./time');
-const Handler = require('./handler');
+import {
+    createRequire
+} from 'module';
+const require = createRequire(
+    import.meta.url);
+const {
+    QueryRequest,
+    Predicate,
+    PredicateAnd
+} = require('../dist/node/main.cjs');
+import {
+    time
+} from './time.min.js';
+import {
+    Handler
+} from './handler.js';
+import {
+    bytes2utf8
+} from './serde.min.js';
 
 // utility function used by most of the API methods
 const query = (table, start, end, fc, op, fv, cols, metrics, order, limit, handler, client) => {
-    const req = new NebulaClient.QueryRequest();
+    const req = new QueryRequest();
     req.setTable(table);
     req.setStart(time.seconds(start));
     req.setEnd(time.seconds(end));
 
     // single filter
-    const p2 = new NebulaClient.Predicate();
+    const p2 = new Predicate();
     p2.setColumn(fc);
     p2.setOp(op);
     p2.setValueList(Array.isArray(fv) ? fv : [fv]);
-    const filter = new NebulaClient.PredicateAnd();
+    const filter = new PredicateAnd();
     filter.setExpressionList([p2]);
     req.setFiltera(filter);
 
@@ -75,6 +91,6 @@ const test = (query, handler, client) => {
     }));
 };
 
-module.exports = {
+export const APIS = {
     test: test
 };

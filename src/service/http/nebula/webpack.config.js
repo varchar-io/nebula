@@ -47,7 +47,10 @@ const nodeConfig = {
         node: './n/node.js'
     },
     output: {
-        filename: './[name]/main.js',
+        // UMD works fine too, such as library='neb', libraryTarget='umd'
+        // for commonjs, we rename the file ext as cjs for working better in ESM env.
+        // note that, webpack doesn't crunch 'cjs' but 'js', so the file will be larger
+        filename: './[name]/main.cjs',
         path: path.resolve(__dirname, 'dist'),
         library: '',
         libraryTarget: 'commonjs',

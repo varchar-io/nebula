@@ -25,12 +25,12 @@
  * limit: 1000
  * res: http response
  */
-const {
+import {
     Readable
-} = require('stream');
+} from 'stream';
 const compressBar = 8 * 1024;
 
-class Handler {
+export class Handler {
     // static error message - do not use lambda since some runtime does not support it
     static error(msg) {
         return JSON.stringify({
@@ -90,6 +90,3 @@ class Handler {
         }
     }
 };
-
-// export this handler
-module.exports = Handler;

@@ -34,7 +34,7 @@ import {
     p99,
     p99_9,
     p99_99
-} from './sdk.min.js';
+} from '/sdk.min.js';
 
 import {
     Charts
@@ -46,7 +46,11 @@ import {
 
 import {
     time
-} from './time-es6.js';
+} from '/_/time.min.js';
+
+import {
+    bytes2utf8
+} from '/_/serde.min.js';
 
 // define jquery style selector 
 const ds = NebulaClient.d3.select;
@@ -474,7 +478,7 @@ const onQueryResult = (state, r) => {
     msg(`[query time: ${r.duration} ms]`);
 
     // JSON result
-    json = JSON.parse(NebulaClient.bytes2utf8(r.data));
+    json = JSON.parse(bytes2utf8(r.data));
     // newdata = true;
 
     // clear table data
@@ -655,10 +659,15 @@ window.onhashchange = function () {
 
 // load table list - maximum 100?
 const onTableList = (tables) => {
-    const options = ds('#tables').selectAll("option").data(tables.sort()).enter().append('option');
-    options.text(d => d).attr("value", d => d);
-    // restore the selection
-    restore();
+    if (tables && tables.length > 0) {
+        const options = ds('#tables').selectAll("option").data(tables.sort()).enter().append('option');
+        options.text(d => d).attr("value", d => d);
+        // restore the selection
+        restore();
+        return;
+    }
+
+    msg("Nebula is down: can not fetch tables");
 };
 $(() => {
     const stats = ds('#stats');

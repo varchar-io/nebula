@@ -17,18 +17,70 @@
 /**
  * This is entry point of the web server served by node JS
  */
-const http = require('http');
-const url = require('url');
-const zlib = require('zlib');
-const NebulaClient = require('./dist/node/main');
-const APIS = require('./api');
-const time = require('./time');
-const Handler = require('./handler');
+import {
+    createServer
+} from 'http';
+import {
+    parse
+} from 'url';
+import {
+    createDeflate,
+    createGzip
+} from 'zlib';
+import {
+    APIS
+} from './_/api.js';
+import {
+    time
+} from './_/time.min.js';
+import {
+    Handler
+} from './_/handler.js';
+import {
+    bytes2utf8
+} from './_/serde.min.js';
+
+// nebula distribute library package
+// add require in ES6 module type - remove for commonjs
+import {
+    createRequire
+} from 'module';
+const require = createRequire(
+    import.meta.url);
+const {
+    EchoClient,
+    V1Client,
+    EchoRequest,
+    EchoResponse,
+    ListTables,
+    TableStateRequest,
+    TableStateResponse,
+    Operation,
+    Predicate,
+    PredicateAnd,
+    PredicateOr,
+    Rollup,
+    Metric,
+    Order,
+    OrderType,
+    DisplayType,
+    CustomType,
+    CustomColumn,
+    QueryRequest,
+    Statistics,
+    DataType,
+    QueryResponse,
+    LoadError,
+    LoadRequest,
+    LoadResponse,
+    static_res,
+    qc,
+    grpc
+} = require('./dist/node/main.cjs');
 
 // service call module
 const serviceAddr = process.env.NS_ADDR || "dev-shawncao:9190";
-const client = NebulaClient.qc(serviceAddr);
-const grpc = NebulaClient.grpc;
+const client = qc(serviceAddr);
 const timeCol = "_time_";
 const error = Handler.error;
 
@@ -79,7 +131,7 @@ const toMetadata = (info) => {
  * get all available tables in nebula.
  */
 const getTables = (query, handler, client) => {
-    const listReq = new NebulaClient.ListTables();
+    const listReq = new ListTables();
     listReq.setLimit(100);
     client.tables(listReq, {}, (err, reply) => {
         if (err !== null) {
@@ -94,7 +146,7 @@ const getTables = (query, handler, client) => {
 };
 
 const getTableState = (query, handler, client) => {
-    const req = new NebulaClient.TableStateRequest();
+    const req = new TableStateRequest();
     req.setTable(query.table);
     client.state(req, {}, (err, reply) => {
         if (err !== null) {
@@ -124,7 +176,7 @@ const getTableState = (query, handler, client) => {
 const webq = (query, handler, client) => {
     // the query object schema is defined in state.js
     const state = JSON.parse(query.query);
-    const req = new NebulaClient.QueryRequest();
+    const req = new QueryRequest();
     req.setTable(state.table);
     req.setStart(time.seconds(state.start));
     req.setEnd(time.seconds(state.end));
@@ -137,7 +189,7 @@ const webq = (query, handler, client) => {
         if (rules && rules.length > 0) {
             const predicates = [];
             rules.forEach(r => {
-                const pred = new NebulaClient.Predicate();
+                const pred = new Predicate();
                 if (r.v && r.v.length > 0) {
                     pred.setColumn(r.c);
                     pred.setOp(r.o);
@@ -148,11 +200,11 @@ const webq = (query, handler, client) => {
 
             if (predicates.length > 0) {
                 if (filter.l === "AND") {
-                    const f = new NebulaClient.PredicateAnd();
+                    const f = new PredicateAnd();
                     f.setExpressionList(predicates);
                     req.setFiltera(f);
                 } else if (filter.l === "OR") {
-                    const f = new NebulaClient.PredicateOr();
+                    const f = new PredicateOr();
                     f.setExpressionList(predicates);
                     req.setFiltero(f);
                 }
@@ -162,7 +214,7 @@ const webq = (query, handler, client) => {
 
     // set sort by first key for samples or first metric for aggregations
     const setOrder = (col, order, req) => {
-        const o = new NebulaClient.Order();
+        const o = new Order();
         o.setColumn(col);
         o.setType(order);
         req.setOrder(o);
@@ -171,7 +223,7 @@ const webq = (query, handler, client) => {
     // set dimension
     const keys = state.keys;
     const display = state.display;
-    if (display == NebulaClient.DisplayType.SAMPLES) {
+    if (display == DisplayType.SAMPLES) {
         setOrder(keys[0], state.sort, req);
         keys.unshift(timeCol);
     }
@@ -187,7 +239,7 @@ const webq = (query, handler, client) => {
     if (columns && columns.length > 0) {
         const cc = [];
         columns.forEach(c => {
-            const col = new NebulaClient.CustomColumn();
+            const col = new CustomColumn();
             col.setColumn(c.name);
             col.setExpr(c.expr);
             col.setType(c.type);
@@ -198,8 +250,8 @@ const webq = (query, handler, client) => {
 
     // set metric for non-samples query 
     // (use implicit type convert != instead of !==)
-    if (display != NebulaClient.DisplayType.SAMPLES) {
-        const m = new NebulaClient.Metric();
+    if (display != DisplayType.SAMPLES) {
+        const m = new Metric();
         const mcol = state.metrics;
         m.setColumn(mcol);
         m.setMethod(state.rollup);
@@ -245,7 +297,7 @@ const api_handlers = {
  * Used for debugging and profiling purpose.
  */
 const shutdown = () => {
-    const req = new NebulaClient.EchoRequest();
+    const req = new EchoRequest();
     req.setName("_nuclear_");
 
     // do the query
@@ -263,7 +315,7 @@ const shutdown = () => {
  * ?api=load&table=x&json=xxx&ttl=5000
  */
 const load = (table, json, ttl, handler) => {
-    const req = new NebulaClient.LoadRequest();
+    const req = new LoadRequest();
     if (!table) {
         handler.endWithMessage("Missing table");
         return;
@@ -312,12 +364,12 @@ const compression = (req) => {
     if (acceptEncoding.match(/\bdeflate\b/)) {
         return {
             encoding: 'deflate',
-            encoder: zlib.createDeflate()
+            encoder: createDeflate()
         };
     } else if (acceptEncoding.match(/\bgzip\b/)) {
         return {
             encoding: 'gzip',
-            encoder: zlib.createGzip()
+            encoder: createGzip()
         };
     }
 
@@ -328,8 +380,8 @@ const compression = (req) => {
 };
 
 //create a server object listening at 80:
-http.createServer(async function (req, res) {
-    const q = url.parse(req.url, true).query;
+createServer(async function (req, res) {
+    const q = parse(req.url, true).query;
     if (q.api) {
         const heads = {
             'Content-Type': 'application/json'
@@ -369,5 +421,5 @@ http.createServer(async function (req, res) {
     }
 
     // serving static resources
-    NebulaClient.static_res(req, res);
+    static_res(req, res);
 }).listen(process.env.NODE_PORT || 80);

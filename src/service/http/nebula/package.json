@@ -2,6 +2,7 @@
   "name": "nebula-service",
   "version": "0.1.0",
   "description": "nebula web service",
+  "type": "module",
   "repository": {
     "url": "https://github.com/shawncao/nebula.git"
   },
