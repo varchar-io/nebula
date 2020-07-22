@@ -10,6 +10,7 @@ const resolveConfig = {
         "nebula-pb": path.resolve(__dirname, '../../gen/nebula/nodejs/nebula_pb.js'),
         "nebula-web-rpc": path.resolve(__dirname, '../../gen/nebula/nebula_grpc_web_pb.js'),
         "nebula-node-rpc": path.resolve(__dirname, '../../gen/nebula/nodejs/nebula_grpc_pb.js'),
+        "jquery": path.resolve(__dirname, './s/jquery.min.js'),
     },
     extensions: [
         ".ts",
@@ -31,7 +32,7 @@ const webConfig = {
     output: {
         filename: './[name]/main.js',
         path: path.resolve(__dirname, 'dist'),
-        library: 'NebulaClient',
+        library: 'neb',
         libraryExport: 'default'
     },
     resolve: resolveConfig

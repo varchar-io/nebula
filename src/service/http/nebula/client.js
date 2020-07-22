@@ -16,11 +16,19 @@
 
 import * as d3 from './c/d3.v5.min.js';
 import * as flamegraph from './c/d3-flamegraph.min.js';
+import {
+    Constraints
+} from './c/constraints.min.js';
+import * as fp from './f/flatpickr.js';
+import {
+    time
+} from './_/time.min.js';
+
+import {
+    bytes2utf8
+} from './_/serde.min.js';
 
 const {
-    EchoRequest,
-    TableStateRequest,
-    ListTables,
     // define query request and response
     Operation,
     Predicate,
@@ -31,27 +39,10 @@ const {
     Order,
     OrderType,
     DisplayType,
-    CustomType,
-    CustomColumn,
-    QueryRequest,
-    Statistics,
-    DataType,
-    QueryResponse,
+    CustomType
 } = require('nebula-pb');
 
-const {
-    EchoClient,
-    V1Client
-} = require('nebula-web-rpc');
-
-
-
 export default {
-    EchoClient,
-    V1Client,
-    EchoRequest,
-    TableStateRequest,
-    ListTables,
     Operation,
     Predicate,
     PredicateAnd,
@@ -62,11 +53,10 @@ export default {
     OrderType,
     DisplayType,
     CustomType,
-    CustomColumn,
-    QueryRequest,
-    Statistics,
-    DataType,
-    QueryResponse,
     d3,
-    flamegraph
+    flamegraph,
+    Constraints,
+    fp,
+    time,
+    bytes2utf8
 };

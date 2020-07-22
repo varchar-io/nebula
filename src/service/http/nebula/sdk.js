@@ -44,7 +44,7 @@
 */
 
 import {
-    NebulaClient
+    neb
 } from "/dist/web/main.js";
 
 import {
@@ -67,10 +67,10 @@ const isFunction = (obj) => isType(obj, 'function');
 
 const log = console.log;
 
-const CT = NebulaClient.CustomType;
-const DT = NebulaClient.DisplayType;
-const OT = NebulaClient.OrderType;
-const RU = NebulaClient.Rollup;
+const CT = neb.CustomType;
+const DT = neb.DisplayType;
+const OT = neb.OrderType;
+const RU = neb.Rollup;
 export class Nebula {
     constructor() {
         // types supported by nebula JS SDK

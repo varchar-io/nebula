@@ -15,12 +15,12 @@
  */
 
 import {
-    NebulaClient
+    neb
 } from "/dist/web/main.js";
 
 // define jquery style selector 
-const d3 = NebulaClient.d3;
-const ds = NebulaClient.d3.select;
+const d3 = neb.d3;
+const ds = neb.d3.select;
 const color = (i) => d3.schemeCategory10[i % 10];
 const symbols = ["circle", "diamond", "square", "triangle-up", "triangle-down", "cross"];
 const symbol = (i) => d3.symbol().size(81).type(symbols[i % symbols.length]);
@@ -274,7 +274,7 @@ export class Charts {
                     const blob = JSON.parse(data[i][key]);
 
                     // define flame graph routine
-                    const flame = NebulaClient.flamegraph()
+                    const flame = neb.flamegraph()
                         .width(width)
                         .sort(true)
                         .minFrameSize(1);

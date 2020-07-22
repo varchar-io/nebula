@@ -15,7 +15,7 @@
  */
 
 import {
-    NebulaClient
+    neb
 } from "/dist/web/main.js";
 
 import {
@@ -40,20 +40,12 @@ import {
     Charts
 } from "/c/charts.min.js";
 
-import {
-    Constraints
-} from "/c/constraints.min.js";
-
-import {
-    time
-} from '/_/time.min.js';
-
-import {
-    bytes2utf8
-} from '/_/serde.min.js';
-
 // define jquery style selector 
-const ds = NebulaClient.d3.select;
+const time = neb.time;
+const bytes2utf8 = neb.bytes2utf8;
+
+// enable selectize and flatpicker
+const ds = neb.d3.select;
 const $$ = (e) => $(e).val();
 
 // global value represents current data set
@@ -62,10 +54,6 @@ let json = [];
 // two calendar instances
 let fpcs, fpce;
 
-// TODO(cao): this has assumption web server living together with nebula server/envoy
-// before we replace "{SERVER-ADDRESS}" in build phase, not good for docker image repo
-const serviceAddr = `${window.location.protocol}//${window.location.hostname}:8080`;
-const v1Client = new NebulaClient.V1Client(serviceAddr);
 const timeCol = "_time_";
 const charts = new Charts();
 const nebula = new Nebula();
@@ -77,7 +65,8 @@ const msg = (text) => ds('#qr').text(text);
 // 2: v2 - web client will query nebula server through web API. 
 // In mode 2, we will need only single place for OAuth which is web (80).
 // and potentially close 8080 to public.
-let archMode = 2;
+// We are deleting mode one support for simplicity - rarely seeing use cases for mode 1
+// let archMode = 2;
 
 // filters
 let filters;
@@ -94,7 +83,7 @@ const onTableState = (state, stats, callback) => {
 
     stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${mints}, Max T: ${maxts}]`);
 
-    fpcs = $("#start").flatpickr({
+    fpcs = neb.fp($("#start"), {
         enableTime: true,
         allowInput: true,
         clickOpens: false,
@@ -108,7 +97,7 @@ const onTableState = (state, stats, callback) => {
         fpcs.open();
     });
 
-    fpce = $("#end").flatpickr({
+    fpce = neb.fp($("#end"), {
         enableTime: true,
         allowInput: true,
         clickOpens: false,
@@ -126,7 +115,7 @@ const onTableState = (state, stats, callback) => {
     const dimensions = (state.dl || []).filter((v) => v !== timeCol);
     let metrics = (state.ml || []).filter((v) => v !== timeCol);
     const all = dimensions.concat(metrics);
-    let rollups = Object.keys(NebulaClient.Rollup);
+    let rollups = Object.keys(neb.Rollup);
 
     $('#dwrapper').html("<select id=\"dcolumns\" multiple></select>");
     ds('#dcolumns')
@@ -165,11 +154,11 @@ const onTableState = (state, stats, callback) => {
     ds('#display')
         .html("")
         .selectAll("option")
-        .data(Object.keys(NebulaClient.DisplayType))
+        .data(Object.keys(neb.DisplayType))
         .enter()
         .append('option')
         .text(k => k.toLowerCase())
-        .attr("value", k => NebulaClient.DisplayType[k]);
+        .attr("value", k => neb.DisplayType[k]);
 
     // roll up methods
     ds('#ru')
@@ -179,7 +168,7 @@ const onTableState = (state, stats, callback) => {
         .enter()
         .append('option')
         .text(k => k.toLowerCase())
-        .attr("value", k => NebulaClient.Rollup[k]);
+        .attr("value", k => neb.Rollup[k]);
 
     // when rollup method changed to methods that support dimenions
     // we can refresh metrics colummn
@@ -197,11 +186,11 @@ const onTableState = (state, stats, callback) => {
     ds('#ob')
         .html("")
         .selectAll("option")
-        .data(Object.keys(NebulaClient.OrderType))
+        .data(Object.keys(neb.OrderType))
         .enter()
         .append('option')
         .text(k => k.toLowerCase())
-        .attr("value", k => NebulaClient.OrderType[k]);
+        .attr("value", k => neb.OrderType[k]);
 
     if (callback) {
         callback(all);
@@ -210,39 +199,14 @@ const onTableState = (state, stats, callback) => {
 
 const initTable = (table, callback) => {
     const stats = ds('#stats');
-    if (archMode === 1) {
-        const req = new NebulaClient.TableStateRequest();
-        req.setTable(table);
-
-        // call the service 
-        v1Client.state(req, {}, (err, reply) => {
-
-            if (err !== null) {
-                stats.text("Error code: " + err);
-            } else if (reply == null) {
-                stats.text("Failed to get reply");
-            } else {
-                onTableState({
-                    bc: reply.getBlockcount(),
-                    rc: reply.getRowcount(),
-                    ms: reply.getMemsize(),
-                    mt: reply.getMintime(),
-                    xt: reply.getMaxtime(),
-                    dl: reply.getDimensionList(),
-                    ml: reply.getMetricList()
-                }, stats, callback);
-            }
-        });
-    } else if (archMode === 2) {
-        // table name may have special characters, so encode the table name
-        $.ajax({
-            url: "/?api=state&start=0&end=0&table=" + encodeURIComponent(table)
-        }).fail((err) => {
-            stats.text("Error: " + err);
-        }).done((data) => {
-            onTableState(data, stats, callback);
-        });
-    }
+    // table name may have special characters, so encode the table name
+    $.ajax({
+        url: "/?api=state&start=0&end=0&table=" + encodeURIComponent(table)
+    }).fail((err) => {
+        stats.text("Error: " + err);
+    }).done((data) => {
+        onTableState(data, stats, callback);
+    });
 };
 
 // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019] 
@@ -251,7 +215,7 @@ const initTable = (table, callback) => {
 const checkRequest = (state) => {
     // 1. timeline query
     const display = state.display;
-    if (display == NebulaClient.DisplayType.TIMELINE) {
+    if (display == neb.DisplayType.TIMELINE) {
         const windowSize = state.window;
         // window size == 0: auto
         if (windowSize > 0) {
@@ -264,7 +228,7 @@ const checkRequest = (state) => {
         }
     }
 
-    if (display == NebulaClient.DisplayType.SAMPLES) {
+    if (display == neb.DisplayType.SAMPLES) {
         // TODO(cao) - support * when user doesn't select any dimemsions
         if (state.keys.length == 0) {
             msg(`Please specify dimensions for samples`);
@@ -350,14 +314,14 @@ const restore = () => {
             };
 
             const ops = {};
-            for (var k in NebulaClient.Operation) {
-                ops[NebulaClient.Operation[k]] = om[k];
+            for (var k in neb.Operation) {
+                ops[neb.Operation[k]] = om[k];
             }
 
             // TODO(cao): due to protobuf definition, we can't build nested group.
             // Should update to support it, then we can turn this flag to true
             // create a filter
-            filters = new Constraints(false, "filters", cols, ops, state.filter);
+            filters = new neb.Constraints(false, "filters", cols, ops, state.filter);
 
             // if code is specified, set code content and switch to IDE
             if (state.code && state.code.length > 0) {
@@ -389,86 +353,6 @@ const extractXY = (json, state) => {
     };
 };
 
-const buildRequest = (state) => {
-    // switch between different arch mode
-    if (state.arch) {
-        archMode = parseInt(state.arch);
-    }
-
-    // URL decoding the string and json object parsing
-    const q = new NebulaClient.QueryRequest();
-    q.setTable(state.table);
-    q.setStart(time.seconds(state.start));
-    q.setEnd(time.seconds(state.end));
-
-    // the filter can be much more complex
-    const filter = state.filter;
-    if (filter) {
-        // all rules under this group
-        const rules = filter.r;
-        if (rules && rules.length > 0) {
-            const predicates = [];
-            $.each(rules, (i, r) => {
-                const pred = new NebulaClient.Predicate();
-                if (r.v && r.v.length > 0) {
-                    pred.setColumn(r.c);
-                    pred.setOp(r.o);
-                    pred.setValueList(r.v);
-                    predicates.push(pred);
-                }
-            });
-
-
-            if (predicates.length > 0) {
-                if (filter.l === "AND") {
-                    const f = new NebulaClient.PredicateAnd();
-                    f.setExpressionList(predicates);
-                    q.setFiltera(f);
-                } else if (filter.l === "OR") {
-                    const f = new NebulaClient.PredicateOr();
-                    f.setExpressionList(predicates);
-                    q.setFiltero(f);
-                }
-            }
-        }
-    }
-
-    // set dimension
-    const SAMPLES = NebulaClient.DisplayType.SAMPLES;
-    const display = +state.display;
-    const keys = state.keys;
-    if (display == SAMPLES) {
-        keys.unshift(timeCol);
-    }
-    q.setDimensionList(keys);
-
-
-    // set query type and window
-    q.setDisplay(state.display);
-    q.setWindow(state.window);
-
-    // set metric for non-samples query 
-    // (use implicit type convert != instead of !==)
-    if (display != SAMPLES) {
-        const m = new NebulaClient.Metric();
-        const mcol = state.metrics;
-        m.setColumn(mcol);
-        m.setMethod(state.rollup);
-        q.setMetricList([m]);
-
-        // set order on metric only means we don't order on samples for now
-        const o = new NebulaClient.Order();
-        o.setColumn(mcol);
-        o.setType(state.sort);
-        q.setOrder(o);
-    }
-
-    // set limit
-    q.setTop(state.limit);
-
-    return q;
-};
-
 const onQueryResult = (state, r) => {
     if (r.error) {
         msg(`[query: error=${r.error}, latency=${r.duration} ms]`);
@@ -497,11 +381,11 @@ const onQueryResult = (state, r) => {
         const display = +state.display;
         const keys = extractXY(json, state);
         switch (display) {
-            case NebulaClient.DisplayType.SAMPLES:
-            case NebulaClient.DisplayType.TABLE:
+            case neb.DisplayType.SAMPLES:
+            case neb.DisplayType.TABLE:
                 charts.displayTable(json);
                 break;
-            case NebulaClient.DisplayType.TIMELINE:
+            case neb.DisplayType.TIMELINE:
                 const WINDOW_KEY = '_window_';
                 const beginMs = time.seconds(state.start) * 1000;
                 let data = {
@@ -521,16 +405,16 @@ const onQueryResult = (state, r) => {
 
                 charts.displayTimeline(data, WINDOW_KEY, keys.m, beginMs);
                 break;
-            case NebulaClient.DisplayType.BAR:
+            case neb.DisplayType.BAR:
                 charts.displayBar(json, keys.d, keys.m);
                 break;
-            case NebulaClient.DisplayType.PIE:
+            case neb.DisplayType.PIE:
                 charts.displayPie(json, keys.d, keys.m);
                 break;
-            case NebulaClient.DisplayType.LINE:
+            case neb.DisplayType.LINE:
                 charts.displayLine(json, keys.d, keys.m);
                 break;
-            case NebulaClient.DisplayType.FLAME:
+            case neb.DisplayType.FLAME:
                 charts.displayFlame(json, keys.d, keys.m);
         }
     };
@@ -556,35 +440,13 @@ const execute = () => {
 
     // display message indicating processing
     msg("soaring in nebula to land...");
-
-    const q = buildRequest(state);
-
-    if (archMode === 1) {
-        v1Client.query(q, {}, (err, reply) => {
-            if (reply == null || err) {
-                msg(`Failed to get reply: ${err}`);
-                return;
-            }
-
-            const stats = reply.getStats();
-            const r = {
-                error: stats.getError(),
-                duration: stats.getQuerytimems(),
-                data: reply.getData()
-            };
-
-            // display data
-            onQueryResult(state, r);
-        });
-    } else if (archMode === 2) {
-        $.ajax({
-            url: "/?api=query&start=0&end=0&query=" + queryStr
-        }).fail((err) => {
-            msg(`Error: ${err}`);
-        }).done((data) => {
-            onQueryResult(state, data);
-        });
-    }
+    $.ajax({
+        url: "/?api=query&start=0&end=0&query=" + queryStr
+    }).fail((err) => {
+        msg(`Error: ${err}`);
+    }).done((data) => {
+        onQueryResult(state, data);
+    });
 };
 
 ds('#soar').on("click", build);
@@ -671,26 +533,13 @@ const onTableList = (tables) => {
 };
 $(() => {
     const stats = ds('#stats');
-    if (archMode === 1) {
-        const listReq = new NebulaClient.ListTables();
-        listReq.setLimit(100);
-        v1Client.tables(listReq, {}, (err, reply) => {
-            if (err !== null) {
-                stats.text(`RPC Error: ${err}`);
-                return;
-            }
-
-            onTableList(reply.getTableList());
-        });
-    } else if (archMode === 2) {
-        $.ajax({
-            url: "/?api=tables&start=0&end=0"
-        }).fail((err) => {
-            stats.text("Error: " + err);
-        }).done((data) => {
-            onTableList(data);
-        });
-    }
+    $.ajax({
+        url: "/?api=tables&start=0&end=0"
+    }).fail((err) => {
+        stats.text("Error: " + err);
+    }).done((data) => {
+        onTableList(data);
+    });
 
     // if user change the table selection, initialize it again
     ds('#tables').on('change', () => {
