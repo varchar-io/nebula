@@ -204,11 +204,11 @@ public:
 
   // print current tree in JSON format
   // please refer this http://martinspier.io/d3-flame-graph/stacks.json format for visualization readyness
-  std::string jsonfy() const noexcept {
+  std::string jsonfy(size_t threshold = 1) const noexcept {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> json(buffer);
 
-    jsonfy(*root_, json);
+    jsonfy(*root_, json, threshold);
     return buffer.GetString();
   }
 
@@ -231,7 +231,12 @@ public:
 
 private:
   // jsonfy current object
-  void jsonfy(FT& obj, rapidjson::Writer<rapidjson::StringBuffer>& json) const noexcept {
+  void jsonfy(FT& obj, rapidjson::Writer<rapidjson::StringBuffer>& json, size_t threshold) const noexcept {
+    // threshold indicates minial value to be serialized
+    if (obj.count < threshold) {
+      return;
+    }
+
     // write root
     json.StartObject();
 
@@ -254,7 +259,7 @@ private:
       json.Key("children");
       json.StartArray();
       for (auto& item : obj.children) {
-        jsonfy(*item, json);
+        jsonfy(*item, json, threshold);
       }
       json.EndArray();
     }

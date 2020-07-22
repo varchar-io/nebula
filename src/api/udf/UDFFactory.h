@@ -77,7 +77,7 @@ public:
     }
 
     if constexpr (UKIND == UDFKind::TPM) {
-      return std::make_unique<Tpm<IK>>(name, expr->asEval());
+      return std::make_unique<Tpm<IK>>(name, expr->asEval(), std::forward<Args>(args)...);
     }
 
     if constexpr (UKIND == UDFKind::LIKE) {

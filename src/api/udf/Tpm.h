@@ -46,7 +46,9 @@ public:
     static constexpr auto SIZE_SIZE = sizeof(size_t);
 
   public:
-    explicit Aggregator() : stack_{ std::make_unique<STT>() } {}
+    explicit Aggregator(size_t threshold)
+      : stack_{ std::make_unique<STT>() },
+        threshold_{ threshold } {}
     virtual ~Aggregator() = default;
 
     // aggregate an value in
@@ -66,7 +68,8 @@ public:
 
     inline virtual NativeType finalize() override {
       // get the final result - JSON blob
-      json_ = stack_->jsonfy();
+      // apply threshold in finalized result if present
+      json_ = stack_->jsonfy(threshold_);
       return json_;
     }
 
@@ -97,15 +100,16 @@ public:
   private:
     // TODO(cao): we need a way to figure out sub type of array
     std::unique_ptr<STT> stack_;
+    size_t threshold_;
     std::string json_;
   };
 
 public:
-  Tpm(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
+  Tpm(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, size_t threshold = 1)
     : BaseType(name,
                std::move(expr),
-               []() -> std::shared_ptr<Aggregator> {
-                 return std::make_shared<Aggregator>();
+               [threshold]() -> std::shared_ptr<Aggregator> {
+                 return std::make_shared<Aggregator>(threshold);
                }) {}
 
   virtual ~Tpm() = default;

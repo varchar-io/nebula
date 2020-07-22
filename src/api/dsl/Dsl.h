@@ -100,8 +100,8 @@ static UDFExpression<nebula::surface::eval::UDFType::PCT, double> pct(const T& e
 }
 
 template <typename T>
-static UDFExpression<nebula::surface::eval::UDFType::TPM> tpm(const T& expr) {
-  return UDFExpression<nebula::surface::eval::UDFType::TPM>(std::shared_ptr<Expression>(new T(expr)));
+static UDFExpression<nebula::surface::eval::UDFType::TPM, size_t> tpm(const T& expr, size_t threshold = 1) {
+  return UDFExpression<nebula::surface::eval::UDFType::TPM, size_t>(std::shared_ptr<Expression>(new T(expr)), threshold);
 }
 
 template <typename T>

@@ -24,6 +24,8 @@
 #include "service/node/RemoteNodeConnector.h"
 
 DEFINE_uint32(AUTO_WINDOW_SIZE, 100, "maximum data point when selecting auto window");
+// TODO(cao): read setting from API call rather than env setting - filter most of value=1 frames
+DEFINE_uint64(TREE_PATH_MIN_SIZE, 2, "min size of tree merge path to return - should be passed from client.");
 
 /**
  * Define some basic sharable proerpties for nebula service
@@ -339,7 +341,7 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
     BUILD_METRIC_CASE(P99, pct, 99)
     BUILD_METRIC_CASE(P99_9, pct, 99.9)
     BUILD_METRIC_CASE(P99_99, pct, 99.99)
-    BUILD_METRIC_CASE(TREEMERGE, tpm)
+    BUILD_METRIC_CASE(TREEMERGE, tpm, FLAGS_TREE_PATH_MIN_SIZE)
   default:
     throw NException("Rollup method not supported");
   }
