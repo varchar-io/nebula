@@ -36,9 +36,6 @@ import {
 import {
     Handler
 } from './_/handler.js';
-import {
-    bytes2utf8
-} from './_/serde.min.js';
 
 // nebula distribute library package
 // add require in ES6 module type - remove for commonjs
@@ -48,31 +45,18 @@ import {
 const require = createRequire(
     import.meta.url);
 const {
-    EchoClient,
-    V1Client,
     EchoRequest,
-    EchoResponse,
     ListTables,
     TableStateRequest,
-    TableStateResponse,
-    Operation,
     Predicate,
     PredicateAnd,
     PredicateOr,
-    Rollup,
     Metric,
     Order,
-    OrderType,
     DisplayType,
-    CustomType,
     CustomColumn,
     QueryRequest,
-    Statistics,
-    DataType,
-    QueryResponse,
-    LoadError,
     LoadRequest,
-    LoadResponse,
     static_res,
     qc,
     grpc
@@ -83,6 +67,14 @@ const serviceAddr = process.env.NS_ADDR || "dev-shawncao:9190";
 const client = qc(serviceAddr);
 const timeCol = "_time_";
 const error = Handler.error;
+const log = console.log;
+const max_json_request = 4 * 1024 * 1024;
+
+// note: http module header are formed in lower cases
+// (headers are case insensitive per RFC2616)
+// a lot other places using captized 'Content-Type' such as browser
+const contentTypeKey = "content-type";
+const jsonContentType = "application/json";
 
 // TODO(cao): these should go more flexible way to figure user info after auth
 // Right now, it is only one example way.
@@ -145,9 +137,9 @@ const getTables = (query, handler, client) => {
     });
 };
 
-const getTableState = (query, handler, client) => {
+const getTableState = (q, handler, client) => {
     const req = new TableStateRequest();
-    req.setTable(query.table);
+    req.setTable(q.table);
     client.state(req, {}, (err, reply) => {
         if (err !== null) {
             return handler.onError(err);
@@ -173,9 +165,8 @@ const getTableState = (query, handler, client) => {
  * This supports invoking nebula service behind web server rather than from web client directly.
  * Please refer two different modes on how to architecture web component in Nebula.
  */
-const webq = (query, handler, client) => {
-    // the query object schema is defined in state.js
-    const state = JSON.parse(query.query);
+const webq = (q, handler, client) => {
+    const state = JSON.parse(q.query);
     const req = new QueryRequest();
     req.setTable(state.table);
     req.setStart(time.seconds(state.start));
@@ -302,7 +293,7 @@ const shutdown = () => {
 
     // do the query
     client.nuclear(req, {}, (err, reply) => {
-        console.log(`ERR=${err}, REP=${reply.getMessage()}`);
+        log(`ERR=${err}, REP=${reply.getMessage()}`);
     });
 
     return JSON.stringify({
@@ -379,12 +370,58 @@ const compression = (req) => {
     };
 };
 
+const readPost = (req) => {
+    // try to parse values into data
+    return new Promise((resolve, reject) => {
+        const empty = "{}";
+        const type = req.headers[contentTypeKey];
+        if (type != jsonContentType) {
+            log(`Only JSON data supported in post: ${type}`);
+            reject(empty);
+            return;
+        }
+
+        let data = "";
+        let size = 0;
+
+        req.on('data', (b) => {
+                // size check - max request 4MB
+                size += b.length;
+                if (size > max_json_request) {
+                    reject(empty);
+                    return;
+                }
+
+                data += b;
+            }).on("error", (e) => {
+                log(`Error reading post JSON: ${e}`);
+                reject(empty);
+            })
+            .on('end', () => {
+                // extend the object into current q
+                if (data.length > 0) {
+                    log(`Resolve a valid data: ${data}`);
+                    resolve(data);
+                } else {
+                    reject(empty);
+                }
+            });
+    });
+};
+
 //create a server object listening at 80:
 createServer(async function (req, res) {
     const q = parse(req.url, true).query;
     if (q.api) {
+        // support post API in JSON as well if query object is not found in URL.
+        // if URL specified query object, then POST data will be ignored
+        // because it is an application/json data, so query is already json object
+        if (!q.query && req.method == "POST") {
+            q.query = await readPost(req);
+        }
+
         const heads = {
-            'Content-Type': 'application/json'
+            contentTypeKey: jsonContentType
         };
 
         const c = compression(req);

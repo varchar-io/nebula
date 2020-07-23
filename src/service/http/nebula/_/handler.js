@@ -29,6 +29,7 @@ import {
     Readable
 } from 'stream';
 const compressBar = 8 * 1024;
+const log = console.log;
 
 export class Handler {
     // static error message - do not use lambda since some runtime does not support it
@@ -75,7 +76,7 @@ export class Handler {
                     const buf = Buffer.concat(bufs);
                     this.heads["Content-Encoding"] = this.encoding;
                     this.heads["Content-Length"] = buf.length;
-                    console.log(`Data compressed: before=${data.length}, after=${buf.length}`);
+                    log(`Data compressed: before=${data.length}, after=${buf.length}`);
                     this.flush(buf);
                 });
             } else {

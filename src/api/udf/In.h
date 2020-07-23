@@ -45,6 +45,7 @@ public:
         name,
         expr->asEval(),
         // logic for "in []"
+        // TODO(cao): when the list is huge (>64?), use hash set to speed up
         [this](const InputType& source, bool& valid) -> bool {
           if (valid) {
             return std::any_of(values_.cbegin(), values_.cend(), [&source](const ValueType& v) {
