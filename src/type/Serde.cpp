@@ -202,7 +202,11 @@ std::shared_ptr<Node> Parser::parse() {
 
     // close bracket token: push a node and close a node
     if (token->type == TokenType::CLOSE_BRACKET) {
-      nodes.push(makeNode(tokens));
+      // it is possible we're closing at the end while previous nodes are all made
+      // such as "<list:array<int>>", the last closing bracket will close 0 tokens
+      if (!tokens.empty()) {
+        nodes.push(makeNode(tokens));
+      }
       nodes.push(std::make_shared<Node>(*token, ">"));
       closeNode(nodes);
       continue;

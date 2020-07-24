@@ -217,6 +217,19 @@ TEST(TypeTest, TestDeser) {
   EXPECT_EQ(map->name(), "map");
 }
 
+TEST(TypeTest, TestDeserEndCompound) {
+  auto schema = "ROW<list:array<bigint>>";
+  auto type = TypeSerializer::from(schema);
+  EXPECT_EQ(type->size(), 1);
+
+  auto f1 = type->childType(0);
+  EXPECT_EQ(f1->name(), "list");
+  EXPECT_EQ(f1->k(), nebula::type::Kind::ARRAY);
+
+  auto item = type->childAt<ListType::PType>(0).value()->childType(0);
+  EXPECT_EQ(item->k(), nebula::type::Kind::BIGINT);
+}
+
 TEST(TypeTest, TestSerdeRoundTrip) {
   // test deserialization
   {

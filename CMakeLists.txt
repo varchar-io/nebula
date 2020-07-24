@@ -67,8 +67,10 @@ else()
     endif()
 
     # by default - do not stripe symbols in release, only when specified to reduce binary size
-    if(SSYMB)
+    if(SSYMB STREQUAL "1")
       set(SSYMB "-s")
+    else()
+    set(SSYMB "")
     endif()
 
     # build flag -DGPROF

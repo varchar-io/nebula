@@ -420,8 +420,9 @@ createServer(async function (req, res) {
             q.query = await readPost(req);
         }
 
+        // pitfall: use brackets, otherwise it will become literal 'contentTypeKey'
         const heads = {
-            contentTypeKey: jsonContentType
+            [contentTypeKey]: jsonContentType
         };
 
         const c = compression(req);
