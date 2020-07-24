@@ -16,9 +16,8 @@
 
 #pragma once
 
-#include <unordered_set>
+#include <unordered_map>
 
-#include "common/Hash.h"
 #include "meta/Table.h"
 #include "type/Serde.h"
 #include "type/Type.h"
@@ -82,7 +81,7 @@ struct KafkaSerde {
 
   // column map from column name to field ID
   // which should be defined by thrift schema
-  std::unordered_map<std::string, uint32_t> cmap;
+  nebula::common::unordered_map<std::string, uint32_t> cmap;
 };
 
 struct TableSpec {
@@ -115,6 +114,7 @@ struct TableSpec {
   // bucket info
   BucketInfo bucketInfo;
   // settings spec just get list of key-values
+  // TODO(cao): use nebula::common::unordered_map if it supports msgpack serde
   std::unordered_map<std::string, std::string> settings;
 
   TableSpec(std::string n, size_t mm, size_t mh, std::string s,
@@ -180,7 +180,7 @@ public:
   }
 };
 
-using TableSpecSet = std::unordered_set<TableSpecPtr, TableSpecHash, TableSpecEqual>;
+using TableSpecSet = nebula::common::unordered_set<TableSpecPtr, TableSpecHash, TableSpecEqual>;
 
 } // namespace meta
 } // namespace nebula

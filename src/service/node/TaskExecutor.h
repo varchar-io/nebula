@@ -17,8 +17,8 @@
 
 #include <folly/ProducerConsumerQueue.h>
 #include <folly/executors/ThreadPoolExecutor.h>
-#include <unordered_set>
 
+#include "common/Hash.h"
 #include "common/Task.h"
 
 /**
@@ -87,7 +87,7 @@ private:
   // use folly::ProducerConsumerQueue<folly::fbstring> queue{size}; for processing
   // use std::unordered_map<signature, state> for query (not cleared up)
   folly::ProducerConsumerQueue<nebula::common::Task> queue_;
-  std::unordered_map<std::string, nebula::common::TaskState> state_;
+  nebula::common::unordered_map<std::string, nebula::common::TaskState> state_;
   std::mutex stateLock_;
 };
 

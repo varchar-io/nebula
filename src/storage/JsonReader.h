@@ -20,10 +20,9 @@
 #include <iostream>
 #include <rapidjson/document.h>
 #include <string>
-#include <unordered_map>
-#include "common/Conv.h"
 
 #include "RowParser.h"
+#include "common/Conv.h"
 #include "common/Errors.h"
 #include "memory/FlatRow.h"
 #include "meta/Table.h"
@@ -158,7 +157,7 @@ private:
   bool hasTime_;
 
   // column writer lambda
-  std::unordered_map<std::string, fop> func_;
+  nebula::common::unordered_map<std::string, fop> func_;
 };
 
 class JsonReader : public nebula::surface::RowCursor {

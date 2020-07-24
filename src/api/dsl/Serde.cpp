@@ -236,14 +236,14 @@ std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::sh
   }
 
   case UDFType::IN: {
-#define TYPE_IN_EXPR(T, F)                                                  \
-  if (valueType == TypeDetect<T>::tid()) {                                  \
-    std::vector<T> values;                                                  \
-    values.reserve(size);                                                   \
-    for (rapidjson::SizeType i = 0; i < size; ++i) {                        \
-      values.push_back(v[i].F());                                           \
-    }                                                                       \
-    return as(alias, std::make_shared<InExpression<T>>(inner, values, in)); \
+#define TYPE_IN_EXPR(T, F)                                                             \
+  if (valueType == TypeDetect<T>::tid()) {                                             \
+    std::vector<T> values;                                                             \
+    values.reserve(size);                                                              \
+    for (rapidjson::SizeType i = 0; i < size; ++i) {                                   \
+      values.push_back(v[i].F());                                                      \
+    }                                                                                  \
+    return as(alias, std::make_shared<InExpression<T>>(inner, std::move(values), in)); \
   }
 
     rapidjson::Document cd;
@@ -273,7 +273,7 @@ std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::sh
         values.push_back(folly::to<int64_t>(v[i].GetString()));
       }
 
-      return as(alias, std::make_shared<InExpression<int64_t>>(inner, values, in));
+      return as(alias, std::make_shared<InExpression<int64_t>>(inner, std::move(values), in));
     }
 
     throw NException(fmt::format("Unrecognized value type: {0}", valueType));

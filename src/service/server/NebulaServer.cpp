@@ -26,7 +26,6 @@
 #include <rapidjson/document.h>
 #include <string>
 #include <thread>
-#include <unordered_map>
 
 #include "NodeSync.h"
 #include "common/Chars.h"
@@ -178,7 +177,7 @@ QueryContext buildQueryContext(ServerContext* ctx) {
   // fetch user info keys, refer userInfo definition in node.js serving http traffic
   // auth, authorization, user, groups
   std::string user{ "unauth" };
-  std::unordered_set<std::string> groups;
+  nebula::common::unordered_set<std::string> groups;
   auto itr = metadata.find("nebula-auth");
   if (itr != metadata.end() && itr->second == "1") {
     auto u = metadata.find("nebula-user");

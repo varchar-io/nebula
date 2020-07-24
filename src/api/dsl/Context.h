@@ -22,6 +22,7 @@
 
 #include "api/udf/Not.h"
 #include "common/Cursor.h"
+#include "common/Hash.h"
 #include "execution/ExecutionPlan.h"
 #include "meta/ClusterInfo.h"
 #include "meta/MetaService.h"
@@ -52,7 +53,7 @@ enum class Error {
 
 class QueryContext {
 public:
-  QueryContext(const std::string& user, std::unordered_set<std::string> groups)
+  QueryContext(const std::string& user, nebula::common::unordered_set<std::string> groups)
     : user_{ user }, groups_{ std::move(groups) }, error_{ Error::NONE } {}
 
   inline bool isAuth() const {
@@ -64,7 +65,7 @@ public:
     return user_;
   }
 
-  inline const std::unordered_set<std::string>& groups() const {
+  inline const nebula::common::unordered_set<std::string>& groups() const {
     return groups_;
   }
 
@@ -84,7 +85,7 @@ public:
 private:
   // user context to understand who is making the query
   std::string user_;
-  std::unordered_set<std::string> groups_;
+  nebula::common::unordered_set<std::string> groups_;
   Error error_;
 };
 } // namespace dsl

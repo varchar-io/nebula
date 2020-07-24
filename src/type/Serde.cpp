@@ -15,16 +15,19 @@
  */
 
 #include "Serde.h"
+
 #include <glog/logging.h>
 #include <stack>
+
 #include "common/Errors.h"
+#include "common/Hash.h"
 
 namespace nebula {
 namespace type {
 
 TokenType Token::lookup(const std::string& token) {
   // define all supported token keys
-  static const std::unordered_map<std::string, TokenType> map = {
+  static const nebula::common::unordered_map<std::string, TokenType> map = {
     { ",", TokenType::COMMA },
     { ":", TokenType::COLON },
     { "<", TokenType::OPEN_BRACKET },

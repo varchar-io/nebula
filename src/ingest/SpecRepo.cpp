@@ -36,6 +36,7 @@ namespace nebula {
 namespace ingest {
 
 using nebula::common::Evidence;
+using nebula::common::unordered_map;
 using nebula::meta::ClusterInfo;
 using nebula::meta::DataSource;
 using nebula::meta::NNode;
@@ -251,7 +252,7 @@ void SpecRepo::process(
 
 void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   // next version of all specs
-  std::unordered_map<std::string, SpecPtr> next;
+  unordered_map<std::string, SpecPtr> next;
   next.reserve(specs.size());
 
   // go through the new spec list and update the existing ones

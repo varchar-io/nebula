@@ -537,7 +537,7 @@ TEST(ExpressionsTest, TestSerde) {
   // expression with UDF like
   {
     std::vector<std::string> values{ "str%", "string" };
-    auto ci = nebula::api::dsl::in(nebula::api::dsl::col("event"), values).as("ei");
+    auto ci = nebula::api::dsl::in(nebula::api::dsl::col("event"), std::move(values)).as("ei");
     auto i1ser = nebula::api::dsl::Serde::serialize(ci);
     auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
 

@@ -22,7 +22,6 @@
 #include <iostream>
 #include <parquet/api/reader.h>
 #include <string>
-#include <unordered_map>
 
 #include "common/Errors.h"
 #include "memory/FlatRow.h"
@@ -172,7 +171,7 @@ private:
   nebula::type::Schema schema_;
 
   std::shared_ptr<parquet::FileMetaData> meta_;
-  std::unordered_map<std::string, ColumnInfo> columns_;
+  nebula::common::unordered_map<std::string, ColumnInfo> columns_;
 
   // current group reader and total rows in this group
   std::shared_ptr<parquet::RowGroupReader> groupReader_;

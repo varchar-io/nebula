@@ -20,8 +20,6 @@
 #include <glog/logging.h>
 #include <mutex>
 #include <numeric>
-#include <unordered_map>
-#include <unordered_set>
 
 #include "Errors.h"
 #include "Finally.h"
@@ -76,7 +74,7 @@ public:
     return resource_->id();
   }
 
-  inline const std::unordered_set<std::string>& keys() const {
+  inline const unordered_set<std::string>& keys() const {
     return keys_;
   }
 
@@ -108,7 +106,7 @@ private:
   std::array<size_t, H> placements_;
 
   // an hash set to contain all data attached to this node
-  std::unordered_set<std::string> keys_;
+  unordered_set<std::string> keys_;
 };
 
 // reverse index from placement to RingNode
@@ -341,10 +339,10 @@ public:
   }
 
   // report coverage for each node
-  inline std::unordered_map<std::string, double> coverage() const {
+  inline unordered_map<std::string, double> coverage() const {
     // go through every gap and attribute the space to each node
-    std::unordered_map<std::string, double> result;
-    auto accumulator = [max = RING_MAX](std::unordered_map<std::string, double>& map, std::string& node, std::pair<size_t, size_t>& range) {
+    unordered_map<std::string, double> result;
+    auto accumulator = [max = RING_MAX](unordered_map<std::string, double>& map, std::string& node, std::pair<size_t, size_t>& range) {
       auto distance = range.first < range.second ?
                         (range.second - range.first) :
                         (max - range.first + range.second);
@@ -444,7 +442,7 @@ private:
   // data operation mutex, such as moving key around, add keys, remove keys, etc.
   std::mutex mdata_;
   // this is repository of all nodes
-  std::unordered_set<std::unique_ptr<TRingNode>> nodes_;
+  unordered_set<std::unique_ptr<TRingNode>> nodes_;
   // all placements in the ring, it maintains a sorted metadata for all placements
   std::vector<TPlacement> placements_;
 

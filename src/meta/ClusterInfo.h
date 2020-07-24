@@ -17,10 +17,10 @@
 #pragma once
 
 #include <mutex>
-#include <unordered_set>
 
 #include "NNode.h"
 #include "TableSpec.h"
+#include "common/Hash.h"
 
 /**
  * We will sync etcd configs for cluster info into this memory object
@@ -29,7 +29,7 @@
 namespace nebula {
 namespace meta {
 
-using NNodeSet = std::unordered_set<NNode, NodeHash, NodeEqual>;
+using NNodeSet = nebula::common::unordered_set<NNode, NodeHash, NodeEqual>;
 
 // server options mapping in cluster.yml for server
 struct ServerOptions {
@@ -76,8 +76,9 @@ public:
   inline void mark(const std::string& node, NState state = NState::BAD) {
     for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
       if (node == itr->toString()) {
-        auto item = nodes_.extract(itr);
-        item.value().state = state;
+        // same as std::unordered_set.extract
+        itr->state = state;
+        nodes_.erase(itr);
         break;
       }
     }

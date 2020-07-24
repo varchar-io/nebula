@@ -402,7 +402,7 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
 #define BUILD_IN_CLAUSE(KIND, UDF)                                         \
   case Kind::KIND: {                                                       \
     auto data = vectorize<typename TypeTraits<Kind::KIND>::CppType>(pred); \
-    auto exp = UDF(columnExpression, data);                                \
+    auto exp = UDF(columnExpression, std::move(data));                     \
     CHAIN_AND_RET                                                          \
     break;                                                                 \
   }
@@ -418,7 +418,7 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     BUILD_IN_CLAUSE(DOUBLE, func)                                \
   case Kind::VARCHAR: {                                          \
     auto data = vectorize<std::string>(pred);                    \
-    auto exp = func(columnExpression, data);                     \
+    auto exp = func(columnExpression, std::move(data));          \
     CHAIN_AND_RET                                                \
     break;                                                       \
   }                                                              \

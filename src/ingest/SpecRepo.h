@@ -16,9 +16,8 @@
 
 #pragma once
 
-#include <unordered_map>
-
 #include "IngestSpec.h"
+#include "common/Hash.h"
 #include "meta/ClusterInfo.h"
 #include "meta/TableSpec.h"
 
@@ -69,7 +68,7 @@ private:
   void update(const std::vector<SpecPtr>&) noexcept;
 
 private:
-  std::unordered_map<std::string, SpecPtr> specs_;
+  nebula::common::unordered_map<std::string, SpecPtr> specs_;
 };
 
 } // namespace ingest

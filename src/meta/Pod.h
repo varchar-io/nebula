@@ -16,10 +16,9 @@
 
 #pragma once
 
-#include <unordered_map>
-#include <unordered_set>
-
 #include "Partition.h"
+
+#include "common/Hash.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
 
@@ -177,7 +176,7 @@ public:
 private:
   KeyList keys_;
   // column name to index mapping for keys
-  std::unordered_map<std::string, size_t> colMap_;
+  nebula::common::unordered_map<std::string, size_t> colMap_;
   // offsets to compute PID
   std::vector<size_t> offsets_;
   // shifts for each key to compute BESS

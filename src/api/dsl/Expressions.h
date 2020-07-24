@@ -23,7 +23,6 @@
 #include <rapidjson/writer.h>
 
 #include "Base.h"
-#include "api/udf/In.h"
 #include "api/udf/UDFFactory.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
@@ -654,19 +653,26 @@ using InBase = BoolUDF<nebula::surface::eval::UDFType::IN>;
 template <typename T>
 class InExpression : public InBase {
 public:
-  InExpression(std::shared_ptr<Expression> left, const std::vector<T>& values, bool in = true)
-    : InBase(left), values_{ values }, in_{ in } {}
+  InExpression(
+    std::shared_ptr<Expression> left,
+    std::vector<T>&& values,
+    bool in = true)
+    : InBase(left), values_{ std::move(values) }, in_{ in } {}
 
 public:
   ALL_LOGICAL_OPS()
   ALIAS()
 
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
+    // UDF In accepts a shared_ptr<unordered_set> now for faster access and sharing
+    using VT = typename std::conditional<
+      nebula::type::TypeDetect<T>::kind == nebula::type::Kind::VARCHAR, std::string_view, T>::type;
+    auto set = std::make_shared<nebula::common::unordered_set<VT>>(values_.begin(), values_.end());
     return in_ ?
              nebula::api::udf::UDFFactory::createUDF<
-               nebula::surface::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, values_) :
+               nebula::surface::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, set) :
              nebula::api::udf::UDFFactory::createUDF<
-               nebula::surface::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, values_, false);
+               nebula::surface::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, set, false);
   }
 
 #define TYPE_BRANCH(CPP, FUNC)            \

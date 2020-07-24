@@ -34,6 +34,8 @@ namespace nebula {
 namespace api {
 namespace test {
 
+using nebula::common::unordered_set;
+
 TEST(UDFTest, TestNot) {
   nebula::surface::MockRowData row;
   nebula::surface::eval::EvalContext ctx{ false };
@@ -207,7 +209,8 @@ TEST(UDFTest, TestIn) {
     ctx.reset(row);
 
     for (const auto& item : data) {
-      const auto& s = std::get<0>(item);
+      const auto& sv = std::get<0>(item);
+      auto s = std::make_shared<unordered_set<std::string_view>>(sv.begin(), sv.end());
       const auto& t = std::get<1>(item);
       const auto& f = std::get<2>(item);
       const auto& r = std::get<3>(item);
@@ -242,7 +245,9 @@ TEST(UDFTest, TestIn) {
     ctx.reset(row);
 
     for (const auto& item : data) {
-      const auto& s = std::get<0>(item);
+      const auto& sv = std::get<0>(item);
+      auto s = std::make_shared<unordered_set<int32_t>>(sv.begin(), sv.end());
+
       const auto& t = std::get<1>(item);
       const auto& f = std::get<2>(item);
       const auto& r = std::get<3>(item);

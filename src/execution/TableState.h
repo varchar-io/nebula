@@ -15,9 +15,9 @@
  */
 
 #pragma once
-
 #include <unordered_map>
 
+#include "common/Hash.h"
 #include "execution/io/BlockLoader.h"
 
 // Table State is designed to describe table state in memory.
@@ -60,9 +60,9 @@ public:
     return data_.find(spec) != data_.end();
   }
 
-  std::unordered_set<std::pair<std::string, std::string>> expired(
+  nebula::common::unordered_set<std::pair<std::string, std::string>> expired(
     std::function<bool(bool, const std::string&, const std::string&, const nebula::meta::NNode&)> eval) const {
-    std::unordered_set<std::pair<std::string, std::string>> specs;
+    nebula::common::unordered_set<std::pair<std::string, std::string>> specs;
     for (auto& b : data_) {
       auto& sign = b.second->signature();
       // assign existing spec, expire it if not assigned

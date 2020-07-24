@@ -16,9 +16,9 @@
 #pragma once
 
 #include <grpcpp/grpcpp.h>
-#include <unordered_map>
 
 #include "common/Evidence.h"
+#include "common/Hash.h"
 #include "meta/ClusterInfo.h"
 #include "meta/NNode.h"
 
@@ -78,9 +78,9 @@ private:
 
 private:
   ConnectionPool() = default;
-  std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> connections_;
+  nebula::common::unordered_map<std::string, std::shared_ptr<grpc::Channel>> connections_;
   //recording resets times, firs time stamp to reset and total reset count
-  std::unordered_map<std::string, std::pair<size_t, size_t>> resets_;
+  nebula::common::unordered_map<std::string, std::pair<size_t, size_t>> resets_;
 };
 
 } // namespace node

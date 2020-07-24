@@ -26,6 +26,7 @@
 #include "common/BloomFilter.h"
 #include "common/Errors.h"
 #include "common/Evidence.h"
+#include "common/Hash.h"
 #include "common/TaskScheduler.h"
 
 /**

@@ -16,8 +16,6 @@
 
 #include "BlockExecutor.h"
 
-#include <unordered_set>
-
 #include "AggregationMerge.h"
 #include "memory/keyed/HashFlat.h"
 #include "surface/eval/UDF.h"

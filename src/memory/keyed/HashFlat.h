@@ -16,10 +16,9 @@
 
 #pragma once
 
-// #include <folly/container/F14Set.h>
-#include <unordered_set>
-
 #include "FlatBuffer.h"
+
+#include "common/Hash.h"
 #include "surface/DataSurface.h"
 #include "surface/eval/ValueEval.h"
 
@@ -154,8 +153,8 @@ private:
   }
 
 private:
-  std::unordered_set<size_t> keys_;
-  std::unordered_set<size_t> values_;
+  nebula::common::unordered_set<size_t> keys_;
+  nebula::common::unordered_set<size_t> values_;
   // customized operations for each column
   std::vector<ColOps> ops_;
 
@@ -163,7 +162,8 @@ private:
   // build error Undefined symbols for architecture x86_64: "folly::f14::detail::F14LinkCheck
   // https://engineering.fb.com/developer-tools/f14/
   // folly::F14FastSet<Key, Hash, Equal> rowKeys_;
-  std::unordered_set<Key, Hash, Equal> rowKeys_;
+  // set max load factor as 0.6 to reduce rehash - default 0.8
+  nebula::common::unordered_set<Key, Hash, Equal, 60> rowKeys_;
 }; // namespace keyed
 } // namespace keyed
 } // namespace memory

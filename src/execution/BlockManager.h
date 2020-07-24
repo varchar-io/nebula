@@ -18,11 +18,11 @@
 
 #include <forward_list>
 #include <mutex>
-#include <unordered_map>
 
 #include "ExecutionPlan.h"
 #include "TableState.h"
 #include "common/Folly.h"
+#include "common/Hash.h"
 
 /**
  * Define nebula execution runtime.
@@ -46,7 +46,7 @@ struct Equal {
 };
 
 // table name to table state object mapping
-using TableStates = std::unordered_map<std::string, std::shared_ptr<TableState>>;
+using TableStates = nebula::common::unordered_map<std::string, std::shared_ptr<TableState>>;
 using FilteredBlocks = std::vector<nebula::memory::EvaledBlock>;
 
 class BlockManager {
@@ -110,8 +110,8 @@ public:
   }
 
   // get table list of current node
-  std::unordered_set<std::string> tables(const size_t limit) const noexcept {
-    std::unordered_set<std::string> tables;
+  nebula::common::unordered_set<std::string> tables(const size_t limit) const noexcept {
+    nebula::common::unordered_set<std::string> tables;
     for (const auto& node : data_) {
       for (const auto& ts : node.second) {
         tables.emplace(ts.first);
@@ -172,7 +172,7 @@ private:
   size_t blocks_;
 
   // meta data for remote blocks
-  std::unordered_map<nebula::meta::NNode, TableStates, nebula::meta::NodeHash, nebula::meta::NodeEqual> data_;
+  nebula::common::unordered_map<nebula::meta::NNode, TableStates, nebula::meta::NodeHash, nebula::meta::NodeEqual> data_;
 
 private:
   static std::mutex smux;

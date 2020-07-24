@@ -32,49 +32,42 @@ class In : public nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK> {
   using UdfInBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK>;
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
   using EvalBlock = typename UdfInBase::EvalBlock;
-  using ValueType = typename std::conditional<
-    IK == nebula::type::Kind::VARCHAR,
-    std::string,
-    typename nebula::type::TypeTraits<IK>::CppType>::type;
+  using SetType = typename std::shared_ptr<nebula::common::unordered_set<InputType>>;
 
 public:
   In(const std::string& name,
      std::shared_ptr<nebula::api::dsl::Expression> expr,
-     const std::vector<ValueType>& values)
+     SetType values)
     : UdfInBase(
-        name,
-        expr->asEval(),
-        // logic for "in []"
-        // TODO(cao): when the list is huge (>64?), use hash set to speed up
-        [this](const InputType& source, bool& valid) -> bool {
-          if (valid) {
-            return std::any_of(values_.cbegin(), values_.cend(), [&source](const ValueType& v) {
-              return source == v;
-            });
-          }
+      name,
+      expr->asEval(),
+      // logic for "in []"
+      [this](const InputType& source, bool& valid) -> bool {
+        if (valid) {
+          return values_->find(source) != values_->end();
+        }
 
-          return false;
-        },
-        buildEvalBlock(expr, values, true)),
+        return false;
+      },
+      buildEvalBlock(expr, values, true)),
       values_{ values } {}
 
   In(const std::string& name,
      std::shared_ptr<nebula::api::dsl::Expression> expr,
-     const std::vector<ValueType>& values,
+     SetType values,
      bool in)
-    : UdfInBase(name,
-                expr->asEval(),
-                // logic for "not in []"
-                [this](const InputType& source, bool& valid) -> bool {
-                  if (valid) {
-                    return std::none_of(values_.cbegin(), values_.cend(), [&source](const ValueType& v) {
-                      return source == v;
-                    });
-                  }
+    : UdfInBase(
+      name,
+      expr->asEval(),
+      // logic for "not in []"
+      [this](const InputType& source, bool& valid) -> bool {
+        if (valid) {
+          return values_->find(source) == values_->end();
+        }
 
-                  return false;
-                },
-                buildEvalBlock(expr, values, false)),
+        return false;
+      },
+      buildEvalBlock(expr, values, false)),
       values_{ values } {
     N_ENSURE(!in, "this constructor is designed for NOT IN clauase");
   }
@@ -83,7 +76,7 @@ public:
 
 private:
   static EvalBlock buildEvalBlock(std::shared_ptr<nebula::api::dsl::Expression> expr,
-                                  const std::vector<ValueType>& values,
+                                  SetType values,
                                   bool in) {
     // only handle case "column in []"
     auto ve = expr->asEval();
@@ -103,8 +96,8 @@ private:
         if (pv.size() > 0) {
           size_t covered = 0;
           for (auto v : pv) {
-            auto ev = std::any_cast<ValueType>(v);
-            if (std::find(values.begin(), values.end(), ev) != values.end()) {
+            auto ev = std::any_cast<InputType>(v);
+            if (values->find(ev) != values->end()) {
               covered++;
             }
           }
@@ -123,7 +116,7 @@ private:
         // check bloom filter
         // if none of the values has possibility
         bool possible = false;
-        for (const auto& v : values) {
+        for (const auto& v : *values) {
           possible = possible || b.probably(name, v);
           if (possible) {
             break;
@@ -137,11 +130,11 @@ private:
 
 // check histogram  if the value range has no overlap with histogram [min, max]
 // we can skip the block
-#define DISPATCH_CASE(HT)                                                    \
-  const auto [min, max] = std::minmax_element(values.begin(), values.end()); \
-  auto histo = static_cast<const HT&>(b.histogram(name));                    \
-  if (histo.min() > *max || *min > histo.max()) {                            \
-    return N;                                                                \
+#define DISPATCH_CASE(HT)                                                      \
+  const auto [min, max] = std::minmax_element(values->begin(), values->end()); \
+  auto histo = static_cast<const HT&>(b.histogram(name));                      \
+  if (histo.min() > *max || *min > histo.max()) {                              \
+    return N;                                                                  \
   }
 
         // only enable for scalar types
@@ -174,7 +167,7 @@ private:
   }
 
 private:
-  const std::vector<ValueType> values_;
+  SetType values_;
 };
 
 } // namespace udf

@@ -26,6 +26,7 @@ namespace execution {
 namespace io {
 
 using nebula::common::Evidence;
+using nebula::common::unordered_map;
 using nebula::execution::io::BatchBlock;
 using nebula::execution::io::BlockList;
 using nebula::memory::Batch;
@@ -118,7 +119,7 @@ BlockList BlockLoader::loadTestBlock(const BlockSignature& b) {
   // use the specified seed so taht the data can repeat
   auto seed = Evidence::unix_timestamp();
 
-  std::unordered_map<size_t, std::shared_ptr<Batch>> batches;
+  unordered_map<size_t, std::shared_ptr<Batch>> batches;
   // auto batch = std::make_shared<Batch>(*table, bRows);
   auto pod = test_.pod();
 

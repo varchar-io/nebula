@@ -63,7 +63,8 @@ class KafkaProvider {
 public:
   // Kafka consumer handle is expensive resource which is supposed to reuse
   // in the same thread.
-  static std::unique_ptr<RdKafka::KafkaConsumer> getConsumer(const std::string&, const std::unordered_map<std::string, std::string>&);
+  static std::unique_ptr<RdKafka::KafkaConsumer> getConsumer(
+    const std::string&, const std::unordered_map<std::string, std::string>&);
 };
 
 } // namespace kafka

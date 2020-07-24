@@ -66,8 +66,8 @@ public:
     }
   }
 
-  std::unordered_map<std::string_view, std::string_view> next() {
-    std::unordered_map<std::string_view, std::string_view> map;
+  unordered_map<std::string_view, std::string_view> next() {
+    unordered_map<std::string_view, std::string_view> map;
     // we only need to check if first item is out of range
     if (params_.at(0).atEnd()) {
       return map;

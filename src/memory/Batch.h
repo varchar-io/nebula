@@ -17,7 +17,6 @@
 #pragma once
 
 #include <string_view>
-#include <unordered_map>
 
 #include "DataNode.h"
 
@@ -35,7 +34,7 @@
 namespace nebula {
 namespace memory {
 
-using DnMap = std::unordered_map<std::string, PDataNode>;
+using DnMap = nebula::common::unordered_map<std::string, PDataNode>;
 
 class RowAccessor;
 class Batch : public nebula::surface::eval::Block {

@@ -105,7 +105,7 @@ public:
 
 private:
   // preset is a list of preload table before meta service functions
-  std::unordered_map<std::string, std::unique_ptr<nebula::meta::TableRegistry>> tables_;
+  nebula::common::unordered_map<std::string, std::unique_ptr<nebula::meta::TableRegistry>> tables_;
 };
 } // namespace meta
 } // namespace execution

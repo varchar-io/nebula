@@ -33,7 +33,10 @@ void Table::loadTable() {
   // throw NException("Meta service not implemented yet.");
 }
 
-ActionType access(AccessType at, const std::unordered_set<std::string>& groups, const std::vector<AccessRule>& rules) {
+ActionType access(
+  AccessType at,
+  const nebula::common::unordered_set<std::string>& groups,
+  const std::vector<AccessRule>& rules) {
   // TODO(cao): assuming only one rule defined for each access type.
   // Need to support combination logic of multi-rules in the future.
   auto rule = std::find_if(rules.begin(), rules.end(), [at](const AccessRule& r) {
@@ -59,7 +62,10 @@ ActionType access(AccessType at, const std::unordered_set<std::string>& groups, 
   return rule->action;
 }
 
-ActionType Table::checkAccess(AccessType at, const std::unordered_set<std::string>& groups, const std::string& col) const {
+ActionType Table::checkAccess(
+  AccessType at,
+  const nebula::common::unordered_set<std::string>& groups,
+  const std::string& col) const {
   // get access rules to check on
   // table level
   if (col.empty()) {

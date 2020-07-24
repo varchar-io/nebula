@@ -17,9 +17,9 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
 
 #include "Errors.h"
+#include "Hash.h"
 
 /**
  * I do not find a good way to format a dynamic number of named args through fmtlib.
@@ -37,7 +37,7 @@ namespace common {
 // use this util function like:
 // auto text = nebula::common::format("I will go to {p} to do {x}", {{"p", "place"}, {"x", "something"}});
 // supporting max result size as 1024, expect exception if overflowing.
-std::string format(std::string_view fmtstr, std::unordered_map<std::string_view, std::string_view> macros) {
+std::string format(std::string_view fmtstr, unordered_map<std::string_view, std::string_view> macros) {
   // support only MAX TEXT length for final resul, throw exception if not meet the expectation
   static constexpr auto MAX_TEXT = 1024;
   char buffer[MAX_TEXT];

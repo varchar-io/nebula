@@ -47,6 +47,7 @@ struct convert<nebula::meta::ServerOptions> {
 namespace nebula {
 namespace meta {
 
+using nebula::common::unordered_map;
 using nebula::meta::Column;
 using nebula::type::TypeSerializer;
 
@@ -132,7 +133,7 @@ std::unordered_map<std::string, std::string> asSettings(const YAML::Node& node) 
   }
 
   // no rules defined
-  return {};
+  return std::unordered_map<std::string, std::string>();
 }
 
 TimeSpec asTimeSpec(const YAML::Node& node) {
@@ -207,7 +208,7 @@ Column col(const YAML::Node& settings) {
 }
 
 // read column properties definition from table config
-std::unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
+unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
   // iterate over each column
   ColumnProps props;
   for (YAML::const_iterator it = node.begin(); it != node.end(); ++it) {

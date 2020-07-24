@@ -17,9 +17,9 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <unordered_set>
 
 #include "common/Finally.h"
+#include "common/Hash.h"
 #include "surface/DataSurface.h"
 
 #include <quickjs.h>
@@ -290,7 +290,7 @@ private:
   JSContext* ctx_;
 
   // record if a script is already evaluated
-  std::unordered_set<std::string> flags_;
+  nebula::common::unordered_set<std::string> flags_;
 };
 
 } // namespace eval

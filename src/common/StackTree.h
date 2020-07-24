@@ -22,7 +22,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
-#include <unordered_set>
+
+#include "Hash.h"
 
 namespace nebula {
 namespace common {
@@ -62,7 +63,7 @@ struct HashFrame {
   const T data;
   const size_t depth;
   size_t count;
-  std::unordered_set<PTR, Hash, Equal> children;
+  unordered_set<PTR, Hash, Equal> children;
 
   // add child if not found existing
   RAW_PTR addIfNotFound(const T& d, size_t dep) {
@@ -212,18 +213,26 @@ public:
     return buffer.GetString();
   }
 
+  // print as lines of strings in alphabatic order - debug/test purpose only
   friend std::ostream& operator<<(std::ostream& os, const StackTree& tree) noexcept {
     std::queue<FT*> q;
     q.push(tree.root_.get());
+    std::vector<std::string> lines;
     while (!q.empty()) {
       FT* p = q.front();
-      os << "NODE: d=" << p->data << ", c=" << p->count << ", l=" << p->depth << std::endl;
+      lines.push_back(fmt::format("NODE: d={0}, c={1}, l={2}", p->data, p->count, p->depth));
 
       // pop current and push all its children
       q.pop();
       for (auto itr = p->children.begin(); itr != p->children.end(); ++itr) {
         q.push((*itr).get());
       }
+    }
+
+    // sort the result for deterministic result used in test case
+    std::sort(std::begin(lines), std::end(lines));
+    for (auto& l : lines) {
+      os << l << std::endl;
     }
 
     return os;

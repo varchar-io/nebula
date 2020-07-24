@@ -17,7 +17,6 @@
 #pragma once
 
 #include <numeric>
-#include <unordered_set>
 
 #include "common/Cursor.h"
 #include "meta/NNode.h"

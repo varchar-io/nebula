@@ -36,6 +36,8 @@ using apache::thrift::protocol::TCompactProtocol;
 using apache::thrift::protocol::TType;
 using apache::thrift::transport::TMemoryBuffer;
 using nebula::common::Evidence;
+using nebula::common::unordered_map;
+using nebula::common::unordered_set;
 using nebula::memory::FlatRow;
 using nebula::meta::Table;
 
@@ -43,8 +45,8 @@ constexpr auto LEVEL = 1'000;
 
 void readStruct(uint64_t base,
                 TBinaryProtocol& proto,
-                std::unordered_map<uint32_t, std::string>& fields,
-                std::unordered_set<uint32_t>& fieldsWritten,
+                unordered_map<uint32_t, std::string>& fields,
+                unordered_set<uint32_t>& fieldsWritten,
                 FlatRow& row) {
   // field name?
   std::string name;
@@ -139,7 +141,7 @@ bool ThriftRow::parse(void* buf, size_t size, nebula::memory::FlatRow& row) noex
 
   // read all fields
   const auto numFields = fields_.size();
-  std::unordered_set<uint32_t> fieldsWritten;
+  unordered_set<uint32_t> fieldsWritten;
   fieldsWritten.reserve(numFields);
 
   // TODO(cao): ID path hack, every time it enter into a new level, it times 10K to get next field ID

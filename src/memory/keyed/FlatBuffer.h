@@ -149,7 +149,7 @@ public:
   bool rollback();
 
   // instead of rollback, we continue the same row to fill data with remainings
-  size_t resume(const nebula::surface::RowData&, const std::unordered_set<size_t>&, const size_t);
+  size_t resume(const nebula::surface::RowData&, const nebula::common::unordered_set<size_t>&, const size_t);
 
   // random access to a row - may require internal seek
   const nebula::surface::RowData& row(size_t);
@@ -222,7 +222,7 @@ protected:
   std::unique_ptr<Buffer> list_;
 
   // name map for name->index mapping
-  std::unordered_map<std::string, size_t> nm_;
+  nebula::common::unordered_map<std::string, size_t> nm_;
 
   // parsers are function pointers to parse row data of each column
   std::vector<ColumnOperations> cops_;

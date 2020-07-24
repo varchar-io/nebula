@@ -126,13 +126,13 @@ static PrefixExpression starts(const T& expr, const std::string& prefix, bool ca
 }
 
 template <typename T, typename U>
-static InExpression<U> in(const T& expr, const std::vector<U>& values) {
-  return InExpression(std::shared_ptr<Expression>(new T(expr)), values);
+static InExpression<U> in(const T& expr, std::vector<U>&& values) {
+  return InExpression(std::shared_ptr<Expression>(new T(expr)), std::move(values));
 }
 
 template <typename T, typename U>
-static InExpression<U> nin(const T& expr, const std::vector<U>& values) {
-  return InExpression(std::shared_ptr<Expression>(new T(expr)), values, false);
+static InExpression<U> nin(const T& expr, std::vector<U>&& values) {
+  return InExpression(std::shared_ptr<Expression>(new T(expr)), std::move(values), false);
 }
 
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>

@@ -16,9 +16,8 @@
 
 #pragma once
 
-#include <unordered_map>
-
 #include "RowParser.h"
+#include "common/Hash.h"
 #include "meta/Table.h"
 /**
  * A thrift object reader
@@ -30,7 +29,7 @@ namespace storage {
 // Represents a reusable thrift object.
 class ThriftRow final : public RowParser {
 public:
-  ThriftRow(const std::unordered_map<std::string, uint32_t>& cmap)
+  ThriftRow(const nebula::common::unordered_map<std::string, uint32_t>& cmap)
     : hasTime_{ false } {
     // reverse mapping of name -> id
     for (auto itr = cmap.begin(); itr != cmap.end(); ++itr) {
@@ -65,7 +64,7 @@ public:
 private:
   bool hasTime_;
   // reverse the fields mapping from field ID -> name
-  std::unordered_map<uint32_t, std::string> fields_;
+  nebula::common::unordered_map<uint32_t, std::string> fields_;
 };
 } // namespace storage
 } // namespace nebula

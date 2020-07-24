@@ -298,7 +298,7 @@ TEST(BatchTest, TestPartitionedBatch) {
 
   // need some stable data set to write out and can be verified
   // pid -> batch
-  std::unordered_map<size_t, std::unique_ptr<Batch>> batches;
+  nebula::common::unordered_map<size_t, std::unique_ptr<Batch>> batches;
 
   // use the specified seed so taht the data can repeat
   std::vector<nebula::surface::StaticPartitionedRow> rows;

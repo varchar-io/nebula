@@ -382,7 +382,7 @@ size_t FlatBuffer::add(const nebula::surface::RowData& row) {
 // scenario: when a new added row will need to be a new entry, we fullfil all columns rather than keys.
 // this fullfilment is only for last row, so we have to have sanity check
 size_t FlatBuffer::resume(const nebula::surface::RowData& row,
-                          const std::unordered_set<size_t>& cols,
+                          const nebula::common::unordered_set<size_t>& cols,
                           const size_t rowId) {
   N_ENSURE_EQ(rowId + 1, rows_.size(), "must be the last row");
 

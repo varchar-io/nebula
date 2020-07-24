@@ -21,8 +21,9 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <unordered_map>
+
 #include "common/Errors.h"
+#include "common/Hash.h"
 #include "surface/DataSurface.h"
 
 /**
@@ -168,7 +169,7 @@ private:
   std::ifstream fstream_;
   CsvRow row_;
   CsvRow cacheRow_;
-  std::unordered_map<std::string, size_t> columns_;
+  nebula::common::unordered_map<std::string, size_t> columns_;
 };
 
 } // namespace storage

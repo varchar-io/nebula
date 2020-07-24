@@ -17,7 +17,8 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <unordered_set>
+
+#include "Hash.h"
 
 /**
  * Some utility functions related to strings
@@ -27,14 +28,14 @@ namespace common {
 // split a char streams into a vector of strings
 class Chars {
 public:
-  static std::unordered_set<std::string> split(const char* data, size_t size, char delimeter = ',') {
+  static unordered_set<std::string> split(const char* data, size_t size, char delimeter = ',') {
     if (!data || size < 1) {
-      return {};
+      return unordered_set<std::string>();
     }
 
     size_t start = 0;
     size_t end = 0;
-    std::unordered_set<std::string> set;
+    unordered_set<std::string> set;
 
 #define ADD_SEGMENT                         \
   if (start != end) {                       \

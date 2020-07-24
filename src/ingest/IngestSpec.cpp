@@ -44,6 +44,7 @@ namespace nebula {
 namespace ingest {
 
 using nebula::common::Evidence;
+using nebula::common::unordered_map;
 using nebula::execution::BlockManager;
 using nebula::execution::io::BatchBlock;
 using nebula::execution::io::BlockList;
@@ -372,7 +373,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
   // TODO(cao): we haven't done global lookup for the same partition
   // This may result in many blocks since it's partitioned in each ingestion spec.
-  std::unordered_map<size_t, std::shared_ptr<Batch>> batches;
+  unordered_map<size_t, std::shared_ptr<Batch>> batches;
   // auto batch = std::make_shared<Batch>(*table, bRows);
   auto pod = table->pod();
 

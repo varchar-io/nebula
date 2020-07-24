@@ -84,7 +84,7 @@ void NodeSync::sync(
       const auto& states = bm->states(node);
 
       // recording expired block ID for given node
-      std::unordered_set<std::pair<std::string, std::string>> expired;
+      nebula::common::unordered_set<std::pair<std::string, std::string>> expired;
       size_t memorySize = 0;
       for (auto itr = states.begin(); itr != states.end(); ++itr) {
         const auto& state = itr->second;
@@ -102,7 +102,8 @@ void NodeSync::sync(
         });
 
         if (!pairs.empty()) {
-          expired.merge(pairs);
+          // should be the same as std::unordered_set.merge
+          expired.insert(pairs.begin(), pairs.end());
         }
 
         // TODO(cao): use memory size rather than data raw size

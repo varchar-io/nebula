@@ -114,13 +114,13 @@ struct Column {
   PartitionInfo partition;
 };
 
-using ColumnProps = std::unordered_map<std::string, Column>;
+using ColumnProps = nebula::common::unordered_map<std::string, Column>;
 
 using TypeLookup = std::function<nebula::type::Kind(const std::string&)>;
 
 class Table {
 public:
-  Table(const std::string& name) : Table(name, nullptr, {}, {}) {}
+  Table(const std::string& name) : Table(name, nullptr, ColumnProps(), {}) {}
   Table(const std::string& name, Schema schema, ColumnProps columns, AccessSpec rules)
     : name_{ name }, schema_{ schema }, columns_{ std::move(columns) }, rules_{ std::move(rules) } {
     // TODO(cao) - load table properties from meta data service
@@ -202,7 +202,7 @@ public:
   virtual ActionType
     checkAccess(
       AccessType,
-      const std::unordered_set<std::string>&,
+      const nebula::common::unordered_set<std::string>&,
       const std::string& col = "") const;
 
 protected:

@@ -19,9 +19,9 @@
 #include <algorithm>
 #include <array>
 #include <glog/logging.h>
-#include <unordered_map>
 
 #include "common/Errors.h"
+#include "common/Hash.h"
 #include "meta/Table.h"
 #include "surface/eval/Operation.h"
 #include "surface/eval/UDF.h"
@@ -50,7 +50,6 @@ using nebula::surface::eval::LogicalOp;
 // this is just a property bag - can be replaced by a hash map
 struct ExpressionData {
   // static constexpr auto ALIAS = "alais";
-  // std::unordered_map<std::string, std::string> properties;
   ExpressionType type = ExpressionType::UNKNOWN;
   std::string alias;
   // saved from typeid(T).name() for each template type
@@ -227,7 +226,7 @@ struct arthmetic_forward {
       return ((size_t)std::get<0>(k) << 32) | (std::get<1>(k) << 16) | (std::get<2>(k));
     }
   };
-  using Map = std::unordered_map<Key, Value, Hash>;
+  using Map = nebula::common::unordered_map<Key, Value, Hash>;
 
   static const Map& map();
 
@@ -251,7 +250,7 @@ struct logical_forward {
       return ((size_t)std::get<0>(k) << 32) | (std::get<1>(k) << 16) | (std::get<2>(k));
     }
   };
-  using Map = std::unordered_map<Key, Value, Hash>;
+  using Map = nebula::common::unordered_map<Key, Value, Hash>;
 
   static const Map& map();
 

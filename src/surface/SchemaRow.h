@@ -16,8 +16,8 @@
 
 #pragma once
 
-#include <unordered_map>
 #include "DataSurface.h"
+#include "common/Hash.h"
 #include "type/Type.h"
 
 namespace nebula {
@@ -75,7 +75,7 @@ public:
 #undef INDEX_FUNC
 
 private:
-  std::unordered_map<std::string, size_t> fields_;
+  nebula::common::unordered_map<std::string, size_t> fields_;
 };
 } // namespace surface
 } // namespace nebula

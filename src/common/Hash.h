@@ -19,6 +19,7 @@
 #include <array>
 #include <string>
 #include <xxh3.h>
+#include "robin_hood.h"
 
 /**
  * A wrapper to decide which hash functions to be used in nebula.
@@ -59,6 +60,23 @@ public:
     return hashes;
   }
 };
+
+// wrapper for unordered_map and unordered_set
+// based on performance testing, see test/TestHash.cpp
+// we change choice here as they all have consistent interfaces.
+// we ignored other defaulted template parameters -
+// we may add them back for default tuning
+template <typename Key,
+          typename T,
+          typename Hash = robin_hood::hash<Key>,
+          typename KeyEqual = std::equal_to<Key>>
+using unordered_map = robin_hood::unordered_map<Key, T, Hash, KeyEqual>;
+
+template <typename Key,
+          typename Hash = robin_hood::hash<Key>,
+          typename KeyEqual = std::equal_to<Key>,
+          size_t MaxLoadFactor100 = 80>
+using unordered_set = robin_hood::unordered_set<Key, Hash, KeyEqual, MaxLoadFactor100>;
 
 } // namespace common
 } // namespace nebula

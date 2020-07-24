@@ -16,7 +16,6 @@
 #pragma once
 
 #include <fmt/format.h>
-#include <unordered_set>
 
 #include "common/Hash.h"
 #include "common/Task.h"
@@ -34,7 +33,8 @@ namespace ingest {
 // but it actually increases the management cost with little foreable benefits
 class BlockExpire : public nebula::common::Identifiable {
 public:
-  BlockExpire(std::unordered_set<std::pair<std::string, std::string>> specs) : specs_{ std::move(specs) } {
+  BlockExpire(nebula::common::unordered_set<std::pair<std::string, std::string>> specs)
+    : specs_{ std::move(specs) } {
     size_t mix = std::accumulate(specs_.begin(), specs_.end(), 0, [](size_t v, const auto& str) {
       return v ^ nebula::common::Hasher::hashString(str.second);
     });
@@ -49,7 +49,7 @@ public:
     return sign_;
   }
 
-  inline const std::unordered_set<std::pair<std::string, std::string>>& specs() const {
+  inline const nebula::common::unordered_set<std::pair<std::string, std::string>>& specs() const {
     return specs_;
   }
 
@@ -69,7 +69,7 @@ public:
 
 private:
   // table-spec pairs
-  std::unordered_set<std::pair<std::string, std::string>> specs_;
+  nebula::common::unordered_set<std::pair<std::string, std::string>> specs_;
   std::string sign_;
 };
 

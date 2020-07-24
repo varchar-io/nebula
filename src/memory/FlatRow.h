@@ -16,8 +16,7 @@
 
 #pragma once
 
-#include <unordered_map>
-
+#include "common/Hash.h"
 #include "common/Memory.h"
 #include "type/Type.h"
 
@@ -224,7 +223,7 @@ private:
 
   // write states
   size_t cursor_;
-  std::unordered_map<std::string, size_t> meta_;
+  nebula::common::unordered_map<std::string, size_t> meta_;
 };
 
 class FlatList : public nebula::surface::ListData {

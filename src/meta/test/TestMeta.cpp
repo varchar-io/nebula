@@ -76,12 +76,19 @@ TEST(MetaTest, TestClusterConfigLoad) {
   }
 
   const auto& tables = clusterInfo.tables();
+  nebula::meta::TableSpecPtr test = nullptr;
+  nebula::meta::TableSpecPtr ephemeral = nullptr;
   EXPECT_EQ(tables.size(), 2);
   for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
     LOG(INFO) << "TABLE: " << (*itr)->toString();
+    if ((*itr)->name == "nebula.ephemeral") {
+      ephemeral = (*itr);
+    }
+    if ((*itr)->name == "nebula.test") {
+      test = (*itr);
+    }
   }
 
-  auto ephemeral = *(tables.cbegin());
   // on-demand ephemeral pacakge are loaded through API
   auto schema = nebula::type::TypeSerializer::from(ephemeral->schema);
   EXPECT_EQ(schema->size(), 18);
@@ -94,7 +101,6 @@ TEST(MetaTest, TestClusterConfigLoad) {
   EXPECT_TRUE(nebula::type::TypeBase::isScalar(type->k()));
 
   // test the table level settings can be read as expected
-  auto test = *(++tables.cbegin());
   EXPECT_EQ(test->settings.size(), 2);
   EXPECT_EQ(test->settings.at("key1"), "value1");
   EXPECT_EQ(test->settings.at("key2"), "value2");
@@ -131,7 +137,7 @@ TEST(MetaTest, TestAccessRules) {
   };
 
   // assume user has two normal groups
-  std::unordered_set<std::string> groups;
+  nebula::common::unordered_set<std::string> groups;
   groups.emplace("eng", "ads");
 
   // run check access function to ensure it works as expected

@@ -42,9 +42,6 @@ void HashFlat::init() {
       values_.emplace(i);
     }
   }
-
-  // set a max load factor to reduce rehash
-  rowKeys_.max_load_factor(0.5);
 }
 
 Comparator HashFlat::genComparator(size_t i) noexcept {

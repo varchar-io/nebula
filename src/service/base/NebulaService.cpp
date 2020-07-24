@@ -48,6 +48,8 @@ using nebula::common::SingleCommandTask;
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
+using nebula::common::unordered_map;
+using nebula::common::unordered_set;
 using nebula::execution::QueryWindow;
 using nebula::ingest::BlockExpire;
 using nebula::ingest::IngestSpec;
@@ -561,7 +563,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
 
   if (type == TaskType::EXPIRATION) {
     auto expires = ptr->expire()->specs();
-    std::unordered_set<std::pair<std::string, std::string>> specs;
+    unordered_set<std::pair<std::string, std::string>> specs;
     for (auto itr = expires->begin(); itr != expires->end(); ++itr) {
       specs.emplace(itr->tbl()->str(), itr->spec()->str());
     }

@@ -26,6 +26,7 @@ namespace storage {
 namespace kafka {
 
 using nebula::common::Chars;
+using nebula::common::unordered_map;
 
 // most likely the high memory consumption caused by this
 // thread local collection to provide kafka consumer per broker string

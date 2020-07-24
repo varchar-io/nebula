@@ -17,7 +17,6 @@
 #pragma once
 
 #include <glog/logging.h>
-#include <unordered_map>
 
 #include <quickjs.h>
 extern "C" {
@@ -28,6 +27,7 @@ extern "C" {
 #include "Operation.h"
 #include "Script.h"
 
+#include "common/Hash.h"
 #include "surface/DataSurface.h"
 
 /**
@@ -216,7 +216,7 @@ struct EvalCache {
   }
 
   // a signature keyed tuples indicating if this expr evaluated (having entry) or not.
-  std::unordered_map<std::string_view, std::pair<size_t, size_t>> map;
+  nebula::common::unordered_map<std::string_view, std::pair<size_t, size_t>> map;
   // layout all cached data, when reset, just move the cursor to 1
   // 0 is reserved, any evaluated data points to 0 if it is NULL
   size_t cursor;
@@ -232,7 +232,7 @@ struct ScriptData {
     : name2type{ nullptr }, customs{ c } {
     if (schema) {
       const size_t size = schema->size();
-      auto map = std::make_unique<std::unordered_map<std::string, nebula::type::Kind>>(size);
+      auto map = std::make_unique<nebula::common::unordered_map<std::string, nebula::type::Kind>>(size);
       for (size_t i = 0; i < size; ++i) {
         auto f = schema->childType(i);
         map->emplace(f->name(), f->k());
@@ -257,7 +257,7 @@ struct ScriptData {
   }
 
   // column name to type mapping - set by external
-  std::unique_ptr<std::unordered_map<std::string, nebula::type::Kind>> name2type;
+  std::unique_ptr<nebula::common::unordered_map<std::string, nebula::type::Kind>> name2type;
 
   // reference to custom fields
   const Fields& customs;

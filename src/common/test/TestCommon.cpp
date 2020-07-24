@@ -720,6 +720,7 @@ TEST(CommonTest, TestConstructDestructOrder) {
 
 TEST(CommonTest, TestFormat) {
   {
+    robin_hood::unordered_map<std::string_view, std::string_view> x{ { "p", "place" }, { "x", "something" } };
     auto text = nebula::common::format("go to {p} to do {x}", { { "p", "place" }, { "x", "something" } });
     EXPECT_EQ(text, "go to place to do something");
   }
@@ -1021,10 +1022,10 @@ TEST(CommonTest, TestStackTree) {
     EXPECT_EQ(buffer.str(),
               "NODE: d=, c=3, l=0\n"
               "NODE: d=A, c=3, l=1\n"
-              "NODE: d=X, c=1, l=2\n"
               "NODE: d=B, c=2, l=2\n"
+              "NODE: d=C, c=1, l=3\n"
               "NODE: d=D, c=1, l=3\n"
-              "NODE: d=C, c=1, l=3\n");
+              "NODE: d=X, c=1, l=2\n");
 
     // run the stack tree merge methods
     nebula::common::StackTree<std::string, true> stack2{ false };
@@ -1040,12 +1041,12 @@ TEST(CommonTest, TestStackTree) {
     EXPECT_EQ(buffer.str(),
               "NODE: d=, c=6, l=0\n"
               "NODE: d=A, c=6, l=1\n"
-              "NODE: d=Y, c=1, l=2\n"
-              "NODE: d=X, c=1, l=2\n"
               "NODE: d=B, c=4, l=2\n"
-              "NODE: d=E, c=1, l=3\n"
+              "NODE: d=C, c=2, l=3\n"
               "NODE: d=D, c=1, l=3\n"
-              "NODE: d=C, c=2, l=3\n");
+              "NODE: d=E, c=1, l=3\n"
+              "NODE: d=X, c=1, l=2\n"
+              "NODE: d=Y, c=1, l=2\n");
   }
 
   LOG(INFO) << "Complete 1K rounds of HashFrame: " << dur.elapsedMs();
@@ -1065,9 +1066,9 @@ TEST(CommonTest, TestStackTree) {
               "NODE: d=, c=3, l=0\n"
               "NODE: d=A, c=3, l=1\n"
               "NODE: d=B, c=2, l=2\n"
-              "NODE: d=X, c=1, l=2\n"
               "NODE: d=C, c=1, l=3\n"
-              "NODE: d=D, c=1, l=3\n");
+              "NODE: d=D, c=1, l=3\n"
+              "NODE: d=X, c=1, l=2\n");
 
     // run the stack tree merge methods
     nebula::common::StackTree<std::string, false> stack2{ false };
@@ -1084,11 +1085,11 @@ TEST(CommonTest, TestStackTree) {
               "NODE: d=, c=6, l=0\n"
               "NODE: d=A, c=6, l=1\n"
               "NODE: d=B, c=4, l=2\n"
-              "NODE: d=X, c=1, l=2\n"
-              "NODE: d=Y, c=1, l=2\n"
               "NODE: d=C, c=2, l=3\n"
               "NODE: d=D, c=1, l=3\n"
-              "NODE: d=E, c=1, l=3\n");
+              "NODE: d=E, c=1, l=3\n"
+              "NODE: d=X, c=1, l=2\n"
+              "NODE: d=Y, c=1, l=2\n");
   }
 
   LOG(INFO) << "Complete 1K rounds of VectorFrame: " << dur.elapsedMs();
@@ -1112,9 +1113,9 @@ TEST(CommonTest, TestStackTree) {
               "NODE: d=, c=3, l=0\n"
               "NODE: d=A, c=3, l=1\n"
               "NODE: d=B, c=2, l=2\n"
-              "NODE: d=X, c=1, l=2\n"
               "NODE: d=C, c=1, l=3\n"
-              "NODE: d=D, c=1, l=3\n");
+              "NODE: d=D, c=1, l=3\n"
+              "NODE: d=X, c=1, l=2\n");
 
     // test json serde
     auto j = stack3.jsonfy();
