@@ -40,7 +40,9 @@ public:
   }
 
   XXH_FORCE_INLINE size_t hash64(const void* p, const size_t len) noexcept {
-    return XXH3_64bits(p, len);
+    // In TestHash/TestHashFunc, looks like robin_hood::hash_bytes is 2x faster
+    // Use it for now, and I haven't get into the detaills of the diff yet.
+    return robin_hood::hash_bytes(p, len);
   }
 
   template <size_t N>

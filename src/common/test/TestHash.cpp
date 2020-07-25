@@ -18,6 +18,8 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <unordered_set>
+#include <xxh3.h>
+
 #include "common/Evidence.h"
 #include "common/robin_hood.h"
 
@@ -73,9 +75,36 @@ TEST(CommonTest, TestHashSet) {
   robin_hood::unordered_set<size_t> rh_set;
   run_test(rh_set, robin_hood);
 
+#ifdef NAT
+  // Note: folly::F14 doesn't build when apply -DNAT=1 (-march=native)
   folly::F14FastSet<size_t> f14_set;
   run_test(f14_set, f14);
+#endif
+
+#undef run_test
 }
+
+// a test to see perf of hash function choices
+TEST(CommonTest, TestHashFunc) {
+  constexpr std::string_view x =
+    "1-e9wqutgidsanvu931ri [k,vs;l/dvmdjksflnbgqoiwq   ira'sdfkmklsdnfbjdklshf;q"
+    ",fasknfasuhfliaskmf.aksdgq234u2-powvnm zc,.mxbv adlkgjawpofj;lasvmsdmfgaeofk/lsv akl";
+  constexpr size_t size = 1000000;
+#define run_test(F, N)                                                                                    \
+  {                                                                                                       \
+    Evidence::Duration duration;                                                                          \
+    for (size_t i = 0; i < size; ++i) {                                                                   \
+      F(x.data(), x.size());                                                                              \
+    }                                                                                                     \
+    LOG(INFO) << "Hash 1M times of the random bytes using " << #N << ", taken: " << duration.elapsedMs(); \
+  }
+
+  run_test(XXH3_64bits, xxhash);
+  run_test(robin_hood::hash_bytes, robinhood);
+
+#undef run_test
+}
+
 } // namespace test
 } // namespace common
 } // namespace nebula

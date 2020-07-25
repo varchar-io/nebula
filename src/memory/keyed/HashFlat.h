@@ -34,7 +34,7 @@ namespace keyed {
 using Comparator = std::function<int32_t(size_t, size_t)>;
 
 // Hasher on one column of given row and base hash value
-using Hasher = std::function<size_t(size_t, size_t)>;
+using Hasher = std::function<size_t(size_t)>;
 
 // Copier on one column from given row1 to row2 which using external updater
 using Copier = std::function<void(size_t, size_t)>;
@@ -57,13 +57,17 @@ class HashFlat : public FlatBuffer {
 public:
   HashFlat(const nebula::type::Schema schema,
            const nebula::surface::eval::Fields& fields)
-    : FlatBuffer(schema, fields) {
+    : FlatBuffer(schema, fields),
+      keyHash_{ nullptr },
+      optimal_{ false } {
     init();
   }
 
   HashFlat(FlatBuffer* in,
            const nebula::surface::eval::Fields& fields)
-    : FlatBuffer(in->schema(), fields, (NByte*)in->chunk()) {
+    : FlatBuffer(in->schema(), fields, (NByte*)in->chunk()),
+      keyHash_{ nullptr },
+      optimal_{ false } {
     init();
   }
 
@@ -74,9 +78,6 @@ public:
 
   // check if two rows are equal to each other on given columns
   bool equal(size_t row1, size_t row2) const;
-
-  // copy data of row1 into row2
-  bool copy(size_t row1, size_t row2);
 
   // update a row in hash flat, if same key existings, update the row and return true
   // otherwise we get a new row, return false
@@ -152,9 +153,20 @@ private:
     }
   }
 
+  // in optimal case: where given keys are layout in main slice sequentially
+  std::pair<size_t, size_t> optimalKeys(size_t) const noexcept;
+
 private:
-  nebula::common::unordered_set<size_t> keys_;
-  nebula::common::unordered_set<size_t> values_;
+  // lay all hash values in this fixed slice
+  std::unique_ptr<nebula::common::OneSlice> keyHash_;
+  // optimal indicates the hash/compare/copy on keys can be optimized
+  // since will be laid out sequentially in main slice only
+  bool optimal_;
+  // expected width for all keys when optimal and no nulls
+  // calculated when optimal is true
+  size_t keyWidth_;
+  std::vector<size_t> keys_;
+  std::vector<size_t> values_;
   // customized operations for each column
   std::vector<ColOps> ops_;
 
@@ -164,7 +176,8 @@ private:
   // folly::F14FastSet<Key, Hash, Equal> rowKeys_;
   // set max load factor as 0.6 to reduce rehash - default 0.8
   nebula::common::unordered_set<Key, Hash, Equal, 60> rowKeys_;
-}; // namespace keyed
+};
+
 } // namespace keyed
 } // namespace memory
 } // namespace nebula

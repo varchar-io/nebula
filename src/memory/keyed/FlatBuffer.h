@@ -16,10 +16,6 @@
 
 #pragma once
 
-#include <stack>
-#include <unordered_map>
-#include <unordered_set>
-
 #include "common/Memory.h"
 #include "surface/DataSurface.h"
 #include "surface/eval/Aggregator.h"

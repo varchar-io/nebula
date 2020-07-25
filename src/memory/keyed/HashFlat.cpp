@@ -23,6 +23,7 @@ namespace memory {
 namespace keyed {
 
 using Range = nebula::common::PRange;
+using nebula::common::OneSlice;
 using nebula::surface::eval::Aggregator;
 using nebula::surface::eval::Sketch;
 using nebula::type::Kind;
@@ -37,9 +38,31 @@ void HashFlat::init() {
     // every column may have its own operations
     ops_.emplace_back(genComparator(i), genHasher(i), genCopier(i));
     if (!isAggregate(i)) {
-      keys_.emplace(i);
+      keys_.push_back(i);
     } else {
-      values_.emplace(i);
+      values_.push_back(i);
+    }
+  }
+
+  // reserve a memory chunk to store hash values
+  if (keys_.size() > 0) {
+    keyHash_ = std::make_unique<OneSlice>(sizeof(size_t) * keys_.size());
+
+    // optimization - if the keys are all primmitive (non-strings), and index are continous
+    // we can just hash the memory chunk (row.offset+col-offset, total-size)
+    size_t last = keys_.at(0) - 1;
+    optimal_ = true;
+    keyWidth_ = 0;
+    for (auto index : keys_) {
+      Kind k = cops_.at(index).kind;
+      keyWidth_ += cops_.at(index).width;
+      if (index != last + 1 || k >= Kind::VARCHAR) {
+        optimal_ = false;
+        break;
+      }
+
+      // assign last for next check
+      last = index;
     }
   }
 }
@@ -115,29 +138,25 @@ Comparator HashFlat::genComparator(size_t i) noexcept {
 }
 
 Hasher HashFlat::genHasher(size_t i) noexcept {
-  static constexpr size_t flip = 0x3600ABC35871E005UL;
-
   // only need for key
   if (isAggregate(i)) {
     return {};
   }
 
-  // TODO(why do we hash these bytes instead using its own value?)
 #define PREPARE_AND_NULL()                        \
   const auto& rowProps = rows_.at(row);           \
   auto rowOffset = rowProps.offset;               \
   const auto& colProps = rowProps.colProps.at(i); \
   if (colProps.isNull) {                          \
-    return (hash ^ flip) >> 32;                   \
+    return 0L;                                    \
   }
 
-#define TYPE_HASH(KIND, TYPE)                                        \
-  case Kind::KIND: {                                                 \
-    return [this, i](size_t row, size_t hash) {                      \
-      PREPARE_AND_NULL()                                             \
-      auto h = main_->slice.hash<TYPE>(rowOffset + colProps.offset); \
-      return (hash ^ h) >> 32;                                       \
-    };                                                               \
+#define TYPE_HASH(KIND, TYPE)                                      \
+  case Kind::KIND: {                                               \
+    return [this, i](size_t row) -> size_t {                       \
+      PREPARE_AND_NULL()                                           \
+      return main_->slice.hash<TYPE>(rowOffset + colProps.offset); \
+    };                                                             \
   }
 
   // fetch value
@@ -153,7 +172,7 @@ Hasher HashFlat::genHasher(size_t i) noexcept {
     TYPE_HASH(INT128, int128_t)
   case Kind::VARCHAR: {
     // read 4 bytes offset and 4 bytes length
-    return [this, i](size_t row, size_t hash) {
+    return [this, i](size_t row) -> size_t {
       PREPARE_AND_NULL()
 
       auto so = rowOffset + colProps.offset;
@@ -163,15 +182,14 @@ Hasher HashFlat::genHasher(size_t i) noexcept {
       // TODO(cao) - we don't need convert strings from bytes for hash
       // instead, slice should be able to hash the range[offset, len] much cheaper
       if (r.size == 0) {
-        return hash;
+        return 0L;
       }
 
-      auto h = data_->slice.hash(r.offset, r.size);
-      return (hash ^ h) >> 32;
+      return data_->slice.hash(r.offset, r.size);
     };
   }
   default:
-    return [i](size_t, size_t) -> size_t {
+    return [i](size_t) -> size_t {
       LOG(ERROR) << "Hash a non-supported column: " << i;
       return 0;
     };
@@ -208,22 +226,67 @@ Copier HashFlat::genCopier(size_t i) noexcept {
   return {};
 }
 
+std::pair<size_t, size_t> HashFlat::optimalKeys(size_t row) const noexcept {
+  const auto& rowProps = rows_.at(row);
+
+  // starting offset of all sequential keys = row offset + first key offset
+  auto offset = rowProps.offset + rowProps.colProps.at(0).offset;
+  auto length = keyWidth_;
+
+  // remove nulls
+  for (auto index : keys_) {
+    const auto& colProps = rowProps.colProps.at(index);
+    if (colProps.isNull) {
+      length -= cops_.at(index).width;
+    }
+  }
+
+  return { offset, length };
+}
+
 // compute hash value of given row and column list
 // The function has very similar logic as row accessor, we inline it for perf
 size_t HashFlat::hash(size_t rowId) const {
-  static constexpr size_t start = 0xC6A4A7935BD1E995UL;
-  size_t hvalue = start;
-
-  // hash on every column
-  for (auto index : keys_) {
-    hvalue = ops_.at(index).hasher(rowId, hvalue);
+  // if optimal, let's figure out offset and length of the key bytes
+  if (LIKELY(optimal_)) {
+    auto kp = optimalKeys(rowId);
+    auto ptr = main_->slice.ptr();
+    // just hash the key set
+    return nebula::common::Hasher::hash64(ptr + kp.first, kp.second);
   }
 
-  return hvalue;
+  // hash on every column and write value into keyHash_ chunk
+  N_ENSURE_NOT_NULL(keyHash_, "key hash should be valid");
+  if (LIKELY(keyHash_ != nullptr)) {
+    size_t* ptr = (size_t*)keyHash_->ptr();
+    auto len = keyHash_->size();
+    std::memset(ptr, 0, len);
+
+    for (size_t i = 0, size = keys_.size(); i < size; ++i) {
+      *(ptr + i) = ops_.at(keys_.at(i)).hasher(rowId);
+    }
+
+    return nebula::common::Hasher::hash64(ptr, len);
+  }
+
+  return 0;
 }
 
 // check if two rows are equal to each other on given columns
 bool HashFlat::equal(size_t row1, size_t row2) const {
+  // if optimal, let's figure out offset and length of the key bytes
+  if (LIKELY(optimal_)) {
+    auto kp1 = optimalKeys(row1);
+    auto kp2 = optimalKeys(row2);
+    // if length equals - return false
+    if (kp1.second != kp2.second) {
+      return false;
+    }
+
+    auto ptr = main_->slice.ptr();
+    return std::memcmp(ptr + kp1.first, ptr + kp2.first, kp1.second) == 0;
+  }
+
   for (auto index : keys_) {
     if (ops_.at(index).comparator(row1, row2) != 0) {
       return false;

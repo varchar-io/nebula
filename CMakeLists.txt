@@ -66,11 +66,19 @@ else()
       set(PPROF 2)
     endif()
 
-    # by default - do not stripe symbols in release, only when specified to reduce binary size
-    if(SSYMB STREQUAL "1")
-      set(SSYMB "-s")
+    # add a build option to enable native optimization
+    if(NAT STREQUAL "1")
+      set(NAT "-march=native")
     else()
-    set(SSYMB "")
+      set(NAT "")
+    endif()
+
+
+    # by default - do not stripe symbols in release, only when specified to reduce binary size
+    if(SYM STREQUAL "1")
+      set(SYM "-s")
+    else()
+      set(SYM "")
     endif()
 
     # build flag -DGPROF
@@ -123,7 +131,7 @@ else()
     # On my daily dev machine, it gives me this value: skylake-avx512
     # In another machine, I found it as "haswell", and this may lead crash with `illegal instruction` failure.
     # So to make sure the published image works more broadly, we may want to remove this `-march=native`, or specify the target value
-    set(NCFLAGS_RELEASE "-Ofast ${SSYMB}")
+    set(NCFLAGS_RELEASE "-Ofast ${NAT} ${SYM}")
   endif()
 endif()
 

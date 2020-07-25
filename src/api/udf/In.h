@@ -33,6 +33,10 @@ class In : public nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK> {
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
   using EvalBlock = typename UdfInBase::EvalBlock;
   using SetType = typename std::shared_ptr<nebula::common::unordered_set<InputType>>;
+  using ValueType = typename std::conditional<
+    IK == nebula::type::Kind::VARCHAR,
+    std::string,
+    typename nebula::type::TypeTraits<IK>::CppType>::type;
 
 public:
   In(const std::string& name,
@@ -96,7 +100,7 @@ private:
         if (pv.size() > 0) {
           size_t covered = 0;
           for (auto v : pv) {
-            auto ev = std::any_cast<InputType>(v);
+            InputType ev(std::any_cast<ValueType>(v));
             if (values->find(ev) != values->end()) {
               covered++;
             }
