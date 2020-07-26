@@ -32,6 +32,7 @@ import {
 import sstatic from 'serve-static';
 import fh from 'finalhandler';
 import grpc from 'grpc';
+import jsonb from 'json-bigint';
 
 const qc = (service) => {
     // set the maximum message size as 20MB
@@ -82,5 +83,6 @@ export default {
     LoadResponse,
     static_res,
     qc,
-    grpc
+    grpc,
+    jsonb
 };

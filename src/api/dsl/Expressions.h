@@ -701,16 +701,9 @@ public:
     TYPE_BRANCH(int8_t, Int)
     TYPE_BRANCH(int16_t, Int)
     TYPE_BRANCH(int32_t, Int)
+    TYPE_BRANCH(int64_t, Int64)
     TYPE_BRANCH(float, Double)
     TYPE_BRANCH(double, Double)
-
-    // JSON can't represent big int unfortunately
-    if constexpr (std::is_same_v<T, int64_t>) {
-      for (auto v : values_) {
-        auto str = std::to_string(v);
-        json.String(str.data(), str.size());
-      }
-    }
 
     // string is different
     if constexpr (std::is_same_v<T, std::string>) {

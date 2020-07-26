@@ -414,10 +414,9 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
   N_ENSURE_NE(columnType, Kind::INVALID, "column not found");
   auto columnExpression = col(columnName);
 
-  // TODO(cao): value can be a list, when value has more than one value
   // convert the OPs: EQ -> IN, NEQ -> NIN
-  // right now, we only support EQ to single value
-  auto valueCount = pred.value_size();
+  // exclusively any type of the value list used - only one can be used at one time
+  auto valueCount = std::max({ pred.value_size(), pred.d_value_size(), pred.n_value_size() });
   N_ENSURE_GT(valueCount, 0, "predicate requires at least one value");
 
   // if specified multiple values for EQ and NEQ, they should convert to
@@ -464,14 +463,26 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     }
   }
 
-  const auto& predValue = pred.value(0);
   std::shared_ptr<Expression> constExpression = nullptr;
 
-#define BUILD_CONST_CASE(KIND)                                                       \
-  case Kind::KIND: {                                                                 \
-    using T = nebula::type::TypeTraits<Kind::KIND>::CppType;                         \
-    constExpression = std::make_shared<ConstExpression<T>>(folly::to<T>(predValue)); \
-    break;                                                                           \
+#define BUILD_CONST_CASE(KIND)                                                                   \
+  case Kind::KIND: {                                                                             \
+    using T = nebula::type::TypeTraits<Kind::KIND>::CppType;                                     \
+    if constexpr (std::is_integral_v<T>) {                                                       \
+      if (pred.n_value_size() > 0) {                                                             \
+        LOG(INFO) << "DBG: received ID= " << pred.n_value(0);                                    \
+        constExpression = std::make_shared<ConstExpression<T>>(static_cast<T>(pred.n_value(0))); \
+        break;                                                                                   \
+      }                                                                                          \
+    }                                                                                            \
+    if constexpr (std::is_floating_point_v<T>) {                                                 \
+      if (pred.d_value_size() > 0) {                                                             \
+        constExpression = std::make_shared<ConstExpression<T>>(static_cast<T>(pred.d_value(0))); \
+        break;                                                                                   \
+      }                                                                                          \
+    }                                                                                            \
+    constExpression = std::make_shared<ConstExpression<T>>(folly::to<T>(pred.value(0)));         \
+    break;                                                                                       \
   }
 
   switch (columnType) {
@@ -483,7 +494,7 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     BUILD_CONST_CASE(REAL)
     BUILD_CONST_CASE(DOUBLE)
   case Kind::VARCHAR: {
-    constExpression = std::make_shared<ConstExpression<std::string>>(predValue);
+    constExpression = std::make_shared<ConstExpression<std::string>>(pred.value(0));
     break;
   }
   default:
@@ -504,7 +515,7 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
   // like expression can be fall back to "starts" if the pattern satisfy it
 #define BUILD_LIKE(CS)                                               \
   static constexpr char matcher = '%';                               \
-  const auto& pattern = predValue;                                   \
+  const auto& pattern = pred.value(0);                               \
   size_t pos = 0;                                                    \
   auto cursor = pattern.cbegin();                                    \
   auto end = pattern.cend();                                         \

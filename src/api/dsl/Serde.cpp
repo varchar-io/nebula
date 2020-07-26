@@ -261,20 +261,10 @@ std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::sh
     TYPE_IN_EXPR(int8_t, GetInt)
     TYPE_IN_EXPR(int16_t, GetInt)
     TYPE_IN_EXPR(int32_t, GetInt)
+    TYPE_IN_EXPR(int64_t, GetInt64)
     TYPE_IN_EXPR(float, GetFloat)
     TYPE_IN_EXPR(double, GetDouble)
     TYPE_IN_EXPR(std::string, GetString)
-
-    // int64 use string as serialization format due to JSON limit on long type numbers
-    if (valueType == TypeDetect<int64_t>::tid()) {
-      std::vector<int64_t> values;
-      values.reserve(size);
-      for (rapidjson::SizeType i = 0; i < size; ++i) {
-        values.push_back(folly::to<int64_t>(v[i].GetString()));
-      }
-
-      return as(alias, std::make_shared<InExpression<int64_t>>(inner, std::move(values), in));
-    }
 
     throw NException(fmt::format("Unrecognized value type: {0}", valueType));
 #undef TYPE_IN_EXPR

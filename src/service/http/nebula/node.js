@@ -59,7 +59,8 @@ const {
     LoadRequest,
     static_res,
     qc,
-    grpc
+    grpc,
+    jsonb
 } = require('./dist/node/main.cjs');
 
 // service call module
@@ -166,7 +167,7 @@ const getTableState = (q, handler, client) => {
  * Please refer two different modes on how to architecture web component in Nebula.
  */
 const webq = (q, handler, client) => {
-    const state = JSON.parse(q.query);
+    const state = jsonb.parse(q.query);
     const req = new QueryRequest();
     req.setTable(state.table);
     req.setStart(time.seconds(state.start));

@@ -773,6 +773,21 @@ TEST(CommonTest, TestParams) {
   EXPECT_EQ(paths.size(), 4);
 }
 
+TEST(CommonTest, TestJsonBigint) {
+  // a big int value that normal JSON parse will lose precison
+  auto json = "[161074261581108973]";
+  rapidjson::Document cd;
+  if (cd.Parse(json).HasParseError()) {
+    throw NException(fmt::format("Error parsing params-json: {0}", json));
+  }
+
+  EXPECT_TRUE(cd.IsArray());
+  auto arr = cd.GetArray();
+  EXPECT_EQ(arr.Size(), 1);
+  auto& item = *arr.begin();
+  EXPECT_EQ(item.GetUint64(), 161074261581108973);
+}
+
 TEST(CommonTest, TestRegexMatchExpression) {
   /// HACK! - Replace it!
   std::string_view input = "&&(F:id==C:124))";

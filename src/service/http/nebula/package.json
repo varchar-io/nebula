@@ -25,7 +25,8 @@
     "vega-lib": "^4.3.0",
     "webpack": "^4.30.0",
     "webpack-cli": "^3.3.1",
-    "webpack-node-externals": "^1.7.2"
+    "webpack-node-externals": "^1.7.2",
+    "json-bigint": "1.0.0"
   },
   "devDependencies": {
     "grunt": "^1.0.4"

@@ -81,7 +81,7 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 5);
+/******/ 	return __webpack_require__(__webpack_require__.s = 6);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -98,7 +98,7 @@
  */
 // GENERATED CODE -- DO NOT EDIT!
 
-var jspb = __webpack_require__(6);
+var jspb = __webpack_require__(7);
 var goog = jspb;
 var global = Function('return this')();
 
@@ -1608,7 +1608,7 @@ proto.nebula.service.Predicate.deserializeBinaryFromReader = function(msg, reade
       msg.addValue(value);
       break;
     case 4:
-      var value = /** @type {!Array<number>} */ (reader.readPackedInt64());
+      var value = /** @type {!Array<string>} */ (reader.readPackedInt64String());
       msg.setNValueList(value);
       break;
     case 5:
@@ -1667,7 +1667,7 @@ proto.nebula.service.Predicate.serializeBinaryToWriter = function(message, write
   }
   f = message.getNValueList();
   if (f.length > 0) {
-    writer.writePackedInt64(
+    writer.writePackedInt64String(
       4,
       f
     );
@@ -1757,15 +1757,15 @@ proto.nebula.service.Predicate.prototype.clearValueList = function() {
 
 /**
  * repeated int64 n_value = 4;
- * @return {!Array<number>}
+ * @return {!Array<string>}
  */
 proto.nebula.service.Predicate.prototype.getNValueList = function() {
-  return /** @type {!Array<number>} */ (jspb.Message.getRepeatedField(this, 4));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 4));
 };
 
 
 /**
- * @param {!Array<number>} value
+ * @param {!Array<string>} value
  * @return {!proto.nebula.service.Predicate} returns this
  */
 proto.nebula.service.Predicate.prototype.setNValueList = function(value) {
@@ -1774,7 +1774,7 @@ proto.nebula.service.Predicate.prototype.setNValueList = function(value) {
 
 
 /**
- * @param {number} value
+ * @param {string} value
  * @param {number=} opt_index
  * @return {!proto.nebula.service.Predicate} returns this
  */
@@ -4474,6 +4474,12 @@ module.exports = require("finalhandler");
 
 /***/ }),
 /* 5 */
+/***/ (function(module, exports) {
+
+module.exports = require("json-bigint");
+
+/***/ }),
+/* 6 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -4488,6 +4494,9 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var finalhandler__WEBPACK_IMPORTED_MODULE_3___default = /*#__PURE__*/__webpack_require__.n(finalhandler__WEBPACK_IMPORTED_MODULE_3__);
 /* harmony import */ var grpc__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(1);
 /* harmony import */ var grpc__WEBPACK_IMPORTED_MODULE_4___default = /*#__PURE__*/__webpack_require__.n(grpc__WEBPACK_IMPORTED_MODULE_4__);
+/* harmony import */ var json_bigint__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(5);
+/* harmony import */ var json_bigint__WEBPACK_IMPORTED_MODULE_5___default = /*#__PURE__*/__webpack_require__.n(json_bigint__WEBPACK_IMPORTED_MODULE_5__);
+
 
 
 
@@ -4545,11 +4554,12 @@ const static_res = (req, res) => {
     LoadResponse: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["LoadResponse"],
     static_res,
     qc,
-    grpc: (grpc__WEBPACK_IMPORTED_MODULE_4___default())
+    grpc: (grpc__WEBPACK_IMPORTED_MODULE_4___default()),
+    jsonb: (json_bigint__WEBPACK_IMPORTED_MODULE_5___default())
 });
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports) {
 
 module.exports = require("google-protobuf");
