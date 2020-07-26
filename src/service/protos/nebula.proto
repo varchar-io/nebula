@@ -92,10 +92,13 @@ enum Operation {
 // NOTE - based on the code generation rule, we don't put plural term for repeated field
 // so the method will like add_value rather than add_values
 // Based on column type - the value will be converted from string always
+// Adding n_value for integers and d_value for floating values if client uses it.
 message Predicate {
   string column = 1;
   Operation op = 2;
   repeated string value = 3;
+  repeated int64 n_value = 4;
+  repeated double d_value = 5;
 }
 
 // define filter - a filter is formed by a list of predicates combined by AND or OR

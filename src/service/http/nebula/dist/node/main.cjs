@@ -1521,7 +1521,7 @@ proto.nebula.service.TableStateResponse.prototype.clearMetricList = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.nebula.service.Predicate.repeatedFields_ = [3];
+proto.nebula.service.Predicate.repeatedFields_ = [3,4,5];
 
 
 
@@ -1556,7 +1556,9 @@ proto.nebula.service.Predicate.toObject = function(includeInstance, msg) {
   var f, obj = {
     column: jspb.Message.getFieldWithDefault(msg, 1, ""),
     op: jspb.Message.getFieldWithDefault(msg, 2, 0),
-    valueList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f
+    valueList: (f = jspb.Message.getRepeatedField(msg, 3)) == null ? undefined : f,
+    nValueList: (f = jspb.Message.getRepeatedField(msg, 4)) == null ? undefined : f,
+    dValueList: (f = jspb.Message.getRepeatedFloatingPointField(msg, 5)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -1605,6 +1607,14 @@ proto.nebula.service.Predicate.deserializeBinaryFromReader = function(msg, reade
       var value = /** @type {string} */ (reader.readString());
       msg.addValue(value);
       break;
+    case 4:
+      var value = /** @type {!Array<number>} */ (reader.readPackedInt64());
+      msg.setNValueList(value);
+      break;
+    case 5:
+      var value = /** @type {!Array<number>} */ (reader.readPackedDouble());
+      msg.setDValueList(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1652,6 +1662,20 @@ proto.nebula.service.Predicate.serializeBinaryToWriter = function(message, write
   if (f.length > 0) {
     writer.writeRepeatedString(
       3,
+      f
+    );
+  }
+  f = message.getNValueList();
+  if (f.length > 0) {
+    writer.writePackedInt64(
+      4,
+      f
+    );
+  }
+  f = message.getDValueList();
+  if (f.length > 0) {
+    writer.writePackedDouble(
+      5,
       f
     );
   }
@@ -1728,6 +1752,80 @@ proto.nebula.service.Predicate.prototype.addValue = function(value, opt_index) {
  */
 proto.nebula.service.Predicate.prototype.clearValueList = function() {
   return this.setValueList([]);
+};
+
+
+/**
+ * repeated int64 n_value = 4;
+ * @return {!Array<number>}
+ */
+proto.nebula.service.Predicate.prototype.getNValueList = function() {
+  return /** @type {!Array<number>} */ (jspb.Message.getRepeatedField(this, 4));
+};
+
+
+/**
+ * @param {!Array<number>} value
+ * @return {!proto.nebula.service.Predicate} returns this
+ */
+proto.nebula.service.Predicate.prototype.setNValueList = function(value) {
+  return jspb.Message.setField(this, 4, value || []);
+};
+
+
+/**
+ * @param {number} value
+ * @param {number=} opt_index
+ * @return {!proto.nebula.service.Predicate} returns this
+ */
+proto.nebula.service.Predicate.prototype.addNValue = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 4, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.nebula.service.Predicate} returns this
+ */
+proto.nebula.service.Predicate.prototype.clearNValueList = function() {
+  return this.setNValueList([]);
+};
+
+
+/**
+ * repeated double d_value = 5;
+ * @return {!Array<number>}
+ */
+proto.nebula.service.Predicate.prototype.getDValueList = function() {
+  return /** @type {!Array<number>} */ (jspb.Message.getRepeatedFloatingPointField(this, 5));
+};
+
+
+/**
+ * @param {!Array<number>} value
+ * @return {!proto.nebula.service.Predicate} returns this
+ */
+proto.nebula.service.Predicate.prototype.setDValueList = function(value) {
+  return jspb.Message.setField(this, 5, value || []);
+};
+
+
+/**
+ * @param {number} value
+ * @param {number=} opt_index
+ * @return {!proto.nebula.service.Predicate} returns this
+ */
+proto.nebula.service.Predicate.prototype.addDValue = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 5, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.nebula.service.Predicate} returns this
+ */
+proto.nebula.service.Predicate.prototype.clearDValueList = function() {
+  return this.setDValueList([]);
 };
 
 

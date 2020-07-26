@@ -256,7 +256,6 @@ size_t HashFlat::hash(size_t rowId) const {
   }
 
   // hash on every column and write value into keyHash_ chunk
-  N_ENSURE_NOT_NULL(keyHash_, "key hash should be valid");
   if (LIKELY(keyHash_ != nullptr)) {
     size_t* ptr = (size_t*)keyHash_->ptr();
     auto len = keyHash_->size();

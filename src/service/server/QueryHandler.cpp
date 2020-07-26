@@ -361,8 +361,35 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
 
 template <typename T>
 auto vectorize(const Predicate& pred) -> std::vector<T> {
-  const auto size = pred.value_size();
+  // result vector
   std::vector<T> values;
+
+  // for numbers (including bool), client may save values in n_values
+  if constexpr (std::is_integral_v<T>) {
+    const auto size = pred.n_value_size();
+    if (size > 0) {
+      values.reserve(size);
+      for (auto i = 0; i < size; ++i) {
+        values.push_back(static_cast<T>(pred.n_value(i)));
+      }
+      return values;
+    }
+  }
+
+  // for floats (float/double), client may use them to in d_values
+  if constexpr (std::is_floating_point_v<T>) {
+    const auto size = pred.d_value_size();
+    if (size > 0) {
+      values.reserve(size);
+      for (auto i = 0; i < size; ++i) {
+        values.push_back(static_cast<T>(pred.d_value(i)));
+      }
+      return values;
+    }
+  }
+
+  // default, all values will be converted from string vector if set
+  const auto size = pred.value_size();
   values.reserve(size);
   for (auto i = 0; i < size; ++i) {
     values.push_back(folly::to<T>(pred.value(i)));
