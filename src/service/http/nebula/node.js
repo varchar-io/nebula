@@ -69,7 +69,8 @@ const client = qc(serviceAddr);
 const timeCol = "_time_";
 const error = Handler.error;
 const log = console.log;
-const max_json_request = 4 * 1024 * 1024;
+// keep it the same as grpc max send message length, ref `n/node.js`
+const max_json_request = 64 * 1024 * 1024;
 
 // note: http module header are formed in lower cases
 // (headers are case insensitive per RFC2616)
@@ -378,8 +379,7 @@ const readPost = (req) => {
         const type = req.headers[contentTypeKey];
         // some content type may not exactly as expected, such as `application/json; charset=UTF-8`.
         if (!type.includes(jsonContentType)) {
-            log(`Only JSON data supported in post: ${type}`);
-            reject(empty);
+            reject(`Only JSON content is supported in post: ${type}.`);
             return;
         }
 
@@ -390,21 +390,20 @@ const readPost = (req) => {
                 // size check - max request 4MB
                 size += b.length;
                 if (size > max_json_request) {
-                    reject(empty);
+                    reject(`Request data is too large: ${size}`);
                     return;
                 }
 
                 data += b;
             }).on("error", (e) => {
-                log(`Error reading post JSON: ${e}`);
-                reject(empty);
+                reject(`Error reading post JSON data: ${e}`);
             })
             .on('end', () => {
                 // extend the object into current q
                 if (data.length > 0) {
                     resolve(data);
                 } else {
-                    reject(empty);
+                    reject('Empty data posted.');
                 }
             });
     });

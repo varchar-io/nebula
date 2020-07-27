@@ -38,7 +38,8 @@ const qc = (service) => {
     // set the maximum message size as 20MB
     return new V1Client(service, grpc.credentials.createInsecure(), {
         "nebula": "node",
-        'grpc.max_receive_message_length': 20 * 1024 * 1024
+        'grpc.max_receive_message_length': 64 * 1024 * 1024,
+        'grpc.max_send_message_length': 64 * 1024 * 1024
     });
 };
 
