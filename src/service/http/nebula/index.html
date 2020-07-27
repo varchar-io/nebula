@@ -4,14 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <title>Nebula - soaring in your data</title>
-    <link rel="stylesheet" type="text/css" href="styles.min.css?v=2">
+    <link rel="stylesheet" type="text/css" href="styles.min.css?v=3">
+    <link
+        href="https://fonts.googleapis.com/css?family=Nunito:200,200i,300,300i,400,400i,600,600i,700,700i,800,800i,900,900i"
+        rel="stylesheet">
     <link rel="shortcut icon" href="nebula.png">
 </head>
 
 <body>
-    <h1><a href="/"><img src="nebula.png" />ebula</a></h1>
     <div class="main">
         <div class="left">
+            <div class="brand"><a href="/">Nebula</a></div>
             <div><select id="tables"></select>
             </div>
             <div id="stats"></div>
@@ -34,17 +37,17 @@
                 </div>
                 <hr />
                 <div>
-                    <label class="lbl">Time Start:</label>
+                    <label class="lbl">Start:</label>
                     <input type="text" id="start">
                     <a id="startc"><img src="f/ct.png" class="calendar"></a>
                 </div>
                 <div>
-                    <label class="lbl">Time End:</label>
+                    <label class="lbl">End:</label>
                     <input type="text" id="end">
                     <a id="endc"><img src="f/ct.png" class="calendar"></a>
                 </div>
                 <div>
-                    <label class="lbl">Time Window:</label>
+                    <label class="lbl">Interval:</label>
                     <select id="window">
                         <option value="0">auto</option>
                         <option value="60">1 minute</option>
@@ -56,10 +59,10 @@
                 </div>
                 <hr />
                 <div>
-                    <label class="lbl">Dimensions:</label>
+                    <label class="lbl">Keys:</label>
                     <div id="dwrapper"></div>
 
-                    <label class="lbl">Metric:</label>
+                    <label class="lbl">Metrics:</label>
                     <select id="ru"></select>
                     <select id="mcolumns"></select>
                 </div>
@@ -88,23 +91,14 @@
             </div>
         </div>
         <div class="right">
-            <div>
-                <!-- // Remove sand dance from Nebula for now since it is less used.
-                 // Also the current integration is not looking professional
-                <label class="lbl">Visual:</label>
-                <label><input type="radio" id="vn" name="vis" value="n" checked>Nebula</label>
-                <label><input type="radio" id="vs" name="vis" value="s">Sand</label>
-                -->
-                <span id="user" class="user"></span>
+            <div class="topbar">
+                <div id="user" class="user">unauth</div>
+                <button id="share">Share</button>
             </div>
-
-            <div id="qr" class="message"></div>
-            <div id='show'></div>
-            <!--
-            <div id="sdw" style="display:none">
-                <iframe id="sandance"></iframe>
+            <div class="content">
+                <div id="qr" class="message"></div>
+                <div id='show'></div>
             </div>
-            -->
         </div>
     </div>
 
