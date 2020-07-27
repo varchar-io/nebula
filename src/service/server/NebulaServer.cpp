@@ -54,6 +54,7 @@ DEFINE_string(CLS_CONF, "configs/cluster.yml", "cluster config file");
 DEFINE_uint64(CLS_CONF_UPDATE_INTERVAL, 5000, "interval in milliseconds to update cluster config");
 DEFINE_uint64(NODE_SYNC_INTERVAL, 5000, "interval in ms to conduct node sync");
 DEFINE_uint32(MAX_TABLES_RETURN, 500, "max tables to fetch to display");
+DEFINE_int32(MAX_MSG_SIZE, 67108864, "max message size sending between server and client, default to 64M");
 
 /**
  * A cursor template that help iterating a container.
@@ -455,6 +456,9 @@ void RunServer() {
   nebula::service::server::V1ServiceImpl v1Service;
 
   grpc::ServerBuilder builder;
+  // set max message send/receive
+  builder.SetMaxReceiveMessageSize(FLAGS_MAX_MSG_SIZE);
+  builder.SetMaxSendMessageSize(FLAGS_MAX_MSG_SIZE);
   // Listen on the given address without any authentication mechanism.
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with

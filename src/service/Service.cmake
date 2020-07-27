@@ -38,6 +38,7 @@ add_custom_command(
 include_directories("${GEN_DIR}")
 
 # generate a node client for this service
+## javascript code
 SET(NODE_GEN "${GEN_DIR}/nodejs")
 file(MAKE_DIRECTORY ${NODE_GEN})
 add_custom_target(nebula_node_client ALL 
@@ -48,6 +49,18 @@ add_custom_target(nebula_node_client ALL
       --plugin=protoc-gen-grpc="${GRPC_NODE_PLUGIN}"
       "${nproto}"
 DEPENDS ${build_grpcweb_plugin} ${nproto})
+
+## java code
+SET(JAVA_GEN "${GEN_DIR}/java")
+file(MAKE_DIRECTORY ${JAVA_GEN})
+add_custom_target(nebula_java_client ALL
+  COMMAND ${PROTO_COMPILER}
+      --grpc_out="${JAVA_GEN}"
+      --java_out=${JAVA_GEN}
+      -I "${nproto_path}"
+      --plugin=protoc-gen-grpc="${GRPC_JAVA_PLUGIN}"
+      "${nproto}"
+DEPENDS build-grpc-java-compiler ${nproto})
 
 # build flatbuffers schema
 get_filename_component(nfbs "${SERVICE_DIR}/fbs/node.fbs" ABSOLUTE)

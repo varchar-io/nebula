@@ -40,6 +40,8 @@ if(APPLE)
 
 else()
 
+    # We are requiring protobuf version > 3.12.0 now
+    # installed by `sudo apt install -y protobuf-compiler`
     set(PROTOBUF_INCLUDE_DIRS /usr/local/include)
     set(PROTOBUF_LIBRARY_PATH /usr/local/lib/libprotobuf.a)
     set(PROTOBUF_LIBRARY libpb)

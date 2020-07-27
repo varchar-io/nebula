@@ -2,6 +2,28 @@ find_package(Threads REQUIRED)
 
 include(ExternalProject)
 
+# grpc doesn't include stub generator for java, we get it from grpc-java repo
+# use 1.25.0 for now to fit some consumer - we can upgrade it to newer version later
+ExternalProject_Add(grpc-java
+  PREFIX grpc-java
+  GIT_REPOSITORY https://github.com/grpc/grpc-java.git
+  GIT_TAG v1.25.0
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND ""
+  UPDATE_COMMAND ""
+  INSTALL_COMMAND ""
+  LOG_DOWNLOAD ON
+  LOG_CONFIGURE ON
+  LOG_BUILD ON)
+
+  ExternalProject_Get_Property(grpc-java SOURCE_DIR)
+  add_custom_target(build-grpc-java-compiler ALL
+        COMMAND ../gradlew java_pluginExecutable -PskipAndroid=true
+        WORKING_DIRECTORY ${SOURCE_DIR}/compiler
+        DEPENDS grpc-java)
+
+  SET(GRPC_JAVA_PLUGIN ${SOURCE_DIR}/compiler/build/exe/java_plugin/protoc-gen-grpc-java)
+
 # build cares
 SET(CARES_OPTS
   -DCARES_STATIC:BOOL=ON
