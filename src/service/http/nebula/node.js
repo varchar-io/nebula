@@ -376,7 +376,8 @@ const readPost = (req) => {
     return new Promise((resolve, reject) => {
         const empty = "{}";
         const type = req.headers[contentTypeKey];
-        if (type != jsonContentType) {
+        // some content type may not exactly as expected, such as `application/json; charset=UTF-8`.
+        if (!type.includes(jsonContentType)) {
             log(`Only JSON data supported in post: ${type}`);
             reject(empty);
             return;
@@ -401,7 +402,6 @@ const readPost = (req) => {
             .on('end', () => {
                 // extend the object into current q
                 if (data.length > 0) {
-                    log(`Resolve a valid data: ${data}`);
                     resolve(data);
                 } else {
                     reject(empty);
@@ -418,7 +418,7 @@ createServer(async function (req, res) {
         // if URL specified query object, then POST data will be ignored
         // because it is an application/json data, so query is already json object
         if (!q.query && req.method == "POST") {
-            q.query = await readPost(req);
+            q.query = await readPost(req).catch(e => log(`Error: ${e}`));
         }
 
         // pitfall: use brackets, otherwise it will become literal 'contentTypeKey'
