@@ -112,7 +112,9 @@ grpc::Status NodeServerImpl::Query(
   ProfilerStart("/tmp/ns_query.out");
 #endif
   try {
-    auto plan = QuerySerde::from(tableService_, query);
+    auto r = query->GetRoot();
+    auto q = QuerySerde::deserialize(tableService_, query);
+    auto plan = QuerySerde::from(q, r->tstart(), r->tend());
 
     // execute this plan and get results
     NodeExecutor executor(BlockManager::init());

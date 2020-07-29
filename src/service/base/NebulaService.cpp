@@ -276,18 +276,13 @@ nebula::api::dsl::Query QuerySerde::deserialize(
   return q;
 }
 
-std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(
-  const std::shared_ptr<nebula::meta::MetaService> ms,
-  const flatbuffers::grpc::Message<QueryPlan>* msg) {
-  auto query = QuerySerde::deserialize(ms, msg);
-
+std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(Query& q, size_t start, size_t end) {
   // TODO(cao): serialize query context to nodes and mark compile method as const
   QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = q.compile(ctx);
 
   // set a few other properties associated with execution plan
-  auto p = msg->GetRoot();
-  plan->setWindow({ p->tstart(), p->tend() });
+  plan->setWindow({ start, end });
 
   // return this compiled plan
   return plan;

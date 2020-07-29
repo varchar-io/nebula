@@ -287,7 +287,8 @@ TEST(ServiceTest, TestQuerySerde) {
   // serialize this query
   nebula::common::Evidence::Duration tick;
   auto ser = QuerySerde::serialize(query, plan1->id(), { start, end });
-  auto plan2 = QuerySerde::from(ms, &ser);
+  auto q = QuerySerde::deserialize(ms, &ser);
+  auto plan2 = QuerySerde::from(q, start, end);
 
   LOG(INFO) << "Query serde time (ms): " << tick.elapsedMs();
 

@@ -125,7 +125,7 @@ class QuerySerde {
 public:
   static flatbuffers::grpc::Message<QueryPlan> serialize(const nebula::api::dsl::Query&, const std::string&, const nebula::execution::QueryWindow&);
   static nebula::api::dsl::Query deserialize(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
-  static std::unique_ptr<nebula::execution::ExecutionPlan> from(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
+  static std::unique_ptr<nebula::execution::ExecutionPlan> from(nebula::api::dsl::Query&, size_t, size_t);
 };
 
 /**

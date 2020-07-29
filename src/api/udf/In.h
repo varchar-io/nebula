@@ -46,15 +46,10 @@ public:
       name,
       expr->asEval(),
       // logic for "in []"
-      [this](const InputType& source, bool& valid) -> bool {
-        if (valid) {
-          return values_->find(source) != values_->end();
-        }
-
-        return false;
+      [values](const InputType& source, bool& valid) -> bool {
+        return valid && values->find(source) != values->end();
       },
-      buildEvalBlock(expr, values, true)),
-      values_{ values } {}
+      buildEvalBlock(expr, values, true)) {}
 
   In(const std::string& name,
      std::shared_ptr<nebula::api::dsl::Expression> expr,
@@ -64,15 +59,10 @@ public:
       name,
       expr->asEval(),
       // logic for "not in []"
-      [this](const InputType& source, bool& valid) -> bool {
-        if (valid) {
-          return values_->find(source) == values_->end();
-        }
-
-        return false;
+      [values](const InputType& source, bool& valid) -> bool {
+        return valid && values->find(source) == values->end();
       },
-      buildEvalBlock(expr, values, false)),
-      values_{ values } {
+      buildEvalBlock(expr, values, false)) {
     N_ENSURE(!in, "this constructor is designed for NOT IN clauase");
   }
 
@@ -169,9 +159,6 @@ private:
 
     return nebula::surface::eval::uncertain;
   }
-
-private:
-  SetType values_;
 };
 
 } // namespace udf

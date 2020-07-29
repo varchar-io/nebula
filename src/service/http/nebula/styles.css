@@ -275,6 +275,10 @@ div.tooltip {
     border-left: mediumpurple !important;
 }
 
+.selectize-control.multi .selectize-input>div {
+    border: 1px solid mediumpurple !important;
+}
+
 .flatpickr-weekdays,
 .span.flatpickr-weekday,
 span.flatpickr-weekday,
@@ -313,7 +317,7 @@ span.flatpickr-weekday,
 }
 
 .del {
-    color: red;
+    color: mediumpurple;
 }
 
 .cgroup input[type=radio] {

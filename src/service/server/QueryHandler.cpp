@@ -470,7 +470,6 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     using T = nebula::type::TypeTraits<Kind::KIND>::CppType;                                     \
     if constexpr (std::is_integral_v<T>) {                                                       \
       if (pred.n_value_size() > 0) {                                                             \
-        LOG(INFO) << "DBG: received ID= " << pred.n_value(0);                                    \
         constExpression = std::make_shared<ConstExpression<T>>(static_cast<T>(pred.n_value(0))); \
         break;                                                                                   \
       }                                                                                          \

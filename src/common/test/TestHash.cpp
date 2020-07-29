@@ -105,6 +105,17 @@ TEST(CommonTest, TestHashFunc) {
 #undef run_test
 }
 
+TEST(CommonTest, TestFindStringView) {
+  std::vector<std::string> strs{ "us", "gb" };
+  auto set = std::make_shared<robin_hood::unordered_set<std::string_view>>(strs.begin(), strs.end());
+  std::string_view value = "us";
+  EXPECT_TRUE(set->find(value) != set->end());
+  std::string_view value2 = "gb";
+  EXPECT_TRUE(set->find(value2) != set->end());
+  std::string_view value3 = "ca";
+  EXPECT_TRUE(set->find(value3) == set->end());
+}
+
 } // namespace test
 } // namespace common
 } // namespace nebula
