@@ -87,18 +87,31 @@ enum Operation {
   ILIKE = 5;
 }
 
+enum ZipFormat{
+  DELTA = 0;
+}
+
 // TODO(cao): reference Constraints.js for GROUP/RULE generation to build predicates tree
 // Current definition only supports one group basically. (nested groups)
 // NOTE - based on the code generation rule, we don't put plural term for repeated field
 // so the method will like add_value rather than add_values
 // Based on column type - the value will be converted from string always
 // Adding n_value for integers and d_value for floating values if client uses it.
+// Adding values as customized data list serialzied in some format (data type same as column type)
 message Predicate {
   string column = 1;
   Operation op = 2;
   repeated string value = 3;
   repeated int64 n_value = 4 [jstype = JS_STRING];
   repeated double d_value = 5;
+
+  // allow client to pass a zipped values representing
+  // an list of values in current column type.
+  // zip format and zip count show what algo used to zip the original array.
+  // zip count indicates how many values zipped inside.
+  bytes zip = 6;
+  ZipFormat ZipFormat = 7;
+  int32 zipCount = 8;
 }
 
 // define filter - a filter is formed by a list of predicates combined by AND or OR

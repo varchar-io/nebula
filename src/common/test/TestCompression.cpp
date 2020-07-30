@@ -17,6 +17,9 @@
 #include <folly/compression/Compression.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
+#include "common/Delta.h"
+#include "common/Evidence.h"
 #include "common/Memory.h"
 
 /**
@@ -99,6 +102,37 @@ TEST(CompressionTest, TestStringPagedSlice) {
   }
 
   LOG(INFO) << nebula::common::Pool::getDefault().report();
+}
+
+TEST(CompressionTest, TestDeltaEncoding) {
+// generate 10K values range from 0 to 1000 and delta encoding them
+#define test_type(T)                                                                                      \
+  {                                                                                                       \
+    auto rand1 = nebula::common::Evidence::rand<T>(0, 1000);                                              \
+    constexpr auto size = 10000;                                                                          \
+    nebula::common::ExtendableSlice slice{ size * sizeof(T) };                                            \
+    size_t pos = 0;                                                                                       \
+    for (auto i = 0; i < size; ++i) {                                                                     \
+      auto v = rand1();                                                                                   \
+      if (v < 300) {                                                                                      \
+        v = -v;                                                                                           \
+      }                                                                                                   \
+      pos += slice.write<T>(pos, v);                                                                      \
+    }                                                                                                     \
+    nebula::common::Buffer buf = nebula::common::delta_encode<T>((T*)slice.ptr(), size);                  \
+    LOG(INFO) << "compress " << size << " values: raw bytes=" << pos << ", result bytes=" << buf.written; \
+    Buffer decoded = nebula::common::delta_decode<T>(buf.slice->ptr(), buf.written);                      \
+    EXPECT_EQ(decoded.written, pos);                                                                      \
+    EXPECT_TRUE(std::memcmp(decoded.slice->ptr(), slice.ptr(), pos) == 0);                                \
+  }
+
+  LOG(INFO) << "Test 64 bit values delta encoding.";
+  test_type(int64_t);
+
+  LOG(INFO) << "Test 32 bit values delta encoding.";
+  test_type(int32_t);
+
+#undef test_type
 }
 
 } // namespace test

@@ -155,7 +155,7 @@ public:
 class ExtendableSlice : public Slice {
 public:
   ExtendableSlice(const NByte* buffer, size_t size) : Slice{ buffer, size }, slices_{ 1 }, numExtended_{ 0 } {}
-  ExtendableSlice(size_t page) : Slice{ page }, slices_{ 1 }, numExtended_{ 0 } {}
+  ExtendableSlice(size_t size) : Slice{ size }, slices_{ 1 }, numExtended_{ 0 } {}
   ~ExtendableSlice() = default;
 
   // append a bytes array of length bytes to position

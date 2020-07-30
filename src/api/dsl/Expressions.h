@@ -24,8 +24,10 @@
 
 #include "Base.h"
 #include "api/udf/UDFFactory.h"
+#include "common/Delta.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
+#include "common/Zip.h"
 #include "meta/Table.h"
 #include "surface/eval/UDF.h"
 #include "surface/eval/ValueEval.h"
@@ -657,17 +659,40 @@ public:
     std::shared_ptr<Expression> left,
     std::vector<T>&& values,
     bool in = true)
-    : InBase(left), values_{ std::move(values) }, in_{ in } {}
+    : InBase(left),
+      values_{ std::move(values) },
+      in_{ in } {}
+
+  InExpression(
+    std::shared_ptr<Expression> left,
+    nebula::common::Zip&& zip,
+    bool in = true)
+    : InBase(left),
+      zip_{ std::move(zip) },
+      in_{ in } {}
 
 public:
   ALL_LOGICAL_OPS()
   ALIAS()
 
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
-    // UDF In accepts a shared_ptr<unordered_set> now for faster access and sharing
     using VT = typename std::conditional<
       nebula::type::TypeDetect<T>::kind == nebula::type::Kind::VARCHAR, std::string_view, T>::type;
+
     auto set = std::make_shared<nebula::common::unordered_set<VT>>(values_.begin(), values_.end());
+    if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, int64_t>) {
+      // UDF In accepts a shared_ptr<unordered_set> now for faster access and sharing
+      if (zip_.format() == nebula::common::ZipFormat::DELTA) {
+        N_ENSURE_EQ(values_.size(), 0, "vector should be empty when use zip content");
+        auto bin = zip_.data();
+        auto list = nebula::common::delta_decode<VT>((int8_t*)bin.data(), bin.size());
+        VT* vp = (VT*)list.slice->ptr();
+        for (size_t i = 0, size = list.written / sizeof(VT); i < size; ++i) {
+          set->emplace(*(vp + i));
+        }
+      }
+    }
+
     return in_ ?
              nebula::api::udf::UDFFactory::createUDF<
                nebula::surface::eval::UDFType::IN, nebula::type::TypeDetect<T>::kind>(expr_, set) :
@@ -695,6 +720,11 @@ public:
     auto dtype = nebula::type::TypeDetect<T>::tid();
     json.Key("dtype");
     json.String(dtype.data(), dtype.size());
+    json.Key("zip-data");
+    auto zipData = zip_.data();
+    json.String(zipData.data(), zipData.size());
+    json.Key("zip-format");
+    json.Int((int)zip_.format());
     json.Key("values");
     json.StartArray();
     TYPE_BRANCH(bool, Bool)
@@ -721,6 +751,7 @@ public:
 #undef TYPE_BRANCH
 
 private:
+  nebula::common::Zip zip_;
   std::vector<T> values_;
   bool in_;
 };

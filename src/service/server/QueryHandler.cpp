@@ -19,6 +19,7 @@
 #include <folly/Conv.h>
 #include <gflags/gflags.h>
 
+#include "common/Zip.h"
 #include "execution/core/ServerExecutor.h"
 #include "service/node/NodeClient.h"
 #include "service/node/RemoteNodeConnector.h"
@@ -53,6 +54,9 @@ using nebula::api::dsl::QueryContext;
 using nebula::api::dsl::SortType;
 using nebula::api::dsl::starts;
 using nebula::api::dsl::table;
+
+using nebula::common::Zip;
+using nebula::common::ZipFormat;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::QueryWindow;
 using nebula::execution::core::NodeConnector;
@@ -359,6 +363,13 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
   }                                                    \
   return std::make_shared<decltype(exp)>(exp);
 
+inline Zip zip(const Predicate& pred) noexcept {
+  switch (pred.zipformat()) {
+  case nebula::service::ZipFormat::DELTA: return Zip(pred.zip(), ZipFormat::DELTA);
+  default: return Zip{ "", ZipFormat::UNKNOWN };
+  }
+}
+
 template <typename T>
 auto vectorize(const Predicate& pred) -> std::vector<T> {
   // result vector
@@ -416,7 +427,10 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
 
   // convert the OPs: EQ -> IN, NEQ -> NIN
   // exclusively any type of the value list used - only one can be used at one time
-  auto valueCount = std::max({ pred.value_size(), pred.d_value_size(), pred.n_value_size() });
+  auto valueCount = std::max({ pred.value_size(),
+                               pred.d_value_size(),
+                               pred.n_value_size(),
+                               pred.zipcount() });
   N_ENSURE_GT(valueCount, 0, "predicate requires at least one value");
 
   // if specified multiple values for EQ and NEQ, they should convert to
@@ -425,12 +439,22 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
   if (valueCount > 1) {
     // in expression
     if (pop == Operation::EQ || pop == Operation::NEQ) {
-#define BUILD_IN_CLAUSE(KIND, UDF)                                         \
-  case Kind::KIND: {                                                       \
-    auto data = vectorize<typename TypeTraits<Kind::KIND>::CppType>(pred); \
-    auto exp = UDF(columnExpression, std::move(data));                     \
-    CHAIN_AND_RET                                                          \
-    break;                                                                 \
+#define BUILD_IN_CLAUSE(KIND, UDF)                                                          \
+  case Kind::KIND: {                                                                        \
+    using ValueType = std::conditional<                                                     \
+      Kind::KIND == nebula::type::Kind::VARCHAR,                                            \
+      std::string,                                                                          \
+      typename nebula::type::TypeTraits<Kind::KIND>::CppType>::type;                        \
+    if constexpr (Kind::KIND == Kind::INTEGER || Kind::KIND == Kind::BIGINT) {              \
+      if (pred.zipcount() > 0) {                                                            \
+        auto exp = UDF<decltype(columnExpression), ValueType>(columnExpression, zip(pred)); \
+        CHAIN_AND_RET                                                                       \
+        break;                                                                              \
+      }                                                                                     \
+    }                                                                                       \
+    auto exp = UDF(columnExpression, vectorize<ValueType>(pred));                           \
+    CHAIN_AND_RET                                                                           \
+    break;                                                                                  \
   }
 
 #define PROCESS_UDF(func)                                        \
@@ -442,12 +466,7 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     BUILD_IN_CLAUSE(BIGINT, func)                                \
     BUILD_IN_CLAUSE(REAL, func)                                  \
     BUILD_IN_CLAUSE(DOUBLE, func)                                \
-  case Kind::VARCHAR: {                                          \
-    auto data = vectorize<std::string>(pred);                    \
-    auto exp = func(columnExpression, std::move(data));          \
-    CHAIN_AND_RET                                                \
-    break;                                                       \
-  }                                                              \
+    BUILD_IN_CLAUSE(VARCHAR, func)                               \
   default:                                                       \
     throw NException("Not supported column type in predicates"); \
   }

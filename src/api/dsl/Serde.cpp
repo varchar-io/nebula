@@ -27,6 +27,8 @@ namespace nebula {
 namespace api {
 namespace dsl {
 
+using nebula::common::Zip;
+using nebula::common::ZipFormat;
 using nebula::surface::eval::UDFType;
 using nebula::type::TypeDetect;
 
@@ -236,14 +238,19 @@ std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::sh
   }
 
   case UDFType::IN: {
-#define TYPE_IN_EXPR(T, F)                                                             \
-  if (valueType == TypeDetect<T>::tid()) {                                             \
-    std::vector<T> values;                                                             \
-    values.reserve(size);                                                              \
-    for (rapidjson::SizeType i = 0; i < size; ++i) {                                   \
-      values.push_back(v[i].F());                                                      \
-    }                                                                                  \
-    return as(alias, std::make_shared<InExpression<T>>(inner, std::move(values), in)); \
+#define TYPE_IN_EXPR(T, F)                                                              \
+  if (valueType == TypeDetect<T>::tid()) {                                              \
+    if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, int64_t>) {           \
+      if (zip.format() != ZipFormat::UNKNOWN) {                                         \
+        return as(alias, std::make_shared<InExpression<T>>(inner, std::move(zip), in)); \
+      }                                                                                 \
+    }                                                                                   \
+    std::vector<T> values;                                                              \
+    values.reserve(size);                                                               \
+    for (rapidjson::SizeType i = 0; i < size; ++i) {                                    \
+      values.push_back(v[i].F());                                                       \
+    }                                                                                   \
+    return as(alias, std::make_shared<InExpression<T>>(inner, std::move(values), in));  \
   }
 
     rapidjson::Document cd;
@@ -253,6 +260,7 @@ std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::sh
 
     bool in = cd["in"].GetBool();
     const auto valueType = cd["dtype"].GetString();
+    Zip zip{ cd["zip-data"].GetString(), (ZipFormat)cd["zip-format"].GetInt() };
     const rapidjson::Value& v = cd["values"];
     rapidjson::SizeType size = v.Size();
 

@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2017-present Shawn Cao
  *

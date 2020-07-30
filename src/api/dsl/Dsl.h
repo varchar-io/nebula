@@ -21,6 +21,7 @@
 #include "Expressions.h"
 #include "Query.h"
 #include "common/Cursor.h"
+#include "common/Zip.h"
 #include "execution/ExecutionPlan.h"
 #include "execution/meta/TableService.h"
 #include "meta/Table.h"
@@ -133,6 +134,16 @@ static InExpression<U> in(const T& expr, std::vector<U>&& values) {
 template <typename T, typename U>
 static InExpression<U> nin(const T& expr, std::vector<U>&& values) {
   return InExpression(std::shared_ptr<Expression>(new T(expr)), std::move(values), false);
+}
+
+template <typename T, typename U>
+static InExpression<U> in(const T& expr, nebula::common::Zip&& values) {
+  return InExpression<U>(std::shared_ptr<Expression>(new T(expr)), std::move(values));
+}
+
+template <typename T, typename U>
+static InExpression<U> nin(const T& expr, nebula::common::Zip&& values) {
+  return InExpression<U>(std::shared_ptr<Expression>(new T(expr)), std::move(values), false);
 }
 
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>
