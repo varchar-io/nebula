@@ -1,12 +1,39 @@
 {
-  "name": "nebula-service",
+  "name": "nebula-lib",
   "version": "0.1.0",
-  "description": "nebula web service",
+  "description": "nebula web service library",
   "type": "module",
   "repository": {
-    "url": "https://github.com/shawncao/nebula.git"
+    "type": "git",
+    "url": "git+https://github.com/shawncao/nebula.git"
   },
   "license": "Apache-2.0",
+  "homepage": "https://nebula.bz",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "./dist/node/main.cjs",
+    "./_/api.js",
+    "./_/time.js",
+    "./_/handler.js",
+    "./serde.js",
+    "./state.js",
+    "./sdk.js",
+    "./node.js",
+    "./c/charts.js"
+  ],
+  "scripts": {
+    "start": "node node.js"
+  },
+  "bugs": {
+    "url": "https://github.com/shawncao/nebula/issues"
+  },
+  "keywords": [
+    "nebula",
+    "lib",
+    "analytics"
+  ],
+  "author": "Shawn Cao <caoxhua@gmail.com>",
   "dependencies": {
     "@deck.gl/core": "6.4",
     "@deck.gl/layers": "6.4",
