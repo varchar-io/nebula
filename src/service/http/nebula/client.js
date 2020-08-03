@@ -16,6 +16,7 @@
 
 import * as d3 from './c/d3.v5.min.js';
 import * as flamegraph from './c/d3-flamegraph.min.js';
+import * as bb from 'billboard';
 import {
     Constraints
 } from './c/constraints.min.js';
@@ -55,6 +56,7 @@ export default {
     CustomType,
     d3,
     flamegraph,
+    bb,
     Constraints,
     fp,
     time,

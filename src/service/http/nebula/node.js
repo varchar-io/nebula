@@ -244,14 +244,19 @@ const webq = (q, handler, client) => {
     // set metric for non-samples query 
     // (use implicit type convert != instead of !==)
     if (display != DisplayType.SAMPLES) {
-        const m = new Metric();
-        const mcol = state.metrics;
-        m.setColumn(mcol);
-        m.setMethod(state.rollup);
-        req.setMetricList([m]);
+        const metrics = [];
+        let m1 = null;
+        state.metrics.forEach(e => {
+            const m = new Metric();
+            m1 = e.C;
+            m.setColumn(e.C);
+            m.setMethod(e.M);
+            metrics.push(m);
+        });
+        req.setMetricList(metrics);
 
         // set order on metric only means we don't order on samples for now
-        setOrder(mcol, state.sort, req);
+        setOrder(m1, state.sort, req);
     }
 
     // set limit

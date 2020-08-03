@@ -292,13 +292,7 @@ export class Nebula {
             s.display = this.display_;
             s.limit = this.limit_;
             s.sort = this.sort_;
-
-            // set metrics - only supporting one for now
-            if (this.metrics_.length > 0) {
-                const metric = this.metrics_[0];
-                s.metrics = metric.C;
-                s.rollup = metric.M;
-            }
+            s.metrics = this.metrics_;
 
             // send columns back
             s.customs = this.columns_;

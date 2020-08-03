@@ -30,7 +30,6 @@ export class State {
             metrics: [],
             display: 0,
             window: 0,
-            rollup: 0,
             sort: 0,
             limit: 0,
             code: "",

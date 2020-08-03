@@ -327,7 +327,7 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
   const auto& colName = metric.column();
 #define BUILD_METRIC_CASE(TYPE, NAME, ...)                                                   \
   case Rollup::TYPE: {                                                                       \
-    auto exp = NAME(col(colName), ##__VA_ARGS__).as(fmt::format("{0}.{1}", colName, #NAME)); \
+    auto exp = NAME(col(colName), ##__VA_ARGS__).as(fmt::format("{0}.{1}", colName, #TYPE)); \
     return std::make_shared<decltype(exp)>(exp);                                             \
   }
 

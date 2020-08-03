@@ -55,6 +55,7 @@ let json = [];
 let fpcs, fpce;
 
 const timeCol = "_time_";
+const windowCol = "_window_";
 const charts = new Charts();
 const nebula = new Nebula();
 const formatTime = charts.formatTime;
@@ -131,13 +132,6 @@ const onTableState = (state, stats, callback) => {
         persist: false
     });
 
-    // // if the table has no metrics column (no value columns)
-    // // we only allow count on first column then
-    // if (metrics.length == 0) {
-    //     metrics = [dimensions[0]];
-    //     rollups = ['COUNT'];
-    // }
-
     // populate metrics columns
     const setm = (values) =>
         ds('#mcolumns')
@@ -169,18 +163,6 @@ const onTableState = (state, stats, callback) => {
         .append('option')
         .text(k => k.toLowerCase())
         .attr("value", k => neb.Rollup[k]);
-
-    // when rollup method changed to methods that support dimenions
-    // we can refresh metrics colummn
-    // if user change the table selection, initialize it again
-    // ds('#ru').on('change', () => {
-    //     const v = $$('#ru');
-    //     if (v === proto.nebula.service.Rollup.TREEMERGE.toString()) {
-    //         setm(all);
-    //     } else {
-    //         setm(metrics);
-    //     }
-    // });
 
     // order type 
     ds('#ob')
@@ -249,6 +231,12 @@ const hash = (v) => {
 };
 
 const build = (s) => {
+    // TODO(cao) - we should set state value to all UI fields
+    // restore state like refresh page. sync display
+    if (s) {
+        ds('#display').property('value', s.display);
+    }
+
     // build URL and set URL
     const state = s || {
         table: $$('#tables'),
@@ -258,8 +246,10 @@ const build = (s) => {
         keys: $$('#dcolumns'),
         window: $$("#window"),
         display: $$('#display'),
-        metrics: $$('#mcolumns'),
-        rollup: $$('#ru'),
+        metrics: [{
+            C: $$('#mcolumns'),
+            M: $$('#ru')
+        }],
         sort: $$('#ob'),
         limit: $$('#limit')
     };
@@ -288,13 +278,19 @@ const restore = () => {
     if (table) {
         set('#tables', table);
         initTable(table, (cols) => {
+            // TODO(cao): support multiple metrics in UI
+            const metrics = state.metrics;
+            const metric = (metrics && metrics.length) ? metrics[0] : {
+                C: null,
+                M: 0
+            };
             // set other fields
             set('#start', state.start);
             set('#end', state.end);
             set("#window", state.window);
             set('#display', state.display);
-            set('#mcolumns', state.metrics);
-            set('#ru', state.rollup);
+            set('#mcolumns', metric.C);
+            set('#ru', metric.M);
             set('#ob', state.sort);
             set('#limit', state.limit);
 
@@ -335,24 +331,6 @@ const restore = () => {
     }
 };
 
-// extract X-Y for line charts based on json result and query object
-const extractXY = (json, state) => {
-    // extract X-Y (dimension - metric) columns to display
-    // TODO(cao) - revisit this if there are multiple X or multiple Y
-    // dumb version of first dimension and first metric 
-    let metric = "";
-    for (const key in json[0]) {
-        if (!state.keys.includes(key)) {
-            metric = key;
-        }
-    }
-
-    return {
-        "d": state.keys[0],
-        "m": metric
-    };
-};
-
 const onQueryResult = (state, r) => {
     if (r.error) {
         msg(`[query: error=${r.error}, latency=${r.duration} ms]`);
@@ -379,49 +357,69 @@ const onQueryResult = (state, r) => {
     const draw = () => {
         // enum value are number and switch/case are strong typed match
         const display = +state.display;
-        const keys = extractXY(json, state);
+
+        // draw may be triggered by resize - stale data may mess
+        if (display != +$$('#display')) {
+            return;
+        }
+
+        if (display == neb.DisplayType.SAMPLES ||
+            display == neb.DisplayType.TABLE) {
+            charts.displayTable(json);
+            return;
+        }
+
+        // figure out keys and metrics columns
+        const keys = state.keys.slice();
+        const data = json.slice();
+        const metrics = [];
+        for (const key in data[0]) {
+            if (!keys.includes(key) && key != timeCol && key != windowCol) {
+                metrics.push(key);
+            }
+        }
+
+        // if there are multiple keys, we merge them into single one for display
+        if (keys.length > 1) {
+            // combined key
+            const con = ' - ';
+            const combinedCol = keys.join(con);
+            data.forEach(row => {
+                row[combinedCol] = keys.map(e => row[e]).join(con);
+            });
+
+            // ask visual to render this new column instead
+            keys.length = 0;
+            keys.push(combinedCol);
+        }
+
+        // if aggregation specified multiple keys, we merge them into a single key
         switch (display) {
-            case neb.DisplayType.SAMPLES:
-            case neb.DisplayType.TABLE:
-                charts.displayTable(json);
-                break;
             case neb.DisplayType.TIMELINE:
-                const WINDOW_KEY = '_window_';
                 const beginMs = time.seconds(state.start) * 1000;
-                let data = {
-                    default: json
-                };
-                // with dimension
-                if (keys.d && keys.d.length > 0) {
-                    const groupBy = (list, key) => {
-                        return list.reduce((rv, x) => {
-                            (rv[x[key]] = rv[x[key]] || []).push(x);
-                            return rv;
-                        }, {});
-                    };
-
-                    data = groupBy(json, keys.d);
-                }
-
-                charts.displayTimeline(data, WINDOW_KEY, keys.m, beginMs);
+                charts.displayTimeline(data, keys, metrics, windowCol, beginMs);
                 break;
             case neb.DisplayType.BAR:
-                charts.displayBar(json, keys.d, keys.m);
+                charts.displayBar(data, keys, metrics);
                 break;
             case neb.DisplayType.PIE:
-                charts.displayPie(json, keys.d, keys.m);
+                charts.displayPie(data, keys, metrics);
                 break;
             case neb.DisplayType.LINE:
-                charts.displayLine(json, keys.d, keys.m);
+                charts.displayLine(data, keys, metrics);
                 break;
             case neb.DisplayType.FLAME:
-                charts.displayFlame(json, keys.d, keys.m);
+                charts.displayFlame(data, keys, metrics);
         }
     };
 
-    // draw and redraw on window resize
+    // draw and redraw on window resize - browser fires multiple times
     draw();
-    $(window).on("resize", draw);
+    var resizeTimer = undefined;
+    $(window).on("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(draw, 200);
+    });
 };
 
 const execute = () => {
