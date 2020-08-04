@@ -124,7 +124,7 @@ export class Charts {
             cols.forEach(c => data.push(headless ? [] : [c]));
             json.forEach(row => {
                 for (let i = 0; i < cols.length; ++i) {
-                    data[i].push(row[cols[i]]);
+                    data[i].push(`${row[cols[i]]}`);
                 }
             });
 
