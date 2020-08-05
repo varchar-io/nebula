@@ -117,14 +117,26 @@ export class Charts {
 
         // transform json like `{k1:1, k2:2, v1:3, v2:4}` into column values
         // like `[["k1", 1], ["k2", 2], ["v1", 3], ["v2", 4]]`
-        this.columns = (json, keys, metrics, headless) => {
+        this.columns = (json, keys, metrics, headless, defaultkey) => {
             const cols = [...keys, ...metrics];
+            const numKeys = keys.length;
             const data = [];
             // push column name as headers (follow CSV convention)
             cols.forEach(c => data.push(headless ? [] : [c]));
             json.forEach(row => {
-                for (let i = 0; i < cols.length; ++i) {
-                    data[i].push(`${row[cols[i]]}`);
+                // process keys
+                for (let i = 0; i < numKeys; ++i) {
+                    let kv = `${row[cols[i]]}`;
+                    if (defaultkey && kv.length == 0) {
+                        kv = "null";
+                    }
+
+                    data[i].push(kv);
+                }
+
+                // metrics
+                for (let i = numKeys; i < cols.length; ++i) {
+                    data[i].push(row[cols[i]]);
                 }
             });
 
@@ -172,7 +184,7 @@ export class Charts {
         this.displayPie = (json, keys, metrics) => {
             // clear the area first
             ds(chartId).html("");
-            const data = this.columns(json, keys, metrics, true);
+            const data = this.columns(json, keys, metrics, true, true);
             if (keys.length == 0) {
                 data.unshift([metrics[0]]);
             }
