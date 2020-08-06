@@ -40,7 +40,7 @@ class KafkaReader : public nebula::surface::RowCursor {
 public:
   KafkaReader(nebula::meta::TableSpecPtr table,
               KafkaSegment segment,
-              size_t timeoutMs = 5000)
+              size_t timeoutMs = 3000)
     : nebula::surface::RowCursor(0),
       table_{ table },
       segment_{ std::move(segment) },

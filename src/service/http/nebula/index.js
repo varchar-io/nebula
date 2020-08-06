@@ -17,6 +17,10 @@
 
 /** This entry is used to export all common library to its npm package */
 import {
+    neb
+} from "/dist/web/main.js";
+
+import {
     APIS
 } from './_/api.js';
 import {
@@ -29,14 +33,6 @@ import {
     bytes2utf8
 } from './serde.js';
 
-// nebula distribute library package
-// add require in ES6 module type - remove for commonjs
-import {
-    createRequire
-} from 'module';
-const require = createRequire(
-    import.meta.url);
-const service = require('./dist/node/main.cjs');
 import {
     State
 } from "./state.js";
@@ -45,7 +41,17 @@ import {
     Charts
 } from "./c/charts.js";
 
+// nebula distribute library package
+// add require in ES6 module type - remove for commonjs
+import {
+    createRequire
+} from 'module';
+const require = createRequire(
+    import.meta.url);
+const service = require('./dist/node/main.cjs');
+
 export const n = {
+    neb,
     APIS,
     time,
     Handler,

@@ -9,6 +9,7 @@ services:
       - "9199:9199"
     cap_add:
       - ALL
+    network_mode: "host"
   server:
     build:
       context: ./
@@ -28,6 +29,7 @@ services:
     environment:
       # can be a S3 file like s3://nebula/cluster-dev.yml
       - NCONF=/etc/nebula/configs/cluster.yml
+    network_mode: "host"
   envoy:
     build:
       context: ./
@@ -37,6 +39,7 @@ services:
       - "8080:8080"
     links:
       - server
+    network_mode: "host"
   web:
     build:
       context: ./
@@ -46,13 +49,4 @@ services:
       - "8088:8088"
     links:
       - envoy
-
-networks:
-  default:
-    driver: bridge
-    driver_opts:
-      com.docker.network.enable_ipv6: "true"
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.16.238.0/24
+    network_mode: "host"

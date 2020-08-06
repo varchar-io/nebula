@@ -12,7 +12,7 @@
 - A quick sample of quick module setup https://github.com/vargheseg/test
 
 ### Use CMake to build the project
-
+- mkdir build && cd build
 - cmake ..
 - make
 - make install
@@ -154,3 +154,10 @@ I published these images from a Ubuntu machine via these commands:
 3. docker tag nebula/web caoxhua/nebula.web && docker push caoxhua/nebula.web
 4. docker tag nebula/server caoxhua/nebula.server && docker push caoxhua/nebula.server
 5. docker tag nebula/node caoxhua/nebula.node && docker push caoxhua/nebula.node
+
+
+### Run End to End Nebula On Macbook
+After you can make a successful build on your macbook, run #1 in /build folder, and #2 in `/src/service/http/nebula`
+1. Run `NodeServer` and `NebulaServer` in a terminal window: `./NodeServer & ./NebulaServer --CLS_CONF configs/cluster.yml &`
+2. Run `Nebula Web` to serve UI and connect Nebula Engine: `NS_ADDR=localhost:9190 NODE_PORT=8088 node node.js &`
+3. Open browser and hit `http://localhost:8088`s

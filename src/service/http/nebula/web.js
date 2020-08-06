@@ -59,6 +59,7 @@ const windowCol = "_window_";
 const charts = new Charts();
 const nebula = new Nebula();
 const formatTime = charts.formatTime;
+const chartId = "#show";
 const msg = (text) => ds('#qr').text(text);
 
 // arch mode indicates the web architecture mode
@@ -365,7 +366,7 @@ const onQueryResult = (state, r) => {
 
         if (display == neb.DisplayType.SAMPLES ||
             display == neb.DisplayType.TABLE) {
-            charts.displayTable(json);
+            charts.displayTable(chartId, json);
             return;
         }
 
@@ -397,19 +398,19 @@ const onQueryResult = (state, r) => {
         switch (display) {
             case neb.DisplayType.TIMELINE:
                 const beginMs = time.seconds(state.start) * 1000;
-                charts.displayTimeline(data, keys, metrics, windowCol, beginMs);
+                charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs);
                 break;
             case neb.DisplayType.BAR:
-                charts.displayBar(data, keys, metrics);
+                charts.displayBar(chartId, data, keys, metrics);
                 break;
             case neb.DisplayType.PIE:
-                charts.displayPie(data, keys, metrics);
+                charts.displayPie(chartId, data, keys, metrics);
                 break;
             case neb.DisplayType.LINE:
-                charts.displayLine(data, keys, metrics);
+                charts.displayLine(chartId, data, keys, metrics);
                 break;
             case neb.DisplayType.FLAME:
-                charts.displayFlame(data, keys, metrics);
+                charts.displayFlame(chartId, data, keys, metrics);
         }
     };
 

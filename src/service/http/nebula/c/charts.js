@@ -28,14 +28,9 @@ const bar = nb.bar;
 const pie = nb.pie;
 const spline = nb.spline;
 const area = nb.area;
-const color = (i) => d3.schemeCategory10[i % 10];
-const symbols = ["circle", "diamond", "square", "triangle-up", "triangle-down", "cross"];
-const symbol = (i) => d3.symbol().size(81).type(symbols[i % symbols.length]);
 const isTime = (c) => c === "_time_";
 const pad2 = (v) => `${v}`.padStart(2, 0);
-const localTime = (unix_ms) => new Date(unix_ms).toLocaleString();
-const isoTime = (unix_ms) => new Date(unix_ms).toISOString();
-const chartId = "#show";
+const EMPTY = "(null)";
 
 export class Charts {
     constructor() {
@@ -52,36 +47,10 @@ export class Charts {
             return `${y}-${m}-${d} ${h}:${mi}:${s}`;
         };
 
-        // display a legend in given places
-        this.legend = (svg, px, py, names, width = 0, vertical = true) => {
-            const span = (width > 0 && names.length > 0) ? (width / (names.length)) : 60;
-            const legend = svg.selectAll("g.legend")
-                .data(names)
-                .enter()
-                .append("svg:g")
-                .attr("class", "legend")
-                .attr("transform",
-                    (d, i) => vertical ?
-                    `translate(${px}, ${py + i * 20 + 20})` :
-                    `translate(${px + i*span}, ${py})`);
-
-            // make a matching color rect
-            legend.append("svg:rect")
-                .attr("width", 15)
-                .attr("height", 15)
-                .attr("fill", (d, i) => color(i));
-
-            legend.append("svg:text")
-                .attr("text-anchor", "left")
-                .attr("x", 18)
-                .attr("y", 15)
-                .text((d, i) => d);
-        };
-
-        this.displayTable = (json) => {
+        this.displayTable = (chartId, json) => {
             // Get Table headers and print 
             if (json.length > 0) {
-                const area = ds('#show');
+                const area = ds(chartId);
                 area.html("");
                 const tb = area.append("table");
                 tb.append("thead").append("tr").attr("id", "table_head");
@@ -117,21 +86,16 @@ export class Charts {
 
         // transform json like `{k1:1, k2:2, v1:3, v2:4}` into column values
         // like `[["k1", 1], ["k2", 2], ["v1", 3], ["v2", 4]]`
-        this.columns = (json, keys, metrics, headless, defaultkey) => {
+        this.columns = (json, keys, metrics, headless) => {
             const cols = [...keys, ...metrics];
             const numKeys = keys.length;
             const data = [];
             // push column name as headers (follow CSV convention)
             cols.forEach(c => data.push(headless ? [] : [c]));
             json.forEach(row => {
-                // process keys
+                // process keys - we do not like empty keys using default empty
                 for (let i = 0; i < numKeys; ++i) {
-                    let kv = `${row[cols[i]]}`;
-                    if (defaultkey && kv.length == 0) {
-                        kv = "null";
-                    }
-
-                    data[i].push(kv);
+                    data[i].push(`${row[cols[i]]}` || EMPTY);
                 }
 
                 // metrics
@@ -158,7 +122,7 @@ export class Charts {
             }
         };
 
-        this.displayBar = (json, keys, metrics) => {
+        this.displayBar = (chartId, json, keys, metrics) => {
             // clear the area first
             ds(chartId).html("");
             const option = {
@@ -181,10 +145,10 @@ export class Charts {
             const chart = bb.generate(option);
         };
 
-        this.displayPie = (json, keys, metrics) => {
+        this.displayPie = (chartId, json, keys, metrics) => {
             // clear the area first
             ds(chartId).html("");
-            const data = this.columns(json, keys, metrics, true, true);
+            const data = this.columns(json, keys, metrics, true);
             if (keys.length == 0) {
                 data.unshift([metrics[0]]);
             }
@@ -199,7 +163,7 @@ export class Charts {
             const chart = bb.generate(option);
         };
 
-        this.displayLine = (json, keys, metrics) => {
+        this.displayLine = (chartId, json, keys, metrics) => {
             // clear the area first
             ds(chartId).html("");
             const option = {
@@ -215,7 +179,7 @@ export class Charts {
             const chart = bb.generate(option);
         };
 
-        this.displayFlame = (json, keys, metrics) => {
+        this.displayFlame = (chartId, json, keys, metrics) => {
             if (json && json.length) {
                 // set the dimensions and margins of the graph
                 const margin = {
@@ -237,7 +201,13 @@ export class Charts {
 
                 for (var i = 0; i < json.length; ++i) {
                     const title = key ? json[i][key] : null;
-                    const blob = JSON.parse(json[i][value]);
+                    const data = `${json[i][value]}`;
+                    if (data.length == 0) {
+                        continue;
+                    }
+
+                    // parse the valid flame data
+                    const blob = JSON.parse(data);
 
                     // define flame graph routine
                     const flame = neb.flamegraph()
@@ -257,9 +227,9 @@ export class Charts {
             }
         };
 
-        this.displayTimeline = (json, keys, metrics, timeCol, start) => {
+        this.displayTimeline = (chartId, json, keys, metrics, timeCol, start) => {
             // clear the area first
-            ds('#show').html("");
+            ds(chartId).html("");
 
             // assuming the data already sorted by timeCol (no need to sort again)
             // cols is keyed by column name
@@ -270,7 +240,7 @@ export class Charts {
                 [timeCol]: times
             };
             json.forEach(row => {
-                const variant = (key in row) ? row[key] : value;
+                const variant = (key in row) ? (row[key] || EMPTY) : value;
                 cols[variant] = cols[variant] || [];
                 cols[variant].push(row[value]);
                 // sync the vector the same size as time

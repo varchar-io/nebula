@@ -87,11 +87,25 @@ void KafkaReader::init() {
   partition_ = std::unique_ptr<RdKafka::TopicPartition>(
     RdKafka::TopicPartition::create(topic, segment_.partition, timeoutMs_));
 
-  // set offset of this partition
-  partition_->set_offset(segment_.offset);
+  auto offset = segment_.offset;
 
   // assign the partition to start consuming
   consumer_ = KafkaProvider::getConsumer(table_->location, table_->settings);
+
+  // a segment can have offset even smaller than valid range of the partition
+  // due to range chunking, adjust partition offset if this is the case
+  int64_t lowOffset = -1;
+  int64_t highOffset = -1;
+  if (consumer_->query_watermark_offsets(
+        topic, segment_.partition, &lowOffset, &highOffset, timeoutMs_)
+        == RdKafka::ERR_NO_ERROR
+      && lowOffset > offset) {
+    offset = lowOffset;
+    LOG(INFO) << "Adjust partition offset to low bound.";
+  }
+
+  // set partition offset to read and assign to current consumer
+  partition_->set_offset(offset);
   consumer_->assign({ partition_.get() });
 
   // create parser
@@ -117,6 +131,7 @@ std::unique_ptr<RdKafka::Message> KafkaReader::message() {
   if (this->size_ >= segment_.size) {
     return nullptr;
   }
+
   // when this message is consumed from queue, please delete it
   std::unique_ptr<RdKafka::Message> msg(consumer_->consume(timeoutMs_));
 
@@ -133,10 +148,8 @@ std::unique_ptr<RdKafka::Message> KafkaReader::message() {
       }
     }
 
-    auto offset = msg->offset();
-
     // for unpredictable element beyond max limit
-    if (offset > max_) {
+    if (msg->offset() > max_) {
       return nullptr;
     }
   }

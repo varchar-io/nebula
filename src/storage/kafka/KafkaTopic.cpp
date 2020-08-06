@@ -123,7 +123,7 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
     auto err = consumer->offsetsForTimes(ps, timeoutMs_);
     auto startOffset = p->offset();
     if (err != RdKafka::ERR_NO_ERROR) {
-      VLOG(1) << "Kafka: failed to call offset for time: " << timeMs << ", err=" << err;
+      LOG(ERROR) << "Kafka: failed to call offset for time: " << timeMs << ", err=" << err;
       startOffset = -1;
     }
 
@@ -165,10 +165,10 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
                    << ", partition=" << part << ", topic=" << topic_;
     }
 
-    // Here places an interesting case, because end=(highOffset/width), 
+    // Here places an interesting case, because end=(highOffset/width),
     // so any message in current band not full to a batch will not be consumed.
-    // for example, width is 1000, the last number of message passing x*1000, 
-    // let's say 900 won't be consumed until it's filled up 
+    // for example, width is 1000, the last number of message passing x*1000,
+    // let's say 900 won't be consumed until it's filled up
     // This problem potentially will apply a latency between latest message and time when it show up in Nebula.
     while (start < end) {
       segments.emplace_back(part, width * start++, width);

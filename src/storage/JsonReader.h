@@ -105,6 +105,11 @@ public:
 
   // parse a buffer with size into a reset row, call reset before passing row
   virtual bool parse(void* buf, size_t size, nebula::memory::FlatRow& row) noexcept override {
+    // can not be a valid json if content smaller than 2
+    if (size < 2) {
+      return false;
+    }
+
     auto ptr = static_cast<char*>(buf);
 
     // (Worth A Note)
@@ -112,8 +117,10 @@ public:
     // but we can try make a reusable doc as member and use Clear method to release resources - not tested
     // Previously, putting this as a member cause lots of memory leak as internal buffer not released.
     rapidjson::Document doc;
-    if (doc.Parse(ptr, size).HasParseError()) {
-      LOG(WARNING) << "Error parsing json: " << std::string_view(ptr, size);
+    auto& parsed = doc.Parse(ptr, size);
+    if (parsed.HasParseError()) {
+      LOG(WARNING) << "Error parsing json: " << parsed.GetParseError()
+                   << " | " << std::string_view(ptr, size);
       return false;
     }
 
