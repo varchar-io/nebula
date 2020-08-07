@@ -139,20 +139,23 @@ struct VectorFrame {
   }
 };
 
-template <typename T, bool hash = false>
+// T - element type, usually string for stack trace
+// hash - use hash set or vector as internal store
+// rf - input stack is root first/top (icicle) or root bottom (flame)
+template <typename T, bool hash = false, bool rf = true>
 class StackTree {
   using FT = std::conditional_t<hash, HashFrame<T>, VectorFrame<T>>;
   using ST = typename std::vector<T>;
 
 public:
   // build a stack tree object from a json blob
-  StackTree(const std::string_view& json) : rf_{ true } {
+  StackTree(const std::string_view& json) {
     parse(json);
   }
 
   // construct a new stack tree
-  StackTree(bool rootFirst = true)
-    : rf_{ rootFirst }, root_{ std::make_unique<FT>(T{}, 0, 0) } {}
+  StackTree()
+    : root_{ std::make_unique<FT>(T{}, 0, 0) } {}
   virtual ~StackTree() = default;
 
 public:
@@ -165,7 +168,7 @@ public:
     // for stack, root is at the bottom.
     FT* current = root_.get();
 
-    if (rf_) {
+    if constexpr (rf) {
       for (size_t i = 0; i < stack.size(); ++i) {
         current = visit(current, stack.at(i));
       }
@@ -178,7 +181,7 @@ public:
 
   // also supports reading line by line from input stream
   void merge(std::istream& text) noexcept {
-    if (!rf_) {
+    if constexpr (!rf) {
       ST lines;
       lines.reserve(64);
       std::string line;
@@ -199,12 +202,13 @@ public:
     }
   }
 
-  void merge(const StackTree& stack) noexcept {
+  inline void merge(const StackTree& stack) noexcept {
     merge(*root_, *stack.root_);
   }
 
   // print current tree in JSON format
   // please refer this http://martinspier.io/d3-flame-graph/stacks.json format for visualization readyness
+  // but JSON could be huge - considering using smaller sized format like msgpack or employee compression
   std::string jsonfy(size_t threshold = 1) const noexcept {
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> json(buffer);
@@ -341,8 +345,6 @@ private:
   }
 
 private:
-  // root first indicates if root shows first (upside down - icicle view)
-  bool rf_;
   std::unique_ptr<FT> root_;
 };
 

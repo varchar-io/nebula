@@ -1026,7 +1026,7 @@ TEST(CommonTest, TestStackTree) {
   nebula::common::Evidence::Duration dur;
   for (auto i = 0; i < count; ++i) {
     // run the stack tree merge methods
-    nebula::common::StackTree<std::string, true> stack{ false };
+    nebula::common::StackTree<std::string, true, false> stack;
     stack.merge(std::vector<std::string>{ "C", "B", "A" });
     stack.merge(std::vector<std::string>{ "D", "B", "A" });
     stack.merge(std::vector<std::string>{ "X", "A" });
@@ -1043,7 +1043,7 @@ TEST(CommonTest, TestStackTree) {
               "NODE: d=X, c=1, l=2\n");
 
     // run the stack tree merge methods
-    nebula::common::StackTree<std::string, true> stack2{ false };
+    nebula::common::StackTree<std::string, true, false> stack2;
     stack2.merge(std::vector<std::string>{ "C", "B", "A" });
     stack2.merge(std::vector<std::string>{ "E", "B", "A" });
     stack2.merge(std::vector<std::string>{ "Y", "A" });
@@ -1069,7 +1069,7 @@ TEST(CommonTest, TestStackTree) {
 
   for (auto i = 0; i < count; ++i) {
     // run the stack tree merge methods
-    nebula::common::StackTree<std::string, false> stack{ false };
+    nebula::common::StackTree<std::string, false, false> stack;
     stack.merge(std::vector<std::string>{ "C", "B", "A" });
     stack.merge(std::vector<std::string>{ "D", "B", "A" });
     stack.merge(std::vector<std::string>{ "X", "A" });
@@ -1086,7 +1086,7 @@ TEST(CommonTest, TestStackTree) {
               "NODE: d=X, c=1, l=2\n");
 
     // run the stack tree merge methods
-    nebula::common::StackTree<std::string, false> stack2{ false };
+    nebula::common::StackTree<std::string, false, false> stack2;
     stack2.merge(std::vector<std::string>{ "C", "B", "A" });
     stack2.merge(std::vector<std::string>{ "E", "B", "A" });
     stack2.merge(std::vector<std::string>{ "Y", "A" });
@@ -1111,7 +1111,7 @@ TEST(CommonTest, TestStackTree) {
 
   {
     // run the stack tree merge methods
-    nebula::common::StackTree<std::string, false> stack3{ true };
+    nebula::common::StackTree<std::string, false, true> stack3;
 
     std::istringstream s1{ "A\nB\nC" };
     stack3.merge(s1);

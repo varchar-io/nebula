@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <lz4.h>
+
+#include "common/Finally.h"
 #include "common/IStream.h"
 #include "common/StackTree.h"
 #include "surface/eval/UDF.h"
@@ -42,7 +45,7 @@ public:
 
 public:
   class Aggregator : public BaseAggregator {
-    using STT = nebula::common::StackTree<std::string>;
+    using STT = nebula::common::StackTree<std::string, true>;
     static constexpr auto SIZE_SIZE = sizeof(size_t);
 
   public:
@@ -75,15 +78,36 @@ public:
 
     // serialize into a buffer
     inline virtual size_t serialize(nebula::common::ExtendableSlice& slice, size_t offset) override {
-      // write the merged tree into a memory chunk
+      // LZ4 Compression can reduce the data size massively.
+      // Latency reduction at about 13%
       auto json = stack_->jsonfy();
       auto bin = slice.write(offset, json.size());
       auto size = slice.write(offset + bin, json.data(), json.size());
       return bin + size;
+
+      // Comment this as we want to do this compression transparently
+      // in sketch bytes serialization framework
+      // write the merged tree into a memory chunk
+      // auto json = stack_->jsonfy();
+      // auto len = json.size();
+      // char* buffer = new char[len];
+      // nebula::common::Finally exit([&buffer]() { delete[] buffer; });
+      // char* data = buffer;
+      // size_t bytes = LZ4_compress_default(json.data(), buffer, len, len);
+      // if (bytes == 0) {
+      //   bytes = len;
+      //   data = json.data();
+      // }
+      // auto bin = slice.write(offset, bytes);
+      // auto com = slice.write(offset + bin, len);
+      // auto size = slice.write(offset + bin + com, data, bytes);
+      // return bin + com + size;
     }
 
     // deserialize from a given buffer, and bin size
     inline virtual size_t load(nebula::common::ExtendableSlice& slice, size_t offset) override {
+      // LZ4 Compression can reduce the data size massively.
+      // Latency reduction at about 13%
       // load a merged tree from a memory chunk
       auto size = slice.read<size_t>(offset);
 
@@ -91,6 +115,22 @@ public:
       auto json = slice.read(offset + SIZE_SIZE, size);
       stack_ = std::make_unique<STT>(json);
       return size + SIZE_SIZE;
+
+      // Comment the compression part (13% saving with compression)
+      // As we want to support compression in sketch serde framework
+      // auto size = slice.read<size_t>(offset);
+      // auto raw = slice.read<size_t>(offset + SIZE_SIZE);
+      // auto json = slice.read(offset + SIZE_SIZE, size);
+      // if (raw > size) {
+      //   char* buffer = new char[raw];
+      //   nebula::common::Finally exit([&buffer]() { delete[] buffer; });
+      //   auto ret = (uint32_t)LZ4_decompress_safe(json.data(), buffer, size, raw);
+      //   N_ENSURE_EQ(ret, raw, "raw data size mismatches.");
+      //   stack_ = std::make_unique<STT>(std::string(buffer, raw));
+      //   return size + SIZE_SIZE + SIZE_SIZE;
+      // }
+      // stack_ = std::make_unique<STT>(json);
+      // return size + SIZE_SIZE + SIZE_SIZE;
     }
 
     inline virtual bool fit(size_t) override {
