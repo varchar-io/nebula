@@ -16,7 +16,7 @@
 
 import {
     neb
-} from "/dist/web/main.js";
+} from "./dist/web/main.js";
 
 import {
     Nebula,
@@ -34,11 +34,11 @@ import {
     p99,
     p99_9,
     p99_99
-} from '/sdk.min.js';
+} from './sdk.min.js';
 
 import {
     Charts
-} from "/c/charts.min.js";
+} from "./c/charts.min.js";
 
 // define jquery style selector 
 const time = neb.time;

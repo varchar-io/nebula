@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-import * as d3 from './c/d3.v5.min.js';
-import * as flamegraph from './c/d3-flamegraph.min.js';
+import * as d3 from './d/d3.v5.min.js';
+import * as flamegraph from './d/d3-flamegraph.min.js';
 import * as bb from 'billboard';
 import {
     Constraints

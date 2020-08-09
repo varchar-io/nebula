@@ -16,7 +16,7 @@
 
 import {
     neb
-} from "/dist/web/main.js";
+} from "../dist/web/main.js";
 
 const d3 = neb.d3;
 const ds = neb.d3.select;
