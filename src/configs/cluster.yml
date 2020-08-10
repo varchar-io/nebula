@@ -15,7 +15,7 @@ server:
 # will be provided by enviroment
 nodes:
   - node:
-      host: dev-shawncao
+      host: localhost
       port: 9199
 
 tables:

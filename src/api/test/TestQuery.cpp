@@ -44,6 +44,7 @@ namespace test {
 using namespace nebula::api::dsl;
 using nebula::common::Cursor;
 using nebula::common::Evidence;
+using nebula::execution::QueryContext;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::meta::TableService;
 using nebula::surface::RowData;
@@ -68,8 +69,7 @@ TEST(ApiTest, TestMultipleBlocks) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -113,8 +113,7 @@ TEST(ApiTest, TestStringEqEmpty) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -158,8 +157,7 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -192,8 +190,7 @@ TEST(ApiTest, TestBlockSkipByPartitionColumn) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -230,8 +227,7 @@ TEST(ApiTest, TestAvgAggregation) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -281,8 +277,7 @@ TEST(ApiTest, TestPercentile) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -325,8 +320,7 @@ TEST(ApiTest, TestTreePathMerge) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -368,8 +362,7 @@ TEST(ApiTest, TestScript) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -413,8 +406,7 @@ TEST(ApiTest, TestScriptSamples) {
                    col("id2"));
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -461,8 +453,7 @@ TEST(ApiTest, TestScriptAggregate) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -507,8 +498,7 @@ TEST(ApiTest, TestScriptRegisterColumn) {
                  .limit(10);
 
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging
@@ -549,8 +539,7 @@ TEST(ApiTest, TestAccessControl) {
 
   // compile the query into an execution plan
   // test table require nebula-users to read event column, refer TestTable.h
-  QueryContext ctx{ "nebula", { "nebula-guest" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
 
   // print out the plan through logging

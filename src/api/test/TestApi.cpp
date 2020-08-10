@@ -44,6 +44,7 @@ namespace test {
 
 using namespace nebula::api::dsl;
 using nebula::common::Cursor;
+using nebula::execution::QueryContext;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::meta::TableService;
 using nebula::surface::RowData;
@@ -106,8 +107,7 @@ TEST(ApiTest, TestQueryStructure) {
   LOG(INFO) << "                  order by 5";
   LOG(INFO) << "                  limit 100";
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
 
   // print out the plan through logging
   plan->display();
@@ -156,8 +156,7 @@ TEST(ApiTest, TestSortingAndTop) {
                  .sortby({ 5 }, SortType::DESC)
                  .limit(5);
   // compile the query into an execution plan
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = query.compile(ctx);
+  auto plan = query.compile(QueryContext::def());
 
   nebula::common::Evidence::Duration tick;
 

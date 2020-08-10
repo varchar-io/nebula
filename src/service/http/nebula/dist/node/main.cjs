@@ -3429,10 +3429,12 @@ proto.nebula.service.Statistics.prototype.toObject = function(opt_includeInstanc
  */
 proto.nebula.service.Statistics.toObject = function(includeInstance, msg) {
   var f, obj = {
-    rowsscanned: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    querytimems: jspb.Message.getFieldWithDefault(msg, 2, 0),
-    error: jspb.Message.getFieldWithDefault(msg, 3, 0),
-    message: jspb.Message.getFieldWithDefault(msg, 4, "")
+    querytimems: jspb.Message.getFieldWithDefault(msg, 1, 0),
+    rowsscanned: jspb.Message.getFieldWithDefault(msg, 2, 0),
+    blocksscanned: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    rowsreturn: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    error: jspb.Message.getFieldWithDefault(msg, 5, 0),
+    message: jspb.Message.getFieldWithDefault(msg, 6, "")
   };
 
   if (includeInstance) {
@@ -3470,18 +3472,26 @@ proto.nebula.service.Statistics.deserializeBinaryFromReader = function(msg, read
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {number} */ (reader.readUint64());
-      msg.setRowsscanned(value);
-      break;
-    case 2:
       var value = /** @type {number} */ (reader.readUint32());
       msg.setQuerytimems(value);
       break;
+    case 2:
+      var value = /** @type {number} */ (reader.readUint64());
+      msg.setRowsscanned(value);
+      break;
     case 3:
+      var value = /** @type {number} */ (reader.readUint64());
+      msg.setBlocksscanned(value);
+      break;
+    case 4:
+      var value = /** @type {number} */ (reader.readUint64());
+      msg.setRowsreturn(value);
+      break;
+    case 5:
       var value = /** @type {number} */ (reader.readUint32());
       msg.setError(value);
       break;
-    case 4:
+    case 6:
       var value = /** @type {string} */ (reader.readString());
       msg.setMessage(value);
       break;
@@ -3514,31 +3524,45 @@ proto.nebula.service.Statistics.prototype.serializeBinary = function() {
  */
 proto.nebula.service.Statistics.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getRowsscanned();
+  f = message.getQuerytimems();
   if (f !== 0) {
-    writer.writeUint64(
+    writer.writeUint32(
       1,
       f
     );
   }
-  f = message.getQuerytimems();
+  f = message.getRowsscanned();
   if (f !== 0) {
-    writer.writeUint32(
+    writer.writeUint64(
       2,
+      f
+    );
+  }
+  f = message.getBlocksscanned();
+  if (f !== 0) {
+    writer.writeUint64(
+      3,
+      f
+    );
+  }
+  f = message.getRowsreturn();
+  if (f !== 0) {
+    writer.writeUint64(
+      4,
       f
     );
   }
   f = message.getError();
   if (f !== 0) {
     writer.writeUint32(
-      3,
+      5,
       f
     );
   }
   f = message.getMessage();
   if (f.length > 0) {
     writer.writeString(
-      4,
+      6,
       f
     );
   }
@@ -3546,10 +3570,10 @@ proto.nebula.service.Statistics.serializeBinaryToWriter = function(message, writ
 
 
 /**
- * optional uint64 rowsScanned = 1;
+ * optional uint32 queryTimeMs = 1;
  * @return {number}
  */
-proto.nebula.service.Statistics.prototype.getRowsscanned = function() {
+proto.nebula.service.Statistics.prototype.getQuerytimems = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
 };
 
@@ -3558,16 +3582,16 @@ proto.nebula.service.Statistics.prototype.getRowsscanned = function() {
  * @param {number} value
  * @return {!proto.nebula.service.Statistics} returns this
  */
-proto.nebula.service.Statistics.prototype.setRowsscanned = function(value) {
+proto.nebula.service.Statistics.prototype.setQuerytimems = function(value) {
   return jspb.Message.setProto3IntField(this, 1, value);
 };
 
 
 /**
- * optional uint32 queryTimeMs = 2;
+ * optional uint64 rowsScanned = 2;
  * @return {number}
  */
-proto.nebula.service.Statistics.prototype.getQuerytimems = function() {
+proto.nebula.service.Statistics.prototype.getRowsscanned = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 2, 0));
 };
 
@@ -3576,16 +3600,16 @@ proto.nebula.service.Statistics.prototype.getQuerytimems = function() {
  * @param {number} value
  * @return {!proto.nebula.service.Statistics} returns this
  */
-proto.nebula.service.Statistics.prototype.setQuerytimems = function(value) {
+proto.nebula.service.Statistics.prototype.setRowsscanned = function(value) {
   return jspb.Message.setProto3IntField(this, 2, value);
 };
 
 
 /**
- * optional uint32 error = 3;
+ * optional uint64 blocksScanned = 3;
  * @return {number}
  */
-proto.nebula.service.Statistics.prototype.getError = function() {
+proto.nebula.service.Statistics.prototype.getBlocksscanned = function() {
   return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
@@ -3594,17 +3618,53 @@ proto.nebula.service.Statistics.prototype.getError = function() {
  * @param {number} value
  * @return {!proto.nebula.service.Statistics} returns this
  */
-proto.nebula.service.Statistics.prototype.setError = function(value) {
+proto.nebula.service.Statistics.prototype.setBlocksscanned = function(value) {
   return jspb.Message.setProto3IntField(this, 3, value);
 };
 
 
 /**
- * optional string message = 4;
+ * optional uint64 rowsReturn = 4;
+ * @return {number}
+ */
+proto.nebula.service.Statistics.prototype.getRowsreturn = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.nebula.service.Statistics} returns this
+ */
+proto.nebula.service.Statistics.prototype.setRowsreturn = function(value) {
+  return jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional uint32 error = 5;
+ * @return {number}
+ */
+proto.nebula.service.Statistics.prototype.getError = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 5, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.nebula.service.Statistics} returns this
+ */
+proto.nebula.service.Statistics.prototype.setError = function(value) {
+  return jspb.Message.setProto3IntField(this, 5, value);
+};
+
+
+/**
+ * optional string message = 6;
  * @return {string}
  */
 proto.nebula.service.Statistics.prototype.getMessage = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
 };
 
 
@@ -3613,7 +3673,7 @@ proto.nebula.service.Statistics.prototype.getMessage = function() {
  * @return {!proto.nebula.service.Statistics} returns this
  */
 proto.nebula.service.Statistics.prototype.setMessage = function(value) {
-  return jspb.Message.setProto3StringField(this, 4, value);
+  return jspb.Message.setProto3StringField(this, 6, value);
 };
 
 

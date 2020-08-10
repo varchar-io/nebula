@@ -16,18 +16,8 @@
 
 #pragma once
 
-#include <glog/logging.h>
-
-#include "Expressions.h"
-
-#include "api/udf/Not.h"
-#include "common/Cursor.h"
 #include "common/Hash.h"
-#include "execution/ExecutionPlan.h"
 #include "meta/ClusterInfo.h"
-#include "meta/MetaService.h"
-#include "meta/Table.h"
-#include "surface/DataSurface.h"
 
 /**
  * Define query context: such as who is sending the query, for what purpose.
@@ -36,8 +26,7 @@
  * Most likely this will be an open structure with all information optional.
  */
 namespace nebula {
-namespace api {
-namespace dsl {
+namespace execution {
 
 // store error in context
 enum class Error {
@@ -51,10 +40,31 @@ enum class Error {
   INVALID_METRIC
 };
 
+// recording query stats
+struct QueryStats {
+  explicit QueryStats()
+    : blocksScan{ 0 },
+      rowsScan{ 0 },
+      rowsRet{ 0 } {}
+  // blocks scanned in given compute
+  size_t blocksScan;
+  // rows scanned in given compute
+  size_t rowsScan;
+  // rows returned in given compute
+  size_t rowsRet;
+  inline std::string toString() const {
+    return fmt::format("blocks scan:{0}, rows scan: {1}, rows returned: {2}",
+                       blocksScan, rowsScan, rowsRet);
+  }
+};
+
 class QueryContext {
 public:
   QueryContext(const std::string& user, nebula::common::unordered_set<std::string> groups)
-    : user_{ user }, groups_{ std::move(groups) }, error_{ Error::NONE } {}
+    : user_{ user },
+      groups_{ std::move(groups) },
+      error_{ Error::NONE },
+      stats_{} {}
 
   inline bool isAuth() const {
     // any authorized uesr will have at least one group regardless what the name is
@@ -82,12 +92,22 @@ public:
     return nebula::meta::ClusterInfo::singleton().server().authRequired;
   }
 
+  inline QueryStats& stats() {
+    return stats_;
+  }
+
+  inline static std::unique_ptr<QueryContext> def() {
+    return std::make_unique<QueryContext>(
+      "nebula", nebula::common::unordered_set<std::string>{ "nebula-users" });
+  }
+
 private:
   // user context to understand who is making the query
   std::string user_;
   nebula::common::unordered_set<std::string> groups_;
   Error error_;
+  QueryStats stats_;
 };
-} // namespace dsl
-} // namespace api
+
+} // namespace execution
 } // namespace nebula

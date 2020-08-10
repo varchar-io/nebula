@@ -21,6 +21,7 @@
 
 #include "api/dsl/Query.h"
 #include "common/Task.h"
+#include "execution/Context.h"
 #include "ingest/IngestSpec.h"
 #include "memory/keyed/FlatBuffer.h"
 #include "node/node.grpc.fb.h"
@@ -133,8 +134,11 @@ public:
  */
 class BatchSerde {
 public:
-  static flatbuffers::grpc::Message<BatchRows> serialize(const nebula::memory::keyed::FlatBuffer&);
-  static nebula::surface::RowCursorPtr deserialize(const flatbuffers::grpc::Message<BatchRows>*, const nebula::surface::eval::Fields&);
+  static flatbuffers::grpc::Message<BatchRows> serialize(const nebula::memory::keyed::FlatBuffer&, const nebula::execution::ExecutionPlan&);
+  static nebula::surface::RowCursorPtr deserialize(
+    const flatbuffers::grpc::Message<BatchRows>*,
+    const nebula::surface::eval::Fields&,
+    nebula::execution::QueryStats&);
 };
 
 /**

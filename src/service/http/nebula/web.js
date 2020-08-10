@@ -338,7 +338,8 @@ const onQueryResult = (state, r) => {
         return;
     }
 
-    msg(`[query time: ${r.duration} ms]`);
+    // print query result in stats
+    msg(`[latency: ${r.duration} ms, scan: ${r.rows_scan}, blocks: ${r.blocks_scan}, result: ${r.rows_ret}]`);
 
     // JSON result
     json = JSON.parse(bytes2utf8(r.data));

@@ -123,7 +123,7 @@ grpc::Status NodeServerImpl::Query(
     const auto& buffer = nebula::execution::serde::asBuffer(*cursor, phase.outputSchema(), phase.fields());
 
     // serialize row cursor back
-    *batch = BatchSerde::serialize(*buffer);
+    *batch = BatchSerde::serialize(*buffer, *plan);
   } catch (const std::exception& exp) {
     return grpc::Status(grpc::StatusCode::INTERNAL, exp.what());
   }

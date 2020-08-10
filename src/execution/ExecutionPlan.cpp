@@ -33,10 +33,12 @@ using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
 ExecutionPlan::ExecutionPlan(
+  std::unique_ptr<QueryContext> ctx,
   std::unique_ptr<ExecutionPhase> plan,
   std::vector<NNode> nodes,
   Schema output)
   : uuid_{ "<uuid>" },
+    ctx_{ std::move(ctx) },
     plan_{ std::move(plan) },
     nodes_{ std::move(nodes) },
     output_{ output } {}

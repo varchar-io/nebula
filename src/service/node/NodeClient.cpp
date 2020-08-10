@@ -103,7 +103,9 @@ folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
     auto stub = nebula::service::NodeServer::NewStub(channel);
     auto status = stub->Query(&context, qp, &qr);
     if (status.ok()) {
-      auto fb = BatchSerde::deserialize(&qr, f);
+      auto& stats = plan.ctx().stats();
+      auto fb = BatchSerde::deserialize(&qr, f, stats);
+      stats.rowsRet += fb->size();
       VLOG(1) << "Received batch as number of rows: " << fb->size();
 
       // update into current server block management

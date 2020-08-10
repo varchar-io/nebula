@@ -276,6 +276,9 @@ const webq = (q, handler, client) => {
             JSON.stringify({
                 error: stats.getError(),
                 duration: stats.getQuerytimems(),
+                rows_scan: stats.getRowsscanned(),
+                blocks_scan: stats.getBlocksscanned(),
+                rows_ret: stats.getRowsreturn(),
                 data: Array.from(reply.getData())
             }));
     });

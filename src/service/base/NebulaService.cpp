@@ -40,7 +40,6 @@ namespace base {
 
 using nebula::api::dsl::Expression;
 using nebula::api::dsl::Query;
-using nebula::api::dsl::QueryContext;
 using nebula::api::dsl::Serde;
 using nebula::api::dsl::SortType;
 using nebula::common::Pool;
@@ -50,6 +49,9 @@ using nebula::common::TaskState;
 using nebula::common::TaskType;
 using nebula::common::unordered_map;
 using nebula::common::unordered_set;
+using nebula::execution::ExecutionPlan;
+using nebula::execution::QueryContext;
+using nebula::execution::QueryStats;
 using nebula::execution::QueryWindow;
 using nebula::ingest::BlockExpire;
 using nebula::ingest::IngestSpec;
@@ -276,10 +278,9 @@ nebula::api::dsl::Query QuerySerde::deserialize(
   return q;
 }
 
-std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(Query& q, size_t start, size_t end) {
+std::unique_ptr<ExecutionPlan> QuerySerde::from(Query& q, size_t start, size_t end) {
   // TODO(cao): serialize query context to nodes and mark compile method as const
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = q.compile(ctx);
+  auto plan = q.compile(QueryContext::def());
 
   // set a few other properties associated with execution plan
   plan->setWindow({ start, end });
@@ -288,7 +289,8 @@ std::unique_ptr<nebula::execution::ExecutionPlan> QuerySerde::from(Query& q, siz
   return plan;
 }
 
-flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(const FlatBuffer& fb) {
+flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(
+  const FlatBuffer& fb, const ExecutionPlan& plan) {
   flatbuffers::grpc::MessageBuilder mb;
   auto schema = mb.CreateString(nebula::type::TypeSerializer::to(fb.schema()));
   int8_t* buffer;
@@ -296,13 +298,20 @@ flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(const FlatBuffer& fb
   auto bytes = mb.CreateUninitializedVector<int8_t>(size, &buffer);
   fb.serialize(buffer);
 
-  auto batch = CreateBatchRows(mb, schema, BatchType::BatchType_Flat, bytes);
+  auto& stats = plan.ctx().stats();
+  auto batch = CreateBatchRows(
+    mb,
+    schema,
+    BatchType::BatchType_Flat,
+    CreateStats(mb, stats.blocksScan, stats.rowsScan, stats.rowsRet),
+    bytes);
   mb.Finish(batch);
   return mb.ReleaseMessage<BatchRows>();
 }
 
 RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>* batch,
-                                     const nebula::surface::eval::Fields& fields) {
+                                     const nebula::surface::eval::Fields& fields,
+                                     QueryStats& stats) {
   auto ptr = batch->GetRoot();
 
   const auto schema = nebula::type::TypeSerializer::from(flatbuffers::GetString(ptr->schema()));
@@ -319,6 +328,11 @@ RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>
 
   auto bytes = static_cast<NByte*>(Pool::getDefault().allocate(size));
   std::memcpy(bytes, data->data(), size);
+
+  // get stats of this compute node - threadsafe?
+  auto nodeStats = ptr->stats();
+  stats.blocksScan += nodeStats->blocks_scan();
+  stats.rowsScan += nodeStats->rows_scan();
 
   // TODO(cao) - It is not good, we're reference some data from batch but actually not owning it.
   auto fb = std::make_unique<FlatBuffer>(schema, fields, bytes);

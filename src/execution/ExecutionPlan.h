@@ -18,6 +18,7 @@
 
 #include <numeric>
 
+#include "Context.h"
 #include "common/Cursor.h"
 #include "meta/NNode.h"
 #include "surface/DataSurface.h"
@@ -70,9 +71,10 @@ using FinalPhase = Phase<PhaseType::GLOBAL>;
 // protobuf?
 class ExecutionPlan {
 public:
-  ExecutionPlan(std::unique_ptr<ExecutionPhase> plan,
-                std::vector<nebula::meta::NNode> nodes,
-                nebula::type::Schema output);
+  ExecutionPlan(std::unique_ptr<QueryContext>,
+                std::unique_ptr<ExecutionPhase>,
+                std::vector<nebula::meta::NNode>,
+                nebula::type::Schema);
   virtual ~ExecutionPlan() = default;
 
 public:
@@ -102,11 +104,16 @@ public:
     return window_;
   }
 
+  inline QueryContext& ctx() const noexcept {
+    return *ctx_;
+  }
+
 private:
   const ExecutionPhase& fetch(PhaseType type) const;
 
 private:
   const std::string uuid_;
+  std::unique_ptr<QueryContext> ctx_;
   std::unique_ptr<ExecutionPhase> plan_;
   std::vector<nebula::meta::NNode> nodes_;
   nebula::type::Schema output_;

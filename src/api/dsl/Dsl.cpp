@@ -27,9 +27,11 @@ namespace api {
 namespace dsl {
 
 using nebula::execution::BlockPhase;
+using nebula::execution::Error;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::FinalPhase;
 using nebula::execution::NodePhase;
+using nebula::execution::QueryContext;
 using nebula::meta::AccessType;
 using nebula::meta::ActionType;
 using nebula::meta::NNode;
@@ -70,7 +72,7 @@ std::vector<std::shared_ptr<Expression>> Query::preprocess(
 }
 
 // execute current query to get result list
-std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) {
+std::unique_ptr<ExecutionPlan> Query::compile(std::unique_ptr<QueryContext> qc) {
   // compile the query into an execution plan
   // a valid query (single data source query - no join support at the moment) should be
   // 1. aggregation query, should have more than 1 UDAF in selects
@@ -83,15 +85,15 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) {
   // for example, avg temporary type is int128 or byte[16], but its final type ties to its own type.
   // hence we are extending type method to return mutltiple types for forming schemas for different compute phases
 #define END_ERROR(ERR) \
-  qc.setError(ERR);    \
-  return {};
+  qc->setError(ERR);   \
+  return std::make_unique<ExecutionPlan>(std::move(qc), nullptr, std::vector<NNode>{}, nullptr);
 
   // table level access check
-  if (!qc.isAuth() && qc.requireAuth()) {
+  if (!qc->isAuth() && qc->requireAuth()) {
     END_ERROR(Error::NO_AUTH)
   }
 
-  if (table_->checkAccess(AccessType::READ, qc.groups()) != ActionType::PASS) {
+  if (table_->checkAccess(AccessType::READ, qc->groups()) != ActionType::PASS) {
     END_ERROR(Error::TABLE_PERM)
   }
 
@@ -165,13 +167,13 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) {
     if (isAgg) {
       // for aggregation function, we do not do any mask
       for (const auto& c : crefs) {
-        if (table_->checkAccess(AccessType::AGGREGATION, qc.groups(), c) != ActionType::PASS) {
+        if (table_->checkAccess(AccessType::AGGREGATION, qc->groups(), c) != ActionType::PASS) {
           END_ERROR(Error::COLUMN_PERM)
         }
       }
     } else {
       for (const auto& c : crefs) {
-        auto check = table_->checkAccess(AccessType::READ, qc.groups(), c);
+        auto check = table_->checkAccess(AccessType::READ, qc->groups(), c);
         if (check > action) {
           action = check;
           columnImpacted = c;
@@ -352,7 +354,10 @@ std::unique_ptr<ExecutionPlan> Query::compile(QueryContext& qc) {
 
   // make an execution plan from a few phases
   return std::make_unique<ExecutionPlan>(
-    std::move(server), std::move(nodeList), differentSchema ? output : tempOutput);
+    std::move(qc),
+    std::move(server),
+    std::move(nodeList),
+    differentSchema ? output : tempOutput);
 
 #undef END_ERROR
 }

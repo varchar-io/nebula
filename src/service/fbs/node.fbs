@@ -37,9 +37,17 @@ table QueryPlan {
 enum BatchType: byte {
   Flat = 0, Json = 1
 }
+
+table Stats {
+  blocks_scan: uint64;
+  rows_scan: uint64;
+  rows_ret: uint64;
+}
+
 table BatchRows {
   schema: string;
   type: BatchType = Flat;
+  stats: Stats;
   data: [byte];
 }
 
@@ -154,7 +162,7 @@ table IngestTask {
   date: uint64;
 }
 
-table Spec{
+table Spec {
   tbl: string;
   spec: string;
 }

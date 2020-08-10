@@ -83,9 +83,13 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
 
   LOG(INFO) << "Processing total blocks: " << blocks.size();
   std::vector<folly::Future<RowCursorPtr>> results;
+  auto& stats = plan.ctx().stats();
   results.reserve(blocks.size());
   std::transform(blocks.begin(), blocks.end(), std::back_inserter(results),
-                 [&blockPhase, &pool](const auto& block) {
+                 [&blockPhase, &pool, &stats](const auto& block) {
+                   // increment the stats counter
+                   stats.blocksScan += 1;
+                   stats.rowsScan += block.first->getRows();
                    return dist(pool, block, blockPhase);
                  });
 

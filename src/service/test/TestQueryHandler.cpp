@@ -40,6 +40,7 @@ namespace test {
 using namespace nebula::api::dsl;
 using nebula::common::Cursor;
 using nebula::common::Evidence;
+using nebula::execution::QueryContext;
 using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::meta::TableService;
@@ -92,8 +93,10 @@ TEST(ServiceTest, TestQueryTimeline) {
 
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = handler.compile(query, { request.start(), request.end() }, ctx, err);
+  auto plan = handler.compile(query,
+                              { request.start(), request.end() },
+                              QueryContext::def(),
+                              err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
@@ -143,8 +146,10 @@ TEST(ServiceTest, TestStringFilters) {
 
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = handler.compile(query, { request.start(), request.end() }, ctx, err);
+  auto plan = handler.compile(query,
+                              { request.start(), request.end() },
+                              QueryContext::def(),
+                              err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   // No error in exeucting the query
@@ -198,8 +203,10 @@ TEST(ServiceTest, TestQuerySamples) {
 
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan = handler.compile(query, { request.start(), request.end() }, ctx, err);
+  auto plan = handler.compile(query,
+                              { request.start(), request.end() },
+                              QueryContext::def(),
+                              err);
   plan->display();
   EXPECT_EQ(err, ErrorCode::NONE);
 
@@ -275,8 +282,7 @@ TEST(ServiceTest, TestQuerySerde) {
                  .groupby({ 1, 2 })
                  .sortby({ 5 }, SortType::DESC)
                  .limit(10);
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan1 = query.compile(ctx);
+  auto plan1 = query.compile(QueryContext::def());
   plan1->setWindow({ start, end });
 
   // pass the query plan to a server to execute - usually it is itself
@@ -328,9 +334,7 @@ TEST(ServiceTest, TestDataSerde) {
                  .groupby({ 1, 2 })
                  .sortby({ 5 }, SortType::DESC)
                  .limit(10);
-
-  QueryContext ctx{ "nebula", { "nebula-users" } };
-  auto plan1 = query.compile(ctx);
+  auto plan1 = query.compile(QueryContext::def());
   plan1->setWindow({ start, end });
 
   // pass the query plan to a server to execute - usually it is itself

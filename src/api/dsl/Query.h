@@ -19,7 +19,6 @@
 #include <glog/logging.h>
 #include <msgpack.hpp>
 
-#include "Context.h"
 #include "Expressions.h"
 #include "common/Cursor.h"
 #include "execution/ExecutionPlan.h"
@@ -138,7 +137,7 @@ public:
 
 public:
   // compile the query into an execution plan
-  std::unique_ptr<nebula::execution::ExecutionPlan> compile(QueryContext&);
+  std::unique_ptr<nebula::execution::ExecutionPlan> compile(std::unique_ptr<nebula::execution::QueryContext>);
 
 public:
   // table identifier

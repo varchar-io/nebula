@@ -43,21 +43,21 @@ using nebula::api::dsl::sum;
 
 using nebula::api::dsl::ColumnExpression;
 using nebula::api::dsl::ConstExpression;
-using nebula::api::dsl::Error;
 using nebula::api::dsl::Expression;
 using nebula::api::dsl::in;
 using nebula::api::dsl::like;
 using nebula::api::dsl::LogicalExpression;
 using nebula::api::dsl::nin;
 using nebula::api::dsl::Query;
-using nebula::api::dsl::QueryContext;
 using nebula::api::dsl::SortType;
 using nebula::api::dsl::starts;
 using nebula::api::dsl::table;
 
 using nebula::common::Zip;
 using nebula::common::ZipFormat;
+using nebula::execution::Error;
 using nebula::execution::ExecutionPlan;
+using nebula::execution::QueryContext;
 using nebula::execution::QueryWindow;
 using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
@@ -77,11 +77,11 @@ using nebula::type::TypeTraits;
 std::unique_ptr<ExecutionPlan> QueryHandler::compile(
   const std::shared_ptr<Query> query,
   const QueryWindow& window,
-  QueryContext& queryContext,
+  std::unique_ptr<QueryContext> context,
   ErrorCode& err) const noexcept {
 
   // previous error blocks processing
-  if (queryContext.getError() != Error::NONE) {
+  if (context->getError() != Error::NONE) {
     err = ErrorCode::FAIL_COMPILE_QUERY;
     return {};
   }
@@ -93,8 +93,8 @@ std::unique_ptr<ExecutionPlan> QueryHandler::compile(
   // even though compile is marked as "noexcept", there are still possible failure
   // that we should catch here to prevent crashing nebula server
   try {
-    plan = query->compile(queryContext);
-    error = queryContext.getError();
+    plan = query->compile(std::move(context));
+    error = plan->ctx().getError();
   } catch (std::exception& ex) {
     LOG(ERROR) << "query compile error: " << ex.what();
     error = Error::INVALID_QUERY;

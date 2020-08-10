@@ -75,6 +75,11 @@ RowCursorPtr ServerExecutor::execute(
   // multiple results using input schema as output schema used by finalize only
   auto result = merge(pool, phase.inputSchema(), phase.fields(), phase.hasAggregation(), x);
 
+  // result holds the final total rows in the query before applying limit
+  auto resultSize = result->size();
+  auto& stats = plan.ctx().stats();
+  stats.rowsRet = resultSize;
+
   // apply sorting and limit if available
   return topSort(finalize(result, phase), phase);
 }

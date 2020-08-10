@@ -29,7 +29,7 @@ enum class ZipFormat {
 // define a normal zip content represented by String
 class Zip {
 public:
-  explicit Zip() {}
+  explicit Zip() : format_{ ZipFormat::UNKNOWN } {}
   // copy input data and format
   explicit Zip(const std::string& data, ZipFormat format)
     : data_{ data },

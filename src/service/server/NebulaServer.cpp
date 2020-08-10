@@ -67,13 +67,13 @@ namespace server {
 using grpc::ServerContext;
 using grpc::Status;
 using grpc::StatusCode;
-using nebula::api::dsl::QueryContext;
 using nebula::common::Evidence;
 using nebula::common::ParamList;
 using nebula::common::SingleCommandTask;
 using nebula::common::Task;
 using nebula::common::TaskType;
 using nebula::execution::BlockManager;
+using nebula::execution::QueryContext;
 using nebula::execution::io::BlockLoader;
 using nebula::execution::meta::TableService;
 using nebula::ingest::IngestSpec;
@@ -171,7 +171,7 @@ Status V1ServiceImpl::Nuclear(ServerContext* ctx, const EchoRequest* req, EchoRe
   return Status::CANCELLED;
 }
 
-QueryContext buildQueryContext(ServerContext* ctx) {
+std::unique_ptr<QueryContext> buildQueryContext(ServerContext* ctx) {
   // build query context
   const auto& metadata = ctx->client_metadata();
 
@@ -192,14 +192,14 @@ QueryContext buildQueryContext(ServerContext* ctx) {
     }
   }
 
-  return QueryContext{ user, std::move(groups) };
+  return std::make_unique<QueryContext>(user, std::move(groups));
 }
 
 Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadResponse* reply) {
   nebula::common::Evidence::Duration tick;
   // get query context
-  auto queryContext = buildQueryContext(ctx);
-  LOG(INFO) << "Load data source for user: " << queryContext.user();
+  auto context = buildQueryContext(ctx);
+  LOG(INFO) << "Load data source for user: " << context->user();
 
   // get request content
   const auto& table = req->table();
@@ -380,11 +380,11 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   }
 
   // get query context
-  auto queryContext = buildQueryContext(ctx);
+  auto context = buildQueryContext(ctx);
 
   // compile query into a query plan
   auto plan = handler_.compile(
-    query, { request->start(), request->end() }, queryContext, error);
+    query, { request->start(), request->end() }, std::move(context), error);
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }
@@ -397,13 +397,14 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
     return replyError(error, reply, durationMs);
   }
 
-  LOG(INFO) << "Finished a query in " << durationMs;
-
   // return normal serialized data
+  auto& queryStats = plan->ctx().stats();
   auto stats = reply->mutable_stats();
   stats->set_querytimems(durationMs);
-  // TODO(cao) - read it from underlying execution
-  stats->set_rowsscanned(0);
+  stats->set_rowsscanned(queryStats.rowsScan);
+  stats->set_blocksscanned(queryStats.blocksScan);
+  stats->set_rowsreturn(queryStats.rowsRet);
+  LOG(INFO) << "Finished a query in " << durationMs << "ms for " << queryStats.toString();
 
   // TODO(cao) - use JSON for now, this should come from message request
   // User/client can specify what kind of format of result it expects
