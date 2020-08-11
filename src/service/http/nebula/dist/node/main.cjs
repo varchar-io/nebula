@@ -4345,10 +4345,10 @@ proto.nebula.service.ZipFormat = {
  * @enum {number}
  */
 proto.nebula.service.Rollup = {
-  SUM: 0,
-  COUNT: 1,
-  MAX: 2,
-  MIN: 3,
+  COUNT: 0,
+  SUM: 1,
+  MIN: 2,
+  MAX: 3,
   AVG: 4,
   P10: 5,
   P25: 6,

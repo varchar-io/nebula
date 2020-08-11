@@ -127,10 +127,10 @@ message PredicateOr {
 // This defines all the aggregate metric methods suppored in nebula
 // 
 enum Rollup {
-  SUM = 0;
-  COUNT = 1;
-  MAX = 2;
-  MIN = 3;
+  COUNT = 0;
+  SUM = 1;
+  MIN = 2;
+  MAX = 3;
   AVG = 4;
   // pre-defined percentile
   P10 = 5;

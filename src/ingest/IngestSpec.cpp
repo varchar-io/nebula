@@ -77,6 +77,8 @@ static constexpr auto LOADER_API = "Api";
 static constexpr auto CSV_DELIMITER_KEY = "csv.delimiter";
 // a setting indicates if the csv file has header, by default true
 static constexpr auto CSV_HEADER_KEY = "csv.header";
+// a settings to overwrite batch size of a table
+static constexpr auto BATCH_SIZE = "batch";
 
 // load some nebula test data into current process
 void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
@@ -290,6 +292,14 @@ bool IngestSpec::loadKafka() noexcept {
   return true;
 }
 
+#define OVERWRITE_IF_EXISTS(VAR, KEY, FUNC) \
+  {                                         \
+    auto itr = table_->settings.find(KEY);  \
+    if (itr != table_->settings.end()) {    \
+      VAR = FUNC(itr->second);              \
+    }                                       \
+  }
+
 bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 #ifdef PPROF
   HeapProfilerStart("/tmp/heap_ingest.out");
@@ -324,20 +334,9 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   std::unique_ptr<RowCursor> source = nullptr;
   if (table_->format == "csv") {
     auto delimiter = '\t';
-    {
-      auto itr = table_->settings.find(CSV_DELIMITER_KEY);
-      if (itr != table_->settings.end()) {
-        delimiter = itr->second.at(0);
-      }
-    }
-
     auto withHeader = true;
-    {
-      auto itr = table_->settings.find(CSV_HEADER_KEY);
-      if (itr != table_->settings.end()) {
-        withHeader = folly::to<bool>(itr->second);
-      }
-    }
+    OVERWRITE_IF_EXISTS(delimiter, CSV_DELIMITER_KEY, [](auto& s) { return s.at(0); })
+    OVERWRITE_IF_EXISTS(withHeader, CSV_HEADER_KEY, [](auto& s) { return folly::to<bool>(s); })
 
     source = std::make_unique<CsvReader>(file, delimiter, withHeader, columns);
   } else if (table_->format == "json") {
@@ -351,7 +350,8 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   }
 
   // limit at 1b on single host
-  const size_t bRows = FLAGS_NBLOCK_MAX_ROWS;
+  size_t bRows = FLAGS_NBLOCK_MAX_ROWS;
+  OVERWRITE_IF_EXISTS(bRows, BATCH_SIZE, [](auto& s) { return folly::to<size_t>(s); })
   std::pair<size_t, size_t> range{ std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
 
   // a lambda to build batch block
@@ -436,6 +436,8 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   LOG(INFO) << "Memory Pool Report: " << nebula::common::Pool::getDefault().report();
   return true;
 }
+
+#undef OVERWRITE_IF_EXISTS
 
 } // namespace ingest
 } // namespace nebula
