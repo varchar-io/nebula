@@ -46,9 +46,14 @@ public:
     return threadPool_;
   }
 
+  void setShutdownHandler(std::function<void()>&& handler) {
+    this->shutdownHandler_ = handler;
+  }
+
 private:
   grpc::Status replyError(nebula::service::base::ErrorCode, QueryResponse*, size_t) const;
   folly::CPUThreadPoolExecutor threadPool_;
+  std::function<void()> shutdownHandler_;
 };
 
 } // namespace server

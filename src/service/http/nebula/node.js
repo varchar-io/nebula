@@ -68,7 +68,11 @@ const serviceAddr = process.env.NS_ADDR || "dev-shawncao:9190";
 const client = qc(serviceAddr);
 const timeCol = "_time_";
 const error = Handler.error;
-const log = console.log;
+const log = Handler.log;
+// bota (base64 encoding) and atob (base64 decoding) only available in browsers
+// so let's use alternative way to simulate it
+const btoa = (bytes) => Buffer.from(bytes).toString('base64');
+
 // keep it the same as grpc max send message length, ref `n/node.js`
 const max_json_request = 64 * 1024 * 1024;
 
@@ -174,6 +178,7 @@ const webq = (q, handler, client) => {
     req.setStart(time.seconds(state.start));
     req.setEnd(time.seconds(state.end));
 
+    log(`start a query to ${state.table}.`);
     // the filter can be much more complex
     const filter = state.filter;
     if (filter) {
@@ -271,16 +276,22 @@ const webq = (q, handler, client) => {
         if (reply == null) {
             return handler.onNull();
         }
+
         const stats = reply.getStats();
-        return handler.onSuccess(
-            JSON.stringify({
-                error: stats.getError(),
-                duration: stats.getQuerytimems(),
-                rows_scan: stats.getRowsscanned(),
-                blocks_scan: stats.getBlocksscanned(),
-                rows_ret: stats.getRowsreturn(),
-                data: Array.from(reply.getData())
-            }));
+        // why do we use base64 here rather than pass the raw byte array?
+        // JSON.stringify will serialize every single byte into a number string.
+        // for example, [0x89] -> "[137]", one byte becomes 3 bytes. It is 3x increase.
+        // while base64 is 33% increase in size overwire, and it's extremely fast to decode (native).
+        const data = btoa(reply.getData());
+        log(`Get nebula reply ${data.length} bytes.`);
+        return handler.onSuccess(JSON.stringify({
+            error: stats.getError(),
+            duration: stats.getQuerytimems(),
+            rows_scan: stats.getRowsscanned(),
+            blocks_scan: stats.getBlocksscanned(),
+            rows_ret: stats.getRowsreturn(),
+            data: data
+        }));
     });
 };
 

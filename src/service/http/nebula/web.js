@@ -42,7 +42,6 @@ import {
 
 // define jquery style selector 
 const time = neb.time;
-const bytes2utf8 = neb.bytes2utf8;
 
 // enable selectize and flatpicker
 const ds = neb.d3.select;
@@ -342,8 +341,7 @@ const onQueryResult = (state, r) => {
     msg(`[latency: ${r.duration} ms, scan: ${r.rows_scan}, blocks: ${r.blocks_scan}, result: ${r.rows_ret}]`);
 
     // JSON result
-    json = JSON.parse(bytes2utf8(r.data));
-    // newdata = true;
+    json = JSON.parse(atob(r.data));
 
     // clear table data
     ds('#table_head').html("");

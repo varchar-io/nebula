@@ -164,6 +164,12 @@ Status V1ServiceImpl::Nuclear(ServerContext* ctx, const EchoRequest* req, EchoRe
     auto client = connector.makeClient(*nodes.begin(), threadPool_);
     Task task(TaskType::COMMAND, SingleCommandTask::shutdown());
     client->task(task);
+
+    // shutdown nebula server as well
+    if (this->shutdownHandler_) {
+      this->shutdownHandler_();
+    }
+
     return Status::OK;
   }
 
@@ -405,11 +411,13 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   stats->set_blocksscanned(queryStats.blocksScan);
   stats->set_rowsreturn(queryStats.rowsRet);
   LOG(INFO) << "Finished a query in " << durationMs << "ms for " << queryStats.toString();
+  tick.reset();
 
   // TODO(cao) - use JSON for now, this should come from message request
   // User/client can specify what kind of format of result it expects
   reply->set_type(DataType::JSON);
   reply->set_data(ServiceProperties::jsonify(result, plan->getOutputSchema()));
+  LOG(INFO) << "Serialize result to client takes " << tick.elapsedMs() << "ms";
 
   return Status::OK;
 }
@@ -483,6 +491,18 @@ void RunServer() {
   // We're using task scheduler to pull all config changes and spec generation, assignment
   // NodeSync will be responsible to pull all state info from each Node and update them in server
   nebula::common::TaskScheduler taskScheduler;
+  v1Service.setShutdownHandler([&server, &taskScheduler]() {
+    // tear down everything in one second
+    taskScheduler.setTimeout(1000, [&server, &taskScheduler]() {
+      LOG(INFO) << "Shutting down nebula server...";
+
+      // stop scheduler
+      taskScheduler.stop();
+
+      // shut down server
+      server->Shutdown();
+    });
+  });
 
   // having a local file system to detect change of cluster config
   auto& pool = v1Service.pool();
