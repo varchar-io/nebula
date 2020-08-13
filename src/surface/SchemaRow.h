@@ -26,25 +26,29 @@ namespace surface {
  * A schema row is a row data interface with known schema
  * And it will forward all its name based calls into index based calls
  */
+using Name2Index = nebula::common::unordered_map<std::string, size_t>;
 class SchemaRow : public RowData {
 public:
-  explicit SchemaRow(const nebula::type::Schema& schema) {
-    // build a field name to data node
-    const auto numCols = schema->size();
-    fields_.reserve(numCols);
-
-    for (size_t i = 0; i < numCols; ++i) {
-      auto f = schema->childType(i);
-      fields_[f->name()] = i;
-    }
-  }
+  explicit SchemaRow(const Name2Index& map) : fields_{ map } {}
   virtual ~SchemaRow() = default;
 
 public:
-#ifndef THIS_TYPE
-#define THIS_TYPE typename std::remove_reference<decltype(*this)>::type
-#endif
+  // we can move this utility to `type` package for more widely usage
+  inline static Name2Index name2index(const nebula::type::Schema& schema) noexcept {
+    // build a field name to data node
+    const auto numCols = schema->size();
+    Name2Index map;
+    map.reserve(numCols);
 
+    for (size_t i = 0; i < numCols; ++i) {
+      auto f = schema->childType(i);
+      map[f->name()] = i;
+    }
+
+    return map;
+  }
+
+public:
 #define INDEX_FUNC(T, F) \
   virtual T F(IndexType) const override = 0;
 
@@ -75,7 +79,7 @@ public:
 #undef INDEX_FUNC
 
 private:
-  nebula::common::unordered_map<std::string, size_t> fields_;
+  const Name2Index& fields_;
 };
 } // namespace surface
 } // namespace nebula

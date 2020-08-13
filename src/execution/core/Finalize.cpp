@@ -19,7 +19,6 @@
 
 #include "memory/FlatRow.h"
 #include "surface/DataSurface.h"
-#include "surface/SchemaRow.h"
 #include "surface/eval/UDF.h"
 #include "type/Type.h"
 
@@ -36,6 +35,7 @@ namespace core {
 
 using nebula::memory::FlatRow;
 using nebula::surface::IndexType;
+using nebula::surface::Name2Index;
 using nebula::surface::RowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
@@ -52,18 +52,18 @@ using TransformerVector = std::vector<std::function<void(const RowData*, void*)>
 
 class ForwardRowData : public nebula::surface::SchemaRow {
 public:
-  ForwardRowData(const nebula::type::Schema& input,
+  ForwardRowData(const Name2Index& fieldMap,
                  const TransformerVector& transformers)
-    : SchemaRow(input),
+    : SchemaRow(fieldMap),
       inner_{ nullptr },
       row_{ nullptr },
       transformers_{ transformers },
       cache_{ FLAGS_FOWARD_ROW_CACHE_SIZE } {
   }
-  ForwardRowData(const nebula::type::Schema& input,
+  ForwardRowData(const Name2Index& fieldMap,
                  const TransformerVector& transformers,
                  std::unique_ptr<RowData> inner)
-    : SchemaRow(input),
+    : SchemaRow(fieldMap),
       inner_{ std::move(inner) },
       row_{ inner_.get() },
       transformers_{ transformers },
@@ -131,11 +131,12 @@ private:
 
 class ForwardRowCursor : public RowCursor {
 public:
-  ForwardRowCursor(RowCursorPtr inner, const FinalPhase& phase)
+  ForwardRowCursor(RowCursorPtr inner, const Name2Index& fieldMap, const FinalPhase& phase)
     : RowCursor(inner->size()),
       inner_{ inner },
+      fieldMap_{ fieldMap },
       phase_{ phase },
-      row_{ phase.inputSchema(), transformers_ } {
+      row_{ fieldMap, transformers_ } {
     // build transformers
     buildTransformers();
   }
@@ -148,8 +149,7 @@ public:
 
   // a const interface return an unique ptr for secure randome access
   virtual std::unique_ptr<RowData> item(size_t i) const override {
-    return std::unique_ptr<RowData>(
-      new ForwardRowData(phase_.inputSchema(), transformers_, inner_->item(i)));
+    return std::unique_ptr<RowData>(new ForwardRowData(fieldMap_, transformers_, inner_->item(i)));
   }
 
 private:
@@ -191,19 +191,20 @@ private:
 
 private:
   RowCursorPtr inner_;
+  const Name2Index& fieldMap_;
   const FinalPhase& phase_;
   ForwardRowData row_;
   TransformerVector transformers_;
 };
 
 // finalize transform data between types if needed, otherwise you get the original cursor
-nebula::surface::RowCursorPtr finalize(nebula::surface::RowCursorPtr cursor, const FinalPhase& phase) {
+RowCursorPtr finalize(RowCursorPtr cursor, const Name2Index& fieldMap, const FinalPhase& phase) {
   if (!phase.hasAggregation()) {
     return cursor;
   }
 
   // now let's return a cursor that has transformer built in
-  return std::make_shared<ForwardRowCursor>(cursor, phase);
+  return std::make_shared<ForwardRowCursor>(cursor, fieldMap, phase);
 }
 
 } // namespace core

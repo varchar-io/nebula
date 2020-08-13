@@ -30,9 +30,10 @@ class ComputedRow : public nebula::surface::SchemaRow {
   using IndexType = nebula::surface::IndexType;
 
 public:
-  ComputedRow(const nebula::execution::BlockPhase& plan,
+  ComputedRow(const nebula::surface::Name2Index& fieldMap,
+              const nebula::surface::eval::Fields& fields,
               std::shared_ptr<nebula::surface::eval::EvalContext> ctx)
-    : SchemaRow(plan.outputSchema()), fields_{ plan.fields() }, ctx_{ ctx } {}
+    : SchemaRow(fieldMap), fields_{ fields }, ctx_{ ctx } {}
   virtual ~ComputedRow() = default;
 
 public:

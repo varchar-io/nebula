@@ -40,12 +40,13 @@ public:
   explicit ReferenceRows(const BlockPhase& plan, const nebula::memory::Batch& data)
     : nebula::surface::RowCursor(0),
       plan_{ plan },
+      fieldMap_{ nebula::surface::SchemaRow::name2index(plan_.outputSchema()) },
       scriptData_{ makeScriptData(plan) },
       data_{ data },
       accessor_{ data.makeAccessor() },
       ctx_{ std::make_shared<nebula::surface::eval::EvalContext>(plan.cacheEval(), scriptData_) },
       filter_{ plan.filter() },
-      runtime_{ plan, ctx_ } {
+      runtime_{ fieldMap_, plan_.fields(), ctx_ } {
     // populate all reference rows
     for (size_t i = 0, size = data_.getRows(); i < size; ++i) {
       // if we have enough samples, just return
@@ -71,7 +72,8 @@ public:
     a->seek(row);
 
     // a computed row with a wrapped row only
-    return std::make_unique<ComputedRow>(plan_, std::make_shared<nebula::surface::eval::EvalContext>(std::move(a), scriptData_));
+    return std::make_unique<ComputedRow>(
+      fieldMap_, plan_.fields(), std::make_shared<nebula::surface::eval::EvalContext>(std::move(a), scriptData_));
   }
 
 private:
@@ -92,6 +94,7 @@ private:
 
 private:
   const BlockPhase& plan_;
+  const nebula::surface::Name2Index fieldMap_;
   const std::shared_ptr<nebula::surface::eval::ScriptData> scriptData_;
   const nebula::memory::Batch& data_;
   std::unique_ptr<nebula::memory::RowAccessor> accessor_;

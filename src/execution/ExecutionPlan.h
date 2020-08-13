@@ -22,6 +22,7 @@
 #include "common/Cursor.h"
 #include "meta/NNode.h"
 #include "surface/DataSurface.h"
+#include "surface/SchemaRow.h"
 #include "surface/eval/ValueEval.h"
 #include "type/Type.h"
 
@@ -135,15 +136,23 @@ static constexpr auto join = [](const std::vector<size_t>& vector) {
 
 class ExecutionPhase {
 public:
-  ExecutionPhase(nebula::type::Schema input) : input_{ input }, upstream_{ nullptr } {}
+  ExecutionPhase(nebula::type::Schema input)
+    : upstream_{ nullptr },
+      input_{ input },
+      fieldMap_{ nebula::surface::SchemaRow::name2index(input_) } {}
   ExecutionPhase(std::unique_ptr<ExecutionPhase> upstream)
-    : upstream_{ std::move(upstream) } {
-    input_ = upstream_->outputSchema();
+    : upstream_{ std::move(upstream) },
+      input_{ upstream_->outputSchema() },
+      fieldMap_{ nebula::surface::SchemaRow::name2index(input_) } {
   }
   virtual ~ExecutionPhase() = default;
 
-  virtual nebula::type::Schema inputSchema() const {
+  inline nebula::type::Schema inputSchema() const {
     return input_;
+  }
+
+  inline const nebula::surface::Name2Index& fieldMap() const noexcept {
+    return fieldMap_;
   }
 
   virtual nebula::type::Schema outputSchema() const {
@@ -159,8 +168,9 @@ public:
   virtual PhaseType type() const = 0;
 
 protected:
-  nebula::type::Schema input_;
   std::unique_ptr<ExecutionPhase> upstream_;
+  nebula::type::Schema input_;
+  nebula::surface::Name2Index fieldMap_;
 };
 
 template <>

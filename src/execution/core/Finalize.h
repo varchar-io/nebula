@@ -18,6 +18,7 @@
 
 #include "execution/ExecutionPlan.h"
 #include "surface/DataSurface.h"
+#include "surface/SchemaRow.h"
 
 /**
  * A logic wrapper to return top sort cursors when sorting and limiting are present
@@ -27,7 +28,8 @@ namespace execution {
 namespace core {
 
 // global phase will need to finalize some columns when fetching data
-nebula::surface::RowCursorPtr finalize(nebula::surface::RowCursorPtr, const FinalPhase&);
+nebula::surface::RowCursorPtr finalize(
+  nebula::surface::RowCursorPtr, const nebula::surface::Name2Index&, const FinalPhase&);
 
 } // namespace core
 } // namespace execution

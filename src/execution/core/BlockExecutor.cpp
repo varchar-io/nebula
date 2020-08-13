@@ -30,6 +30,7 @@ namespace core {
 using nebula::memory::EvaledBlock;
 using nebula::memory::keyed::HashFlat;
 using nebula::surface::RowCursorPtr;
+using nebula::surface::SchemaRow;
 using nebula::surface::eval::BlockEval;
 using nebula::surface::eval::EvalContext;
 using nebula::surface::eval::ScriptData;
@@ -61,7 +62,8 @@ void BlockExecutor::compute() {
   // if all rows needed, we don't need to evaluate row by row
   bool scanAll = result == BlockEval::ALL;
 
-  ComputedRow cr(plan_, ctx);
+  auto fieldMap = SchemaRow::name2index(plan_.outputSchema());
+  ComputedRow cr(fieldMap, plan_.fields(), ctx);
   result_ = std::make_unique<HashFlat>(plan_.outputSchema(), fields);
 
   // we want to evaluate here for the whole block before we go to iterations of computing

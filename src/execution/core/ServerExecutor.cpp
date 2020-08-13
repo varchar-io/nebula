@@ -37,6 +37,7 @@ namespace core {
 using nebula::meta::NNode;
 using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
+using nebula::surface::SchemaRow;
 
 // set 10 seconds for now as max time to complete a query
 static const auto RPC_TIMEOUT = std::chrono::milliseconds(FLAGS_RPC_TIMEOUT);
@@ -63,13 +64,14 @@ RowCursorPtr ServerExecutor::execute(
 
   // only one result - don't need any aggregation or composite
   const auto& phase = plan.fetch<PhaseType::GLOBAL>();
+  const auto& fieldMap = phase.fieldMap();
   if (x.size() == 1) {
     const auto& op = x.at(0);
     if (op.hasException() || !op.hasValue()) {
       return EmptyRowCursor::instance();
     }
 
-    return topSort(finalize(op.value(), phase), phase);
+    return topSort(finalize(op.value(), fieldMap, phase), phase);
   }
 
   // multiple results using input schema as output schema used by finalize only
@@ -81,7 +83,7 @@ RowCursorPtr ServerExecutor::execute(
   stats.rowsRet = resultSize;
 
   // apply sorting and limit if available
-  return topSort(finalize(result, phase), phase);
+  return topSort(finalize(result, fieldMap, phase), phase);
 }
 
 } // namespace core
