@@ -338,7 +338,7 @@ const onQueryResult = (state, r) => {
     }
 
     // print query result in stats
-    msg(`[latency: ${r.duration} ms, scan: ${r.rows_scan}, blocks: ${r.blocks_scan}, result: ${r.rows_ret}]`);
+    msg(`[query: latency=${r.duration}ms, scan=${r.rows_scan}, blocks=${r.blocks_scan}, rows=${r.rows_ret}]`);
 
     // JSON result
     json = JSON.parse(atob(r.data));
@@ -437,12 +437,20 @@ const execute = () => {
     }
 
     // display message indicating processing
-    msg("soaring in nebula to land...");
+    let dots = 0;
+    const prefix = 'soaring in nebula ';
+    const handle = setInterval(() => {
+        dots = (dots + 1) % 50;
+        msg(`${prefix}${'.'.repeat(dots)}`);
+    }, 200);
+
     $.ajax({
         url: "/?api=query&start=0&end=0&query=" + queryStr
     }).fail((err) => {
+        clearInterval(handle);
         msg(`Error: ${err}`);
     }).done((data) => {
+        clearInterval(handle);
         onQueryResult(state, data);
     });
 };
