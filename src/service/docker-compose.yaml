@@ -15,9 +15,6 @@ services:
       context: ./
       dockerfile: ./server/NebulaServer.Dockerfile
     image: nebula/server
-    networks:
-      default:
-        ipv4_address: 172.16.238.10
     ports:
       - "9190:9190"
     # We're using this for performance profiling NET_ADMIN, SYS_ADMIN
