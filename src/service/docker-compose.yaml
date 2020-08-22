@@ -21,8 +21,6 @@ services:
     # remove it in final production.
     cap_add:
       - ALL
-    links:
-      - node
     environment:
       # can be a S3 file like s3://nebula/cluster-dev.yml
       - NCONF=/etc/nebula/configs/cluster.yml
@@ -34,8 +32,6 @@ services:
     image: nebula/envoy
     ports:
       - "8080:8080"
-    links:
-      - server
     network_mode: "host"
   web:
     build:
@@ -44,6 +40,4 @@ services:
     image: nebula/web
     ports:
       - "8088:8088"
-    links:
-      - envoy
     network_mode: "host"

@@ -119,8 +119,12 @@ public:
     rapidjson::Document doc;
     auto& parsed = doc.Parse(ptr, size);
     if (parsed.HasParseError()) {
-      LOG(WARNING) << "Error parsing json: " << parsed.GetParseError()
-                   << " | " << std::string_view(ptr, size);
+      LOG(WARNING) << "Error parsing json: " << parsed.GetParseError();
+      return false;
+    }
+
+    if (!doc.IsObject()) {
+      LOG(WARNING) << "Unexpected input - Not an JSON object.";
       return false;
     }
 
