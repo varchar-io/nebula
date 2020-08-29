@@ -242,6 +242,37 @@ TEST(CommonTest, TestTimeParsing) {
   }
 }
 
+TEST(CommonTest, TestSerialNumberTime) {
+  auto serial = 43386;
+  auto date = "10/13/2018";
+  auto time1 = Evidence::time(date, "%m/%d/%Y");
+  auto time2 = Evidence::serial_2_unix(serial);
+  EXPECT_EQ(time1, time2);
+}
+
+TEST(CommonTest, TestNormalize) {
+  // need a function to be consistent between JS and C++
+  // to normalize a string literal
+  // text.replace(/[\W_]+/g, '_')
+  std::regex to_underscore("[\\W_]+");
+  auto text1 = "Abc Xyz";
+  auto r_text1 = std::regex_replace(text1, to_underscore, "_");
+  EXPECT_EQ(r_text1, "Abc_Xyz");
+
+  // normalize is similar to above regex
+  nebula::common::unordered_map<std::string, std::string> tests = {
+    { "a Deer!", "a_deer_" },
+    { "#$%X-RAY?!", "_x_ray_" },
+    { "how! aRe you??", "how_are_you_" },
+    { "#$%@#", "_" },
+    { "___123_#$%X___456_xyz?!", "_123_x_456_xyz_" }
+  };
+
+  for (auto itr = tests.begin(); itr != tests.end(); ++itr) {
+    EXPECT_EQ(nebula::common::normalize(itr->first), itr->second);
+  }
+}
+
 TEST(CommonTest, TestTimeFormatting) {
   auto time = std::time(nullptr);
   LOG(INFO) << Evidence::fmt_extra(time);

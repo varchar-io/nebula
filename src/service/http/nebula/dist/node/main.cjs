@@ -114,6 +114,7 @@ goog.exportSymbol('proto.nebula.service.ListTables', null, global);
 goog.exportSymbol('proto.nebula.service.LoadError', null, global);
 goog.exportSymbol('proto.nebula.service.LoadRequest', null, global);
 goog.exportSymbol('proto.nebula.service.LoadResponse', null, global);
+goog.exportSymbol('proto.nebula.service.LoadType', null, global);
 goog.exportSymbol('proto.nebula.service.Metric', null, global);
 goog.exportSymbol('proto.nebula.service.Operation', null, global);
 goog.exportSymbol('proto.nebula.service.Order', null, global);
@@ -3944,9 +3945,10 @@ proto.nebula.service.LoadRequest.prototype.toObject = function(opt_includeInstan
  */
 proto.nebula.service.LoadRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    table: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    paramsjson: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    ttl: jspb.Message.getFieldWithDefault(msg, 3, 0)
+    type: jspb.Message.getFieldWithDefault(msg, 1, 0),
+    table: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    json: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    ttl: jspb.Message.getFieldWithDefault(msg, 4, 0)
   };
 
   if (includeInstance) {
@@ -3984,14 +3986,18 @@ proto.nebula.service.LoadRequest.deserializeBinaryFromReader = function(msg, rea
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setTable(value);
+      var value = /** @type {!proto.nebula.service.LoadType} */ (reader.readEnum());
+      msg.setType(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setParamsjson(value);
+      msg.setTable(value);
       break;
     case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setJson(value);
+      break;
+    case 4:
       var value = /** @type {number} */ (reader.readUint32());
       msg.setTtl(value);
       break;
@@ -4024,24 +4030,31 @@ proto.nebula.service.LoadRequest.prototype.serializeBinary = function() {
  */
 proto.nebula.service.LoadRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getTable();
-  if (f.length > 0) {
-    writer.writeString(
+  f = message.getType();
+  if (f !== 0.0) {
+    writer.writeEnum(
       1,
       f
     );
   }
-  f = message.getParamsjson();
+  f = message.getTable();
   if (f.length > 0) {
     writer.writeString(
       2,
       f
     );
   }
+  f = message.getJson();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
   f = message.getTtl();
   if (f !== 0) {
     writer.writeUint32(
-      3,
+      4,
       f
     );
   }
@@ -4049,28 +4062,28 @@ proto.nebula.service.LoadRequest.serializeBinaryToWriter = function(message, wri
 
 
 /**
- * optional string table = 1;
+ * optional LoadType type = 1;
+ * @return {!proto.nebula.service.LoadType}
+ */
+proto.nebula.service.LoadRequest.prototype.getType = function() {
+  return /** @type {!proto.nebula.service.LoadType} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
+};
+
+
+/**
+ * @param {!proto.nebula.service.LoadType} value
+ * @return {!proto.nebula.service.LoadRequest} returns this
+ */
+proto.nebula.service.LoadRequest.prototype.setType = function(value) {
+  return jspb.Message.setProto3EnumField(this, 1, value);
+};
+
+
+/**
+ * optional string table = 2;
  * @return {string}
  */
 proto.nebula.service.LoadRequest.prototype.getTable = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/**
- * @param {string} value
- * @return {!proto.nebula.service.LoadRequest} returns this
- */
-proto.nebula.service.LoadRequest.prototype.setTable = function(value) {
-  return jspb.Message.setProto3StringField(this, 1, value);
-};
-
-
-/**
- * optional string paramsJson = 2;
- * @return {string}
- */
-proto.nebula.service.LoadRequest.prototype.getParamsjson = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
@@ -4079,17 +4092,35 @@ proto.nebula.service.LoadRequest.prototype.getParamsjson = function() {
  * @param {string} value
  * @return {!proto.nebula.service.LoadRequest} returns this
  */
-proto.nebula.service.LoadRequest.prototype.setParamsjson = function(value) {
+proto.nebula.service.LoadRequest.prototype.setTable = function(value) {
   return jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
 /**
- * optional uint32 ttl = 3;
+ * optional string json = 3;
+ * @return {string}
+ */
+proto.nebula.service.LoadRequest.prototype.getJson = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/**
+ * @param {string} value
+ * @return {!proto.nebula.service.LoadRequest} returns this
+ */
+proto.nebula.service.LoadRequest.prototype.setJson = function(value) {
+  return jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional uint32 ttl = 4;
  * @return {number}
  */
 proto.nebula.service.LoadRequest.prototype.getTtl = function() {
-  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
 };
 
 
@@ -4098,7 +4129,7 @@ proto.nebula.service.LoadRequest.prototype.getTtl = function() {
  * @return {!proto.nebula.service.LoadRequest} returns this
  */
 proto.nebula.service.LoadRequest.prototype.setTtl = function(value) {
-  return jspb.Message.setProto3IntField(this, 3, value);
+  return jspb.Message.setProto3IntField(this, 4, value);
 };
 
 
@@ -4405,11 +4436,22 @@ proto.nebula.service.DataType = {
 /**
  * @enum {number}
  */
+proto.nebula.service.LoadType = {
+  CONFIG: 0,
+  GOOGLE_SHEET: 1
+};
+
+/**
+ * @enum {number}
+ */
 proto.nebula.service.LoadError = {
   SUCCESS: 0,
   TEMPLATE_NOT_FOUND: 1,
   MISSING_PARAM: 2,
-  MISSING_BUCKET_VALUE: 3
+  MISSING_BUCKET_VALUE: 3,
+  ANAUTHORIZED: 4,
+  EMPTY_RESULT: 5,
+  NOT_SUPPORTED: 6
 };
 
 goog.object.extend(exports, proto.nebula.service);
@@ -4735,6 +4777,7 @@ const static_res = (req, res) => {
     DataType: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["DataType"],
     QueryResponse: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["QueryResponse"],
     LoadError: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["LoadError"],
+    LoadType: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["LoadType"],
     LoadRequest: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["LoadRequest"],
     LoadResponse: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["LoadResponse"],
     static_res,

@@ -140,9 +140,6 @@ public:
   bool work() noexcept;
 
 private:
-  // ingest a given local file (usually tmp file) into a list of blocks
-  bool ingest(const std::string&, nebula::execution::io::BlockList&) noexcept;
-
   // load swap
   bool loadSwap() noexcept;
 
@@ -155,8 +152,14 @@ private:
   // load kafka
   bool loadKafka() noexcept;
 
+  // load google sheet
+  bool loadGSheet(nebula::execution::io::BlockList& blocks) noexcept;
+
   // load current spec as blocks
   bool load(nebula::execution::io::BlockList&) noexcept;
+
+  // ingest a given local file (usually tmp file) into a list of blocks
+  bool ingest(const std::string&, nebula::execution::io::BlockList&) noexcept;
 
 private:
   nebula::meta::TableSpecPtr table_;

@@ -1,6 +1,6 @@
 if(APPLE)
     # open ssl
-    set(OPENSSL_ROOT ${CELLAR_ROOT}/openssl/1.0.2s)
+    set(OPENSSL_ROOT ${CELLAR_ROOT}/openssl@1.1/1.1.1g)
     set(OPENSSL_INCLUDE_DIR ${OPENSSL_ROOT}/include)
     set(OPENSSL_LIBRARY_PATH ${OPENSSL_ROOT}/lib/libssl.a)
     set(OPENSSL_LIBRARY openssl)

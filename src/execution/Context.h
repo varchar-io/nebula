@@ -101,6 +101,11 @@ public:
       "nebula", nebula::common::unordered_set<std::string>{ "nebula-users" });
   }
 
+  inline static std::unique_ptr<QueryContext> create(
+    std::string user, std::initializer_list<std::string> groups) {
+    return std::make_unique<QueryContext>(std::move(user), std::move(groups));
+  }
+
 private:
   // user context to understand who is making the query
   std::string user_;

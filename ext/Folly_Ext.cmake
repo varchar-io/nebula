@@ -42,7 +42,7 @@
 # libdwarf-dev
 # libiberty-dev
 # 4. finally call cmake and make in build folder (this CMAKE build type is critical to make it work)
-# (ensure OPENSSL_ROOT_DIR can be found "export OPENSSL_ROOT_DIR=/usr/local/Cellar/openssl/1.0.2s")
+# (ensure OPENSSL_ROOT_DIR can be found "export OPENSSL_ROOT_DIR=/usr/local/Cellar/openssl*")
 # (we may need to comment out CHECK_INCLUDE_FILE_CXX(jemalloc/jemalloc.h FOLLY_USE_JEMALLOC) in ./CMake/FollyConfigChecks.cmake)
 # folly/build> "cmake .. -DCMAKE_CXX_COMPILER=/usr/bin/g++-7 -DCMAKE_CC_COMPILER=/usr/bin/gcc-7 -DCMAKE_BUILD_TYPE=Release"
 # folly/build> make && sudo make install

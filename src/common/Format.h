@@ -37,6 +37,7 @@ namespace common {
 // use this util function like:
 // auto text = nebula::common::format("I will go to {p} to do {x}", {{"p", "place"}, {"x", "something"}});
 // supporting max result size as 1024, expect exception if overflowing.
+template <size_t x = 0>
 std::string format(std::string_view fmtstr, unordered_map<std::string_view, std::string_view> macros) {
   // support only MAX TEXT length for final resul, throw exception if not meet the expectation
   static constexpr auto MAX_TEXT = 1024;
@@ -88,6 +89,23 @@ std::string format(std::string_view fmtstr, unordered_map<std::string_view, std:
   N_ENSURE(bufferPos < MAX_TEXT, "format string is too long.");
 
   return std::string(buffer, bufferPos);
+}
+
+static inline std::string normalize(const std::string& input) {
+  static constexpr auto UNDERSCORE = '_';
+  std::string buffer;
+  char last = '-';
+  for (char ch : input) {
+    if (std::isdigit(ch) || std::isalpha(ch) || (ch == UNDERSCORE && last != UNDERSCORE)) {
+      buffer.append(1, std::tolower(ch));
+      last = ch;
+    } else if (last != UNDERSCORE) {
+      buffer.append(1, UNDERSCORE);
+      last = UNDERSCORE;
+    }
+  }
+
+  return buffer;
 }
 
 } // namespace common

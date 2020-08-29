@@ -16,6 +16,7 @@
 
 #include "NebulaService.h"
 
+#include <curl/curl.h>
 #include <msgpack.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -589,6 +590,16 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
   }
 
   throw NException(fmt::format("Unhandled task type: {0}", tst));
+}
+
+void globalInit() {
+  // global init curl for usage of libcurl
+  curl_global_init(CURL_GLOBAL_DEFAULT);
+}
+
+void globalExit() {
+  // global init curl for usage of libcurl
+  curl_global_cleanup();
 }
 
 } // namespace base

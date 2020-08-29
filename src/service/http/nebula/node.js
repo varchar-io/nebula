@@ -56,6 +56,7 @@ const {
     DisplayType,
     CustomColumn,
     QueryRequest,
+    LoadType,
     LoadRequest,
     static_res,
     qc,
@@ -324,21 +325,27 @@ const shutdown = () => {
 
 /**
  * On-demand loading data from parameters.
- * ?api=load&table=x&json=xxx&ttl=5000
+ * ?api=load&type=config&table=x&json=xxx&ttl=5000
  */
-const load = (table, json, ttl, handler) => {
+const load = (type, table, json, ttl, handler) => {
     const req = new LoadRequest();
     if (!table) {
         handler.endWithMessage("Missing table");
         return;
     }
+
+    // different load type - default to config
+    const lt = (type || "config") === "gsheet" ?
+        LoadType.GOOGLE_SHEET :
+        LoadType.CONFIG;
+    req.setType(lt);
     req.setTable(table);
 
     if (!json) {
         handler.endWithMessage("Missing params json.");
         return;
     }
-    req.setParamsjson(json);
+    req.setJson(json);
 
     req.setTtl(ttl);
 
@@ -363,7 +370,7 @@ const cmd_handlers = {
     "list": (req, res, q) => res.write(listApi(q)),
     "user": (req, res, q) => res.write(JSON.stringify(userInfo(q, req.headers))),
     "nuclear": (req, res, q) => res.write(shutdown()),
-    "load": (req, res, q) => load(q.table, q.json, q.ttl || 3600, new Handler(res))
+    "load": (req, res, q) => load(q.type, q.table, q.json, q.ttl || 3600, new Handler(res))
 };
 
 const compression = (req) => {

@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #pragma once
+
 // define RAPIDJSON to have stdstring
 #ifndef RAPIDJSON_HAS_STDSTRING
 #define RAPIDJSON_HAS_STDSTRING 1
@@ -35,6 +37,12 @@
 namespace nebula {
 namespace service {
 namespace base {
+
+// Provide process level global init entry.
+// It should be called by all independant service components.
+void globalInit();
+// Provides peer to global init to clean up everything when global exit
+void globalExit();
 
 // define all service ERROR code = 0 reserved for NO_ERROR
 // And this error code table can be look up

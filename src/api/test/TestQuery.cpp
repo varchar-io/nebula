@@ -539,7 +539,7 @@ TEST(ApiTest, TestAccessControl) {
 
   // compile the query into an execution plan
   // test table require nebula-users to read event column, refer TestTable.h
-  auto plan = query.compile(QueryContext::def());
+  auto plan = query.compile(QueryContext::create("nebula", { "nebula-guest" }));
   plan->setWindow({ start, end });
 
   // print out the plan through logging

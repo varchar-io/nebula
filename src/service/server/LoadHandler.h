@@ -16,26 +16,33 @@
 
 #pragma once
 
-#include "common/Folly.h"
-#include "common/Task.h"
-#include "ingest/SpecRepo.h"
+#include <vector>
+
+#include "ingest/IngestSpec.h"
+#include "nebula.pb.h"
 
 /**
- * TODO(cao) - major node states will be sync through cluster management system 
- * such as etcd, shard manager, kubenetes or zookeeper
- * 
- * At this momment, we're sync through rpc, and it's possible we'll continue maintain this.
+ * A handler to process different loading demand
  */
 namespace nebula {
 namespace service {
 namespace server {
 
-class NodeSync {
-public:
-  static std::shared_ptr<folly::FunctionScheduler> async(
-    folly::ThreadPoolExecutor&, nebula::ingest::SpecRepo&, size_t) noexcept;
+// any load request will leads to a load result
+using LoadResult = std::vector<std::shared_ptr<nebula::ingest::IngestSpec>>;
 
-  static void sync(folly::ThreadPoolExecutor&, nebula::ingest::SpecRepo&) noexcept;
+// load list of ingest specs per request
+class LoadHandler {
+public:
+  LoadHandler() = default;
+  virtual ~LoadHandler() = default;
+
+public:
+  // load pre-configured template found in cluster config
+  LoadResult loadConfigured(const LoadRequest*, LoadError&, std::string&);
+
+  // load a google sheet spec
+  LoadResult loadGoogleSheet(const LoadRequest*, LoadError&, std::string&);
 };
 
 } // namespace server

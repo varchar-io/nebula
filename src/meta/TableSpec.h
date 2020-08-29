@@ -37,7 +37,8 @@ namespace meta {
 enum class DataSource {
   Custom,
   S3,
-  KAFKA
+  KAFKA,
+  GSHEET
 };
 
 // type of time source to fill time column
@@ -84,6 +85,10 @@ struct KafkaSerde {
   nebula::common::unordered_map<std::string, uint32_t> cmap;
 };
 
+// TODO(cao): use nebula::common::unordered_map if it supports msgpack serde
+// key-value settings in both string types
+using Settings = std::unordered_map<std::string, std::string>;
+
 struct TableSpec {
   // table name
   std::string name;
@@ -114,14 +119,12 @@ struct TableSpec {
   // bucket info
   BucketInfo bucketInfo;
   // settings spec just get list of key-values
-  // TODO(cao): use nebula::common::unordered_map if it supports msgpack serde
-  std::unordered_map<std::string, std::string> settings;
+  Settings settings;
 
   TableSpec(std::string n, size_t mm, size_t mh, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak,
             std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts,
-            AccessSpec as, BucketInfo bi,
-            std::unordered_map<std::string, std::string> st)
+            AccessSpec as, BucketInfo bi, Settings st)
     : name{ std::move(n) },
       max_mb{ mm },
       max_hr{ mh },

@@ -207,6 +207,10 @@ grpc::Status NodeServerImpl::Task(
 } // namespace nebula
 
 void RunServer() {
+  // global initialization
+  nebula::service::base::globalInit();
+  nebula::common::Finally f([]() { nebula::service::base::globalExit(); });
+
   // launch the server
   std::string server_address = fmt::format(
     "0.0.0.0:{0}", nebula::service::base::ServiceProperties::NPORT);

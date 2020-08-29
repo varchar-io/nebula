@@ -16,6 +16,7 @@
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <rapidjson/document.h>
 
 #include "api/dsl/Expressions.h"
 #include "api/udf/Avg.h"
@@ -641,12 +642,88 @@ TEST(UDFTest, TestTpm) {
   sketch->mix(*sketch2);
 
   // we will ask itself for finalize
+  // "ROOT" -> A  -> B -> C
+  //                   -> D
+  //                 X -> Y
+  // const std::string_view expected =
+  //   "{\"name\":\"\",\"value\":8,\"children\":"
+  //   "[{\"name\":\"A\",\"value\":8,\"children\":"
+  //   "[{\"name\":\"X\",\"value\":4,\"children\":"
+  //   "[{\"name\":\"Y\",\"value\":2}]},{\"name\":\"B\",\"value\":4,\"children\":"
+  //   "[{\"name\":\"C\",\"value\":2},{\"name\":\"D\",\"value\":2}]}]}]}";
   CType::NativeType json = sketch->finalize();
-  EXPECT_EQ(json,
-            "{\"name\":\"\",\"value\":8,\"children\":"
-            "[{\"name\":\"A\",\"value\":8,\"children\":[{\"name\":\"B\",\"value\":4,\"children\":"
-            "[{\"name\":\"C\",\"value\":2},{\"name\":\"D\",\"value\":2}]},{\"name\":\"X\",\"value\":4,\"children\":"
-            "[{\"name\":\"Y\",\"value\":2}]}]}]}");
+
+#define VERIFY_C_D                                        \
+  EXPECT_EQ(c["name"], "C");                              \
+  EXPECT_EQ(c["value"], 2);                               \
+  EXPECT_TRUE(c.FindMember("children") == c.MemberEnd()); \
+  EXPECT_EQ(d["name"], "D");                              \
+  EXPECT_EQ(d["value"], 2);                               \
+  EXPECT_TRUE(d.FindMember("children") == d.MemberEnd());
+
+#define VERIFY_B                       \
+  EXPECT_EQ(b["name"], "B");           \
+  EXPECT_EQ(b["value"], 4);            \
+  auto l3b = b["children"].GetArray(); \
+  EXPECT_EQ(l3b.Size(), 2);            \
+  auto temp2 = l3b[0].GetObject();     \
+  if (temp2["name"] == "C") {          \
+    auto c = temp2;                    \
+    auto d = l3b[1].GetObject();       \
+    VERIFY_C_D                         \
+  } else {                             \
+    auto d = temp2;                    \
+    auto c = l3b[1].GetObject();       \
+    VERIFY_C_D                         \
+  }
+
+#define VERIFY_Y               \
+  auto y = l3x[0].GetObject(); \
+  EXPECT_EQ(y["name"], "Y");   \
+  EXPECT_EQ(y["value"], 2);    \
+  EXPECT_TRUE(y.FindMember("children") == y.MemberEnd());
+
+#define VERIFY_X                       \
+  EXPECT_EQ(x["name"], "X");           \
+  EXPECT_EQ(x["value"], 4);            \
+  auto l3x = x["children"].GetArray(); \
+  EXPECT_EQ(l3x.Size(), 1);            \
+  VERIFY_Y
+
+  rapidjson::Document doc;
+  doc.Parse(json.data(), json.length());
+
+  // verify root
+  auto root = doc.GetObject();
+  EXPECT_EQ(root["name"], "");
+  EXPECT_EQ(root["value"], 8);
+  auto l1 = root["children"].GetArray();
+  EXPECT_EQ(l1.Size(), 1);
+
+  // verify a
+  auto a = l1[0].GetObject();
+  EXPECT_EQ(a["name"], "A");
+  EXPECT_EQ(a["value"], 8);
+  auto l2 = a["children"].GetArray();
+  EXPECT_EQ(l2.Size(), 2);
+  auto temp = l2[0].GetObject();
+
+  if (temp["name"] == "B") {
+    auto b = temp;
+    auto x = l2[1].GetObject();
+    VERIFY_B
+    VERIFY_X
+  } else {
+    auto x = temp;
+    auto b = l2[1].GetObject();
+    VERIFY_B
+    VERIFY_X
+  }
+
+#undef VERIFY_X
+#undef VERIFY_Y
+#undef VERIFY_B
+#undef VERIFY_C_D
 }
 
 } // namespace test

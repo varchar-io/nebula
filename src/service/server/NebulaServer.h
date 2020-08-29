@@ -13,9 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #pragma once
 
 #include <grpcpp/grpcpp.h>
+
+#include "LoadHandler.h"
 #include "QueryHandler.h"
 #include "meta/TestTable.h"
 #include "nebula.grpc.pb.h"
@@ -53,6 +56,7 @@ public:
 private:
   grpc::Status replyError(nebula::service::base::ErrorCode, QueryResponse*, size_t) const;
   folly::CPUThreadPoolExecutor threadPool_;
+  LoadHandler loadHandler_;
   std::function<void()> shutdownHandler_;
 };
 

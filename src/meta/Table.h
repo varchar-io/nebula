@@ -63,7 +63,8 @@ struct BucketInfo {
   }
 
   static BucketInfo empty() {
-    return BucketInfo{ 0, "" };
+    static const BucketInfo EMPTY{ 0, "" };
+    return EMPTY;
   }
 };
 

@@ -18,6 +18,7 @@
 
 #include <gflags/gflags.h>
 #include <gperftools/heap-profiler.h>
+#include <rapidjson/document.h>
 
 #include "TimeRow.h"
 #include "common/Evidence.h"
@@ -28,6 +29,8 @@
 #include "storage/JsonReader.h"
 #include "storage/NFS.h"
 #include "storage/ParquetReader.h"
+#include "storage/VectorReader.h"
+#include "storage/http/Http.h"
 #include "storage/kafka/KafkaReader.h"
 #include "type/Serde.h"
 
@@ -55,13 +58,16 @@ using nebula::meta::BessType;
 using nebula::meta::BlockSignature;
 using nebula::meta::DataSource;
 using nebula::meta::Table;
+using nebula::meta::TablePtr;
 using nebula::meta::TableSpecPtr;
 using nebula::meta::TestTable;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
 using nebula::storage::CsvReader;
 using nebula::storage::JsonReader;
+using nebula::storage::JsonVectorReader;
 using nebula::storage::ParquetReader;
+using nebula::storage::http::HttpService;
 using nebula::storage::kafka::KafkaReader;
 using nebula::storage::kafka::KafkaSegment;
 using nebula::surface::RowCursor;
@@ -79,6 +85,10 @@ static constexpr auto CSV_DELIMITER_KEY = "csv.delimiter";
 static constexpr auto CSV_HEADER_KEY = "csv.header";
 // a settings to overwrite batch size of a table
 static constexpr auto BATCH_SIZE = "batch";
+
+// build blocks from a row cursor source
+bool build(TablePtr, RowCursor&, BlockList&,
+           size_t, const std::string&, TimeRow&) noexcept;
 
 // load some nebula test data into current process
 void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
@@ -109,24 +119,21 @@ bool IngestSpec::work() noexcept {
     return true;
   }
 
-  const auto data = table_->source;
-  if (data == DataSource::S3) {
-    // either swap, they are reading files
-    if (loader == LOADER_SWAP) {
-      return this->loadSwap();
-    }
-
-    // if roll, they are reading files
-    if (loader == LOADER_ROLL) {
-      return this->loadRoll();
-    }
-
-    if (loader == LOADER_API) {
-      return this->loadApi();
-    }
+  // either swap, they are reading files
+  if (loader == LOADER_SWAP) {
+    return this->loadSwap();
   }
 
-  if (data == DataSource::KAFKA) {
+  // if roll, they are reading files
+  if (loader == LOADER_ROLL) {
+    return this->loadRoll();
+  }
+
+  if (loader == LOADER_API) {
+    return this->loadApi();
+  }
+
+  if (DataSource::KAFKA == table_->source) {
     return this->loadKafka();
   }
 
@@ -212,21 +219,78 @@ bool IngestSpec::loadRoll() noexcept {
 }
 
 bool IngestSpec::loadApi() noexcept {
+  BlockList blocks;
+  auto result = false;
   if (table_->source == DataSource::S3) {
-    BlockList blocks;
-
     // load current
-    auto result = this->load(blocks);
-    if (result) {
-      auto bm = BlockManager::init();
-      // move all new blocks in
-      bm->add(blocks);
-    }
-
-    return result;
+    result = this->load(blocks);
   }
 
-  return false;
+  if (table_->source == DataSource::GSHEET) {
+    result = this->loadGSheet(blocks);
+  }
+
+  if (result) {
+    auto bm = BlockManager::init();
+    // move all new blocks in
+    bm->add(blocks);
+  }
+
+  return result;
+}
+
+bool IngestSpec::loadGSheet(BlockList& blocks) noexcept {
+  HttpService http;
+  const auto& url = this->path();
+
+  // read access token from table settings
+  // TODO(cao): do we allow empty token - if it's public?
+  auto& token = this->table_->settings["token"];
+  std::vector<std::string> headers{
+    fmt::format("Authorization: Bearer {0}", token),
+    "Accept: application/json"
+  };
+
+  // the sheet content in this json objects
+  auto json = http.readJson(url, headers);
+  rapidjson::Document doc;
+  if (doc.Parse(json.c_str()).HasParseError()) {
+    LOG(WARNING) << "Error parsing google sheet reply: " << json;
+    return false;
+  }
+
+  if (!doc.IsObject()) {
+    LOG(WARNING) << "Expect an object for google sheet reply.";
+    return false;
+  }
+
+  auto root = doc.GetObject();
+
+  // ensure this is a columns data
+  auto md = root.FindMember("majorDimension");
+  if (md == root.MemberEnd()) {
+    LOG(WARNING) << "majorDimension not found in google sheet reply.";
+    return false;
+  }
+
+  // read column vectors from its values property, it's type of [[]...]
+  auto columns = root.FindMember("values");
+  if (columns == root.MemberEnd()) {
+    LOG(WARNING) << "values not found in google sheet reply.";
+    return false;
+  }
+
+  // wrap this into a column vector readers
+  auto values = columns->value.GetArray();
+  const auto schema = TypeSerializer::from(table_->schema);
+
+  // size() will have total number of rows for current spec
+  JsonVectorReader reader(schema, values, this->size());
+  auto tb = table_->to();
+  TableService::singleton()->enroll(tb);
+
+  TimeRow timeRow(table_->timeSpec, mdate_);
+  return build(tb, reader, blocks, FLAGS_NBLOCK_MAX_ROWS, id_, timeRow);
 }
 
 // current is a kafka spec
@@ -301,9 +365,6 @@ bool IngestSpec::loadKafka() noexcept {
   }
 
 bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
-#ifdef PPROF
-  HeapProfilerStart("/tmp/heap_ingest.out");
-#endif
   // TODO(cao) - support column selection in ingestion and expand time column
   // to other columns for simple transformation
   // but right now, we're expecting the same schema of data
@@ -313,8 +374,6 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
   // enroll the table in case it is the first time
   TableService::singleton()->enroll(table);
-
-  size_t blockId = 0;
 
   // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
   LOG(INFO) << "Ingesting from " << file;
@@ -352,10 +411,28 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   // limit at 1b on single host
   size_t bRows = FLAGS_NBLOCK_MAX_ROWS;
   OVERWRITE_IF_EXISTS(bRows, BATCH_SIZE, [](auto& s) { return folly::to<size_t>(s); })
+
+  return build(table, *source, blocks, bRows, id_, timeRow);
+}
+
+#undef OVERWRITE_IF_EXISTS
+
+// ingest a row cursor into block list
+bool build(
+  TablePtr table,
+  RowCursor& cursor,
+  BlockList& blocks,
+  size_t bRows,
+  const std::string& spec,
+  TimeRow& timeRow) noexcept {
+#ifdef PPROF
+  HeapProfilerStart("/tmp/heap_ingest.out");
+#endif
+
   std::pair<size_t, size_t> range{ std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
 
   // a lambda to build batch block
-  auto makeBlock = [&table, &range, spec = id_](size_t bid, std::shared_ptr<Batch> b) {
+  auto makeBlock = [&table, &range, &spec](size_t bid, std::shared_ptr<Batch> b) {
     // seal the block
     b->seal();
     LOG(INFO) << "Push a block: " << b->state();
@@ -377,8 +454,9 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   // auto batch = std::make_shared<Batch>(*table, bRows);
   auto pod = table->pod();
 
-  while (source->hasNext()) {
-    auto& r = source->next();
+  size_t blockId = 0;
+  while (cursor.hasNext()) {
+    auto& r = cursor.next();
     const auto& row = timeRow.set(&r);
 
     // for non-partitioned, all batch's pid will be 0
@@ -436,8 +514,6 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   LOG(INFO) << "Memory Pool Report: " << nebula::common::Pool::getDefault().report();
   return true;
 }
-
-#undef OVERWRITE_IF_EXISTS
 
 } // namespace ingest
 } // namespace nebula

@@ -82,6 +82,7 @@ add_library(${NEBULA_SERVICE} STATIC
     ${NEBULA_SRC}/service/node/ConnectionPool.cpp
     ${NEBULA_SRC}/service/node/NodeClient.cpp
     ${NEBULA_SRC}/service/node/TaskExecutor.cpp
+    ${NEBULA_SRC}/service/server/LoadHandler.cpp
     ${NEBULA_SRC}/service/server/NodeSync.cpp
     ${NEBULA_SRC}/service/server/QueryHandler.cpp
     ${nproto_srcs}

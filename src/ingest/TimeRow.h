@@ -97,6 +97,20 @@ private:
       constexpr auto UNIX_TS = "UNIXTIME";
       constexpr auto UNIX_MS = "UNIXTIME_MS";
       constexpr auto UNIX_NANO = "UNIXTIME_NANO";
+      constexpr auto SERIAL_NUMBER = "SERIAL_NUMBER";
+
+      // SERIAL_NUMBER translation
+      if (ts.pattern == SERIAL_NUMBER) {
+        return [col = ts.colName](const nebula::surface::RowData* r) {
+          if (UNLIKELY(r->isNull(col))) {
+            return NULL_TIME;
+          }
+
+          // TODO(cao): support negative unix_time by replacing size_t type
+          return (size_t)nebula::common::Evidence::serial_2_unix(r->readDouble(col));
+        };
+      }
+
       auto scale = 0;
       if (ts.pattern == UNIX_TS) {
         scale = 1;
@@ -106,6 +120,7 @@ private:
         scale = 1000000000;
       }
 
+      // unix time (bigint) conversion
       if (scale > 0) {
         return [col = ts.colName, scale](const nebula::surface::RowData* r) {
           if (UNLIKELY(r->isNull(col))) {
@@ -114,15 +129,16 @@ private:
 
           return (size_t)r->readLong(col) / scale;
         };
-      } else {
-        return [col = ts.colName, pattern = ts.pattern](const nebula::surface::RowData* r) {
-          if (UNLIKELY(r->isNull(col))) {
-            return NULL_TIME;
-          }
-
-          return nebula::common::Evidence::time(r->readString(col), pattern);
-        };
       }
+
+      // last option: string of time pattern such as 'yyyy-mm-dd'
+      return [col = ts.colName, pattern = ts.pattern](const nebula::surface::RowData* r) {
+        if (UNLIKELY(r->isNull(col))) {
+          return NULL_TIME;
+        }
+
+        return nebula::common::Evidence::time(r->readString(col), pattern);
+      };
       break;
     }
     case nebula::meta::TimeType::MACRO: {

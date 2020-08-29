@@ -264,14 +264,25 @@ message QueryResponse {
   bytes data = 3;
 }
 
+enum LoadType {
+  // load command to load data preconfigured (cluster.yml)
+  CONFIG = 0;
+  // A spec to load google sheet
+  GOOGLE_SHEET = 1;
+}
+
 // on-demand data loading request
 message LoadRequest {
+  // load type
+  LoadType type = 1;
   // template table name
-  string table = 1;
-  // parameters to instantiate template
-  string paramsJson = 2;
+  string table = 2;
+  // different type will utilize this json object for different purpose.
+  // configured template uses it as parameters instantiate a template.
+  // google sheets will use it store google sheet spec
+  string json = 3;
   // TTL in seconds for the data to live
-  uint32 ttl = 3;
+  uint32 ttl = 4;
 }
 
 // load error
@@ -280,6 +291,9 @@ enum LoadError {
   TEMPLATE_NOT_FOUND = 1;
   MISSING_PARAM = 2;
   MISSING_BUCKET_VALUE = 3;
+  ANAUTHORIZED = 4;
+  EMPTY_RESULT = 5;
+  NOT_SUPPORTED = 6;
 }
 
 // load command response

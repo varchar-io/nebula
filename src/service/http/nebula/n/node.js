@@ -20,6 +20,7 @@ import {
     DataType,
     QueryResponse,
     LoadError,
+    LoadType,
     LoadRequest,
     LoadResponse
 } from 'nebula-pb';
@@ -80,6 +81,7 @@ export default {
     DataType,
     QueryResponse,
     LoadError,
+    LoadType,
     LoadRequest,
     LoadResponse,
     static_res,

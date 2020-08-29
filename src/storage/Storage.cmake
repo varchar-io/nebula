@@ -8,6 +8,7 @@ add_library(${NEBULA_STORAGE} STATIC
     ${NEBULA_SRC}/storage/ParquetReader.cpp
     ${NEBULA_SRC}/storage/ThriftReader.cpp
     ${NEBULA_SRC}/storage/aws/S3.cpp
+    ${NEBULA_SRC}/storage/http/Http.cpp
     ${NEBULA_SRC}/storage/kafka/KafkaProvider.cpp
     ${NEBULA_SRC}/storage/kafka/KafkaReader.cpp
     ${NEBULA_SRC}/storage/kafka/KafkaTopic.cpp
@@ -24,10 +25,12 @@ target_link_libraries(${NEBULA_STORAGE}
 
 #build test binary
 add_executable(StorageTests
+    ${NEBULA_SRC}/storage/test/TestHttp.cpp
     ${NEBULA_SRC}/storage/test/TestJsonReader.cpp
     ${NEBULA_SRC}/storage/test/TestKafka.cpp
     ${NEBULA_SRC}/storage/test/TestParquet.cpp
-    ${NEBULA_SRC}/storage/test/TestStorage.cpp)
+    ${NEBULA_SRC}/storage/test/TestStorage.cpp
+    ${NEBULA_SRC}/storage/test/TestVectorReader.cpp)
 
 # Why we choose PRIVATE rather than PUBLIC
 # The main reason is deal with link order, each dependency may need adjust position

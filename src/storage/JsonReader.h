@@ -188,7 +188,7 @@ public:
   virtual ~JsonReader() = default;
 
 public:
-  // next row data of CsvRow
+  // next row data of JsonRow
   virtual const nebula::surface::RowData& next() override {
     index_++;
 

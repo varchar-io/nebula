@@ -40,6 +40,7 @@ private:
   ~Evidence() = default;
 
 public: /** only static methods */
+  static constexpr auto UNIX_1899_DEC_30 = -2209161600;
   static constexpr auto HOUR_SECONDS = 3600;
   static constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
   static constexpr auto NANO_BASE = 1000'000'000'000'000'000;
@@ -50,14 +51,20 @@ public: /** only static methods */
     return std::chrono::system_clock::now().time_since_epoch().count();
   }
 
+  // TODO(cao): consider using int64_t rather than size_t
+  // to support time before unix epoch (1970)
   inline static size_t unix_timestamp() {
     return std::chrono::duration_cast<std::chrono::seconds>(
              std::chrono::system_clock::now().time_since_epoch())
       .count();
   }
 
-  //  no matter it is nano, micro, milli, or seconds, convert to seconds
+  // convert a serial number to unix timestamp (seconds)
+  inline static int64_t serial_2_unix(double serial) {
+    return static_cast<int64_t>(serial * DAY_SECONDS + UNIX_1899_DEC_30);
+  }
 
+  //  no matter it is nano, micro, milli, or seconds, convert to seconds
   static int64_t to_seconds(int64_t timestamp) {
     if (timestamp / NANO_BASE > 0L) {
       return timestamp / 1000'000'000;

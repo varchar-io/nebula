@@ -93,10 +93,12 @@ set_target_properties(${AWS_S3_LIBRARY} PROPERTIES
 add_dependencies(${AWS_S3_LIBRARY} aws)
 
 # add curl lib
+# this command return all supported protocols
+# `/usr/local/curl/bin/curl-config --protocols`
+# or `/opt/local/bin/curl-config --protocols`
 if(APPLE)
-  set(CURL_ROOT /usr/local/curl)
-  set(CURL_INCLUDE_DIRS ${CURL_ROOT}/include)
-  set(CURL_LIBRARY_PATH ${CURL_ROOT}/lib/libcurl.dylib)
+  set(CURL_INCLUDE_DIRS /opt/local/include)
+  set(CURL_LIBRARY_PATH /opt/local/lib/libcurl.dylib)
 else()
   set(CURL_INCLUDE_DIRS /usr/include)
   # to link curl lib statically, use curl-config to see what is needed
