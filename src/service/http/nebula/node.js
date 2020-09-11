@@ -335,14 +335,17 @@ const load = (type, table, json, ttl, handler) => {
     }
 
     // different load type - default to config
-    const lt = (type || "config") === "gsheet" ?
-        LoadType.GOOGLE_SHEET :
-        LoadType.CONFIG;
+    let lt = LoadType.CONFIG;
+    if (type === "gsheet") {
+        lt = LoadType.GOOGLE_SHEET;
+    } else if (type === "demand") {
+        lt = LoadType.DEMAND;
+    }
     req.setType(lt);
     req.setTable(table);
 
     if (!json) {
-        handler.endWithMessage("Missing params json.");
+        handler.endWithMessage("Missing demand json.");
         return;
     }
     req.setJson(json);
@@ -454,30 +457,31 @@ createServer(async function (req, res) {
         const c = compression(req);
 
         // routing generic query through web UI
-        if (q.api in cmd_handlers) {
-            res.writeHead(200, heads);
-            cmd_handlers[q.api](req, res, q);
-            if (q.api === "load") {
-                return;
-            }
-        } else if (q.api in api_handlers) {
-            // basic requirement
-            if (!q.start || !q.end) {
-                res.write(error(`start and end time required for every api: ${q.api}`));
-            } else {
-                try {
+        try {
+            if (q.api in cmd_handlers) {
+                res.writeHead(200, heads);
+                cmd_handlers[q.api](req, res, q);
+                if (q.api === "load") {
+                    return;
+                }
+            } else if (q.api in api_handlers) {
+                // basic requirement
+                if (!q.start || !q.end) {
+                    res.write(error(`start and end time required for every api: ${q.api}`));
+                } else {
+
                     // build a handler, all data will be compressed based on encoder
                     const handler = new Handler(res, heads, c.encoding, c.encoder);
                     // add user meta data for security
                     handler.metadata = toMetadata(userInfo(q, req.headers));
                     api_handlers[q.api](q, handler, client);
                     return;
-                } catch (e) {
-                    res.write(error(`api ${q.api} handler exception: ${e}`));
                 }
+            } else {
+                res.write(error(`API not found: ${q.api}`));
             }
-        } else {
-            res.write(error(`API not found: ${q.api}`));
+        } catch (e) {
+            res.write(error(`api ${q.api} handler exception: ${e}`));
         }
 
         res.end();

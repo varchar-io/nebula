@@ -4438,7 +4438,8 @@ proto.nebula.service.DataType = {
  */
 proto.nebula.service.LoadType = {
   CONFIG: 0,
-  GOOGLE_SHEET: 1
+  GOOGLE_SHEET: 1,
+  DEMAND: 2
 };
 
 /**

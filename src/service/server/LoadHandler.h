@@ -43,6 +43,9 @@ public:
 
   // load a google sheet spec
   LoadResult loadGoogleSheet(const LoadRequest*, LoadError&, std::string&);
+
+  // load a google sheet spec
+  LoadResult loadDemand(const LoadRequest*, LoadError&, std::string&);
 };
 
 } // namespace server

@@ -269,6 +269,8 @@ enum LoadType {
   CONFIG = 0;
   // A spec to load google sheet
   GOOGLE_SHEET = 1;
+  // A spec to load a data file(s) by auto detecting its schema
+  DEMAND = 2;
 }
 
 // on-demand data loading request

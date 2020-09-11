@@ -224,6 +224,9 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   case LoadType::GOOGLE_SHEET:
     specs = loadHandler_.loadGoogleSheet(req, err, tableName);
     break;
+  case LoadType::DEMAND:
+    specs = loadHandler_.loadDemand(req, err, tableName);
+    break;
   default:
     err = LoadError::NOT_SUPPORTED;
     break;

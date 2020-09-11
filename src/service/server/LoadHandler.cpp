@@ -28,6 +28,7 @@
 #include "meta/NNode.h"
 #include "meta/TableSpec.h"
 #include "service/base/GoogleSheet.h"
+#include "service/base/LoadSpec.h"
 #include "storage/NFS.h"
 
 namespace nebula {
@@ -51,6 +52,7 @@ using nebula::meta::Settings;
 using nebula::meta::TableSpec;
 using nebula::meta::TableSpecPtr;
 using nebula::service::base::GoogleSheet;
+using nebula::service::base::LoadSpec;
 
 LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, std::string& name) {
   // get request content
@@ -238,6 +240,68 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
 
   // return the collection  - copy elison
   return specs;
+}
+
+// auto detect the schema if not provided
+LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::string& name) {
+  // get table name - needs to be unique
+  name = fmt::format("{0}{1}", BlockSignature::EPHEMERAL_TABLE_PREFIX, req->table());
+
+  // STL = TTL in seconds
+  const auto stl = req->ttl();
+  const auto ttlHour = stl / 3600;
+
+  // google sheet spec in json format.
+  const auto& json = req->json();
+  // by comparing the json value in table settings
+  rapidjson::Document doc;
+  LOG(INFO) << "DBG: json=" << json;
+  if (doc.Parse(json.c_str()).HasParseError()) {
+    throw NException(fmt::format("Error parsing load spec json: {0}", json));
+  }
+
+  LoadSpec demand{ doc };
+
+  // build a table spec
+  KafkaSerde serde;
+  ColumnProps props;
+  auto tbSpec = std::make_shared<TableSpec>(
+    name,
+    LoadSpec::MAX_SIZE_MB,
+    ttlHour,
+    demand.schema,
+    demand.source,
+    LoadSpec::LOADER,
+    demand.path,
+    LoadSpec::BACKUP,
+    demand.format,
+    serde,
+    props,
+    demand.timeSpec,
+    demand.accessSpec,
+    nebula::meta::BucketInfo::empty(),
+    demand.settings);
+
+  // pattern must be present in settings
+  TableService::singleton()->enroll(tbSpec->to(), stl);
+
+  // build ingestion spec for this google sheet
+  // use uid (user ID) as its domain
+  LOG(INFO) << "Generate a ingest spec for load command: " << demand.path;
+  auto spec = std::make_shared<IngestSpec>(
+    tbSpec, "0", demand.path, demand.domain, 0, SpecState::NEW, 0);
+
+  // random assign this spec
+  // TODO(cao): need a routine to find a suitable node to balance load on nodes
+  auto& ci = ClusterInfo::singleton();
+  auto& nodes = ci.nodes();
+  auto index = Evidence::rand<size_t>(0, nodes.size() - 1)();
+  auto itr = nodes.begin();
+  while (index-- > 0) ++itr;
+  spec->setAffinity(*itr);
+
+  // return this spec list
+  return { spec };
 }
 
 } // namespace server
