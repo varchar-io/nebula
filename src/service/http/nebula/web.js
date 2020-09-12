@@ -59,6 +59,9 @@ const charts = new Charts();
 const nebula = new Nebula();
 const formatTime = charts.formatTime;
 const chartId = "#show";
+const fieldsId = "fields";
+const fieldsRef = `#${fieldsId}`;
+const NoRollup = -1;
 const msg = (text) => ds('#qr').text(text);
 
 // arch mode indicates the web architecture mode
@@ -74,6 +77,16 @@ let filters;
 
 // a pointer to latest dimensions selectize
 let $sdc = null;
+
+// c: column name, m: rollup name
+const field = (c, m) => {
+    const valid = m in neb.Rollup;
+    return {
+        M: valid ? neb.Rollup[m] : NoRollup,
+        C: c,
+        T: valid ? `${m.toLowerCase()}(${c})` : c
+    };
+};
 
 const onTableState = (state, stats, callback) => {
     const bc = state.bc;
@@ -112,37 +125,48 @@ const onTableState = (state, stats, callback) => {
         fpce.open();
     });
 
-    // populate dimension columns
-    const dimensions = (state.dl || []).filter((v) => v !== timeCol);
-    let metrics = (state.ml || []).filter((v) => v !== timeCol);
-    const all = dimensions.concat(metrics);
-    let rollups = Object.keys(neb.Rollup);
+    // populate all columns with pairs {M:, C:, T:} for "method", "column", "text"
+    // for normal dimension, M will be -1, C==T
+    const strColumns = (state.dl || []).filter((v) => v !== timeCol);
+    const numColumns = (state.ml || []).filter((v) => v !== timeCol);
+    const allColumns = strColumns.concat(numColumns);
+    const all = [];
 
-    $('#dwrapper').html("<select id=\"dcolumns\" multiple></select>");
-    ds('#dcolumns')
+    // enter all columns
+    allColumns.map(e => all.push(field(e)));
+
+    // enter all possible rollups
+    for (let r in neb.Rollup) {
+        // special handling, just pick one
+        if (r === 'COUNT') {
+            // use first column only
+            all.push(field(all[0].C, r));
+            continue;
+        }
+
+        let targetColumns = numColumns;
+        if (r === 'TREEMERGE') {
+            // tree merge applies on string column (list column in future)
+            targetColumns = strColumns;
+        }
+
+        // pair with every metric column
+        targetColumns.map(e => all.push(field(e, r)));
+    }
+
+    $('#dwrapper').html(`<select id="${fieldsId}" multiple></select>`);
+    ds(fieldsRef)
         .html("")
         .selectAll("option")
         .data(all)
         .enter()
         .append('option')
-        .text(d => d)
-        .attr("value", d => d);
-    $sdc = $('#dcolumns').selectize({
+        .text(d => d.T)
+        .attr("value", d => `${JSON.stringify(d)}`);
+    $sdc = $(fieldsRef).selectize({
         plugins: ['restore_on_backspace', 'remove_button'],
         persist: false
     });
-
-    // populate metrics columns
-    const setm = (values) =>
-        ds('#mcolumns')
-        .html("")
-        .selectAll("option")
-        .data(values)
-        .enter()
-        .append('option')
-        .text(d => d)
-        .attr("value", d => d);
-    setm(all);
 
     // populate all display types
     ds('#display')
@@ -153,16 +177,6 @@ const onTableState = (state, stats, callback) => {
         .append('option')
         .text(k => k.toLowerCase())
         .attr("value", k => neb.DisplayType[k]);
-
-    // roll up methods
-    ds('#ru')
-        .html("")
-        .selectAll("option")
-        .data(rollups)
-        .enter()
-        .append('option')
-        .text(k => k.toLowerCase())
-        .attr("value", k => neb.Rollup[k]);
 
     // order type 
     ds('#ob')
@@ -175,7 +189,7 @@ const onTableState = (state, stats, callback) => {
         .attr("value", k => neb.OrderType[k]);
 
     if (callback) {
-        callback(all);
+        callback(allColumns);
     }
 };
 
@@ -237,19 +251,29 @@ const build = (s) => {
         ds('#display').property('value', s.display);
     }
 
+    // read values from 'fields' multi-input
+    // and split them into keys and metrics for query build
+    const keys = [];
+    const metrics = [];
+    $$(fieldsRef).map(e => {
+        const f = JSON.parse(e);
+        if (f.M === NoRollup) {
+            keys.push(f.C);
+        } else {
+            metrics.push(f);
+        }
+    });
+
     // build URL and set URL
     const state = s || {
         table: $$('#tables'),
         start: $$('#start'),
         end: $$('#end'),
         filter: filters.expr(),
-        keys: $$('#dcolumns'),
+        keys: keys,
         window: $$("#window"),
         display: $$('#display'),
-        metrics: [{
-            C: $$('#mcolumns'),
-            M: $$('#ru')
-        }],
+        metrics: metrics,
         sort: $$('#ob'),
         limit: $$('#limit')
     };
@@ -278,25 +302,20 @@ const restore = () => {
     if (table) {
         set('#tables', table);
         initTable(table, (cols) => {
-            // TODO(cao): support multiple metrics in UI
-            const metrics = state.metrics;
-            const metric = (metrics && metrics.length) ? metrics[0] : {
-                C: null,
-                M: 0
-            };
             // set other fields
             set('#start', state.start);
             set('#end', state.end);
             set("#window", state.window);
             set('#display', state.display);
-            set('#mcolumns', metric.C);
-            set('#ru', metric.M);
             set('#ob', state.sort);
             set('#limit', state.limit);
 
             // set value of dimensions if there is one
-            if ($sdc && state.keys) {
-                $sdc[0].selectize.setValue(state.keys);
+            const fields = [];
+            (state.keys || []).map(e => fields.push(JSON.stringify(field(e))));
+            (state.metrics || []).map(e => fields.push(JSON.stringify(e)));
+            if ($sdc && fields.length > 0) {
+                $sdc[0].selectize.setValue(fields);
             }
 
             // populate all operations
