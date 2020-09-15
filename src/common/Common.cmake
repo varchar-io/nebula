@@ -19,6 +19,7 @@ add_executable(CommonTests
     ${NEBULA_SRC}/common/test/TestExts.cpp
     ${NEBULA_SRC}/common/test/TestHash.cpp
     ${NEBULA_SRC}/common/test/TestJs.cpp
+    ${NEBULA_SRC}/common/test/TestMetaDB.cpp
     ${NEBULA_SRC}/common/test/TestSimd.cpp
     ${NEBULA_SRC}/common/test/TestStatsAlgo.cpp)
 
@@ -36,7 +37,8 @@ target_link_libraries(CommonTests
     PRIVATE ${CF_LIBRARY}
     PRIVATE ${YAML_LIBRARY}
     PRIVATE ${FOLLY_LIBRARY}
-    PRIVATE ${QJS_LIBRARY})
+    PRIVATE ${QJS_LIBRARY}
+    PRIVATE ${LEVELDB_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

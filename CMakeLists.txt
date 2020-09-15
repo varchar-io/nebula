@@ -203,6 +203,9 @@ endif()
 # add dependency of compression
 include(ext/Compression_Ext.cmake)
 
+# add dependency of compression
+include(ext/Level_Ext.cmake)
+
 # add a dependency of glog
 include(ext/Gflags_Ext.cmake)
 

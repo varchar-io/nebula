@@ -8,7 +8,7 @@ Nebula is designed for high-performance tabular data serving gateway. It serves 
 Details could be found in the [project site](https://nebula.bz).
 Design, Art & Techniques will be shared through posts in the page.
 
-### A quick intro video, click to watch
+### Click the image to watch a quick intro video
 [![Click To Watch Nebula Demo Video](./test/nebula-rep.png)](https://youtu.be/ciYD73z6Eiw "Nebula Demo")
 
 

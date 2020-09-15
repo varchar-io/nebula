@@ -28,7 +28,7 @@ const webConfig = {
     mode: "production",
     target: "web",
     entry: {
-        web: './client.js',
+        web: './w/client.js',
     },
     output: {
         filename: './[name]/main.js',
@@ -61,4 +61,26 @@ const nodeConfig = {
     resolve: resolveConfig
 };
 
-module.exports = [webConfig, nodeConfig];
+const libConfig = {
+    mode: "production",
+    target: "node",
+    context: __dirname,
+    node: false,
+    externals: [nodeExternals()],
+    entry: {
+        lib: './n/lib.js'
+    },
+    output: {
+        // UMD works fine too, such as library='neb', libraryTarget='umd'
+        // for commonjs, we rename the file ext as cjs for working better in ESM env.
+        // note that, webpack doesn't crunch 'cjs' but 'js', so the file will be larger
+        filename: './index.js',
+        path: path.resolve(__dirname, 'dist'),
+        library: '',
+        libraryTarget: 'commonjs',
+        libraryExport: 'default'
+    },
+    resolve: resolveConfig
+};
+
+module.exports = [webConfig, nodeConfig, libConfig];

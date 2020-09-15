@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-import * as d3 from './d/d3.v5.min.js';
-import * as flamegraph from './d/d3-flamegraph.min.js';
+import * as d3 from '../d/d3.v5.min.js';
+import * as flamegraph from '../d/d3-flamegraph.min.js';
 import * as bb from 'billboard';
 import {
     Constraints
-} from './c/constraints.min.js';
-import * as fp from './f/flatpickr.js';
+} from '../c/constraints.min.js';
+import * as fp from '../f/flatpickr.js';
 import {
     time
-} from './_/time.min.js';
+} from '../_/time.min.js';
 
 import {
     bytes2utf8
-} from './_/serde.min.js';
+} from '../_/serde.min.js';
 
 const {
     // define query request and response

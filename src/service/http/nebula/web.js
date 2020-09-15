@@ -34,7 +34,7 @@ import {
     p99,
     p99_9,
     p99_99
-} from './sdk.min.js';
+} from './__/sdk.min.js';
 
 import {
     Charts

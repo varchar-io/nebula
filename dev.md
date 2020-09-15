@@ -161,3 +161,17 @@ After you can make a successful build on your macbook, run #1 in /build folder, 
 1. Run `NodeServer` and `NebulaServer` in a terminal window: `./NodeServer & ./NebulaServer --CLS_CONF configs/cluster.yml &`
 2. Run `Nebula Web` to serve UI and connect Nebula Engine: `NS_ADDR=localhost:9190 NODE_PORT=8088 node node.js &`
 3. Open browser and hit `http://localhost:8088`s
+
+
+### Service Discovery
+There are many options we can use to build a generic interface for service discovery. 
+However, we don't want to pull dependencies like `zookeeper` or `etcd` to maintain out of Nebula Service.
+Even though they are really great tools, especially `etcd`, I love it. 
+
+For Nebula Server - we need a metadata DB to persist all metadata snapshot to reflect Nebula runtime states.
+At the same time, this metadata DB will be served as service registry through Nebula Web API interface. 
+So we need 
+- An embeded DB that managed by nebula server itself.
+- Build home made service discovery story on top of this metadata DB. 
+
+Based on this consideration, I chose leveldb as our internal meta store. We will add web API for service registry.
