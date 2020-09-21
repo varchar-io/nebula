@@ -331,10 +331,10 @@ const restore = () => {
         // special handling: if the table is not available yet
         // it may meeans the table is ephemeral and not loaded yet
         // we refresh current window in 5 seconds.
-        timer = animate(`preparing table ${table}`);
+        timer = animate(`preparing table ${table} `);
         timer2 = setTimeout(() => {
             location.reload();
-        }, 5000);
+        }, 3000);
         table = first;
     }
 

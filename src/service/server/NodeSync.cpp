@@ -162,11 +162,13 @@ void NodeSync::sync(
         // udpate spec state so that it won't be resent
         if (state == TaskState::SUCCEEDED) {
           sp->setState(SpecState::READY);
+          // update state of this client right away
+          client->state();
         }
-        // TODO(cao) - what about if this task is failed?
         // we can remove its assigned node and wait it to be reassin to different node for retry
         // but what if it keeps failing? we need counter for it
         else if (state == TaskState::FAILED || state == TaskState::QUEUE) {
+          // TODO(cao) - post process for case if this task failed?
           LOG(WARNING) << "Task " << t.signature() << " state: " << (char)state;
         }
       }
