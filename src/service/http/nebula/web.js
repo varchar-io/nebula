@@ -58,9 +58,18 @@ const windowCol = "_window_";
 const charts = new Charts();
 const nebula = new Nebula();
 const formatTime = charts.formatTime;
+// chart display area container
 const chartId = "#show";
 const fieldsId = "fields";
 const fieldsRef = `#${fieldsId}`;
+// tables list
+const tablesId = '#tables';
+// start/end elements
+const startId = '#start';
+const endId = '#end';
+// visual choice element ID
+const displayId = '#display';
+
 const NoRollup = -1;
 const msg = (text) => ds('#qr').text(text);
 
@@ -97,7 +106,7 @@ const onTableState = (state, stats, callback) => {
 
     stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${mints}, Max T: ${maxts}]`);
 
-    fpcs = neb.fp($("#start"), {
+    fpcs = neb.fp($(startId), {
         enableTime: true,
         allowInput: true,
         clickOpens: false,
@@ -111,7 +120,7 @@ const onTableState = (state, stats, callback) => {
         fpcs.open();
     });
 
-    fpce = neb.fp($("#end"), {
+    fpce = neb.fp($(endId), {
         enableTime: true,
         allowInput: true,
         clickOpens: false,
@@ -169,7 +178,7 @@ const onTableState = (state, stats, callback) => {
     });
 
     // populate all display types
-    ds('#display')
+    ds(displayId)
         .html("")
         .selectAll("option")
         .data(Object.keys(neb.DisplayType))
@@ -209,6 +218,11 @@ const initTable = (table, callback) => {
 // place basic check before sending to server
 // return true if failed the check
 const checkRequest = (state) => {
+    // 0. valid start and end 
+    if (!state.start || !state.end) {
+        return true;
+    }
+
     // 1. timeline query
     const display = state.display;
     if (display == neb.DisplayType.TIMELINE) {
@@ -248,7 +262,7 @@ const build = (s) => {
     // TODO(cao) - we should set state value to all UI fields
     // restore state like refresh page. sync display
     if (s) {
-        ds('#display').property('value', s.display);
+        ds(displayId).property('value', s.display);
     }
 
     // read values from 'fields' multi-input
@@ -266,13 +280,13 @@ const build = (s) => {
 
     // build URL and set URL
     const state = s || {
-        table: $$('#tables'),
-        start: $$('#start'),
-        end: $$('#end'),
+        table: $$(tablesId),
+        start: $$(startId),
+        end: $$(endId),
         filter: filters.expr(),
         keys: keys,
         window: $$("#window"),
-        display: $$('#display'),
+        display: $$(displayId),
         metrics: metrics,
         sort: $$('#ob'),
         limit: $$('#limit')
@@ -288,25 +302,17 @@ const build = (s) => {
 };
 
 const restore = () => {
-    // if no hash value - use the first table as the hash
-    let h = hash();
-    if (!h || h.length < 10) {
-        const tb = $$('#tables');
-        h = `?{"table": "${tb}"}`;
-    }
-
-    // get parameters from URL
-    const state = JSON.parse(decodeURIComponent(h.substr(1)));
+    const state = url2state();
     const set = (N, V) => ds(N).property('value', V);
     const table = state.table;
     if (table) {
-        set('#tables', table);
+        set(tablesId, table);
         initTable(table, (cols) => {
             // set other fields
-            set('#start', state.start);
-            set('#end', state.end);
+            set(startId, state.start);
+            set(endId, state.end);
             set("#window", state.window);
-            set('#display', state.display);
+            set(displayId, state.display);
             set('#ob', state.sort);
             set('#limit', state.limit);
 
@@ -345,7 +351,7 @@ const restore = () => {
             }
 
             // the URL needs to be executed
-            execute();
+            execute(state);
         });
     }
 };
@@ -378,7 +384,7 @@ const onQueryResult = (state, r) => {
         const display = +state.display;
 
         // draw may be triggered by resize - stale data may mess
-        if (display != +$$('#display')) {
+        if (display != +$$(displayId)) {
             return;
         }
 
@@ -441,16 +447,27 @@ const onQueryResult = (state, r) => {
     });
 };
 
-const execute = () => {
+const url2state = () => {
+    // if no hash value - use the first table as the hash
+    const input = decodeURIComponent((hash() || `#${$$(tablesId)}`).substr(1));
+
+    // by default, assuming it's just a table name if can't be parsed by JSON
+    let state = {
+        "table": input
+    };
+    try {
+        state = JSON.parse(input);
+    } catch {}
+    return state;
+};
+
+const execute = (state) => {
     // get parameters from URL
-    const h = hash();
-    if (!h || h.length <= 2) {
-        return;
+    if (!state) {
+        state = url2state();
     }
 
-    // build the request object
-    const queryStr = h.substr(1);
-    const state = JSON.parse(decodeURIComponent(queryStr));
+    // validate state object
     if (checkRequest(state)) {
         return;
     }
@@ -464,7 +481,7 @@ const execute = () => {
     }, 200);
 
     $.ajax({
-        url: "/?api=query&start=0&end=0&query=" + queryStr
+        url: "/?api=query&start=0&end=0&query=" + JSON.stringify(state)
     }).fail((err) => {
         clearInterval(handle);
         msg(`Error: ${err}`);
@@ -537,7 +554,6 @@ const exec = () => {
     build(state);
 };
 ds('#exec').on("click", exec);
-// $("#sdw").hide();
 
 // hook up hash change event
 window.onhashchange = function () {
@@ -547,7 +563,7 @@ window.onhashchange = function () {
 // load table list - maximum 100?
 const onTableList = (tables) => {
     if (tables && tables.length > 0) {
-        const options = ds('#tables').selectAll("option").data(tables.sort()).enter().append('option');
+        const options = ds(tablesId).selectAll("option").data(tables.sort()).enter().append('option');
         options.text(d => d).attr("value", d => d);
         // restore the selection
         restore();
@@ -567,8 +583,8 @@ $(() => {
     });
 
     // if user change the table selection, initialize it again
-    ds('#tables').on('change', () => {
-        hash('n');
+    $(tablesId).change(() => {
+        hash($(tablesId).val());
         restore();
     });
 

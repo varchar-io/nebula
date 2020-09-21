@@ -15,6 +15,7 @@
  */
 
 #include "BlockLoader.h"
+#include "common/Chars.h"
 #include "common/Evidence.h"
 #include "surface/MockSurface.h"
 
@@ -43,7 +44,10 @@ std::shared_ptr<BatchBlock> BlockLoader::from(const BlockSignature& sign, std::s
 }
 
 BlockList BlockLoader::load(const BlockSignature& block) {
-  if (block.table == test_.name()) {
+  const auto& testName = test_.name();
+  if (nebula::common::Chars::prefix(
+        block.table.data(), block.table.size(),
+        testName.data(), testName.size())) {
     return loadTestBlock(block);
   }
 

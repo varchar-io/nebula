@@ -90,7 +90,8 @@ private:
         if (pv.size() > 0) {
           size_t covered = 0;
           for (auto v : pv) {
-            InputType ev(std::any_cast<ValueType>(v));
+            auto valueType = std::any_cast<ValueType>(v);
+            InputType ev(valueType);
             if (values->find(ev) != values->end()) {
               covered++;
             }

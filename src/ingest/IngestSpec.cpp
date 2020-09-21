@@ -107,7 +107,7 @@ void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
   for (unsigned i = 0; i < numBlocks; i++) {
     size_t begin = start + i * window;
     bm->add(nebula::meta::BlockSignature{
-      testTable.name(), i++, begin, begin + window, spec });
+      table->name, i++, begin, begin + window, spec });
   }
 }
 

@@ -217,7 +217,7 @@ void SpecRepo::process(
   if (table->loader == "NebulaTest") {
     // single spec for nebula test loader
     specs.push_back(std::make_shared<IngestSpec>(
-      table, version, buildIndentityByTime(table->timeSpec), "nebula.test", 0, SpecState::NEW, 0));
+      table, version, buildIndentityByTime(table->timeSpec), table->name, 0, SpecState::NEW, 0));
     return;
   }
 
