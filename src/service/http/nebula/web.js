@@ -301,10 +301,43 @@ const build = (s) => {
     hash('#' + encodeURIComponent(JSON.stringify(state)));
 };
 
+let timer = null;
+let timer2 = null;
+const clsTimer = () => {
+    if (timer) {
+        clearInterval(timer);
+    }
+    if (timer2) {
+        clearTimeout(timer2);
+    }
+};
 const restore = () => {
+    clsTimer();
     const state = url2state();
     const set = (N, V) => ds(N).property('value', V);
-    const table = state.table;
+    let table = state.table;
+
+    // if requested table is not in list yet
+    let found = false;
+    let first = null;
+    $(`${tablesId} option`).each((t, v) => {
+        // found
+        first = first || v.value;
+        if (v.value === table) {
+            found = true;
+        }
+    });
+    if (!found) {
+        // special handling: if the table is not available yet
+        // it may meeans the table is ephemeral and not loaded yet
+        // we refresh current window in 5 seconds.
+        timer = animate(`preparing table ${table}`);
+        timer2 = setTimeout(() => {
+            location.reload();
+        }, 5000);
+        table = first;
+    }
+
     if (table) {
         set(tablesId, table);
         initTable(table, (cols) => {
@@ -461,6 +494,14 @@ const url2state = () => {
     return state;
 };
 
+let dots = 0;
+const animate = (prefix, interval) => {
+    return setInterval(() => {
+        dots = (dots + 1) % 50;
+        msg(`${prefix}${'.'.repeat(dots)}`);
+    }, interval || 200);
+};
+
 const execute = (state) => {
     // get parameters from URL
     if (!state) {
@@ -473,20 +514,15 @@ const execute = (state) => {
     }
 
     // display message indicating processing
-    let dots = 0;
-    const prefix = 'soaring in nebula ';
-    const handle = setInterval(() => {
-        dots = (dots + 1) % 50;
-        msg(`${prefix}${'.'.repeat(dots)}`);
-    }, 200);
+    timer = animate('soaring in nebula ');
 
     $.ajax({
         url: "/?api=query&start=0&end=0&query=" + JSON.stringify(state)
     }).fail((err) => {
-        clearInterval(handle);
+        clsTimer();
         msg(`Error: ${err}`);
     }).done((data) => {
-        clearInterval(handle);
+        clsTimer();
         onQueryResult(state, data);
     });
 };
@@ -557,7 +593,7 @@ ds('#exec').on("click", exec);
 
 // hook up hash change event
 window.onhashchange = function () {
-    execute();
+    restore();
 };
 
 // load table list - maximum 100?
