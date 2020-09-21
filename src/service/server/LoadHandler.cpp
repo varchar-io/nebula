@@ -255,7 +255,6 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
   const auto& json = req->json();
   // by comparing the json value in table settings
   rapidjson::Document doc;
-  LOG(INFO) << "DBG: json=" << json;
   if (doc.Parse(json.c_str()).HasParseError()) {
     throw NException(fmt::format("Error parsing load spec json: {0}", json));
   }

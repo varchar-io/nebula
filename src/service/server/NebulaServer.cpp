@@ -256,6 +256,8 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
       if (state == TaskState::SUCCEEDED) {
         spec->setState(SpecState::READY);
         promise->setValue(true);
+        // update state immediately to reflesh the load state
+        client->update();
         return;
       }
 

@@ -77,7 +77,7 @@ void NodeSync::sync(
     if (node.isActive()) {
       // fetch node state in server
       auto client = connector->makeClient(node, pool);
-      client->state();
+      client->update();
 
       // extracting all expired spec from existing blocks on this node
       // make a copy since it's possible to be removed.
@@ -162,8 +162,6 @@ void NodeSync::sync(
         // udpate spec state so that it won't be resent
         if (state == TaskState::SUCCEEDED) {
           sp->setState(SpecState::READY);
-          // update state of this client right away
-          client->state();
         }
         // we can remove its assigned node and wait it to be reassin to different node for retry
         // but what if it keeps failing? we need counter for it

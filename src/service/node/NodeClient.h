@@ -61,7 +61,7 @@ public:
   virtual folly::Future<nebula::surface::RowCursorPtr> execute(const nebula::execution::ExecutionPlan& plan) override;
 
   // pull node state
-  virtual void state() override;
+  virtual void update() override;
 
   // send a task to a node
   virtual nebula::common::TaskState task(const nebula::common::Task&) override;

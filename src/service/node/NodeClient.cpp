@@ -121,7 +121,7 @@ folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
   return p->getFuture();
 }
 
-void NodeClient::state() {
+void NodeClient::update() {
   // build request message through fb builder
   flatbuffers::grpc::MessageBuilder mb;
   mb.Finish(nebula::service::CreateNodeStateRequest(mb, 1));

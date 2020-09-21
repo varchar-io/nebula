@@ -39,7 +39,7 @@ public:
   virtual folly::Future<nebula::surface::RowCursorPtr> execute(const ExecutionPlan& plan);
 
   // state is used to pull state of a node - do nothing for inproc node client
-  virtual void state() {}
+  virtual void update() {}
 
   // task is used to send task to node and get state of the assignment
   virtual nebula::common::TaskState task(const nebula::common::Task&) {
