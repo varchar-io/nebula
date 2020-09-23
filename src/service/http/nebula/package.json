@@ -1,6 +1,6 @@
 {
   "name": "nebula-lib",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "nebula web service library",
   "type": "module",
   "repository": {
@@ -39,7 +39,6 @@
     "grpc": "^1.24.3",
     "json-bigint": "^1.0.0",
     "lodash": "^4.17.19",
-    "selectize": "^0.12.6",
     "serve-static": "^1.14.1",
     "webpack": "^4.30.0",
     "webpack-cli": "^3.3.12",
