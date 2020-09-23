@@ -63,6 +63,19 @@ public:
     return set;
   }
 
+  // get last section of the given string if splittable by delimeter
+  // if no delimmeter found, return original string view
+  static std::string_view last(std::string_view orig, char delimeter = '/') {
+    auto data = orig.data();
+    auto pos = orig.size();
+    // check pos-1 to be delimeter and stop
+    while (pos > 0 && data[pos - 1] != delimeter) {
+      --pos;
+    }
+
+    return std::string_view(data + pos, orig.size() - pos);
+  }
+
   // char equals
   static inline bool eq(char a, char b) {
     return a == b;
@@ -73,7 +86,9 @@ public:
     return a == b || std::tolower(a) == std::tolower(b);
   }
 
-  static bool prefix(const char* src, size_t s_size, const char* target, size_t t_size, bool ignoreCase = true) {
+  static bool prefix(const char* src, size_t s_size,
+                     const char* target, size_t t_size,
+                     bool ignoreCase = true) {
     if (s_size < t_size) {
       return false;
     }
@@ -86,6 +101,29 @@ public:
     }
 
     return true;
+  }
+
+  static std::string digest(const char* str, size_t size) {
+    static constexpr char CTABLE[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
+    static constexpr auto STABLE = sizeof(CTABLE);
+    static constexpr auto LENGTH = 6;
+
+    // minimal requirement, otherwise return itself
+    if (size < LENGTH) {
+      return std::string(str, size);
+    }
+
+    std::string token(LENGTH, '0');
+    nebula::common::Hasher hash;
+    auto step = size / LENGTH;
+    size_t i = 0;
+    while (i < size) {
+      auto code = hash.hash64(str + i, std::min<size_t>(size - i, step));
+      token[i / step] = CTABLE[code % STABLE];
+      i += step;
+    }
+
+    return token;
   }
 };
 } // namespace common

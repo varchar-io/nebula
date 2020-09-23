@@ -22,7 +22,8 @@ import {
     LoadError,
     LoadType,
     LoadRequest,
-    LoadResponse
+    LoadResponse,
+    UrlData
 } from 'nebula-pb';
 
 import {
@@ -84,6 +85,7 @@ export default {
     LoadType,
     LoadRequest,
     LoadResponse,
+    UrlData,
     static_res,
     qc,
     grpc,

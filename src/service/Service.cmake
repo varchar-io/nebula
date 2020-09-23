@@ -78,6 +78,7 @@ set(nodegrpc_srcs "${NODE_GEN_DIR}/node.grpc.fb.cc")
 
 # build everything else as library except executable of NebulaServer and NebulaClient
 add_library(${NEBULA_SERVICE} STATIC 
+    ${NEBULA_SRC}/service/base/NativeMetaDb.cpp
     ${NEBULA_SRC}/service/base/NebulaService.cpp
     ${NEBULA_SRC}/service/node/ConnectionPool.cpp
     ${NEBULA_SRC}/service/node/NodeClient.cpp
@@ -101,7 +102,9 @@ target_link_libraries(${NEBULA_SERVICE}
     PUBLIC ${SNAPPY_LIBRARY}
     PUBLIC ${BOOST_REGEX_LIBRARY}
     PUBLIC ${ROARING_LIBRARY}
-    PUBLIC ${MSGPACK_LIBRARY})
+    PUBLIC ${MSGPACK_LIBRARY}
+    PUBLIC ${LEVELDB_LIBRARY})
+
 if(APPLE)
     target_compile_options(${NEBULA_SERVICE} 
       PRIVATE -Wno-error=unknown-warning-option

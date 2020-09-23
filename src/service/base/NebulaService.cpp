@@ -21,6 +21,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
+#include "NativeMetaDb.h"
 #include "api/dsl/Serde.h"
 #include "common/Evidence.h"
 #include "common/Int128.h"
@@ -28,8 +29,10 @@
 #include "execution/ExecutionPlan.h"
 #include "ingest/BlockExpire.h"
 #include "memory/keyed/FlatRowCursor.h"
+#include "meta/ClusterInfo.h"
 #include "meta/TableSpec.h"
 #include "meta/TestTable.h"
+#include "storage/NFS.h"
 #include "type/Serde.h"
 
 /**
@@ -63,6 +66,9 @@ using nebula::meta::AccessSpec;
 using nebula::meta::Column;
 using nebula::meta::ColumnProps;
 using nebula::meta::DataSource;
+using nebula::meta::DBType;
+using nebula::meta::MetaConf;
+using nebula::meta::MetaDb;
 using nebula::meta::TableSpec;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
@@ -590,6 +596,19 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
   }
 
   throw NException(fmt::format("Unhandled task type: {0}", tst));
+}
+
+std::unique_ptr<MetaDb> createMetaDB(const MetaConf& conf) {
+  if (conf.type == DBType::NATIVE) {
+    // generate a tmp path as local DB path
+    return std::make_unique<NativeMetaDb>(conf.store);
+  }
+
+  throw NException("Not supported DB type");
+}
+
+void bestEffortDie() noexcept {
+  nebula::meta::ClusterInfo::singleton().exit();
 }
 
 void globalInit() {

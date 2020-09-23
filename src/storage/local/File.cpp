@@ -17,6 +17,7 @@
 #include "File.h"
 
 #include <fstream>
+#include <unistd.h>
 
 // use file system in GNU system for now
 // #ifdef __GNUG__
@@ -38,10 +39,15 @@ std::vector<FileInfo> File::list(const std::string& dir) {
     struct dirent* dp;
     while ((dp = readdir(d))) {
       // only need regular files - 8=REG 4=DIR
+      auto name = std::string(dp->d_name);
+      if (name == "." || name == "..") {
+        continue;
+      }
+
       files.emplace_back(dp->d_type == 4,
                          0,
                          dp->d_reclen,
-                         std::string(dp->d_name),
+                         name,
                          "");
     }
 
@@ -72,12 +78,40 @@ FileInfo File::info(const std::string& file) {
 #endif
 }
 
-size_t File::read(const std::string& file, char* buf) {
+size_t File::read(const std::string& file, char* buf, size_t size) {
   std::ifstream fs(file);
   fs.seekg(0, std::ios::end);
-  auto size = fs.tellg();
-  fs.read(buf, size);
-  return size;
+  auto bytes = std::min<size_t>(fs.tellg(), size);
+  fs.read(buf, bytes);
+  return bytes;
+}
+
+std::string File::temp(bool dir) {
+  char f[] = "/tmp/nebula.XXXXXX";
+  if (dir) {
+    auto ret = mkdtemp(f);
+    N_ENSURE(ret != NULL, "Failed to create temp dir");
+    return ret;
+  }
+
+  // temp file
+  auto ret = mkstemp(f);
+  N_ENSURE(ret != -1, "Failed to create temp file");
+  return f;
+}
+
+bool File::sync(const std::string& from, const std::string& to, bool recursive) {
+  N_ENSURE(!recursive, "Do not support recursive yet.");
+
+  // from and to are both local folder, we just copy all files over
+  // support recursive by setting copy_options
+  // std::filesystem::copy_options co;
+  std::filesystem::copy(from, to);
+  return true;
+}
+
+void File::rm(const std::string& path) {
+  std::filesystem::remove_all(path);
 }
 
 } // namespace local

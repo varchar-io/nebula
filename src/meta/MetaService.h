@@ -18,8 +18,10 @@
 
 #include <glog/logging.h>
 
+#include "ClusterInfo.h"
 #include "NNode.h"
 #include "Table.h"
+#include "common/Chars.h"
 #include "common/Evidence.h"
 
 /**
@@ -66,8 +68,11 @@ private:
 };
 
 class MetaService {
+  // DB-key: total query served
+  static constexpr auto QUERY_COUNT = "#queries";
+
 protected:
-  MetaService() = default;
+  MetaService() : queryCount_{ 0 } {}
 
 public:
   virtual ~MetaService() = default;
@@ -80,6 +85,70 @@ public:
   virtual std::vector<NNode> queryNodes(const std::shared_ptr<Table>, std::function<bool(const NNode&)>) {
     return {};
   }
+
+public:
+  size_t incrementQueryServed() noexcept {
+    auto& db = metadb();
+
+    std::string value;
+    if (queryCount_ == 0 && db.read(QUERY_COUNT, value)) {
+      queryCount_ = folly::to<size_t>(value);
+    }
+    value = std::to_string(++queryCount_);
+    db.write(QUERY_COUNT, value);
+
+    return queryCount_;
+  }
+
+  // short a URL into a 6-letter code
+  std::string shortenUrl(const std::string& url) noexcept {
+    static constexpr auto MAX_ATTEMPT = 5;
+    auto& db = metadb();
+    // handle collision
+    auto str = url.data();
+    auto size = url.size();
+    auto i = 0;
+    while (i++ < MAX_ATTEMPT) {
+      // get digest
+      auto digest = nebula::common::Chars::digest(str, size);
+      // if the digest does not exist, we save it and return
+      std::string value;
+      if (db.read(digest, value)) {
+        // same URL already existing
+        if (value == url) {
+          return digest;
+        }
+
+        // not the same, we have collision, change input and try it again
+        size -= 6;
+        continue;
+      }
+
+      // key is not existing, write it out
+      db.write(digest, url);
+      return digest;
+    }
+
+    // nothing is working
+    return {};
+  }
+
+  // fetch a URL by a 6-letter code
+  // empty result if not found
+  inline std::string getUrl(const std::string& code) noexcept {
+    std::string url;
+    metadb().read(code, url);
+    return url;
+  }
+
+protected:
+  inline MetaDb& metadb() const {
+    // proxy call to access cluster level meta DB
+    return ClusterInfo::singleton().db();
+  }
+
+private:
+  size_t queryCount_;
 };
 } // namespace meta
 } // namespace nebula

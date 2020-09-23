@@ -54,6 +54,10 @@ public:
     const std::shared_ptr<nebula::execution::core::NodeConnector> connector,
     nebula::service::base::ErrorCode&) const noexcept;
 
+  inline std::shared_ptr<nebula::meta::MetaService> meta() const noexcept {
+    return ms_;
+  }
+
 private:
   //  build query internally which can throw
   std::shared_ptr<nebula::api::dsl::Query> buildQuery(

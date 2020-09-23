@@ -58,6 +58,7 @@ const {
     QueryRequest,
     LoadType,
     LoadRequest,
+    UrlData,
     static_res,
     qc,
     grpc,
@@ -324,6 +325,39 @@ const shutdown = () => {
 };
 
 /**
+ * Shorten given URL
+ * url(q.url, new Handler(res))
+ */
+const shorten = (url, handler) => {
+    if (!url || url.length < 1) {
+        handler.endWithMessage("Missing url to shorten");
+        return;
+    }
+
+    const req = new UrlData();
+    req.setRaw(decodeURIComponent(url));
+
+    // send the query to shorten
+    client.url(req, {}, (err, reply) => {
+        if (err !== null) {
+            return handler.onError(err);
+        }
+
+        if (reply == null) {
+            return handler.onNull();
+        }
+
+        return handler.onSuccess(JSON.stringify({
+            code: reply.getCode(),
+            raw: reply.getRaw()
+        }));
+    });
+
+    // already handled
+    return true;
+};
+
+/**
  * On-demand loading data from parameters.
  * ?api=load&type=config&table=x&json=xxx&ttl=5000
  */
@@ -367,13 +401,17 @@ const load = (type, table, json, ttl, handler) => {
             ms: reply.getLoadtimems()
         }));
     });
+
+    // already handled
+    return true;
 };
 
 const cmd_handlers = {
     "list": (req, res, q) => res.write(listApi(q)),
     "user": (req, res, q) => res.write(JSON.stringify(userInfo(q, req.headers))),
     "nuclear": (req, res, q) => res.write(shutdown()),
-    "load": (req, res, q) => load(q.type, q.table, q.json, q.ttl || 3600, new Handler(res))
+    "load": (req, res, q) => load(q.type, q.table, q.json, q.ttl || 3600, new Handler(res)),
+    "url": (req, res, q) => shorten(q.url, new Handler(res))
 };
 
 const compression = (req) => {
@@ -438,9 +476,34 @@ const readPost = (req) => {
     });
 };
 
+// redirect a path, return true if success
+const redirect = (parsed, res) => {
+    // short url redirect
+    const m = parsed.pathname.match(/\/n\/(?<token>\w+)/i);
+    if (m) {
+        const req = new UrlData();
+        req.setCode(m.groups['token']);
+        client.url(req, {}, (err, reply) => {
+            const full = reply.getRaw() || "/";
+            res.writeHead(302, {
+                'Location': full
+            });
+            res.end();
+        });
+        return true;
+    }
+
+    return false;
+};
+
 //create a server object listening at 80:
 createServer(async function (req, res) {
-    const q = parse(req.url, true).query;
+    const parsed = parse(req.url, true);
+    if (redirect(parsed, res)) {
+        return;
+    }
+
+    const q = parsed.query;
     if (q.api) {
         // support post API in JSON as well if query object is not found in URL.
         // if URL specified query object, then POST data will be ignored
@@ -460,8 +523,7 @@ createServer(async function (req, res) {
         try {
             if (q.api in cmd_handlers) {
                 res.writeHead(200, heads);
-                cmd_handlers[q.api](req, res, q);
-                if (q.api === "load") {
+                if (cmd_handlers[q.api](req, res, q)) {
                     return;
                 }
             } else if (q.api in api_handlers) {

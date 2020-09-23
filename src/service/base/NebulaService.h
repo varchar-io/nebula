@@ -26,6 +26,7 @@
 #include "execution/Context.h"
 #include "ingest/IngestSpec.h"
 #include "memory/keyed/FlatBuffer.h"
+#include "meta/ClusterInfo.h"
 #include "node/node.grpc.fb.h"
 #include "node/node_generated.h"
 #include "surface/DataSurface.h"
@@ -43,6 +44,12 @@ namespace base {
 void globalInit();
 // Provides peer to global init to clean up everything when global exit
 void globalExit();
+
+// create metadb for given meta conf
+std::unique_ptr<nebula::meta::MetaDb> createMetaDB(const nebula::meta::MetaConf&);
+
+// best effort before dying due to signals
+void bestEffortDie() noexcept;
 
 // define all service ERROR code = 0 reserved for NO_ERROR
 // And this error code table can be look up

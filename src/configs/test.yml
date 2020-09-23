@@ -9,6 +9,10 @@ server:
   anode: false
   auth: false
 
+  meta:
+    db: native
+    store: s3://nebula/meta/
+
 # will be provided by enviroment
 nodes:
   - node:

@@ -46,16 +46,31 @@ public:
   }
 
   // read a file/object fully into a memory buffer
-  virtual size_t read(const std::string&, char*) override {
-    throw NException("Not implemented");
-  }
+  virtual size_t read(const std::string&, char*, size_t) override;
 
   virtual FileInfo info(const std::string&) override {
     throw NException("Not implemented");
   }
 
   // download a prefix to a local tmp file
-  virtual std::string copy(const std::string&) override;
+  virtual bool copy(const std::string&, const std::string&) override;
+
+  // create temporary file or dir
+  virtual std::string temp(bool = false) override {
+    throw NException("Not implemented");
+  }
+
+  // sync folder from s3 path (without bucket) to local path
+  virtual bool sync(const std::string&, const std::string&, bool recursive = false) override;
+
+  // remove a s3 file or s3 prefix
+  virtual void rm(const std::string&) override {
+    throw NException("Not implemented");
+  }
+
+private:
+  void download(const std::string&, const std::string&);
+  void upload(const std::string&, const std::string&);
 
 private:
   std::string bucket_;

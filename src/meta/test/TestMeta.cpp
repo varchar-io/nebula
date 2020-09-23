@@ -66,7 +66,10 @@ TEST(MetaTest, TestNNode) {
 TEST(MetaTest, TestClusterConfigLoad) {
   auto yamlFile = "configs/test.yml";
   auto& clusterInfo = nebula::meta::ClusterInfo::singleton();
-  clusterInfo.load(yamlFile);
+  clusterInfo.load(yamlFile, [](const nebula::meta::MetaConf&) {
+    return std::unique_ptr<nebula::meta::MetaDb>(new nebula::meta::VoidDb());
+  });
+  EXPECT_TRUE(clusterInfo.db().write("key", "value"));
 
   // verify data against config file
   const auto& nodes = clusterInfo.nodes();

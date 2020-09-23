@@ -633,6 +633,29 @@ TEST(CommonTest, TestInt128) {
   }
 }
 
+TEST(CommonTest, TestDigest) {
+  {
+    auto url = "https://nebula.com/questions/27370480/how-to-simplify";
+    auto digest = nebula::common::Chars::digest(url, std::strlen(url));
+    EXPECT_EQ(digest.size(), 6);
+
+    LOG(INFO) << "digest=" << digest;
+  }
+  {
+    auto url = "http";
+    auto digest = nebula::common::Chars::digest(url, std::strlen(url));
+    EXPECT_EQ(digest.size(), 4);
+    EXPECT_EQ(digest, url);
+  }
+  {
+    auto url = "https://en.wikipedia.org/wiki/Bijection";
+    auto digest = nebula::common::Chars::digest(url, std::strlen(url));
+    EXPECT_EQ(digest.size(), 6);
+
+    LOG(INFO) << "digest=" << digest;
+  }
+}
+
 TEST(CommonTest, TestCharsUtils) {
 #define TEST_SPLIT(EXPECTED, COUNT, D)                                                          \
   auto result = nebula::common::Chars::split(str, strlen(str), D);                              \
@@ -687,6 +710,19 @@ TEST(CommonTest, TestCharsUtils) {
   }
 
 #undef TEST_SPLIT
+}
+
+TEST(CommonTest, TestCharsLast) {
+  auto str1 = "abc/";
+  EXPECT_EQ(nebula::common::Chars::last(str1), "");
+  auto str2 = "abc";
+  EXPECT_EQ(nebula::common::Chars::last(str2), str2);
+  auto str3 = "";
+  EXPECT_EQ(nebula::common::Chars::last(str3), str3);
+  auto str4 = "/abc";
+  EXPECT_EQ(nebula::common::Chars::last(str4), "abc");
+  auto str5 = "abc/xyz";
+  EXPECT_EQ(nebula::common::Chars::last(str5), "xyz");
 }
 
 TEST(CommonTest, TestRange) {

@@ -18,6 +18,7 @@
 
 #include <mutex>
 
+#include "MetaDb.h"
 #include "NNode.h"
 #include "TableSpec.h"
 #include "common/Hash.h"
@@ -31,10 +32,23 @@ namespace meta {
 
 using NNodeSet = nebula::common::unordered_set<NNode, NodeHash, NodeEqual>;
 
+// define metadb where metadata is stored and synced.
+enum class DBType {
+  NATIVE
+};
+
+struct MetaConf {
+  DBType type;
+  std::string store;
+};
+
+using CreateMetaDB = std::function<std::unique_ptr<MetaDb>(const MetaConf&)>;
+
 // server options mapping in cluster.yml for server
 struct ServerOptions {
   bool anode;
   bool authRequired;
+  MetaConf metaConf;
 };
 
 class ClusterInfo {
@@ -53,7 +67,7 @@ public:
   }
 
 public:
-  void load(const std::string& file);
+  void load(const std::string&, CreateMetaDB);
 
   std::vector<NNode> copy();
 
@@ -73,6 +87,10 @@ public:
     return server_;
   }
 
+  inline MetaDb& db() const {
+    return *db_;
+  }
+
   inline void mark(const std::string& node, NState state = NState::BAD) {
     for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
       if (node == itr->toString()) {
@@ -81,6 +99,15 @@ public:
         nodes_.erase(itr);
         break;
       }
+    }
+  }
+
+  void exit() noexcept {
+    // do one more time backup before exiting
+    // abnormal exiting handling (e.g. SIGINT)
+    if (db_) {
+      db_->close();
+      db_->backup();
     }
   }
 
@@ -93,6 +120,7 @@ private:
   TableSpecSet tables_;
   std::string version_;
   ServerOptions server_;
+  std::unique_ptr<MetaDb> db_;
 };
 } // namespace meta
 } // namespace nebula

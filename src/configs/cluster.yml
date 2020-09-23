@@ -12,6 +12,14 @@ server:
   # if set as true, auth (such as oAuth) is required to set up to make query executable
   auth: false
 
+  # configure meta db where metadata is persist
+  # currently, we support native DB (backed by LevelDB).
+  # other DB types could be extended in the future such as SQL DB or KV store.
+  # store is the location where the DB data is persited.
+  meta:
+    db: native
+    store: s3://nebula/meta
+
 # will be provided by enviroment
 nodes:
   - node:
@@ -48,7 +56,6 @@ tables:
       type: static
       # get it from linux by "date +%s"
       value: 1565994194
-
   # user.features:
   #   max-mb: 10000
   #   max-hr: 0
@@ -68,7 +75,6 @@ tables:
   #   time:
   #     type: static
   #     value: 1595203200
-
   # one example message looks like:
   # {"service":"test", "host":"dev-shawncao", "tag":"dev", "lang":"java", "stack":"a\nb\nc"}
   # k.pinterest-code:

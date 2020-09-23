@@ -19,11 +19,15 @@
 #include <aws/s3/S3Client.h>
 #include <aws/s3/model/GetObjectRequest.h>
 #include <aws/s3/model/ListObjectsV2Request.h>
+#include <aws/s3/model/PutObjectRequest.h>
 #include <cstdio>
 #include <fstream>
 #include <glog/logging.h>
 #include <iostream>
 #include <unistd.h>
+
+#include "common/Chars.h"
+#include "storage/local/File.h"
 
 /**
  * A wrapper for interacting with AWS / S3
@@ -102,60 +106,70 @@ std::vector<FileInfo> S3::list(const std::string& prefix) {
   return objects;
 }
 
-void S3::read(const std::string& prefix, const std::string& key) {
-  Aws::S3::Model::GetObjectRequest objReq;
-  objReq.SetBucket(this->bucket_);
-  objReq.SetKey(key);
+size_t S3::read(const std::string& key, char* buf, size_t size) {
+  Aws::S3::Model::GetObjectRequest req;
+  req.SetBucket(this->bucket_);
+  req.SetKey(key);
 
   // Get the object
-  auto outcome = s3client().GetObject(objReq);
+  req.SetResponseContentEncoding("utf-8");
+  auto outcome = s3client().GetObject(req);
   if (!outcome.IsSuccess()) {
-    LOG(ERROR) << fmt::format("Error listing prefix {0}: {1}", prefix, outcome.GetError().GetMessage());
-    return;
+    LOG(ERROR) << "Error reading key: " << key << ". " << outcome.GetError().GetMessage();
+    return 0;
   }
 
   // Get an Aws::IOStream reference to the retrieved file
   auto& stream = outcome.GetResultWithOwnership().GetBody();
 
-  // Output the first line of the retrieved text file
-  LOG(INFO) << "Beginning of file contents:\n";
-  char line[255] = { 0 };
-  stream.getline(line, 254);
-  LOG(INFO) << line;
+  // read the whole thing into the buf which is big enough.
+  // std::memcpy(buf, (void*)stream.rdbuf(), bytes);
+  stream.seekg(0, std::ios::end);
+  auto bytes = std::min<size_t>(stream.tellg(), size);
+  stream.seekg(0, std::ios::beg);
+  stream.read(buf, bytes);
+  return bytes;
 }
 
-std::string S3::copy(const std::string& key) {
-  std::lock_guard<std::mutex> lock(s3s_);
+bool uploadFile(const Aws::S3::S3Client& client,
+                const std::string& bucket,
+                const std::string& key,
+                const std::string& file) {
+  Aws::S3::Model::PutObjectRequest req;
+  req.SetBucket(bucket);
+  req.SetKey(key);
 
+  const std::shared_ptr<Aws::IOStream> bytes = Aws::MakeShared<Aws::FStream>(
+    "nebula-upload", file, std::ios_base::in | std::ios_base::binary);
+  req.SetBody(bytes);
+
+  Aws::S3::Model::PutObjectOutcome outcome = client.PutObject(req);
+
+  if (!outcome.IsSuccess()) {
+    LOG(ERROR) << "Error: " << outcome.GetError().GetMessage();
+    return false;
+  }
+
+  LOG(INFO) << "Success: upload " << file << " to key=" << key;
+  return true;
+}
+
+bool downloadFile(const Aws::S3::S3Client& client,
+                  const std::string& bucket,
+                  const std::string& key,
+                  const std::string& file) {
   // Set up the request
-  Aws::S3::Model::GetObjectRequest objReq;
-  objReq.SetBucket(this->bucket_);
-  objReq.SetKey(key);
-
-  // construct a tmp file name from std io lib
-  // local file name tmeplate to copy data into
-  char f[] = "/tmp/nebula.s3.XXXXXX";
-  int ret = mkstemp(f);
-  N_ENSURE(ret != -1, "Failed to create temp file");
-
-  // create an out stream and copy data from S3 stream to it
-  // This method will stream data into memory instead of going to disk directly
-  // std::ofstream output(tmpFile, std::ios::binary);
-  // auto& retrieved = content.GetBody();
-  // output << retrieved.rdbuf();
-  // if (output.tellp() == 0) {
-  //   LOG(WARNING) << "Seen an empty file: " << key;
-  //   return {};
-  // }
+  Aws::S3::Model::GetObjectRequest req;
+  req.SetBucket(bucket);
+  req.SetKey(key);
 
   // set the response to stream into the file
-  objReq.SetResponseStreamFactory([f]() {
-    return Aws::New<Aws::FStream>("s3", f, std::ios_base::out | std::ios_base::binary);
+  req.SetResponseStreamFactory([&file]() {
+    return Aws::New<Aws::FStream>("s3", file, std::ios_base::out | std::ios_base::binary);
   });
 
   // Get the object
-  LOG(INFO) << "Download S3 object: bucket=" << this->bucket_ << ", key=" << key << ", to=" << f;
-  auto result = s3client().GetObject(objReq);
+  auto result = client.GetObject(req);
   if (result.IsSuccess()) {
     // Get an Aws::IOStream reference to the retrieved file
     auto content = std::move(result.GetResultWithOwnership());
@@ -163,16 +177,85 @@ std::string S3::copy(const std::string& key) {
     // the object has no data
     if (content.GetContentLength() == 0) {
       LOG(WARNING) << "Seen an empty file: " << key;
-      return {};
+      return false;
     }
 
     // return a copy of file
-    return f;
+    return true;
   }
 
   auto error = result.GetError();
   LOG(ERROR) << "ERROR: " << error;
-  return {};
+  return false;
+}
+
+inline bool S3::copy(const std::string& from, const std::string& to) {
+  std::lock_guard<std::mutex> lock(s3s_);
+
+  if (from.at(0) == '/') {
+    return uploadFile(s3client(), this->bucket_, to, from);
+  } else if (to.at(0) == '/') {
+    return downloadFile(s3client(), this->bucket_, from, to);
+  }
+
+  // from s3 to s3
+  LOG(WARNING) << "Not supporting s3 to s3 sync for now";
+  return false;
+}
+
+void S3::download(const std::string& s3, const std::string& local) {
+  std::lock_guard<std::mutex> lock(s3s_);
+  LOG(INFO) << "Download: from " << s3 << " to " << local;
+
+  auto files = list(s3);
+  auto& client = s3client();
+  for (auto& f : files) {
+    // for each key, let's download it to current to folder
+    if (!f.isDir) {
+      // get file name
+      auto nameOnly = nebula::common::Chars::last(f.name);
+      downloadFile(client, this->bucket_, f.name, fmt::format("{0}/{1}", local, nameOnly));
+    }
+  }
+}
+
+void S3::upload(const std::string& local, const std::string& s3) {
+  std::lock_guard<std::mutex> lock(s3s_);
+  LOG(INFO) << "Upload: from " << local << " to " << s3;
+
+  // need local file system to list files
+  nebula::storage::local::File lfs;
+  auto files = lfs.list(local);
+  auto& client = s3client();
+  for (auto& f : files) {
+    if (!f.isDir) {
+      uploadFile(client,
+                 this->bucket_,
+                 fmt::format("{0}/{1}", s3, f.name),
+                 fmt::format("{0}/{1}", local, f.name));
+    }
+  }
+}
+
+bool S3::sync(const std::string& from, const std::string& to, bool recursive) {
+  // need support local to S3 sync as well for writing/backup scenario
+  N_ENSURE(!recursive, "support non-recursive sync only for now.");
+  if (from.empty() || to.empty()) {
+    LOG(WARNING) << "Invalid path: from=" << from << ", to=" << to;
+    return false;
+  }
+
+  if (from.at(0) == '/') {
+    upload(from, to);
+  } else if (to.at(0) == '/') {
+    download(from, to);
+  } else {
+    // from s3 to s3
+    LOG(WARNING) << "Not supporting s3 to s3 sync for now";
+    return false;
+  }
+
+  return true;
 }
 
 } // namespace aws

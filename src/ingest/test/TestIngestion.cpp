@@ -21,6 +21,7 @@
 #include "ingest/IngestSpec.h"
 #include "ingest/SpecRepo.h"
 #include "meta/ClusterInfo.h"
+#include "meta/MetaDb.h"
 #include "meta/TableSpec.h"
 
 namespace nebula {
@@ -55,7 +56,9 @@ TEST(IngestTest, TestSpecGeneration) {
 
   // load cluster info from sample config
   auto& ci = nebula::meta::ClusterInfo::singleton();
-  ci.load("configs/cluster.yml");
+  ci.load("configs/cluster.yml", [](const nebula::meta::MetaConf&) {
+    return std::make_unique<nebula::meta::VoidDb>();
+  });
 
   // refresh spec repo with the ci object
   sr.refresh(ci);

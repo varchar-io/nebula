@@ -21,6 +21,22 @@
 
 namespace YAML {
 template <>
+struct convert<nebula::meta::MetaConf> {
+  static bool decode(const Node& node, nebula::meta::MetaConf& conf) {
+    if (!node.IsMap()) {
+      return false;
+    }
+
+    auto db = node["db"].as<std::string>();
+    if (db == "native") {
+      conf.type = nebula::meta::DBType::NATIVE;
+    }
+
+    conf.store = node["store"].as<std::string>();
+    return true;
+  }
+};
+template <>
 struct convert<nebula::meta::ServerOptions> {
   static Node encode(const nebula::meta::ServerOptions& so) {
     Node node;
@@ -35,6 +51,9 @@ struct convert<nebula::meta::ServerOptions> {
 
     so.anode = node["anode"].as<bool>();
     so.authRequired = node["auth"].as<bool>();
+    // parse meta conf if presents
+    so.metaConf = node["meta"].as<nebula::meta::MetaConf>();
+
     return true;
   }
 };
@@ -48,7 +67,6 @@ namespace nebula {
 namespace meta {
 
 using nebula::common::unordered_map;
-using nebula::meta::Column;
 using nebula::type::TypeSerializer;
 
 DataSource asDataSource(const std::string& data) {
@@ -261,7 +279,7 @@ BucketInfo asBucketInfo(const YAML::Node& node) {
   return BucketInfo::empty();
 }
 
-void ClusterInfo::load(const std::string& file) {
+void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
 
   YAML::Node config = YAML::LoadFile(file);
 
@@ -275,6 +293,11 @@ void ClusterInfo::load(const std::string& file) {
   // load server info
   server_ = config["server"].as<ServerOptions>();
   topLevels++;
+
+  // if we need to create metadb, then do it
+  if (!db_) {
+    db_ = createDb(server_.metaConf);
+  }
 
   // load all nodes configured for the cluster
   const auto& nodes = config["nodes"];

@@ -24,6 +24,7 @@
 #include <iostream>
 #include <memory>
 #include <rapidjson/document.h>
+#include <signal.h>
 #include <string>
 #include <thread>
 
@@ -340,6 +341,9 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   reply->set_data(ServiceProperties::jsonify(result, plan->getOutputSchema()));
   LOG(INFO) << "Serialize result to client takes " << tick.elapsedMs() << "ms";
 
+  // counting how many queries we have successfully served
+  LOG(INFO) << "Total query served: " << handler_.meta()->incrementQueryServed();
+
   return Status::OK;
 }
 
@@ -353,6 +357,24 @@ Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, size_t du
   stats->set_querytimems(durationMs);
 
   return Status(StatusCode::INTERNAL, error);
+}
+
+grpc::Status V1ServiceImpl::Url(grpc::ServerContext*, const UrlData* req, UrlData* res) {
+  const auto& code = req->code();
+  const auto& raw = req->raw();
+  // if code is available, fill the raw url into raw field
+  if (code.size() > 0) {
+    auto url = handler_.meta()->getUrl(code);
+    res->set_code(code);
+    res->set_raw(url);
+  } else if (raw.size() > 0) {
+    auto token = handler_.meta()->shortenUrl(raw);
+    res->set_code(token);
+    res->set_raw(raw);
+  }
+
+  // no matter what, always return ok, client side will handle if result is not ideal
+  return Status::OK;
 }
 
 // Logic and data behind the server's behavior.
@@ -378,9 +400,20 @@ std::string LoadClusterConfig() {
   return FLAGS_CLS_CONF;
 }
 
+void signalHandler(int signum) {
+  LOG(INFO) << "Exiting nebula server by signal: " << signum;
+  nebula::service::base::bestEffortDie();
+  exit(signum);
+}
+
 // NOTE: main function can't be placed inside a namespace
 // Otherwise you may get undefined symbol "_main" error in link
 void RunServer() {
+  // register signal handler for all signals
+  signal(SIGINT, signalHandler);
+  signal(SIGTERM, signalHandler);
+  signal(SIGABRT, signalHandler);
+
   // global initialization
   nebula::service::base::globalInit();
   nebula::common::Finally f([]() { nebula::service::base::globalExit(); });
@@ -441,16 +474,17 @@ void RunServer() {
       // if the conf is a S3 file, download it and replace the conf as the local copy
       auto uri = nebula::storage::parse(conf);
       bool copied = false;
+      auto localFs = nebula::storage::makeFS("local");
       if (uri.schema == "s3") {
         // create a s3 file system
         auto fs = nebula::storage::makeFS("s3", uri.host);
-        conf = fs->copy(uri.path);
+        conf = localFs->temp();
+        N_ENSURE(fs->copy(uri.path, conf), "failed to copy config file");
         copied = true;
       }
 
       // assuming everything else are local file - if not, let runtime fails you
-      auto fs = nebula::storage::makeFS("local");
-      auto fi = fs->info(conf);
+      auto fi = localFs->info(conf);
       auto sign = fi.signature();
 
       // for copied data, they will have random name and latest timestamp
@@ -458,7 +492,7 @@ void RunServer() {
       if (copied) {
         const auto size = fi.size;
         auto data = std::make_unique<char[]>(size);
-        N_ENSURE_EQ(fs->read(conf, data.get()), size, "should read all bytes of the conf file");
+        N_ENSURE_EQ(localFs->read(conf, data.get(), size), size, "should read all bytes of the conf file");
         sign = fmt::format("{0}_{1}", size, nebula::common::Hasher::hash64(data.get(), size));
       }
 
@@ -470,7 +504,7 @@ void RunServer() {
 
         // load the new conf
         auto& ci = nebula::meta::ClusterInfo::singleton();
-        ci.load(conf);
+        ci.load(conf, nebula::service::base::createMetaDB);
 
         // TODO(cao) - how to support table schema/column props evolution?
         nebula::execution::meta::TableService::singleton()->enroll(ci);
@@ -481,9 +515,14 @@ void RunServer() {
         unlink(conf.c_str());
       }
 
-      {
-        // sync cluster state
+      { // sync cluster state
         nebula::service::server::NodeSync::sync(pool, specRepo);
+      }
+
+      { // backup metadb
+        if (nebula::meta::ClusterInfo::singleton().db().backup()) {
+          LOG(INFO) << "complete backup meta db.";
+        }
       }
     });
 

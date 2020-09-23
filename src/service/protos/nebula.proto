@@ -34,6 +34,12 @@ message EchoResponse {
   string message = 1;
 }
 
+// Url shorten service
+message UrlData {
+  string code = 1;
+  string raw = 2;
+}
+
 // all service methods are captilized compared to other regular methods
 service V1 {
   // Get all available data sources
@@ -47,6 +53,8 @@ service V1 {
   rpc Load(LoadRequest) returns(LoadResponse) {}
   // shut down all work nodes - used for perf profiling
   rpc Nuclear(EchoRequest) returns(EchoResponse) {}
+  // URL service - code for raw or raw for code
+  rpc Url(UrlData) returns(UrlData) {}
 }
 
 message TableStateRequest {

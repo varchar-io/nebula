@@ -15,8 +15,10 @@
  */
 
 #include <fmt/format.h>
+#include <fstream>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include "storage/NFS.h"
 #include "storage/aws/S3.h"
 #include "storage/local/File.h"
@@ -34,6 +36,12 @@ TEST(StorageTest, TestLocalFiles) {
   }
 
   EXPECT_TRUE(files.size() > 0);
+}
+
+TEST(StorageTest, TestLocalCopy) {
+  LOG(INFO) << "Run storage test here";
+  auto fs = nebula::storage::makeFS("local");
+  EXPECT_TRUE(fs->sync("/Users/shawncao/nebula/build/configs", "/tmp/testconfigs"));
 }
 
 TEST(StorageTest, DISABLED_TestS3Api) {
@@ -59,11 +67,61 @@ TEST(StorageTest, DISABLED_TestS3Api) {
 
 TEST(StorageTest, DISABLED_TestS3Copy) {
   auto fs = nebula::storage::makeFS("s3", "<bucket>");
-  auto local = fs->copy("nebula/pin_pins/cd=2019-08-31/000117");
   auto lfs = nebula::storage::makeFS("local");
+  auto local = lfs->temp();
+  fs->copy("nebula/pin_pins/cd=2019-08-31/000117", local);
   auto fi = lfs->info(local);
 
   LOG(INFO) << "file info: " << fi.signature();
+}
+
+TEST(StorageTest, DISABLED_TestS3Sync) {
+  auto fs = nebula::storage::makeFS("s3", "<bucket>");
+  auto lfs = nebula::storage::makeFS("local");
+  auto local = lfs->temp(true);
+  LOG(INFO) << "sync all files to: " << local;
+  fs->sync("nebula/s3_cost", local);
+
+  for (auto& x : lfs->list(local)) {
+    LOG(INFO) << "file: " << x.name;
+  }
+}
+
+TEST(StorageTest, DISABLED_TestRoundTrip) {
+  auto fs = nebula::storage::makeFS("s3", "<bucket>");
+  auto lfs = nebula::storage::makeFS("local");
+  auto remote = "nebula/trt";
+  // write a file to it
+  auto local1 = lfs->temp(true);
+  {
+    std::ofstream f1{ fmt::format("{0}/1", local1) };
+    f1 << "abc";
+    f1.close();
+  }
+
+  // sync it to s3://pinlogs/nebula/mdb
+  EXPECT_TRUE(fs->sync(local1, remote));
+
+  // list s3
+  {
+    auto files = fs->list(remote);
+    EXPECT_EQ(1, files.size());
+    EXPECT_EQ(fmt::format("{0}/1", remote), files.at(0).name);
+  }
+  // sync the s3 folder to local another folder
+  auto local2 = lfs->temp(true);
+  EXPECT_TRUE(fs->sync(remote, local2));
+
+  // list the new folder
+  {
+    auto files = lfs->list(local2);
+    EXPECT_EQ(1, files.size());
+    EXPECT_EQ("1", files.at(0).name);
+  }
+
+  LOG(INFO) << "Sync works for all: local1=" << local1
+            << ", remote=" << remote
+            << ", local2=" << local2;
 }
 
 TEST(StorageTest, TestUriParse) {

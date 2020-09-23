@@ -51,14 +51,25 @@ public:
   // read a file/object at given offset and length into buffer address provided
   virtual size_t read(const std::string&, const size_t, const size_t, char*) = 0;
 
-  // read a file/object fully into a memory buffer
-  virtual size_t read(const std::string&, char*) = 0;
+  // read a file/object fully into a memory buffer with max size to fill
+  virtual size_t read(const std::string&, char*, size_t) = 0;
 
   // return file info of given file handler
   virtual FileInfo info(const std::string&) = 0;
 
   // copy a file to an tmp file - most likely used for remote file download scenario
-  virtual std::string copy(const std::string&) = 0;
+  // two path - from, to
+  virtual bool copy(const std::string&, const std::string&) = 0;
+
+  // make temp file or temp folder (only supported by local file system)
+  // void for key-based cloud fs (s3, google storage)
+  virtual std::string temp(bool = false) = 0;
+
+  // sync data from folder to folder - depends on FS implementation
+  virtual bool sync(const std::string&, const std::string&, bool = false) = 0;
+
+  // rm all content of given path
+  virtual void rm(const std::string&) = 0;
 };
 } // namespace storage
 } // namespace nebula

@@ -529,6 +529,19 @@ const execute = (state) => {
 
 ds('#soar').on("click", build);
 
+// when user click share button
+ds('#share').on("click", () => {
+    $.ajax({
+            url: "/?api=url&url=" + encodeURIComponent(location.href)
+        }).fail((err) => {
+            msg(`Error: ${err}`);
+        })
+        .done((data) => {
+            const sr = JSON.parse(data);
+            msg(`[query url: ${location.origin}/n/${sr.code}]`);
+        });
+});
+
 /** switch user interface between UI elemments and coding editor */
 const editor = CodeMirror.fromTextArea($("#code").get(0), {
     lineNumbers: false,

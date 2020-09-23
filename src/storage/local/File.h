@@ -38,14 +38,20 @@ public:
   }
 
   // read a file/object fully into a memory buffer
-  virtual size_t read(const std::string&, char*) override;
+  virtual size_t read(const std::string&, char*, size_t) override;
 
   // return file info of given file path
   virtual FileInfo info(const std::string&) override;
 
-  virtual std::string copy(const std::string&) override {
+  virtual bool copy(const std::string&, const std::string&) override {
     throw NException("Not implemented");
   }
+
+  virtual std::string temp(bool = false) override;
+
+  virtual bool sync(const std::string&, const std::string&, bool = false) override;
+
+  virtual void rm(const std::string&) override;
 };
 
 } // namespace local
