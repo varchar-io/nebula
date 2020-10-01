@@ -104,8 +104,9 @@ public:
   }
 
   static std::string digest(const char* str, size_t size) {
-    static constexpr char CTABLE[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789";
-    static constexpr auto STABLE = sizeof(CTABLE);
+    // sizeof a c-string will include the ending 0, we want to avoid that to be hit in our final code
+    static constexpr char CTABLE[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    static constexpr auto STABLE = sizeof(CTABLE) - 1;
     static constexpr auto LENGTH = 6;
 
     // minimal requirement, otherwise return itself

@@ -654,6 +654,12 @@ TEST(CommonTest, TestDigest) {
 
     LOG(INFO) << "digest=" << digest;
   }
+  {
+    auto url = "/#%7B%22table%22%3A%22nebula.test%22%2C%22start%22%3A%222019-08-16%2022%3A23%3A14%22%2C%22end%22%3A%222019-08-26%2002%3A23%3A14%22%2C%22filter%22%3A%7B%22l%22%3A%22AND%22%2C%22r%22%3A%5B%7B%22c%22%3A%22event%22%2C%22o%22%3A%224%22%2C%22v%22%3A%5B%22NN%25%22%5D%7D%5D%2C%22g%22%3A%5B%5D%7D%2C%22keys%22%3A%5B%22tag%22%5D%2C%22window%22%3A%220%22%2C%22display%22%3A%220%22%2C%22metrics%22%3A%5B%5D%2C%22sort%22%3A%220%22%2C%22limit%22%3A%2210%22%7D";
+    auto digest = nebula::common::Chars::digest(url, std::strlen(url));
+    EXPECT_EQ(digest.size(), 6);
+    LOG(INFO) << "digest=" << digest;
+  }
 }
 
 TEST(CommonTest, TestCharsUtils) {

@@ -517,7 +517,7 @@ const execute = (state) => {
     timer = animate('soaring in nebula ');
 
     $.ajax({
-        url: "/?api=query&start=0&end=0&query=" + JSON.stringify(state)
+        url: "/?api=query&start=0&end=0&query=" + encodeURIComponent(JSON.stringify(state))
     }).fail((err) => {
         clsTimer();
         msg(`Error: ${err}`);
@@ -531,8 +531,9 @@ ds('#soar').on("click", build);
 
 // when user click share button
 ds('#share').on("click", () => {
+    const path = location.href.substr(location.origin.length);
     $.ajax({
-            url: "/?api=url&url=" + encodeURIComponent(location.href)
+            url: "/?api=url&url=" + encodeURIComponent(path)
         }).fail((err) => {
             msg(`Error: ${err}`);
         })

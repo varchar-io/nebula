@@ -174,13 +174,13 @@ const getTableState = (q, handler, client) => {
  * Please refer two different modes on how to architecture web component in Nebula.
  */
 const webq = (q, handler, client) => {
+    log(`build query for ${q.query}`);
     const state = jsonb.parse(q.query);
     const req = new QueryRequest();
     req.setTable(state.table);
     req.setStart(time.seconds(state.start));
     req.setEnd(time.seconds(state.end));
 
-    log(`start a query to ${state.table}.`);
     // the filter can be much more complex
     const filter = state.filter;
     if (filter) {
@@ -331,11 +331,12 @@ const shutdown = () => {
 const shorten = (url, handler) => {
     if (!url || url.length < 1) {
         handler.endWithMessage("Missing url to shorten");
-        return;
+        return false;
     }
 
     const req = new UrlData();
-    req.setRaw(decodeURIComponent(url));
+    req.setRaw(url);
+    log(`shorten URL: ${url}`);
 
     // send the query to shorten
     client.url(req, {}, (err, reply) => {
@@ -346,7 +347,6 @@ const shorten = (url, handler) => {
         if (reply == null) {
             return handler.onNull();
         }
-
         return handler.onSuccess(JSON.stringify({
             code: reply.getCode(),
             raw: reply.getRaw()
@@ -354,7 +354,7 @@ const shorten = (url, handler) => {
     });
 
     // already handled
-    return true;
+    return false;
 };
 
 /**
@@ -365,7 +365,7 @@ const load = (type, table, json, ttl, handler) => {
     const req = new LoadRequest();
     if (!table) {
         handler.endWithMessage("Missing table");
-        return;
+        return false;
     }
 
     // different load type - default to config
@@ -380,7 +380,7 @@ const load = (type, table, json, ttl, handler) => {
 
     if (!json) {
         handler.endWithMessage("Missing demand json.");
-        return;
+        return false;
     }
     req.setJson(json);
 
@@ -403,7 +403,7 @@ const load = (type, table, json, ttl, handler) => {
     });
 
     // already handled
-    return true;
+    return false;
 };
 
 const cmd_handlers = {
@@ -496,6 +496,12 @@ const redirect = (parsed, res) => {
     return false;
 };
 
+const endError = (msg, res, heads) => {
+    res.writeHead(200, heads);
+    res.write(error(msg));
+    res.end();
+};
+
 //create a server object listening at 80:
 createServer(async function (req, res) {
     const parsed = parse(req.url, true);
@@ -518,36 +524,31 @@ createServer(async function (req, res) {
         };
 
         const c = compression(req);
-
         // routing generic query through web UI
         try {
             if (q.api in cmd_handlers) {
                 res.writeHead(200, heads);
                 if (cmd_handlers[q.api](req, res, q)) {
-                    return;
+                    res.end();
                 }
+                return;
             } else if (q.api in api_handlers) {
                 // basic requirement
-                if (!q.start || !q.end) {
-                    res.write(error(`start and end time required for every api: ${q.api}`));
-                } else {
-
+                if (q.start && q.end) {
                     // build a handler, all data will be compressed based on encoder
                     const handler = new Handler(res, heads, c.encoding, c.encoder);
                     // add user meta data for security
                     handler.metadata = toMetadata(userInfo(q, req.headers));
-                    api_handlers[q.api](q, handler, client);
-                    return;
+                    return api_handlers[q.api](q, handler, client);
                 }
+
+                return endError(`start and end time required for every api: ${q.api}`, res, heads);
             } else {
-                res.write(error(`API not found: ${q.api}`));
+                return endError(`API not found: ${q.api}`, res, heads);
             }
         } catch (e) {
-            res.write(error(`api ${q.api} handler exception: ${e}`));
+            return endError(`api ${q.api} handler exception: ${JSON.stringify(e)}`, res, heads);
         }
-
-        res.end();
-        return;
     }
 
     // serving static resources
