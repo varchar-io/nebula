@@ -128,7 +128,8 @@ enum class UDFType {
   COUNT,
   SUM,
   PCT,
-  TPM
+  TPM,
+  CARD
 };
 
 // UDF traits tells us:
@@ -287,6 +288,12 @@ UDF_NOT_SUPPORT(TPM, nebula::type::Kind::BIGINT)
 UDF_NOT_SUPPORT(TPM, nebula::type::Kind::REAL)
 UDF_NOT_SUPPORT(TPM, nebula::type::Kind::DOUBLE)
 UDF_NOT_SUPPORT(TPM, nebula::type::Kind::INT128)
+
+// Cardinality UDF can be applied to any type - it uses their binary value
+// define traits for UDAF: CARD
+// no matter what input type is, it always uses BIGINT as result indicating cardinality
+STATIC_TRAITS(CARD, true)
+REPEAT_ALL_TYPES(UDF_TRAITS_INPUT1, CARD, nebula::type::Kind::BIGINT)
 
 #undef UDF_SAME_AS_INPUT_ALL
 #undef UDF_SAME_AS_INPUT

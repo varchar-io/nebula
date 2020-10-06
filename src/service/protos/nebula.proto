@@ -151,6 +151,8 @@ enum Rollup {
   P99_99 = 12;
   // call stack merge
   TREEMERGE = 13;
+  // estimated cardinality
+  CARD_EST = 14;
 }
 
 // A metric is defined by rollup method on a column

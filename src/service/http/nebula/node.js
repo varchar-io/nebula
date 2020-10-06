@@ -552,5 +552,6 @@ createServer(async function (req, res) {
     }
 
     // serving static resources
+    res.setHeader("Cache-Control", "max-age=31536000");
     static_res(req, res);
 }).listen(process.env.NODE_PORT || 80);

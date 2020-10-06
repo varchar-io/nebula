@@ -26,9 +26,9 @@ namespace test {
 using nebula::storage::http::HttpService;
 
 TEST(HttpTest, TestBasicRead) {
-  auto url = "https://varchar.io/?api=list";
+  auto url = "https://api.github.com/";
   nebula::storage::http::HttpService http;
-  auto json = http.readJson(url, {});
+  auto json = http.readJson(url, { "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36" });
   EXPECT_TRUE(json.size() > 0);
   LOG(INFO) << "Content: " << json;
 }

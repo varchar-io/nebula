@@ -106,7 +106,7 @@ bool File::sync(const std::string& from, const std::string& to, bool recursive) 
   // from and to are both local folder, we just copy all files over
   // support recursive by setting copy_options
   // std::filesystem::copy_options co;
-  std::filesystem::copy(from, to);
+  std::filesystem::copy(from, to, std::filesystem::copy_options::overwrite_existing);
   return true;
 }
 

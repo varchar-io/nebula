@@ -96,7 +96,9 @@ std::string HttpService::readJson(const std::string& url, const std::vector<std:
   /* ask for the content-type */
   res = curl_easy_getinfo(curl_, CURLINFO_CONTENT_TYPE, &ct);
   if ((CURLE_OK != res) || !ct || !Chars::prefix(ct, CT_SIZE, CT_JSON, CT_SIZE)) {
-    LOG(ERROR) << "Expect JSON result. code=" << res << ", content-type=" << ct;
+    LOG(ERROR) << "Expect JSON result. code=" << res
+               << ", content-type=" << ct
+               << ", content=" << json;
     return {};
   }
 

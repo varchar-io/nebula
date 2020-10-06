@@ -41,7 +41,7 @@ TEST(StorageTest, TestLocalFiles) {
 TEST(StorageTest, TestLocalCopy) {
   LOG(INFO) << "Run storage test here";
   auto fs = nebula::storage::makeFS("local");
-  EXPECT_TRUE(fs->sync("/Users/shawncao/nebula/build/configs", "/tmp/testconfigs"));
+  EXPECT_TRUE(fs->sync("configs", "/tmp/testconfigs"));
 }
 
 TEST(StorageTest, DISABLED_TestS3Api) {

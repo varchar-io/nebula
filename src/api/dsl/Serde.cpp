@@ -284,6 +284,13 @@ std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::sh
     auto pct = std::get<0>(dst);
     return as(alias, std::make_shared<UDFExpression<UDFType::PCT, double>>(inner, pct));
   }
+  case UDFType::CARD: {
+    msgpack::object_handle oh = msgpack::unpack(custom.data(), custom.size());
+    auto deser = oh.get();
+    auto dst = deser.as<std::tuple<bool>>();
+    auto est = std::get<0>(dst);
+    return as(alias, std::make_shared<UDFExpression<UDFType::CARD, bool>>(inner, est));
+  }
 
 #define COM_UDF(UT)                                                        \
   case UDFType::UT: {                                                      \

@@ -29,6 +29,100 @@
 namespace nebula {
 namespace common {
 
+class Murmur3 {
+  static constexpr auto HLL_HASH_SEED = 313;
+
+public:
+  static inline uint32_t getblock(const uint32_t* p, int i) {
+    const auto x = p[i];
+    /* NO-OP for little-endian platforms */
+#if defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) \
+  && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    return x;
+
+// if __BYTE_ORDER__ is not predefined (like FreeBSD), use arch
+#elif defined(__i386) || defined(__x86_64) \
+  || defined(__alpha) || defined(__vax)
+
+    return x;
+
+// use __builtin_bswap32 if available
+#elif (defined(__GNUC__) || defined(__clang__)) \
+  && defined(__has_builtin) && __has_builtin(__builtin_bswap32)
+    return __builtin_bswap32(x);
+#else
+
+    // last resort (big-endian w/o __builtin_bswap)
+    return ((((x)&0xFF) << 24)
+            | (((x) >> 24) & 0xFF)
+            | (((x)&0x0000FF00) << 8)
+            | (((x)&0x00FF0000) >> 8));
+
+#endif
+  }
+
+  static inline uint32_t rotl32(uint32_t x, uint8_t r) {
+    return (x << r) | (x >> (32 - r));
+  }
+
+  static inline uint32_t fmix32(uint32_t h) {
+    h ^= h >> 16;
+    h *= 0x85ebca6b;
+    h ^= h >> 13;
+    h *= 0xc2b2ae35;
+    h ^= h >> 16;
+    return h;
+  }
+
+  static uint32_t hash(const char* data, size_t size, uint32_t seed = HLL_HASH_SEED) {
+    const auto nblocks = size / 4;
+    constexpr uint32_t c1 = 0xcc9e2d51;
+    constexpr uint32_t c2 = 0x1b873593;
+    constexpr uint32_t c3 = 0xe6546b64;
+
+    uint32_t h1 = seed;
+    //----------
+    // body
+    const uint32_t* blocks = (const uint32_t*)(data + nblocks * 4);
+
+    for (int i = -nblocks; i; i++) {
+      uint32_t k1 = getblock(blocks, i);
+
+      k1 *= c1;
+      k1 = rotl32(k1, 15);
+      k1 *= c2;
+
+      h1 ^= k1;
+      h1 = rotl32(h1, 13);
+      h1 = h1 * 5 + c3;
+    }
+
+    //----------
+    // tail
+    {
+      const uint8_t* tail = (const uint8_t*)(data + nblocks * 4);
+
+      uint32_t k1 = 0;
+
+      switch (size & 3) {
+      case 3: k1 ^= tail[2] << 16;
+      case 2: k1 ^= tail[1] << 8;
+      case 1:
+        k1 ^= tail[0];
+        k1 *= c1;
+        k1 = rotl32(k1, 15);
+        k1 *= c2;
+        h1 ^= k1;
+      };
+    }
+
+    //----------
+    // finalization
+    h1 ^= size;
+    return fmix32(h1);
+  }
+};
+
 class Hasher {
 public:
   XXH_FORCE_INLINE size_t hashString(const std::string_view& sv) noexcept {

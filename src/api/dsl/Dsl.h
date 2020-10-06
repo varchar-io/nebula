@@ -106,6 +106,11 @@ static UDFExpression<nebula::surface::eval::UDFType::TPM, size_t> tpm(const T& e
 }
 
 template <typename T>
+static UDFExpression<nebula::surface::eval::UDFType::CARD, bool> card(const T& expr, bool est = true) {
+  return UDFExpression<nebula::surface::eval::UDFType::CARD, bool>(std::shared_ptr<Expression>(new T(expr)), est);
+}
+
+template <typename T>
 static UDFExpression<nebula::surface::eval::UDFType::NOT> reverse(const T& expr) {
   return UDFExpression<nebula::surface::eval::UDFType::NOT>(std::shared_ptr<Expression>(new T(expr)));
 }

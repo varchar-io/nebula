@@ -20,6 +20,7 @@
 
 #include "api/dsl/Expressions.h"
 #include "api/udf/Avg.h"
+#include "api/udf/Cardinality.h"
 #include "api/udf/Count.h"
 #include "api/udf/In.h"
 #include "api/udf/Like.h"
@@ -724,6 +725,47 @@ TEST(UDFTest, TestTpm) {
 #undef VERIFY_Y
 #undef VERIFY_B
 #undef VERIFY_C_D
+}
+
+TEST(UDFTest, TestCardinality) {
+  using CType = nebula::api::udf::Cardinality<nebula::type::Kind::VARCHAR>;
+  // paths to merge
+  std::string_view stacks[] = {
+    "A\nB\nC",
+    "A\nB\nD",
+    "A\nX",
+    "A\nX\nY",
+  };
+
+  // simulate the run times 11 for c1 and 22 for c2
+  nebula::surface::eval::EvalContext ctx{ false };
+  bool invalid;
+  auto v1 = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>("");
+  CType card("tmp1", v1->asEval());
+
+  auto sketch = card.sketch();
+  for (size_t i = 0, size = std::size(stacks); i < size; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(stacks[i]);
+    CType ci("tmp", vi->asEval());
+    sketch->merge(ci.eval(ctx, invalid));
+  }
+
+  auto sketch2 = card.sketch();
+  for (size_t i = 0, size = std::size(stacks); i < size; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(stacks[i]);
+    CType ci("tmp2", vi->asEval());
+    sketch2->merge(ci.eval(ctx, invalid));
+  }
+
+  // partial merge
+  EXPECT_EQ(sketch->finalize(), 4);
+  EXPECT_EQ(sketch2->finalize(), 4);
+  sketch->mix(*sketch2);
+
+  // we will ask itself for finalize
+  CType::NativeType cardinality_est = sketch->finalize();
+  EXPECT_TRUE(cardinality_est >= 3 && cardinality_est <= 5);
+  LOG(INFO) << "cardinality: " << cardinality_est;
 }
 
 } // namespace test

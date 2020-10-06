@@ -346,6 +346,7 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
     BUILD_METRIC_CASE(P99_9, pct, 99.9)
     BUILD_METRIC_CASE(P99_99, pct, 99.99)
     BUILD_METRIC_CASE(TREEMERGE, tpm, FLAGS_TREE_PATH_MIN_SIZE)
+    BUILD_METRIC_CASE(CARD_EST, card, true)
   default:
     throw NException("Rollup method not supported");
   }

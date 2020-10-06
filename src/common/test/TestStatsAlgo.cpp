@@ -26,6 +26,7 @@
 #include "common/CountMin.h"
 #include "common/Evidence.h"
 #include "common/Hash.h"
+#include "common/HyperLogLog.h"
 #include "common/Memory.h"
 
 /**
@@ -382,6 +383,111 @@ TEST(HashTest, TestXxhVector) {
       LOG(INFO) << "h=" << h << ", mod=" << h % MOD;
     }
   }
+}
+
+TEST(HyperLogLogTest, TestLeadingZeroCount) {
+  EXPECT_EQ(HyperLogLog::leadingZeros(0), 33);
+  uint32_t v = 1;
+  for (auto i = 0; i < 32; ++i) {
+    EXPECT_EQ(HyperLogLog::leadingZeros(v), 32 - i);
+    v <<= 1;
+  }
+}
+
+TEST(HyperLogLogTest, TestTypedInput) {
+  HyperLogLog hll(8);
+  // int
+  hll.add(0);
+  // long type
+  hll.add(1L);
+  // float type
+  hll.add(2.0f);
+  // double type
+  hll.add(3.0);
+  // bool type
+  hll.add(true);
+  // string type
+  hll.add("abc");
+  std::string_view v = "xyz";
+  hll.add(v);
+  LOG(INFO) << "Estimate: " << hll.estimate();
+  EXPECT_EQ((int)hll.estimate(), 7);
+}
+
+TEST(HyperLogLogTest, TestHLLEstimate) {
+  constexpr size_t dataNum = (size_t(1) << 20) + size_t(1);
+  // starting from 10, error rate should be less than 5%
+  // and decreasing as bit width increases (size doubles for every step).
+  auto threshold = 0.05;
+  for (size_t n = 10; n <= 20; ++n) {
+    HyperLogLog hll(n);
+    for (size_t i = 0; i < dataNum; ++i) {
+      auto str = std::to_string(i);
+      hll.add(str.data(), str.size());
+    }
+
+    auto cardinality = hll.estimate();
+    auto error = std::abs(cardinality - dataNum) / dataNum;
+    LOG(INFO) << "K=" << n << " | size=" << hll.size() << " | err=" << error;
+    EXPECT_TRUE(error < threshold);
+  }
+}
+
+TEST(HyperLogLogTest, TestHLLMerge) {
+  // Merge increases error rate way faster than single one
+  // I think it's because of hash space is not enough for merge
+  // so we should choose a relatively larger bitwidth to merge high cardinallity cases.
+  // for example, if dataNumm is 1<<N, we should use hll(N-1) as well.
+  constexpr size_t dataNum = (size_t(1) << 21) + size_t(1);
+  constexpr size_t half = dataNum / 2;
+  constexpr double threshold = 0.01;
+  HyperLogLog hll1(20), hll2(20);
+  HyperLogLog* hll = &hll1;
+
+  for (size_t i = 0; i < dataNum; ++i) {
+    auto str = std::to_string(i);
+    hll->add(str.data(), str.size());
+    if (i == half) {
+      hll = &hll2;
+    }
+  }
+
+  auto cardinality1 = hll1.estimate();
+  auto cardinality2 = hll2.estimate();
+  auto delta = std::abs(cardinality1 - cardinality2) / cardinality1;
+  LOG(INFO) << "CARD1=" << cardinality1 << " | CARD2=" << cardinality2;
+  EXPECT_TRUE(delta < threshold);
+
+  // merge them
+  hll1.merge(hll2);
+  auto cardinality = hll1.estimate();
+  auto error = std::abs(cardinality - dataNum) / dataNum;
+  LOG(INFO) << "size=" << hll1.size() << " | err=" << error << ", CARD=" << (size_t)cardinality;
+  EXPECT_TRUE(error < threshold);
+}
+
+TEST(HyperLogLogTest, TestHLLSerde) {
+  constexpr size_t dataNum = (size_t(1) << 21) + size_t(1);
+  HyperLogLog hll(20);
+  for (size_t i = 0; i < dataNum; ++i) {
+    auto str = std::to_string(i);
+    hll.add(str.data(), str.size());
+  }
+
+  auto card1 = (size_t)hll.estimate();
+  LOG(INFO) << "Cardinality=" << card1;
+  std::stringstream str;
+  hll.serialize(str);
+  str.seekg(0, std::ios::end);
+  LOG(INFO) << "Stream Size=" << str.tellg();
+
+  // restore it as another HLL
+  HyperLogLog hll2(20);
+  str.seekg(0, std::ios::beg);
+  hll2.deserialize(str);
+  auto card2 = (size_t)hll2.estimate();
+  LOG(INFO) << "Cardinality=" << card2;
+  EXPECT_EQ(card1, card2);
 }
 
 } // namespace test
