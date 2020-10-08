@@ -274,7 +274,7 @@ TEST(UDFTest, TestCount) {
 
   // simulate the run times 11 for c1 and 22 for c2
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
+  bool invalid = false;
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
   CType cf("count", v9->asEval());
   auto count1 = cf.sketch();

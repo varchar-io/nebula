@@ -46,13 +46,15 @@
 namespace nebula {
 namespace common {
 
+// maintain a memory pool tracking memory chunks
+// it gurantees memory are set to 0 for all allocated chunks through `memset`.
 class Pool {
 public:
   virtual ~Pool() = default;
 
   inline void* allocate(size_t size) {
     allocated_ += size;
-    return std::malloc(size);
+    return std::memset(std::malloc(size), 0, size);
   }
 
   inline void free(void* p, size_t size) {
@@ -64,13 +66,15 @@ public:
     N_ENSURE_GT(newSize, size, "new size should be larger than original size");
 
     // extend the memory if possible
-    void* newP = std::realloc(p, newSize);
+    NByte* newP = (NByte*)std::realloc(p, newSize);
     if (UNLIKELY(!newP)) {
       free(p, size);
       throw std::bad_alloc();
     }
 
-    extended_ += (newSize - size);
+    auto delta = newSize - size;
+    extended_ += delta;
+    std::memset(newP + size, 0, delta);
     return newP;
   }
 
@@ -117,6 +121,10 @@ public:
 
   inline NByte* ptr() const {
     return ptr_;
+  }
+
+  inline void reset() const {
+    std::memset(ptr_, 0, size_);
   }
 
 protected:

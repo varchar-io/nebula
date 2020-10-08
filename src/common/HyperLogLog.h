@@ -20,6 +20,7 @@
 
 #include "Hash.h"
 #include "common/Errors.h"
+#include "common/Memory.h"
 
 namespace nebula {
 namespace common {
@@ -57,10 +58,11 @@ public:
     : width_{ width },
       left_{ static_cast<byte_t>(32 - width) },
       size_{ static_cast<uint32_t>(1 << width) },
-      matrix_(size_, 0) {
-    if (width_ < 4 || width_ > 30) {
-      throw NException("Invalid bit width value.");
-    }
+      data_(size_, 0),
+      minIdx_{ size_ },
+      maxIdx_{ 0 } {
+
+    N_ENSURE(width_ >= 4 && width_ <= 30, "Invalid bit width value.");
 
     // compute alpha value
     double alpha;
@@ -80,6 +82,7 @@ public:
     }
     alpha_ = alpha * size_ * size_;
   }
+
   ~HyperLogLog() = default;
 
 public:
@@ -118,25 +121,35 @@ public:
     uint32_t hash = (uint32_t)nebula::common::Hasher::hash64(data, size);
     uint32_t index = hash >> left_;
     byte_t rank = leadingZeros((hash << width_), left_);
-    if (rank > matrix_[index]) {
-      matrix_[index] = rank;
+    if (rank > data_[index]) {
+      data_[index] = rank;
+
+      // update the range that seeing values
+      if (index > maxIdx_) {
+        maxIdx_ = index;
+      }
+
+      if (index < minIdx_) {
+        minIdx_ = index;
+      }
     }
   }
 
   // Estimates cardinality value.
   double estimate() const {
-    double estimate;
     double sum = 0.0;
-    for (uint32_t i = 0; i < size_; i++) {
-      sum += 1.0 / (1 << matrix_[i]);
+    uint32_t zeros = 0;
+    for (uint32_t i = 0; i < size_; ++i) {
+      auto v = data_[i];
+      sum += 1.0 / (1 << v);
+      if (v == 0) {
+        ++zeros;
+      }
     }
 
-    estimate = alpha_ / sum; // E in the original paper
+    double estimate = alpha_ / sum; // E in the original paper
     if (estimate <= 2.5 * size_) {
-      uint32_t zeros = std::count_if(std::begin(matrix_),
-                                     std::end(matrix_),
-                                     [](auto e) { return e == 0; });
-      if (zeros != 0) {
+      if (zeros > 0) {
         estimate = size_ * log(static_cast<double>(size_) / zeros);
       }
     } else if (estimate > (1.0 / 30.0) * POW_2_32) {
@@ -150,16 +163,22 @@ public:
   // TODO(cao): merge degrades accuracy fast when size is not big enough
   void merge(const HyperLogLog& other) {
     N_ENSURE(size_ == other.size_, "can't merge different sized hll.");
-    for (uint32_t i = 0; i < size_; ++i) {
-      if (matrix_[i] < other.matrix_[i]) {
-        matrix_[i] |= other.matrix_[i];
+    for (uint32_t i = other.minIdx_; i < other.maxIdx_; ++i) {
+      if (data_[i] < other.data_[i]) {
+        data_[i] |= other.data_[i];
       }
     }
+
+    // new range seeing values
+    minIdx_ = std::min(minIdx_, other.minIdx_);
+    maxIdx_ = std::max(maxIdx_, other.maxIdx_);
   }
 
   // Clears all internal registers.
   inline void clear() {
-    std::fill(matrix_.begin(), matrix_.end(), 0);
+    std::fill(data_.begin(), data_.end(), 0);
+    minIdx_ = size_;
+    maxIdx_ = 0;
   }
 
   // Returns size of register.
@@ -167,8 +186,12 @@ public:
     return size_;
   }
 
-  inline const char* data() const {
-    return (const char*)(&matrix_[0]);
+  inline uint32_t minIdx() const {
+    return minIdx_;
+  }
+
+  inline uint32_t maxIdx() const {
+    return maxIdx_;
   }
 
   // Exchanges the content of the instance
@@ -177,38 +200,57 @@ public:
     std::swap(left_, rhs.left_);
     std::swap(size_, rhs.size_);
     std::swap(alpha_, rhs.alpha_);
-    matrix_.swap(rhs.matrix_);
+    std::swap(minIdx_, rhs.minIdx_);
+    std::swap(maxIdx_, rhs.maxIdx_);
+    std::swap(data_, rhs.data_);
   }
 
   // Dump the current status to a stream
   void serialize(std::ostream& os) {
-    os.write((char*)&width_, sizeof(width_));
-    os.write((char*)&matrix_[0], size_);
+    // width recording
+    os.write((char*)&width_, sizeof(byte_t));
+    os.write((char*)data_.data(), size_);
     N_ENSURE(!os.fail(), "Failed to serialize.");
   }
 
   // Restore the status from a stream
   void deserialize(std::istream& is) {
     byte_t width = 0;
-    is.read((char*)&width, sizeof(width));
+    is.read((char*)&width, sizeof(byte_t));
     HyperLogLog tempHLL(width);
-    is.read((char*)&(tempHLL.matrix_[0]), tempHLL.size_);
+    is.read((char*)(tempHLL.data_.data()), tempHLL.size_);
     N_ENSURE(!is.fail(), "Failed to deserialize.");
 
     swap(tempHLL);
   }
 
-  void restore(const std::string_view& sv) {
+public:
+  // most of the time the matrix is pretty sparse
+  // we want to compress it for storing.
+  inline std::string_view data() const {
+    // you should compress at least half
+    return std::string_view((char*)data_.data(), size_);
+  }
+
+  // decompress the compressed binary into matrix
+  inline void set(const std::string_view& sv, uint32_t minIdx, uint32_t maxIdx) {
     N_ENSURE_EQ(sv.size(), size_, "unexpected size of data to restore");
-    std::memcpy((char*)&(matrix_[0]), sv.data(), sv.size());
+    std::memcpy((char*)data_.data(), sv.data(), sv.size());
+    minIdx_ = minIdx;
+    maxIdx_ = maxIdx;
   }
 
 private:
   byte_t width_;
   byte_t left_;
   uint32_t size_;
+  std::vector<byte_t> data_;
+
   double alpha_;
-  std::vector<byte_t> matrix_;
+
+  // for optimization
+  uint32_t minIdx_;
+  uint32_t maxIdx_;
 };
 
 } // namespace common

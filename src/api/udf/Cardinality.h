@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <lz4.h>
+
 #include "common/HyperLogLog.h"
 #include "surface/eval/UDF.h"
 
@@ -32,6 +34,16 @@
  * support user customization for precision adjust.
  * 
  * In the version 1 implementation, it only supports #1.
+ *
+ * HLL in chosen precision might be large (default log-size 20 implies 1MB store for each sketch).
+ * In a group by aggregation scenario, we may have thousands of this for each key.
+ * This imposes a risk for heavy memory usage exhausting the resources.
+ * There are two options to address this concern:
+ * 1. when working on local node, we can use auto-growing hash set to replace it,
+ *    unless the set outgrows the store size (1MB). This makes HLL used only when it's needed.
+ * 2. we reserve by the log-size because we want to support some level of scale, but it's not flexible
+ *    so we should looking for algo to make it dynamic grow instead of allocating fixed memory.
+ * 3. the major concern is to serialize data across boundary, we should use compress to reduce its size.
  */
 namespace nebula {
 namespace api {
@@ -52,12 +64,13 @@ public:
   class Aggregator : public BaseAggregator {
     // 20 -> 1M (pow(2, 20)) buffer
     // good for cardinality around 1M numbers, otherwise merge degrades accruacy
-    static constexpr auto LOG_SIZE = 20;
+    static constexpr auto LOG_SIZE = 16;
 
   public:
-    explicit Aggregator(bool est, size_t logSize = LOG_SIZE)
+    explicit Aggregator(bool est, uint32_t logSize = LOG_SIZE)
       : est_{ est },
-        log_{ std::make_unique<nebula::common::HyperLogLog>(logSize) } {
+        logSize_{ logSize },
+        log_{ std::make_unique<nebula::common::HyperLogLog>(logSize_) } {
       N_ENSURE(est, "supporting estimated cardinality only for now.");
     }
     virtual ~Aggregator() = default;
@@ -76,28 +89,68 @@ public:
     }
 
     inline virtual NativeType finalize() override {
-      // get the final result - JSON blob
-      // apply threshold in finalized result if present
       return (NativeType)log_->estimate();
     }
 
     // serialize into a buffer
     inline virtual size_t serialize(nebula::common::ExtendableSlice& slice, size_t offset) override {
-      uint32_t size = log_->size();
-      auto head = slice.write(offset, size);
-      auto body = slice.write(offset + head, log_->data(), size);
-      return head + body;
+      auto data = log_->data();
+      auto src = data.data();
+      size_t size = data.size();
+
+      // wish half sized compression
+      std::vector<char> buffer(size / 2, 0);
+      size_t bytes = LZ4_compress_default(src, buffer.data(), size, size / 2);
+      VLOG(1) << "Compressed HLL from " << size
+              << " to " << bytes
+              << ", min=" << log_->minIdx()
+              << ", max=" << log_->maxIdx();
+      if (bytes > 0) {
+        src = buffer.data();
+        size = bytes;
+      }
+
+      const auto origin = offset;
+
+      offset += slice.write(offset, bytes > 0);
+      offset += slice.write(offset, size);
+      offset += slice.write(offset, src, size);
+      offset += slice.write(offset, log_->minIdx());
+      offset += slice.write(offset, log_->maxIdx());
+      return offset - origin;
     }
 
     // deserialize from a given buffer, and bin size
     inline virtual size_t load(nebula::common::ExtendableSlice& slice, size_t offset) override {
-      static constexpr auto SIZE_SIZE = sizeof(uint32_t);
-      auto size = slice.read<uint32_t>(offset);
+      const auto origin = offset;
+      auto flag = slice.read<bool>(offset);
+      offset += sizeof(flag);
+      auto size = slice.read<size_t>(offset);
+      offset += sizeof(size);
 
       // here incurs a copy from string_view to string object
-      auto bytes = slice.read(offset + SIZE_SIZE, size);
-      log_->restore(bytes);
-      return size + SIZE_SIZE;
+      auto bytes = slice.read(offset, size);
+      offset += size;
+
+      // read min/max id
+      auto minIdx = slice.read<uint32_t>(offset);
+      offset += sizeof(minIdx);
+      auto maxIdx = slice.read<uint32_t>(offset);
+      offset += sizeof(maxIdx);
+
+      // if is compressed, we decompress it
+      if (flag) {
+        const auto raw = log_->size();
+        std::vector<char> buffer(raw, 0);
+        auto ret = (uint32_t)LZ4_decompress_safe(bytes.data(), buffer.data(), size, raw);
+        N_ENSURE_EQ(ret, raw, "raw data size mismatches.");
+        std::string_view bin(buffer.data(), raw);
+        log_->set(bin, minIdx, maxIdx);
+      } else {
+        log_->set(bytes, minIdx, maxIdx);
+      }
+
+      return offset - origin;
     }
 
     inline virtual bool fit(size_t) override {
@@ -105,7 +158,10 @@ public:
     }
 
   private:
-    size_t est_;
+    bool est_;
+    uint32_t logSize_;
+
+    // mutual exclusive - converted when needed
     std::unique_ptr<nebula::common::HyperLogLog> log_;
   };
 

@@ -459,7 +459,7 @@ FlatColumnProps FlatBuffer::rebuildColumnProps(size_t rowOffset) {
 // if the sketch serialized data is fixed within aignment, we can use it directly
 size_t FlatBuffer::serializeSketches() const {
   // data size incremented for sketch serialization
-  auto size = 0;
+  size_t size = 0;
   for (auto& cp : rows_) {
     for (size_t i = 0; i < numColumns_; ++i) {
       // for (auto& p : cp.colProps) {
