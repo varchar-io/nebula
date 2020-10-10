@@ -441,7 +441,7 @@ TEST(HyperLogLogTest, TestHLLMerge) {
   constexpr size_t dataNum = (size_t(1) << 21) + size_t(1);
   constexpr size_t half = dataNum / 2;
   constexpr double threshold = 0.01;
-  HyperLogLog hll1(20), hll2(20);
+  HyperLogLog hll1(16), hll2(16);
   HyperLogLog* hll = &hll1;
 
   for (size_t i = 0; i < dataNum; ++i) {

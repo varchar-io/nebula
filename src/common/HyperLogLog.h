@@ -165,7 +165,7 @@ public:
     N_ENSURE(size_ == other.size_, "can't merge different sized hll.");
     for (uint32_t i = other.minIdx_; i < other.maxIdx_; ++i) {
       if (data_[i] < other.data_[i]) {
-        data_[i] |= other.data_[i];
+        data_[i] = other.data_[i];
       }
     }
 
