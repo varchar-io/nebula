@@ -11,6 +11,7 @@ SET(MSGPACK_OPTS
 ExternalProject_Add(msgpack
   PREFIX msgpack
   GIT_REPOSITORY https://github.com/msgpack/msgpack-c.git
+  GIT_TAG c_master
   CMAKE_ARGS ${MSGPACK_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""

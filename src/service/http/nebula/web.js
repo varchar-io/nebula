@@ -16,7 +16,7 @@
 
 import {
     neb
-} from "./dist/web/main.js";
+} from "./dist/web/main2.js";
 
 import {
     Nebula,
@@ -38,13 +38,12 @@ import {
 
 import {
     Charts
-} from "./c/charts.min.js";
+} from "./c/charts2.min.js";
 
 // define jquery style selector 
 const time = neb.time;
 
 // enable selectize and flatpicker
-const ds = neb.d3.select;
 const $$ = (e) => $(e).val();
 
 // global value represents current data set
@@ -71,7 +70,10 @@ const endId = '#end';
 const displayId = '#display';
 
 const NoRollup = -1;
-const msg = (text) => ds('#qr').text(text);
+const msg = (text) => $('#qr').text(text);
+const FETCH_OPT = {
+    method: 'GET'
+};
 
 // arch mode indicates the web architecture mode
 // 1: v1 - web client will query nebula server directly
@@ -164,38 +166,31 @@ const onTableState = (state, stats, callback) => {
     }
 
     $('#dwrapper').html(`<select id="${fieldsId}" multiple></select>`);
-    ds(fieldsRef)
-        .html("")
-        .selectAll("option")
-        .data(all)
-        .enter()
-        .append('option')
-        .text(d => d.T)
-        .attr("value", d => `${JSON.stringify(d)}`);
-    $sdc = $(fieldsRef).selectize({
+    const ef = $(fieldsRef).html('');
+    all.forEach(d => {
+        $('<option/>').appendTo(ef)
+            .text(d.T)
+            .val(`${JSON.stringify(d)}`);
+    });
+
+    $sdc = ef.selectize({
         plugins: ['restore_on_backspace', 'remove_button'],
         persist: false
     });
 
     // populate all display types
-    ds(displayId)
-        .html("")
-        .selectAll("option")
-        .data(Object.keys(neb.DisplayType))
-        .enter()
-        .append('option')
-        .text(k => k.toLowerCase())
-        .attr("value", k => neb.DisplayType[k]);
+    $(displayId).html('');
+    Object.keys(neb.DisplayType).forEach(k => {
+        $("<option/>").appendTo($(displayId))
+            .text(k.toLowerCase())
+            .val(neb.DisplayType[k]);
+    });
 
     // order type 
-    ds('#ob')
-        .html("")
-        .selectAll("option")
-        .data(Object.keys(neb.OrderType))
-        .enter()
-        .append('option')
-        .text(k => k.toLowerCase())
-        .attr("value", k => neb.OrderType[k]);
+    $('#ob').html('');
+    Object.keys(neb.OrderType).forEach(k => {
+        $("<option/>").appendTo($('#ob')).text(k.toLowerCase()).val(neb.OrderType[k]);
+    });
 
     if (callback) {
         callback(allColumns);
@@ -203,15 +198,12 @@ const onTableState = (state, stats, callback) => {
 };
 
 const initTable = (table, callback) => {
-    const stats = ds('#stats');
+    const stats = $('#stats');
     // table name may have special characters, so encode the table name
-    $.ajax({
-        url: "/?api=state&start=0&end=0&table=" + encodeURIComponent(table)
-    }).fail((err) => {
-        stats.text("Error: " + err);
-    }).done((data) => {
-        onTableState(data, stats, callback);
-    });
+    fetch(`/?api=state&start=0&end=0&table=${encodeURIComponent(table)}`, FETCH_OPT)
+        .then(response => response.json())
+        .then((data) => onTableState(data, stats, callback))
+        .catch((err) => stats.text("Error: " + err));
 };
 
 // make another query, with time[1548979200 = 02/01/2019, 1556668800 = 05/01/2019] 
@@ -262,7 +254,7 @@ const build = (s) => {
     // TODO(cao) - we should set state value to all UI fields
     // restore state like refresh page. sync display
     if (s) {
-        ds(displayId).property('value', s.display);
+        $(displayId).val(s.display);
     }
 
     // read values from 'fields' multi-input
@@ -293,7 +285,7 @@ const build = (s) => {
     };
 
     if (!state.start || !state.end) {
-        alert('please enter start and end time');
+        msg('Error: please enter start and end time');
         return;
     }
 
@@ -314,7 +306,9 @@ const clsTimer = () => {
 const restore = () => {
     clsTimer();
     const state = url2state();
-    const set = (N, V) => ds(N).property('value', V);
+    const set = (N, V) => {
+        if (V) $(N).val(V);
+    };
     let table = state.table;
 
     // if requested table is not in list yet
@@ -402,8 +396,8 @@ const onQueryResult = (state, r) => {
     json = JSON.parse(atob(r.data));
 
     // clear table data
-    ds('#table_head').html("");
-    ds('#table_content').html("");
+    $('#table_head').html("");
+    $('#table_content').html("");
 
     // get display option
     if (json.length == 0) {
@@ -452,22 +446,28 @@ const onQueryResult = (state, r) => {
         }
 
         // if aggregation specified multiple keys, we merge them into a single key
+        let err = null;
         switch (display) {
             case neb.DisplayType.TIMELINE:
                 const beginMs = time.seconds(state.start) * 1000;
-                charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs);
+                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs);
                 break;
             case neb.DisplayType.BAR:
-                charts.displayBar(chartId, data, keys, metrics);
+                err = charts.displayBar(chartId, data, keys, metrics);
                 break;
             case neb.DisplayType.PIE:
-                charts.displayPie(chartId, data, keys, metrics);
+                err = charts.displayPie(chartId, data, keys, metrics);
                 break;
             case neb.DisplayType.LINE:
-                charts.displayLine(chartId, data, keys, metrics);
+                err = charts.displayLine(chartId, data, keys, metrics);
                 break;
             case neb.DisplayType.FLAME:
-                charts.displayFlame(chartId, data, keys, metrics);
+                err = charts.displayFlame(chartId, data, keys, metrics);
+                break;
+        }
+        // display error if any
+        if (err) {
+            msg(`Error: ${err}`);
         }
     };
 
@@ -516,30 +516,31 @@ const execute = (state) => {
     // display message indicating processing
     timer = animate('soaring in nebula ');
 
-    $.ajax({
-        url: "/?api=query&start=0&end=0&query=" + encodeURIComponent(JSON.stringify(state))
-    }).fail((err) => {
-        clsTimer();
-        msg(`Error: ${err}`);
-    }).done((data) => {
-        clsTimer();
-        onQueryResult(state, data);
-    });
+    // fetch the query
+    fetch(`/?api=query&start=0&end=0&query=${encodeURIComponent(JSON.stringify(state))}`, FETCH_OPT)
+        .then(response => response.json())
+        .then((data) => {
+            clsTimer();
+            onQueryResult(state, data);
+        }).catch((err) => {
+            clsTimer();
+            msg(`Error: ${err}`);
+        });
 };
 
-ds('#soar').on("click", build);
+$('#soar').on("click", (e) => build());
 
 // when user click share button
-ds('#share').on("click", () => {
+$('#share').on("click", () => {
     const path = location.href.substr(location.origin.length);
-    $.ajax({
-            url: "/?api=url&url=" + encodeURIComponent(path)
-        }).fail((err) => {
+    fetch(`/?api=url&url=${encodeURIComponent(path)}`, FETCH_OPT)
+        .then(response => response.json())
+        .then((data) => {
+            if (data.code && data.code.length > 4) {
+                msg(`[query url: ${location.origin}/n/${data.code}]`);
+            }
+        }).catch((err) => {
             msg(`Error: ${err}`);
-        })
-        .done((data) => {
-            const sr = JSON.parse(data);
-            msg(`[query url: ${location.origin}/n/${sr.code}]`);
         });
 });
 
@@ -565,8 +566,7 @@ const ide = () => {
     setTimeout(() => editor.refresh(), 5);
 };
 
-ds('#ui').on("click", ide);
-
+$('#ui').on("click", ide);
 
 /** execute the code written by user */
 const exec = () => {
@@ -603,7 +603,7 @@ const exec = () => {
     // build this state as a query
     build(state);
 };
-ds('#exec').on("click", exec);
+$('#exec').on("click", exec);
 
 // hook up hash change event
 window.onhashchange = function () {
@@ -613,8 +613,7 @@ window.onhashchange = function () {
 // load table list - maximum 100?
 const onTableList = (tables) => {
     if (tables && tables.length > 0) {
-        const options = ds(tablesId).selectAll("option").data(tables.sort()).enter().append('option');
-        options.text(d => d).attr("value", d => d);
+        tables.sort().forEach(t => $('<option/>').appendTo($(tablesId)).text(t).val(t));
         // restore the selection
         restore();
         return;
@@ -623,14 +622,14 @@ const onTableList = (tables) => {
     msg("Nebula is down: can not fetch tables");
 };
 $(() => {
-    const stats = ds('#stats');
-    $.ajax({
-        url: "/?api=tables&start=0&end=0"
-    }).fail((err) => {
-        stats.text("Error: " + err);
-    }).done((data) => {
-        onTableList(data);
-    });
+    const stats = $('#stats');
+    fetch("/?api=tables&start=0&end=0", FETCH_OPT)
+        .then(response => response.json())
+        .then((data) => {
+            onTableList(data);
+        }).catch((err) => {
+            stats.text("Error: " + err);
+        });
 
     // if user change the table selection, initialize it again
     $(tablesId).change(() => {
@@ -639,48 +638,9 @@ $(() => {
     });
 
     // display current user info if available
-    $.ajax({
-        url: "/?api=user"
-    }).done((data) => {
-        ds('#user').text(data.auth ? data.user : "unauth");
-    });
-
-    // Remove Sandance for now. 
-    // set sundance to load after all page inits so it doesn't block current page loading
-    // ds('#sandance').attr("src", "d/sde.html");
+    fetch("/?api=user", FETCH_OPT)
+        .then(response => response.json())
+        .then((data) => {
+            $('#user').text(data.auth ? data.user : "unauth");
+        });
 });
-
-/** Remove Sandance from nebula for now
-const vis = async (r) => {
-    // n=>nebula, s=>sanddance
-    const choice = r.target.value;
-    if (choice == 'n') {
-        $("#show").show();
-        $("#sdw").hide();
-    } else if (choice == 's') {
-        $("#show").hide();
-        $("#sdw").show();
-
-        // go with sanddance
-        if (newdata) {
-            if (json && json.length > 0) {
-                const sandance = () => {
-                    // TODO(cao): to use content window we have to use document.getElementById, not sure why
-                    const s = document.getElementById("sandance");
-                    const _post = m => s.contentWindow.postMessage(m, '*');
-                    return new Promise(resolve => {
-                        resolve(_post);
-                    });
-                };
-
-                // display an embeded explorer
-                (await sandance())(json);
-            }
-            newdata = false;
-        }
-    }
-};
-
-$("#vn").on("click", vis);
-$("#vs").on("click", vis);
- */

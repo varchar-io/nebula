@@ -9,6 +9,7 @@ include(ExternalProject)
 ExternalProject_Add(xxhash
   PREFIX xxhash
   GIT_REPOSITORY https://github.com/Cyan4973/xxHash.git
+  GIT_TAG release
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   CONFIGURE_COMMAND ""

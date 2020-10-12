@@ -45,7 +45,7 @@
 
 import {
     neb
-} from "../dist/web/main.js";
+} from "../dist/web/main2.js";
 
 import {
     State

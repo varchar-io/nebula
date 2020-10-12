@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-import * as d3 from '../d/d3.v5.min.js';
-import * as flamegraph from '../d/d3-flamegraph.min.js';
-import * as bb from 'billboard';
 import * as cj from 'chart.js';
 import {
     Constraints
@@ -55,9 +52,6 @@ export default {
     OrderType,
     DisplayType,
     CustomType,
-    d3,
-    flamegraph,
-    bb,
     cj,
     Constraints,
     fp,

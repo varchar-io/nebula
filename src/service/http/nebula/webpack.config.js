@@ -39,6 +39,21 @@ const webConfig = {
     resolve: resolveConfig
 };
 
+const web2Config = {
+    mode: "production",
+    target: "web",
+    entry: {
+        web: './w/client2.js',
+    },
+    output: {
+        filename: './[name]/main2.js',
+        path: path.resolve(__dirname, 'dist'),
+        library: 'neb',
+        libraryExport: 'default'
+    },
+    resolve: resolveConfig
+};
+
 const nodeConfig = {
     mode: "production",
     target: "node",
@@ -83,4 +98,4 @@ const libConfig = {
     resolve: resolveConfig
 };
 
-module.exports = [webConfig, nodeConfig, libConfig];
+module.exports = [webConfig, web2Config, nodeConfig, libConfig];
