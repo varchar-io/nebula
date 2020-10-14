@@ -153,7 +153,9 @@ export class Nebula {
         this.groupby = (...fields) => {
             for (var i = 0; i < fields.length; ++i) {
                 const f = fields[i];
-                assert(isNumber(f));
+                if (!isNumber(f)) {
+                    this.except("groupby - support key ordinal value only.");
+                }
                 this.groups_.push(f);
             }
 
@@ -174,13 +176,25 @@ export class Nebula {
             return this;
         }
 
+        this.except = msg => {
+            throw {
+                message: msg
+            };
+        };
+
         // column definition API - register a new column with specified logic
         // example:
         // const expr = () => nebula.column("value") % 5;
         this.apply = (name, type, expr) => {
-            assert(isString(name));
-            assert(isNumber(type) && (type >= this.Type.INT && type <= this.Type.STRING));
-            assert(isFunction(expr));
+            if (!name || !isString(name)) {
+                this.except('apply - column name required');
+            }
+            if (type === undefined || !isNumber(type) || type < this.Type.INT || type > this.Type.STRING) {
+                this.except('apply - unsupported type.');
+            }
+            if (!expr || !isFunction(expr)) {
+                this.except('apply - lambda/function required.');
+            }
 
             // no matter the target is a function or a lambda, 
             // we assign its handle to the named variable so that this can be looked up in script context
