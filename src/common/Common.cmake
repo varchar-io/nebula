@@ -18,6 +18,7 @@ add_executable(CommonTests
     ${NEBULA_SRC}/common/test/TestDistAlgo.cpp
     ${NEBULA_SRC}/common/test/TestExts.cpp
     ${NEBULA_SRC}/common/test/TestHash.cpp
+    ${NEBULA_SRC}/common/test/TestIpAddr.cpp
     ${NEBULA_SRC}/common/test/TestJs.cpp
     ${NEBULA_SRC}/common/test/TestMetaDB.cpp
     ${NEBULA_SRC}/common/test/TestSimd.cpp

@@ -14,17 +14,12 @@
  * limitations under the License.
  */
 
-#include <fmt/format.h>
+#pragma once
+
 #include <glog/logging.h>
 #include <grpcpp/grpcpp.h>
-#include <memory>
-#include <string>
 
-#include "common/Folly.h"
-#include "meta/NNode.h"
 #include "nebula.grpc.pb.h"
-#include "service/base/NebulaService.h"
-#include "service/node/NodeClient.h"
 
 /**
  * A cursor template that help iterating a container.
@@ -32,20 +27,17 @@
  */
 namespace nebula {
 namespace service {
-namespace server {
+namespace client {
 
-using grpc::Channel;
-using grpc::ClientContext;
-using grpc::Status;
-
-class EchoClient {
+// A nebula client to connect different tier of servers
+class NebulaClient {
 public:
-  EchoClient(std::shared_ptr<Channel> channel)
-    : stub_(Echo::NewStub(channel)) {}
+  NebulaClient(std::shared_ptr<grpc::Channel> channel)
+    : stub_(V1::NewStub(channel)) {}
 
   // Assembles the client's payload, sends it and presents the response back
   // from the server.
-  std::string echo(const std::string& user) {
+  std::string echo(const std::string& user) const noexcept {
     // Data we are sending to the server.
     EchoRequest request;
     request.set_name(user);
@@ -55,10 +47,10 @@ public:
 
     // Context for the client. It could be used to convey extra information to
     // the server and/or tweak certain RPC behaviors.
-    ClientContext context;
+    grpc::ClientContext context;
 
     // The actual RPC.
-    Status status = stub_->EchoBack(&context, request, &reply);
+    grpc::Status status = stub_->Echo(&context, request, &reply);
 
     // Act upon its status.
     if (status.ok()) {
@@ -69,23 +61,28 @@ public:
     }
   }
 
+  // ping nebula server with my data for service discoverys
+  std::unique_ptr<PingResponse> ping(const ServiceInfo& si) const noexcept {
+    // stub_->
+    grpc::ClientContext context;
+    auto re = std::make_unique<PingResponse>();
+    grpc::Status status = stub_->Ping(&context, si, re.get());
+    if (status.ok()) {
+      return re;
+    } else {
+      LOG(INFO) << "Failed to ping: " << status.error_code() << ", " << status.error_message();
+      return {};
+    }
+  }
+
+  static NebulaClient make(const std::string& hostAndPort) {
+    return NebulaClient(grpc::CreateChannel(hostAndPort, grpc::InsecureChannelCredentials()));
+  }
+
 private:
-  std::unique_ptr<Echo::Stub> stub_;
+  std::unique_ptr<V1::Stub> stub_;
 };
 
-} // namespace server
+} // namespace client
 } // namespace service
 } // namespace nebula
-
-int main(int argc, char** argv) {
-  const nebula::meta::NNode node{ nebula::meta::NRole::NODE, "localhost", nebula::service::base::ServiceProperties::PORT };
-  nebula::service::server::EchoClient greeter(grpc::CreateChannel(node.toString(), grpc::InsecureChannelCredentials()));
-  LOG(INFO) << "Echo received from nebula server: " << greeter.echo("nebula");
-
-  // connect to node client
-  folly::CPUThreadPoolExecutor pool{ 2 };
-  nebula::service::node::NodeClient client(node, pool, nullptr);
-  client.echo("nebula node");
-
-  return 0;
-}

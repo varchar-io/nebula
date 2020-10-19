@@ -27,7 +27,6 @@ import {
 } from 'nebula-pb';
 
 import {
-    EchoClient,
     V1Client
 } from 'nebula-node-rpc';
 
@@ -42,7 +41,6 @@ import {
 } from '../__/state';
 
 export default {
-    EchoClient,
     V1Client,
     EchoRequest,
     EchoResponse,

@@ -8,11 +8,11 @@ var grpc = require('grpc');
 
 function main() {
     console.log();
-    var client = new services.EchoClient('dev-shawncao:9190',
+    var client = new services.V1('dev-shawncao:9190',
         grpc.credentials.createInsecure());
     var req = new messages.EchoRequest();
     req.setName("Static Trends");
-    client.echoBack(req, function (err, response) {
+    client.echo(req, function (err, response) {
         if (err !== null) {
             console.log(err);
         } else {

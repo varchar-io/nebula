@@ -22,13 +22,17 @@
 
 #include "NodeServer.h"
 #include "TaskExecutor.h"
+#include "common/Chars.h"
+#include "common/Ip.h"
 #include "common/TaskScheduler.h"
 #include "execution/BlockManager.h"
 #include "execution/core/NodeExecutor.h"
 #include "execution/serde/RowCursorSerde.h"
+#include "service/client/NebulaClient.h"
 #include "surface/DataSurface.h"
 
 DEFINE_int32(MAX_MSG_SIZE, 1073741824, "max message size sending between node and server, default to 1G");
+DEFINE_string(NSERVER, "", "discovery server address - host and port");
 
 /**
  * Define node server that does the work as nebula server asks.
@@ -206,6 +210,16 @@ grpc::Status NodeServerImpl::Task(
 } // namespace service
 } // namespace nebula
 
+std::string ReadNServer() {
+  // NCONF is one enviroment variable to overwrite cluster config in the runtime
+  if (const char* nConf = std::getenv("NSERVER")) {
+    return nConf;
+  }
+
+  // reading it from gflags which is usually passed through docker build
+  return FLAGS_NSERVER;
+}
+
 void RunServer() {
   // global initialization
   nebula::service::base::globalInit();
@@ -222,7 +236,7 @@ void RunServer() {
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   builder.RegisterService(&node);
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
-  LOG(INFO) << "Nebula node server listening on " << server_address;
+  LOG(INFO) << "Nebula node listening on " << server_address;
 
   // run a task executor to
   // NOTE that, this is blocking main thread to wait for server down
@@ -244,6 +258,29 @@ void RunServer() {
     [shutdownHandler, &priorityPool = node.pool()] {
       nebula::service::node::TaskExecutor::singleton().process(shutdownHandler, priorityPool);
     });
+
+  // for every second, ping discovery server
+  const auto discovery = ReadNServer();
+  const auto client = nebula::service::client::NebulaClient::make(discovery);
+  // if discovery is localhost, we use localhost to ping as well.
+  // otherwise we use dns IPv4 to ping
+  constexpr auto LOCAL = "localhost";
+  auto hi = nebula::common::Ip::hostInfo(nebula::common::Chars::prefix(
+    discovery.data(), discovery.size(), LOCAL, std::strlen(LOCAL)));
+
+  // set the ping info
+  nebula::service::ServiceInfo info;
+  info.set_host(hi.host);
+  info.set_ipv4(hi.ipv4);
+  info.set_port(nebula::service::base::ServiceProperties::NPORT);
+
+  if (discovery.size() > 0) {
+    taskScheduler.setInterval(
+      1000,
+      [&client, &info] {
+        client.ping(info);
+      });
+  }
 
   // NOTE that, this is blocking main thread to wait for server down
   // this may prevent system to exit properly, will revisit and revise.

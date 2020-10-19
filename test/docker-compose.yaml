@@ -6,6 +6,8 @@ services:
       - "9199:9199"
     cap_add:
       - ALL
+    environment:
+      - NSERVER=localhost:9190
   server:
     image: caoxhua/nebula.server
     ports:

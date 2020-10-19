@@ -19,7 +19,7 @@
 #include <mutex>
 
 #include "MetaDb.h"
-#include "NNode.h"
+#include "NodeManager.h"
 #include "TableSpec.h"
 #include "common/Hash.h"
 
@@ -29,8 +29,6 @@
  */
 namespace nebula {
 namespace meta {
-
-using NNodeSet = nebula::common::unordered_set<NNode, NodeHash, NodeEqual>;
 
 // define metadb where metadata is stored and synced.
 enum class DBType {
@@ -44,16 +42,27 @@ struct MetaConf {
 
 using CreateMetaDB = std::function<std::unique_ptr<MetaDb>(const MetaConf&)>;
 
+enum class Discovery {
+  // read nodes from config file
+  CONFIG,
+  // wait nodes to register themselves to service endpoint
+  SERVICE
+  // external service for service discovery.
+};
+
 // server options mapping in cluster.yml for server
 struct ServerOptions {
   bool anode;
   bool authRequired;
   MetaConf metaConf;
+  Discovery discovery;
 };
 
 class ClusterInfo {
 private:
-  ClusterInfo() = default;
+  // by default - use service discovery node manager
+  // if config mode is specified, it will be replaced.
+  ClusterInfo() : nodeManager_{ NodeManager::create() } {};
   ClusterInfo(ClusterInfo&) = delete;
   ClusterInfo(ClusterInfo&&) = delete;
 
@@ -69,10 +78,8 @@ public:
 public:
   void load(const std::string&, CreateMetaDB);
 
-  std::vector<NNode> copy();
-
-  inline const NNodeSet& nodes() const {
-    return nodes_;
+  inline const std::vector<NNode> nodes() const {
+    return nodeManager_->nodes();
   }
 
   inline const TableSpecSet& tables() const {
@@ -92,14 +99,11 @@ public:
   }
 
   inline void mark(const std::string& node, NState state = NState::BAD) {
-    for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
-      if (node == itr->toString()) {
-        // same as std::unordered_set.extract
-        itr->state = state;
-        nodes_.erase(itr);
-        break;
-      }
-    }
+    nodeManager_->mark(node, state);
+  }
+
+  inline NodeManager& nodeManager() const {
+    return *nodeManager_;
   }
 
   void exit() noexcept {
@@ -112,11 +116,7 @@ public:
   }
 
 private:
-  void update(const NNode& node);
-
-private:
-  std::mutex set_;
-  NNodeSet nodes_;
+  std::unique_ptr<NodeManager> nodeManager_;
   TableSpecSet tables_;
   std::string version_;
   ServerOptions server_;

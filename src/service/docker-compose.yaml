@@ -10,6 +10,8 @@ services:
     cap_add:
       - ALL
     network_mode: "host"
+    environment:
+      - NSERVER=localhost:9190
   server:
     build:
       context: ./

@@ -20,6 +20,14 @@ server:
     db: native
     store: s3://nebula/meta
 
+  # configure the way how service discovery is done with this cluster.
+  # by default - we're able to read the hard-coded `nodes` from config file
+  # other options: server itself is discovery server exposing service API.
+  # also if a standalone discovery service out of nebula server.
+  # method: config, service, etc.
+  discovery:
+    method: service
+
 # will be provided by enviroment
 nodes:
   - node:

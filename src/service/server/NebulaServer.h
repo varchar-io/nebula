@@ -38,6 +38,7 @@ class V1ServiceImpl final : public V1::Service {
   grpc::Status Nuclear(grpc::ServerContext*, const EchoRequest*, EchoResponse*);
   grpc::Status Load(grpc::ServerContext*, const LoadRequest*, LoadResponse*);
   grpc::Status Url(grpc::ServerContext*, const UrlData*, UrlData*);
+  grpc::Status Ping(grpc::ServerContext*, const ServiceInfo*, PingResponse*);
 
   // query handler to handle all the queries
   QueryHandler handler_;

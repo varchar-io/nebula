@@ -54,6 +54,19 @@ struct convert<nebula::meta::ServerOptions> {
     // parse meta conf if presents
     so.metaConf = node["meta"].as<nebula::meta::MetaConf>();
 
+    // populate discovery method
+    auto discovery = node["discovery"];
+    if (discovery) {
+      auto method = discovery["method"].as<std::string>();
+      if (method == "config") {
+        so.discovery = nebula::meta::Discovery::CONFIG;
+      } else if (method == "service") {
+        so.discovery = nebula::meta::Discovery::SERVICE;
+      } else {
+        throw NException(fmt::format("not supported discovery method: {0}.", method));
+      }
+    }
+
     return true;
   }
 };
@@ -300,30 +313,24 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
   }
 
   // load all nodes configured for the cluster
-  const auto& nodes = config["nodes"];
   topLevels++;
+  if (server_.discovery == Discovery::CONFIG) {
+    NNodeSet nodeSet;
+    const auto& nodes = config["nodes"];
 
-  NNodeSet nodeSet;
-  for (size_t i = 0, size = nodes.size(); i < size; ++i) {
-    const auto& node = nodes[i]["node"];
-
-    // if this is an existing node, and we may want to check its state
-    NNode nn = { NRole::NODE, node["host"].as<std::string>(), node["port"].as<size_t>() };
-    auto existing = nodes_.find(nn);
-    if (existing != nodes_.end()) {
-      nn.state = existing->state;
+    for (size_t i = 0, size = nodes.size(); i < size; ++i) {
+      const auto& node = nodes[i]["node"];
+      nodeSet.emplace(NRole::NODE, node["host"].as<std::string>(), node["port"].as<size_t>());
     }
 
-    nodeSet.insert(nn);
-  }
+    // add current server as a node if option says so
+    if (server_.anode) {
+      nodeSet.emplace(NNode::inproc());
+    }
 
-  // add current server as a node if option says so
-  if (server_.anode) {
-    nodeSet.emplace(NNode::inproc());
+    // replace the default node manager use pre-configured one
+    this->nodeManager_ = NodeManager::create(std::move(nodeSet));
   }
-
-  // swap with new node set
-  std::swap(nodes_, nodeSet);
 
   // load all table specs
   const auto& tables = config["tables"];
@@ -371,28 +378,6 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
   if (config.size() > topLevels) {
     throw NException("Un-recoganized config at the top level");
   }
-}
-
-void ClusterInfo::update(const NNode& node) {
-  std::lock_guard<std::mutex> guard(set_);
-
-  if (nodes_.find(node) != nodes_.end()) {
-    return;
-  }
-
-  nodes_.insert(node);
-}
-
-std::vector<NNode> ClusterInfo::copy() {
-  // get a copy of all nodes
-  std::lock_guard<std::mutex> guard(set_);
-  std::vector<NNode> nodes;
-  nodes.reserve(nodes_.size());
-  for (auto itr = nodes_.cbegin(); itr != nodes_.cend(); ++itr) {
-    nodes.push_back(*itr);
-  }
-
-  return nodes;
 }
 
 } // namespace meta

@@ -89,6 +89,8 @@ using nebula::meta::ClusterInfo;
 using nebula::meta::Table;
 using nebula::meta::TableSpec;
 using nebula::meta::TableSpecPtr;
+using nebula::service::ServiceInfo;
+using nebula::service::ServiceTier;
 using nebula::service::base::ErrorCode;
 using nebula::service::base::ServiceProperties;
 using nebula::service::node::RemoteNodeConnector;
@@ -377,14 +379,26 @@ grpc::Status V1ServiceImpl::Url(grpc::ServerContext*, const UrlData* req, UrlDat
   return Status::OK;
 }
 
-// Logic and data behind the server's behavior.
-class EchoServiceImpl final : public Echo::Service {
-  Status EchoBack(ServerContext*, const EchoRequest* request, EchoResponse* reply) override {
-    std::string prefix("This is from nebula: ");
-    reply->set_message(prefix + request->name());
-    return Status::OK;
+nebula::meta::NRole fromTier(ServiceTier tier) {
+  switch (tier) {
+  case ServiceTier::NODE: return nebula::meta::NRole::NODE;
+  default:
+    return nebula::meta::NRole::SERVER;
   }
-};
+}
+
+grpc::Status V1ServiceImpl::Ping(grpc::ServerContext*, const ServiceInfo* si, PingResponse*) {
+  nebula::meta::NNode node{ fromTier(si->tier()), si->ipv4(), si->port() };
+  if (node.server.size() == 0 || node.port == 0) {
+    return grpc::Status(StatusCode::INVALID_ARGUMENT,
+                        fmt::format("Invalid node info: {0}", node.toString()));
+  }
+
+  // refresh this node status in node manager
+  ClusterInfo::singleton().nodeManager().update(node);
+
+  return Status::OK;
+}
 
 } // namespace server
 } // namespace service
@@ -419,7 +433,6 @@ void RunServer() {
   nebula::common::Finally f([]() { nebula::service::base::globalExit(); });
 
   std::string server_address(fmt::format("0.0.0.0:{0}", nebula::service::base::ServiceProperties::PORT));
-  nebula::service::server::EchoServiceImpl echoService;
   nebula::service::server::V1ServiceImpl v1Service;
 
   grpc::ServerBuilder builder;
@@ -430,7 +443,7 @@ void RunServer() {
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
-  builder.RegisterService(&echoService).RegisterService(&v1Service);
+  builder.RegisterService(&v1Service);
   // set compression level as medium
   builder.SetDefaultCompressionLevel(GRPC_COMPRESS_LEVEL_MED);
   // Finally assemble the server.

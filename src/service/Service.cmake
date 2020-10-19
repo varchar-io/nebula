@@ -116,10 +116,10 @@ else()
 endif()
 
 # Targets: 
-#   server/NebulaClient
+#   client/NebulaClient
 #   server/NebulaServer
 #   node/NodeServer
-list(APPEND dirs "server")
+list(APPEND dirs "client")
 list(APPEND dirs "server")
 list(APPEND dirs "node")
 list(APPEND targets "NebulaClient")

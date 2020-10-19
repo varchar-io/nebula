@@ -18,12 +18,6 @@ syntax = "proto3";
 
 package nebula.service;
 
-// The greeting service definition.
-service Echo {
-  // Sends a greeting
-  rpc EchoBack(EchoRequest) returns(EchoResponse) {}
-}
-
 // The request message containing the user's name.
 message EchoRequest {
   string name = 1;
@@ -38,23 +32,6 @@ message EchoResponse {
 message UrlData {
   string code = 1;
   string raw = 2;
-}
-
-// all service methods are captilized compared to other regular methods
-service V1 {
-  // Get all available data sources
-  rpc Tables(ListTables) returns(TableList) {}
-  // Get table state for given table
-  rpc State(TableStateRequest) returns(TableStateResponse) {}
-  // Query Nebula to get result
-  rpc Query(QueryRequest) returns(QueryResponse) {}
-  // on demand loading specified data with parameters
-  // template defined in cluster configuration
-  rpc Load(LoadRequest) returns(LoadResponse) {}
-  // shut down all work nodes - used for perf profiling
-  rpc Nuclear(EchoRequest) returns(EchoResponse) {}
-  // URL service - code for raw or raw for code
-  rpc Url(UrlData) returns(UrlData) {}
 }
 
 message TableStateRequest {
@@ -318,4 +295,44 @@ message LoadResponse {
   string table = 3;
   // extra message the server wants to share
   string message = 4;
+}
+
+enum ServiceTier {
+  WEB = 0;
+  SERVER = 1;
+  NODE = 2;
+}
+
+message ServiceInfo {
+  // IP address
+  string ipv4 = 1;
+  // service port
+  uint32 port = 2;
+  // host name (optional)
+  string host = 3;
+  // service role/tier - server, node, web, etc.
+  ServiceTier tier = 4;
+}
+
+message PingResponse {}
+
+// all service methods are captilized compared to other regular methods
+service V1 {
+  // Sends a greeting
+  rpc Echo(EchoRequest) returns(EchoResponse) {}
+  // Get all available data sources
+  rpc Tables(ListTables) returns(TableList) {}
+  // Get table state for given table
+  rpc State(TableStateRequest) returns(TableStateResponse) {}
+  // Query Nebula to get result
+  rpc Query(QueryRequest) returns(QueryResponse) {}
+  // on demand loading specified data with parameters
+  // template defined in cluster configuration
+  rpc Load(LoadRequest) returns(LoadResponse) {}
+  // shut down all work nodes - used for perf profiling
+  rpc Nuclear(EchoRequest) returns(EchoResponse) {}
+  // URL service - code for raw or raw for code
+  rpc Url(UrlData) returns(UrlData) {}
+  // Discovery service - register node
+  rpc Ping(ServiceInfo) returns(PingResponse) {}
 }

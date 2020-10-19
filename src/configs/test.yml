@@ -13,6 +13,9 @@ server:
     db: native
     store: s3://nebula/meta/
 
+  discovery:
+    method: config
+
 # will be provided by enviroment
 nodes:
   - node:

@@ -24,6 +24,7 @@ import {
 const Chart = neb.cj.Chart;
 const pad2 = (v) => `${v}`.padStart(2, 0);
 const isTime = (c) => c === "_time_";
+const windowKey = '_window_';
 
 export class Charts {
     constructor() {
@@ -120,7 +121,7 @@ export class Charts {
 
             // if single x-axis key is specified (pivoted by this column)
             if (x) {
-                desc = `metrics by ${x}`;
+                desc = `metrics by ${x == windowKey ? 'timeline' : x}`;
                 // update gen series comes from remaining keys
                 // and genLabel comes from the single x-axis
                 genSeries = genLabel;
@@ -145,7 +146,15 @@ export class Charts {
             const genSet = (row) => {
                 // x value
                 const x = genLabel(row);
-                let index = buckets.indexOf(x);
+                // TODO(cao) - why indexOf is so expensive?
+                // let index = buckets.indexOf(x);
+                let index = -1;
+                for (var i = 0; i < buckets.length; ++i) {
+                    if (x === buckets[i]) {
+                        index = i;
+                        break;
+                    }
+                }
                 if (index == -1) {
                     index = buckets.length;
                     buckets.push(x);
@@ -190,6 +199,13 @@ export class Charts {
         this.options = (model) => {
             const opts = {
                 responsive: true,
+                // animation: {
+                //     duration: 0 // general animation time
+                // },
+                hover: {
+                    animationDuration: 0 // duration of animations when hovering an item
+                },
+                responsiveAnimationDuration: 0,
                 title: {
                     display: model.title,
                     text: model.title
@@ -241,25 +257,48 @@ export class Charts {
 
             // if x-axis is time scale
             if (model.xtime) {
+                // figure out the time unit by first series data
+                const l = model.labels;
+                let u = 'year';
+                const S = 60,
+                    M = 3600,
+                    H = M * 24,
+                    D = H * 30,
+                    Y = D * 365;
+                if (l.length > 1) {
+                    const delta = (new Date(l[1]).getTime() - new Date(l[0]).getTime()) / 1000;
+                    if (delta < S) {
+                        u = 'second';
+                    } else if (delta < M) {
+                        u = 'minute';
+                    } else if (delta < H) {
+                        u = 'hour';
+                    } else if (delta < D) {
+                        u = 'day';
+                    } else if (delta < Y) {
+                        u = 'month';
+                    }
+                }
+
                 opts.scales.xAxes = [{
                     type: 'time',
+                    distribution: 'series',
                     ticks: {
                         autoSkip: true,
-                        maxTicksLimit: 20,
+                        autoSkipPaddding: 75,
+                        maxTicksLimit: 15,
                         maxRotation: 0,
                         minRotation: 0
                     },
                     time: {
+                        unit: u,
                         displayFormats: {
-                            'millisecond': 'MMM DD',
-                            'second': 'MMM DD',
-                            'minute': 'MMM DD',
-                            'hour': 'MMM DD',
+                            'second': 'HH:mm:ss',
+                            'minute': 'HH:mm',
+                            'hour': 'HH:mm',
                             'day': 'MMM DD',
-                            'week': 'MMM DD',
-                            'month': 'MMM DD',
-                            'quarter': 'MMM DD',
-                            'year': 'MMM DD',
+                            'month': 'MMM/YY',
+                            'year': 'YY',
                         }
                     }
                 }];
@@ -281,6 +320,7 @@ export class Charts {
                 dataset.datasets.push({
                     label: name,
                     backgroundColor: this.color(idx++),
+                    pointRadius: 2,
                     data: model.series[name]
                 });
             }

@@ -27,7 +27,6 @@ import {
 } from 'nebula-pb';
 
 import {
-    EchoClient,
     V1Client
 } from 'nebula-node-rpc';
 
@@ -59,7 +58,6 @@ const static_res = (req, res) => {
 };
 
 export default {
-    EchoClient,
     V1Client,
     EchoRequest,
     EchoResponse,
