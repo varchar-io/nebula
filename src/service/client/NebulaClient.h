@@ -35,32 +35,6 @@ public:
   NebulaClient(std::shared_ptr<grpc::Channel> channel)
     : stub_(V1::NewStub(channel)) {}
 
-  // Assembles the client's payload, sends it and presents the response back
-  // from the server.
-  std::string echo(const std::string& user) const noexcept {
-    // Data we are sending to the server.
-    EchoRequest request;
-    request.set_name(user);
-
-    // Container for the data we expect from the server.
-    EchoResponse reply;
-
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
-    grpc::ClientContext context;
-
-    // The actual RPC.
-    grpc::Status status = stub_->Echo(&context, request, &reply);
-
-    // Act upon its status.
-    if (status.ok()) {
-      return reply.message();
-    } else {
-      LOG(INFO) << status.error_code() << ": " << status.error_message();
-      return "RPC failed";
-    }
-  }
-
   // ping nebula server with my data for service discoverys
   std::unique_ptr<PingResponse> ping(const ServiceInfo& si) const noexcept {
     // stub_->

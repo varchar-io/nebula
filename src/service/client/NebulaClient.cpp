@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include "common/Folly.h"
+#include "common/Ip.h"
 #include "meta/NNode.h"
 #include "service/base/NebulaService.h"
 #include "service/node/NodeClient.h"
@@ -31,19 +32,15 @@ int main(int argc, char** argv) {
   };
 
   auto greeter = nebula::service::client::NebulaClient::make(node.toString());
-  LOG(INFO) << "Echo received from nebula server: " << greeter.echo("nebula");
 
   // ping the server
   nebula::service::ServiceInfo info;
-  info.set_ipv4("192.168.5.124");
+  auto hi = nebula::common::Ip::hostInfo();
+
+  info.set_ipv4(hi.ipv4);
   info.set_port(nebula::service::base::ServiceProperties::NPORT);
   auto p = greeter.ping(info);
   LOG(INFO) << "Echo received from nebula server: " << (p != nullptr);
-
-  // connect to node client
-  folly::CPUThreadPoolExecutor pool{ 2 };
-  nebula::service::node::NodeClient client(node, pool, nullptr);
-  client.echo("nebula node");
 
   return 0;
 }

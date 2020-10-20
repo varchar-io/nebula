@@ -107,9 +107,10 @@ public:
       if (now - ping <= HEALTHY_TIME) {
         nodes.push_back(itr->first);
       } else {
-        LOG(WARNING) << "Seeing a node with last ping=" << ping;
+        VLOG(1) << "Seeing a node " << itr->first.server << " with last ping=" << ping;
       }
     }
+
     return nodes;
   }
 

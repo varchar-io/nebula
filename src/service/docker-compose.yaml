@@ -27,14 +27,6 @@ services:
       # can be a S3 file like s3://nebula/cluster-dev.yml
       - NCONF=/etc/nebula/configs/cluster.yml
     network_mode: "host"
-  envoy:
-    build:
-      context: ./
-      dockerfile: ./http/envoy.Dockerfile
-    image: nebula/envoy
-    ports:
-      - "8080:8080"
-    network_mode: "host"
   web:
     build:
       context: ./
@@ -43,3 +35,6 @@ services:
     ports:
       - "8088:8088"
     network_mode: "host"
+    environment:
+      # can be a S3 file like s3://nebula/cluster-dev.yml
+      - NS_ADDR=localhost:9190

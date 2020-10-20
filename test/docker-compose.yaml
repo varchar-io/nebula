@@ -18,12 +18,6 @@ services:
       - NCONF=/etc/nebula/configs/local-cluster.yml
     links:
       - node
-  envoy:
-    image: caoxhua/nebula.envoy
-    ports:
-      - "8080:8080"
-    links:
-      - server
   web:
     image: caoxhua/nebula.web
     ports:

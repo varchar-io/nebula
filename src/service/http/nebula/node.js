@@ -66,11 +66,12 @@ const {
 } = require('./dist/node/main.cjs');
 
 // service call module
+const log = Handler.log;
 const serviceAddr = process.env.NS_ADDR || "dev-shawncao:9190";
+log(`Create client to nebula server: ${serviceAddr}`);
 const client = qc(serviceAddr);
 const timeCol = "_time_";
 const error = Handler.error;
-const log = Handler.log;
 // bota (base64 encoding) and atob (base64 decoding) only available in browsers
 // so let's use alternative way to simulate it
 const btoa = (bytes) => Buffer.from(bytes).toString('base64');
