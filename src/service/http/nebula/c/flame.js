@@ -1,4 +1,27 @@
+/*
+ * Copyright 2017-present Shawn Cao
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 export class Flame {
+    /**
+     *
+     * @param {id} id  - the HTML element canva ID.
+     * @param {stack} stack - the recursive stack object tree example:
+     * {name: "", value:100, children: [{name: "a", value:50}, {name: "b", value:50, children: [...]}]}
+     * @param {reverse} reverse flame (bottom-up) view or icicle view (top-down), default as icicle.
+     */
     constructor(id, stack, reverse) {
         const fontSize = 16;
         const font = `1rem Segoe UI`;
