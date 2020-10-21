@@ -297,7 +297,7 @@ export class Charts {
                             'minute': 'HH:mm',
                             'hour': 'HH:mm',
                             'day': 'MMM DD',
-                            'month': 'MMM/YY',
+                            'month': 'MM/YY',
                             'year': 'YY',
                         }
                     }

@@ -5,49 +5,43 @@ export class Flame {
         const paddingV = 10;
         const paddingH = 5;
         const frameH = 20;
+        const ratio = devicePixelRatio || 1;
         this.reverse = reverse || false;
         this.canvas = document.getElementById(id);
         this.ctx = this.canvas.getContext('2d');
         this.maxLevel = 1;
         // prepare the size of the canvas and be responsive
         {
-            const ratio = devicePixelRatio || 1;
             const canvasWidth = this.canvas.offsetWidth;
-            const canvasHeight = this.canvas.offsetHeight;
             this.canvas.style.width = canvasWidth + 'px';
             this.canvas.width = canvasWidth * ratio;
-            this.canvas.height = canvasHeight * ratio;
-            this.ctx.scale(ratio, ratio);
             this.ctx.font = font;
             this.ratio = ratio;
         }
 
-        this.palette = [
-            [0x9370db, 20, 30, 30],
-            [0x9370db, 20, 30, 10],
-            [0x9370db, 20, 10, 30],
-            [0x9370db, 20, 20, 10],
-            [0x9370db, 20, 10, 10]
-        ];
-
-        this.getColor = (p) => {
-            const v = Math.random();
-            return '#' + (p[0] + ((p[1] * v) << 16 | (p[2] * v) << 8 | (p[3] * v))).toString(16);
+        this.updateH = (height) => {
+            this.canvas.height = height;
+            this.ctx.scale(ratio, ratio);
         };
+
+        this.palette = ['#9370db', '#f44336', '#9c27b0', '#cddc39', '#ffc107', '#ff5722'];
 
         this.color = (name) => {
             // pretty much JAVA DRIVEN - needs to figure out universal way to attach color for different language
-            let type = 4;
-            if (name.endsWith("_[j]")) {
-                type = 0;
-            } else if (name.endsWith("_[i]")) {
+            let type = 0;
+            if (name == 'all') {
+                type = 4;
+            } else if (this.selected && this.selected.name == name) {
+                type = 5;
+            } else if (name.endsWith("_[j]") || name.endsWith("_[i]") || name.endsWith("_[k]")) {
                 type = 1;
-            } else if (name.endsWith("_[k]")) {
+            } else if (name.startsWith('java.') || name.startsWith('scala.') || name.startsWith('sun.')) {
                 type = 2;
             } else if (name.includes("::") || name.startsWith("-[") || name.startsWith("+[")) {
                 type = 3;
             }
-            return this.getColor(this.palette[type]);
+
+            return this.palette[type];
         }
 
         this.draw = (frame) => {
@@ -169,13 +163,18 @@ export class Flame {
 
         // repaint the whole canvas
         this.paint = (root) => {
-            // clear
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.fillRect(0, 0, this.canvas.offsetWidth, this.canvas.offsetHeight);
+            this.selected = root;
             this.maxLevel = 0;
             this.mark(stack, root);
             // update the height
             this.height = this.maxLevel * (frameH + 2);
+            if (!root) {
+                this.updateH(this.height);
+            }
+
+            // clear the canvas
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.fillRect(0, 0, this.canvas.offsetWidth, this.canvas.offsetHeight);
 
             this.visit(stack, root);
         };
@@ -217,15 +216,15 @@ export class Flame {
         this.canvas.onmousemove = (event) => {
             const c = this.canvas;
             const frame = this.find(stack, {
-                x: event.clientX - c.offsetLeft,
-                y: event.clientY - c.offsetTop
+                x: event.pageX - c.offsetLeft,
+                y: event.pageY - c.offsetTop
             });
 
             // if found, cast a opaque overlay to it
             if (frame) {
                 c.style.cursor = 'pointer';
-                const ratio = (frame.width * 100 / stack.width).toPrecision(3);
-                c.title = `name: ${frame.name}, value: ${frame.value}, ratio: ${ratio}%`;
+                const pct = (frame.width * 100 / stack.width).toPrecision(3);
+                c.title = `name: ${frame.name}, value: ${frame.value}, ratio: ${pct}%`;
                 c.onclick = () => {
                     this.paint(frame);
                 };
