@@ -20,6 +20,9 @@ import {
 import {
     Flame
 } from "./flame.min.js";
+import {
+    Color
+} from "./color.min.js";
 
 const Chart = neb.cj.Chart;
 const pad2 = (v) => `${v}`.padStart(2, 0);
@@ -72,25 +75,6 @@ export class Charts {
                     });
                 });
             }
-        };
-
-        this.color = (index) => {
-            const palette = [
-                "rgba(224, 170, 255, 0.9)",
-                "rgba(199, 125, 255, 0.85)",
-                "rgba(157, 78, 221, 0.8)",
-                "rgba(123, 44, 191, 0.75)",
-                "rgba(90, 24, 154, 0.7)",
-                "rgba(60, 9, 108, 0.65)",
-                "rgba(36, 0, 70, 0.6)",
-                "rgba(16, 0, 43, 0.55)"
-            ];
-            return palette[(index + index % 3) % palette.length];
-        };
-
-        this.colorize = (op, ctx) => {
-            // var v = ctx.dataset.data[ctx.dataIndex];
-            return this.color(ctx.dataIndex);
         };
 
         // process raw JSON data organized by rows into desired format by the viz type
@@ -218,6 +202,8 @@ export class Charts {
                 },
 
                 tooltips: {
+                    mode: 'index',
+                    intersect: false,
                     callbacks: {
                         label: (item, data) => {
                             const ds = data.datasets[item.datasetIndex];
@@ -319,8 +305,8 @@ export class Charts {
             for (const name in model.series) {
                 dataset.datasets.push({
                     label: name,
-                    backgroundColor: this.color(idx++),
-                    pointRadius: 2,
+                    backgroundColor: Color.get(idx++),
+                    pointRadius: 0,
                     data: model.series[name]
                 });
             }

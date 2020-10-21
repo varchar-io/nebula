@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import {
+    Color
+} from "./color.min.js";
 
 export class Flame {
     /**
@@ -47,8 +50,6 @@ export class Flame {
             this.ctx.scale(ratio, ratio);
         };
 
-        this.palette = ['#9370db', '#f44336', '#9c27b0', '#cddc39', '#ffc107', '#ff5722'];
-
         this.color = (name) => {
             // pretty much JAVA DRIVEN - needs to figure out universal way to attach color for different language
             let type = 0;
@@ -64,7 +65,7 @@ export class Flame {
                 type = 3;
             }
 
-            return this.palette[type];
+            return Color.get(type);
         }
 
         this.draw = (frame) => {
@@ -190,7 +191,7 @@ export class Flame {
             this.maxLevel = 0;
             this.mark(stack, root);
             // update the height
-            this.height = this.maxLevel * (frameH + 2);
+            this.height = (this.maxLevel + 1) * (frameH + 2);
             if (!root) {
                 this.updateH(this.height);
             }
