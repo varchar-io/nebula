@@ -172,25 +172,25 @@ SET(GRPC_NODE_PLUGIN ${BINARY_DIR}/grpc_node_plugin)
 # Below section is used to introduce GRPC_WEB to enable web endpoint
 
 # download the project only
-ExternalProject_Add(grpcweb
-  PREFIX grpcweb
-  GIT_REPOSITORY https://github.com/grpc/grpc-web.git
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND ""
-  UPDATE_COMMAND ""
-  INSTALL_COMMAND ""
-  LOG_DOWNLOAD ON
-  LOG_CONFIGURE ON
-  LOG_BUILD ON)
+# ExternalProject_Add(grpcweb
+#   PREFIX grpcweb
+#   GIT_REPOSITORY https://github.com/grpc/grpc-web.git
+#   CONFIGURE_COMMAND ""
+#   BUILD_COMMAND ""
+#   UPDATE_COMMAND ""
+#   INSTALL_COMMAND ""
+#   LOG_DOWNLOAD ON
+#   LOG_CONFIGURE ON
+#   LOG_BUILD ON)
 
-ExternalProject_Get_Property(grpcweb SOURCE_DIR)
-ExternalProject_Get_Property(grpcweb BINARY_DIR)
+# ExternalProject_Get_Property(grpcweb SOURCE_DIR)
+# ExternalProject_Get_Property(grpcweb BINARY_DIR)
 
 # It's not cmake project, so use custom command to make the project
 # build the proc-gen-grpc-web plugin so that we can use it to gen stubs later
-SET(GRPC_WEB_PLUGIN "${SOURCE_DIR}/javascript/net/grpc/web/protoc-gen-grpc-web")
-add_custom_target(build_grpcweb_plugin
-      ALL COMMAND make plugin -I${PROTOBUF_INCLUDE_DIRS}
-      WORKING_DIRECTORY ${SOURCE_DIR}
-      DEPENDS ${PROTOBUF_LIBRARY} libgrpc grpcweb)
+# SET(GRPC_WEB_PLUGIN "${SOURCE_DIR}/javascript/net/grpc/web/protoc-gen-grpc-web")
+# add_custom_target(build_grpcweb_plugin
+#       ALL COMMAND make plugin -I${PROTOBUF_INCLUDE_DIRS}
+#       WORKING_DIRECTORY ${SOURCE_DIR}
+#       DEPENDS ${PROTOBUF_LIBRARY} libgrpc grpcweb)
 # target_compile_options(build_grpcweb_plugin PRIVATE -I${PROTOBUF_INCLUDE_DIRS})

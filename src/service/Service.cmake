@@ -37,18 +37,17 @@ add_custom_command(
 # Include generated *.pb.h files
 include_directories("${GEN_DIR}")
 
-# generate a node client for this service
-## javascript code
+# generate a node client for this service for js code
 SET(NODE_GEN "${GEN_DIR}/nodejs")
 file(MAKE_DIRECTORY ${NODE_GEN})
 add_custom_target(nebula_node_client ALL 
   COMMAND ${PROTO_COMPILER}
-      --grpc_out="${NODE_GEN}"
-      --js_out=import_style=commonjs,binary:${NODE_GEN}
-      -I "${nproto_path}"
-      --plugin=protoc-gen-grpc="${GRPC_NODE_PLUGIN}"
-      "${nproto}"
-DEPENDS ${build_grpcweb_plugin} ${nproto})
+    --grpc_out="${NODE_GEN}"
+    --js_out=import_style=commonjs,binary:${NODE_GEN}
+    -I "${nproto_path}"
+    --plugin=protoc-gen-grpc="${GRPC_NODE_PLUGIN}"
+    "${nproto}"
+  DEPENDS ${nproto})
 
 ## java code
 SET(JAVA_GEN "${GEN_DIR}/java")
@@ -73,8 +72,9 @@ add_custom_target(compile_fbs ALL
   COMMAND ${FLATBUFFERS_COMPILER} -b -o "${NODE_GEN_DIR}" --cpp --grpc "${nfbs}"
 DEPENDS ${nfbs})
 
-# Include generated *.pb.h files
+# Include generated *.pb.h files and specify it as generated file
 set(nodegrpc_srcs "${NODE_GEN_DIR}/node.grpc.fb.cc")
+set_property(SOURCE ${nodegrpc_srcs} PROPERTY GENERATED 1)
 
 # build everything else as library except executable of NebulaServer and NebulaClient
 add_library(${NEBULA_SERVICE} STATIC 
@@ -182,15 +182,15 @@ foreach(i ${NBIN})
 endforeach()
 
 # build web client library for nebula
-add_custom_target(nebula_web_client ALL 
-  COMMAND ${PROTO_COMPILER} 
-        --js_out=import_style=commonjs:"${GEN_DIR}"
-        -I "${nproto_path}"
-        --grpc-web_out=import_style=commonjs,mode=grpcwebtext:"${GEN_DIR}"
-        --plugin=protoc-gen-grpc-web=${GRPC_WEB_PLUGIN}
-        "${nproto}"
-      WORKING_DIRECTORY ${SERVICE_DIR}
-      DEPENDS ${nproto})
+# add_custom_target(nebula_web_client ALL 
+#   COMMAND ${PROTO_COMPILER} 
+#         --js_out=import_style=commonjs:"${GEN_DIR}"
+#         -I "${nproto_path}"
+#         --grpc-web_out=import_style=commonjs,mode=grpcwebtext:"${GEN_DIR}"
+#         --plugin=protoc-gen-grpc-web=${GRPC_WEB_PLUGIN}
+#         "${nproto}"
+#       WORKING_DIRECTORY ${SERVICE_DIR}
+#       DEPENDS ${nproto})
 
 # To run the service together with a http proxy to serve web requests
 # we use grpc-web implementations and follow their instructions to set this up
