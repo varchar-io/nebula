@@ -12,6 +12,22 @@ server:
   # if set as true, auth (such as oAuth) is required to set up to make query executable
   auth: false
 
+  # configure meta db where metadata is persist
+  # currently, we support native DB (backed by LevelDB).
+  # other DB types could be extended in the future such as SQL DB or KV store.
+  # store is the location where the DB data is persited.
+  meta:
+    db: native
+    store: s3://nebula/meta
+
+  # configure the way how service discovery is done with this cluster.
+  # by default - we're able to read the hard-coded `nodes` from config file
+  # other options: server itself is discovery server exposing service API.
+  # also if a standalone discovery service out of nebula server.
+  # method: config, service, etc.
+  discovery:
+    method: service
+
 # will be provided by enviroment
 nodes:
   - node:

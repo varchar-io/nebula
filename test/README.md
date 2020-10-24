@@ -10,6 +10,16 @@ This instructions will show you how to get a test data set run with Nebula on yo
 > ./local-run.sh
 3. Check it out through Nebula UI at: http://&lt;hostname&gt;:8088
 
+## Pre-built binary
+The repo includes the pre-built static linked binaries.
+If they can run from your platform, you can launch each of them by hand as well:
+(assume you're on macos)
+0. Launch local node: `./bin/macos/NodeServer --NSERVER localhost:9190`
+1. Launch local server: `./bin/macos/NebulaServer --CLS_CONF local-cluster.yml`
+2. Launch web tier: `cd ../src/service/http/nebula && NS_ADDR=localhost:9190 NODE_PORT=8088 node node.js`
+3. Go to browser: http://localhost:8088
+
+
 ## Explore Nebula Through Its UI
 You should be able to see something like this
 ![Nebula UI](./nebula-local.png)
