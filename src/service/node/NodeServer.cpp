@@ -262,19 +262,19 @@ void RunServer() {
   // for every second, ping discovery server
   const auto discovery = ReadNServer();
   const auto client = nebula::service::client::NebulaClient::make(discovery);
-  // if discovery is localhost, we use localhost to ping as well.
-  // otherwise we use dns IPv4 to ping
-  constexpr auto LOCAL = "localhost";
-  auto hi = nebula::common::Ip::hostInfo(nebula::common::Chars::prefix(
-    discovery.data(), discovery.size(), LOCAL, std::strlen(LOCAL)));
-
-  // set the ping info
   nebula::service::ServiceInfo info;
-  info.set_host(hi.host);
-  info.set_ipv4(hi.ipv4);
-  info.set_port(nebula::service::base::ServiceProperties::NPORT);
-
   if (discovery.size() > 0) {
+    // if discovery is localhost, we use localhost to ping as well.
+    // otherwise we use dns IPv4 to ping
+    constexpr auto LOCAL = "localhost";
+    auto hi = nebula::common::Ip::hostInfo(nebula::common::Chars::prefix(
+      discovery.data(), discovery.size(), LOCAL, std::strlen(LOCAL)));
+
+    // set the ping info
+    info.set_host(hi.host);
+    info.set_ipv4(hi.ipv4);
+    info.set_port(nebula::service::base::ServiceProperties::NPORT);
+
     taskScheduler.setInterval(
       1000,
       [&client, &info] {
