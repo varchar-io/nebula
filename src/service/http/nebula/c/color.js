@@ -17,7 +17,7 @@
 // define color schema across functions
 export class Color {
     // reference this one https://nagix.github.io/chartjs-plugin-colorschemes/colorchart.html
-    static system = "office.Infusion6";
+    static system = "office.multi";
     static schemes = {
         "brewer.BuPu5": ['#edf8fb', '#b3cde3', '#8c96c6', '#8856a7', '#810f7c'],
         "brewer.PRGn8": ['#762a83', '#9970ab', '#c2a5cf', '#e7d4e8', '#d9f0d3',
@@ -25,6 +25,11 @@ export class Color {
         ],
         "brewer.SetOne5": ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00'],
         "office.Infusion6": ['#8c73d0', '#c2e8c4', '#c5a6e8', '#b45ec7', '#9fdafb', '#95c5b0'],
+        "office.multi": [
+            "#92278f", "#9b57d3", "#755dd9", "#665eb8", "#45a5ed", "#5982db",
+            "#31b6fd", "#4584d3", "#5bd078", "#a5d028", "#f5c040", "#05e0db",
+            "#ff388c", "#e40059", "#9c007f", "#68007f", "#005bd3", "#00349e"
+        ]
     };
     static get(i) {
         // i==0, avoid using random

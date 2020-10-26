@@ -99,6 +99,25 @@ const field = (c, m) => {
     };
 };
 
+const makeCalendar = (obj, id, btn, def, min, max) => {
+    obj = $(id).flatpickr({
+        enableTime: true,
+        allowInput: true,
+        clickOpens: false,
+        dateFormat: "Y-m-d H:i:S",
+        defaultDate: def,
+        minDate: min,
+        maxDate: max,
+        allowInvalidPreload: true
+    });
+    // hook calendar click event
+    $(btn).on("click", () => {
+        setTimeout(() => {
+            obj.open();
+        }, 0);
+    });
+};
+
 const onTableState = (state, stats, callback) => {
     const bc = state.bc;
     const rc = Math.round(state.rc / 10000) / 100;
@@ -108,33 +127,8 @@ const onTableState = (state, stats, callback) => {
 
     stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${mints}, Max T: ${maxts}]`);
 
-    fpcs = neb.fp($(startId), {
-        enableTime: true,
-        allowInput: true,
-        clickOpens: false,
-        dateFormat: "Y-m-d H:i:S",
-        defaultDate: mints,
-        minDate: mints,
-        maxDate: maxts
-    });
-    // hook calendar click event
-    $('#startc').on("click", () => {
-        fpcs.open();
-    });
-
-    fpce = neb.fp($(endId), {
-        enableTime: true,
-        allowInput: true,
-        clickOpens: false,
-        dateFormat: "Y-m-d H:i:S",
-        defaultDate: maxts,
-        minDate: mints,
-        maxDate: maxts
-    });
-    // hook calendar click event
-    $('#endc').on("click", () => {
-        fpce.open();
-    });
+    makeCalendar(fpcs, startId, '#startc', mints, mints, maxts);
+    makeCalendar(fpce, endId, '#endc', maxts, mints, maxts);
 
     // populate all columns with pairs {M:, C:, T:} for "method", "column", "text"
     // for normal dimension, M will be -1, C==T

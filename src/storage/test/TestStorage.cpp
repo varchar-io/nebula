@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <filesystem>
 #include <fmt/format.h>
 #include <fstream>
 #include <glog/logging.h>
@@ -26,6 +27,30 @@
 namespace nebula {
 namespace storage {
 namespace test {
+
+TEST(StorageTest, TestSystemApi) {
+  // understand the behavior of native filesystem api
+  // provided by C++ 17
+  // 1. copy https://en.cppreference.com/w/cpp/filesystem/copy
+  auto fs = nebula::storage::makeFS("local");
+  auto from = fs->temp(true);
+  auto to = fs->temp(true);
+  LOG(INFO) << "from=" << from << ", to=" << to;
+  std::ofstream(fmt::format("{0}/file1.txt", from)).put('a');
+  std::filesystem::copy(from, to);
+
+  auto files = fs->list(to);
+  for (auto& f : files) {
+    LOG(INFO) << "File: " << f.name;
+  }
+
+  EXPECT_TRUE(files.size() > 0);
+
+  // 2. remove_all
+  std::filesystem::remove_all(to);
+  files = fs->list(to);
+  EXPECT_TRUE(files.size() == 0);
+}
 
 TEST(StorageTest, TestLocalFiles) {
   LOG(INFO) << "Run storage test here";

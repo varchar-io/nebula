@@ -177,7 +177,6 @@ bool downloadFile(const Aws::S3::S3Client& client,
     // the object has no data
     if (content.GetContentLength() == 0) {
       LOG(WARNING) << "Seen an empty file: " << key;
-      return false;
     }
 
     // return a copy of file
@@ -203,38 +202,62 @@ inline bool S3::copy(const std::string& from, const std::string& to) {
   return false;
 }
 
-void S3::download(const std::string& s3, const std::string& local) {
+bool S3::download(const std::string& s3, const std::string& local) {
   std::lock_guard<std::mutex> lock(s3s_);
   LOG(INFO) << "Download: from " << s3 << " to " << local;
 
   auto files = list(s3);
   auto& client = s3client();
+
+  // expect false if specified location is empty
+  if (files.size() == 0) {
+    LOG(WARNING) << "Failed to download: source dir/prefix is empty=" << s3;
+    return false;
+  }
+
+  // any single failure will result in whole task failure
   for (auto& f : files) {
     // for each key, let's download it to current to folder
     if (!f.isDir) {
       // get file name
       auto nameOnly = nebula::common::Chars::last(f.name);
-      downloadFile(client, this->bucket_, f.name, fmt::format("{0}/{1}", local, nameOnly));
+      if (!downloadFile(client, this->bucket_, f.name, fmt::format("{0}/{1}", local, nameOnly))) {
+        LOG(WARNING) << "Failed to download: file=" << f.name;
+        return false;
+      }
     }
   }
+
+  return true;
 }
 
-void S3::upload(const std::string& local, const std::string& s3) {
+bool S3::upload(const std::string& local, const std::string& s3) {
   std::lock_guard<std::mutex> lock(s3s_);
   LOG(INFO) << "Upload: from " << local << " to " << s3;
 
   // need local file system to list files
   nebula::storage::local::File lfs;
   auto files = lfs.list(local);
+  // expect false if specified location is empty
+  if (files.size() == 0) {
+    LOG(WARNING) << "Failed to upload: source dir/prefix is empty=" << local;
+    return false;
+  }
+
   auto& client = s3client();
   for (auto& f : files) {
     if (!f.isDir) {
-      uploadFile(client,
-                 this->bucket_,
-                 fmt::format("{0}/{1}", s3, f.name),
-                 fmt::format("{0}/{1}", local, f.name));
+      if (!uploadFile(client,
+                      this->bucket_,
+                      fmt::format("{0}/{1}", s3, f.name),
+                      fmt::format("{0}/{1}", local, f.name))) {
+        LOG(WARNING) << "Failed to upload: file=" << f.name;
+        return false;
+      }
     }
   }
+
+  return true;
 }
 
 bool S3::sync(const std::string& from, const std::string& to, bool recursive) {
@@ -245,17 +268,16 @@ bool S3::sync(const std::string& from, const std::string& to, bool recursive) {
     return false;
   }
 
+  // the sync is interpreted as either upload or download
   if (from.at(0) == '/') {
-    upload(from, to);
+    return upload(from, to);
   } else if (to.at(0) == '/') {
-    download(from, to);
-  } else {
-    // from s3 to s3
-    LOG(WARNING) << "Not supporting s3 to s3 sync for now";
-    return false;
+    return download(from, to);
   }
 
-  return true;
+  // from s3 to s3
+  LOG(WARNING) << "Not supporting s3 to s3 sync for now";
+  return false;
 }
 
 } // namespace aws

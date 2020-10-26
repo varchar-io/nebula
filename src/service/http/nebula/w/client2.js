@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-import * as cj from 'chart.js';
 import {
     Constraints
 } from '../c/constraints.min.js';
-import * as fp from '../f/flatpickr.js';
 import {
     time
 } from '../_/time.min.js';
@@ -52,9 +50,7 @@ export default {
     OrderType,
     DisplayType,
     CustomType,
-    cj,
     Constraints,
-    fp,
     time,
     bytes2utf8
 };

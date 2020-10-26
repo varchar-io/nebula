@@ -69,8 +69,8 @@ public:
   }
 
 private:
-  void download(const std::string&, const std::string&);
-  void upload(const std::string&, const std::string&);
+  bool download(const std::string&, const std::string&);
+  bool upload(const std::string&, const std::string&);
 
 private:
   std::string bucket_;

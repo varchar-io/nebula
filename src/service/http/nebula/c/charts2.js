@@ -15,16 +15,12 @@
  */
 
 import {
-    neb
-} from "../dist/web/main2.js";
-import {
     Flame
 } from "./flame.min.js";
 import {
     Color
 } from "./color.min.js";
 
-const Chart = neb.cj.Chart;
 const pad2 = (v) => `${v}`.padStart(2, 0);
 const isTime = (c) => c === "_time_";
 const windowKey = '_window_';
@@ -309,6 +305,18 @@ export class Charts {
                     pointRadius: 0,
                     data: model.series[name]
                 });
+            }
+
+            // for single key and single metric
+            // we style each segment (bar, slice) with different color
+            if (idx == 1 && !model.xtime) {
+                // change the single color to multiple colors
+                const single = dataset.datasets[0];
+                const colors = [];
+                single.data.forEach(() => {
+                    colors.push(Color.get(idx++));
+                });
+                single.backgroundColor = colors;
             }
 
             // set labels

@@ -477,10 +477,12 @@ void RunServer() {
 
   // having a local file system to detect change of cluster config
   auto& pool = v1Service.pool();
+  // a counter indicating total number of updates executed
+  auto updates = 0;
   std::string confSignature;
   taskScheduler.setInterval(
     FLAGS_CLS_CONF_UPDATE_INTERVAL,
-    [&pool, &specRepo, &confSignature] {
+    [&pool, &specRepo, &confSignature, &updates] {
       // load config into cluster info
       auto conf = LoadClusterConfig();
 
@@ -529,13 +531,22 @@ void RunServer() {
       }
 
       { // sync cluster state
-        nebula::service::server::NodeSync::sync(pool, specRepo);
+        // TODO(cao) - use hash ring to handle dynamic nodes adding/removing events
+        // skip first time to allow all nodes to register themselves.
+        if (updates > 0) {
+          nebula::service::server::NodeSync::sync(pool, specRepo);
+        }
       }
 
       { // backup metadb
         if (nebula::meta::ClusterInfo::singleton().db().backup()) {
           LOG(INFO) << "complete backup meta db.";
         }
+      }
+
+      // count number of times to update, log info every 500 updates
+      if (++updates % 500 == 0) {
+        LOG(INFO) << "Nebula Server updated itself " << updates << " times.";
       }
     });
 

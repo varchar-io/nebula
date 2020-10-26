@@ -68,6 +68,9 @@ private:
   // open DB with a local store
   void open();
 
+  // reset backup
+  void resetBackup();
+
 private:
   std::string local_;
   std::string remote_;

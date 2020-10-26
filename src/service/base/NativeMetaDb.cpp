@@ -81,7 +81,7 @@ NativeMetaDb::NativeMetaDb(
 
   // create a backup folder (temp folder)
   if (!remote_.empty()) {
-    backup_ = fs_->temp(true);
+    resetBackup();
 
     // try to restore local_ from remote_
     restore();
@@ -157,7 +157,7 @@ bool NativeMetaDb::backup() noexcept {
       auto versionUpdated = fs->copy(versionFile, remoteVersion);
 
       // clean backup folder for next sync
-      fs_->rm(backup_);
+      resetBackup();
       return versionUpdated;
     }
 
@@ -166,6 +166,13 @@ bool NativeMetaDb::backup() noexcept {
   }
 
   return false;
+}
+
+void NativeMetaDb::resetBackup() {
+  if (fs_->list(backup_).size() != 0) {
+    fs_->rm(backup_);
+    backup_ = fs_->temp(true);
+  }
 }
 
 void NativeMetaDb::close() noexcept {
@@ -178,11 +185,10 @@ void NativeMetaDb::close() noexcept {
   }
 
   if (!backup_.empty()) {
-    fs_->sync(local_, backup_);
-    LOG(INFO) << "Prepare local=" << local_ << " to backup=" << backup_;
-
     // indicate we can upload backup_ now
-    dirty_ = true;
+    resetBackup();
+    dirty_ = fs_->sync(local_, backup_);
+    LOG(INFO) << "Prepare local=" << local_ << " to backup=" << backup_ << ", ready=" << dirty_;
   }
 }
 
