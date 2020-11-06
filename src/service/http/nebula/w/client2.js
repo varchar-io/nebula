@@ -15,9 +15,6 @@
  */
 
 import {
-    Constraints
-} from '../c/constraints.min.js';
-import {
     time
 } from '../_/time.min.js';
 
@@ -50,7 +47,6 @@ export default {
     OrderType,
     DisplayType,
     CustomType,
-    Constraints,
     time,
     bytes2utf8
 };

@@ -33,9 +33,19 @@ import {
     p90,
     p99,
     p99_9,
-    p99_99
+    p99_99,
+    and,
+    or,
+    eq,
+    neq,
+    gt,
+    lt,
+    like,
+    ilike
 } from './__/sdk.min.js';
-
+import {
+    Constraints
+} from '../c/constraints.min.js';
 import {
     Charts
 } from "./c/charts2.min.js";
@@ -363,10 +373,10 @@ const restore = () => {
             // TODO(cao): due to protobuf definition, we can't build nested group.
             // Should update to support it, then we can turn this flag to true
             // create a filter
-            filters = new neb.Constraints(false, "filters", cols, ops, state.filter);
+            filters = new Constraints(false, "filters", cols, ops, state.filter);
 
             // if code is specified, set code content and switch to IDE
-            if (state.code && state.code.length > 0) {
+            if (state.code && state.code.length > 0 && editor.getValue() != state.code) {
                 editor.setValue(state.code);
                 ide();
             }

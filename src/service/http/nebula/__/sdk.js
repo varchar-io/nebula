@@ -51,12 +51,6 @@ import {
     State
 } from "./state.min.js";
 
-const assert = (expr) => {
-    if (!expr) {
-        throw `Failed assertion: ${expr}`;
-    }
-};
-
 const isType = (obj, type) => {
     return typeof obj === type;
 };
@@ -64,13 +58,20 @@ const isType = (obj, type) => {
 const isNumber = (obj) => isType(obj, 'number');
 const isString = (obj) => isType(obj, 'string');
 const isFunction = (obj) => isType(obj, 'function');
+const s = (arr) => arr.map(e => `${e}`);
 
 const log = console.log;
+const except = msg => {
+    throw {
+        message: msg
+    };
+};
 
 const CT = neb.CustomType;
 const DT = neb.DisplayType;
 const OT = neb.OrderType;
 const RU = neb.Rollup;
+const OP = neb.Operation;
 export class Nebula {
     constructor() {
         // types supported by nebula JS SDK
@@ -100,6 +101,7 @@ export class Nebula {
             this.display_ = -1;
             this.sort_ = this.Sort.ASC;
             this.limit_ = 100;
+            this.filter_ = {};
 
             // only useful for timeline
             this.window_ = 0;
@@ -140,11 +142,24 @@ export class Nebula {
             return this;
         };
 
-        this.where = (filter) => {
+        this.where = (f) => {
             // one option is to translate the filter tree into filter structure.
             // the other option is to set expectation of the filter as boolean script column.
             // the former is probably faster but needs a lot of effort to finish the translation
             // the latter relies on JS code capabillity, much easier but may be slower.
+            if (f) {
+                // this is logic wrapper AND or OR
+                // if not, it should be a single predicate
+                if (f.l) {
+                    this.filter_ = f;
+                } else {
+                    this.filter_ = {
+                        l: "AND",
+                        r: [f]
+                    };
+                }
+            }
+
             return this;
         };
 
@@ -154,7 +169,7 @@ export class Nebula {
             for (var i = 0; i < fields.length; ++i) {
                 const f = fields[i];
                 if (!isNumber(f)) {
-                    this.except("groupby - support key ordinal value only.");
+                    except("groupby - support key ordinal value only.");
                 }
                 this.groups_.push(f);
             }
@@ -176,24 +191,18 @@ export class Nebula {
             return this;
         }
 
-        this.except = msg => {
-            throw {
-                message: msg
-            };
-        };
-
         // column definition API - register a new column with specified logic
         // example:
         // const expr = () => nebula.column("value") % 5;
         this.apply = (name, type, expr) => {
             if (!name || !isString(name)) {
-                this.except('apply - column name required');
+                except('apply - column name required');
             }
             if (type === undefined || !isNumber(type) || type < this.Type.INT || type > this.Type.STRING) {
-                this.except('apply - unsupported type.');
+                except('apply - unsupported type.');
             }
             if (!expr || !isFunction(expr)) {
-                this.except('apply - lambda/function required.');
+                except('apply - lambda/function required.');
             }
 
             // no matter the target is a function or a lambda, 
@@ -307,6 +316,7 @@ export class Nebula {
             s.limit = this.limit_;
             s.sort = this.sort_;
             s.metrics = this.metrics_;
+            s.filter = this.filter_;
 
             // send columns back
             s.customs = this.columns_;
@@ -471,4 +481,66 @@ export const p99_99 = (col) => ({
         this.A = alias;
         return this;
     }
+});
+
+// filter related API
+// and(1, 2, 3)
+export const and = (...args) =>
+    args.length == 0 ? {} : {
+        l: "AND",
+        r: args
+    };
+
+export const or = (...args) =>
+    args.length == 0 ? {} : {
+        l: "OR",
+        r: args
+    };
+
+export const eq = (col, ...args) => {
+    if (args.length == 0) {
+        except("syntax: eq(<column>, val1, val2, ...)");
+    }
+
+    return {
+        c: col,
+        o: OP.EQ,
+        v: s(args)
+    };
+};
+
+export const neq = (col, ...args) => {
+    if (args.length == 0) {
+        except("syntax: eq(<column>, val1, val2, ...)");
+    }
+
+    return {
+        c: col,
+        o: OP.NEQ,
+        v: s(args)
+    };
+};
+
+export const gt = (col, val) => ({
+    c: col,
+    o: OP.MORE,
+    v: s([val])
+});
+
+export const lt = (col, val) => ({
+    c: col,
+    o: OP.LESS,
+    v: s([val])
+});
+
+export const like = (col, val) => ({
+    c: col,
+    o: OP.LIKE,
+    v: s([val])
+});
+
+export const ilike = (col, val) => ({
+    c: col,
+    o: OP.ILIKE,
+    v: s([val])
 });
