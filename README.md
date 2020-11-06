@@ -8,8 +8,15 @@ Nebula is designed for high-performance tabular data serving gateway. It serves 
 Details could be found in the [project site](https://nebula.bz).
 Design, Art & Techniques will be shared through posts in the page.
 
-### Click the image to watch a quick intro video
+### Click below screenshot to watch a quick intro video
 [![Click To Watch Nebula Demo Video](./test/nebula-rep.png)](https://youtu.be/ciYD73z6Eiw "Nebula Demo")
+
+An example generating bar from 100GB data
+![Generate bar from 700M rows in 600ms](./test/nebula-rep2.png)
+
+Another example demonstrating how to use JS SDK to analyze real-time data fastly.
+![Transform column, aggregate by it with filters](./test/nebula-ide.png)
+
 
 
 # Get Started
@@ -66,6 +73,7 @@ On the page top, the demo video shows how nebula client SDK is used and tables a
                      .source(name)
                      .time("2020-06-22 15:00:00", "2020-06-25 15:00:00")
                      .select("colx", count("id"))
+                     .where(and(gt("id", 5), eq("flag", true)))
                      .sortby(nebula.Sort.DESC)
                      .limit(100);
 

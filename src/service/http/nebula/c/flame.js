@@ -51,6 +51,9 @@ export class Flame {
         };
 
         this.color = (name) => {
+            // move to more bright color band in the pallete
+            const offset = 5;
+
             // pretty much JAVA DRIVEN - needs to figure out universal way to attach color for different language
             let type = 0;
             if (name == 'all') {
@@ -65,7 +68,7 @@ export class Flame {
                 type = 3;
             }
 
-            return Color.get(type);
+            return Color.get(type + offset);
         }
 
         this.draw = (frame) => {

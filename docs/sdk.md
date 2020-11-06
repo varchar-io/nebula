@@ -24,6 +24,7 @@ This demo code snippet is already shown in project homepage on Github, but let's
     const query = nebula.source(name)
                      .time("2020-06-22 15:00:00", "2020-06-25 15:00:00")
                      .select("colx", count("id"))
+                     .where(and(eq("coly", true), gt("colz", 25)))
                      .sortby(nebula.Sort.DESC)
                      .limit(100);
 
@@ -55,6 +56,23 @@ To simplify code user to write, we also defined aliases for all native aggregati
 | p99_9    |       percentile value of given column at 99.9%       |                                                                                          |
 | p99_99   |      percentile value of given column at 99.99%       |                                                                                          |
 | tree     | aggregate single paths into a tree with counted nodes |  the expected column should be string type, with lines break by \n, with root at the top |
+
+### filters
+filters are used by `where` API （see the example on page top).
+
+these DSL functions will help us construct filter for the query (note there is a limitation for now - only single AND or OR to be used, will be fixed in the future).
+
+| Function |                   Syntax                   |            Definition              |
+| -------- | :----------------------------------------: | ---------------------------------: |
+| and      |                 and(...)                   | "logical and" multiple predicates  |
+| or       |                 or(...)                    | "logical or" multiple predicates   |
+| eq       |                 eq(col, ...)               | column "col" equals specified values, "in" meaning if multi values provided    |
+| neq       |                neq(col, ...)               | column "col" not equals specified value, "not in" meaning if multi values provided    |
+| gt       |                gt(col, val)               | column "col" greater than given value    |
+| lt       |                lt(col, val)               | column "col" smaller than given value    |
+| like       |              like(col, pattern)         | column "col" like SQL pattern such as "%abc", case sensitive |
+| ilike       |             ilike(col, pattern)        | column "col" like SQL pattern such as "%ABC", case insensitive |
+
 
 ### column
 `nebula.column("{col}")` is API to be used in your custom code logic to compute new column values. It evaluated as the specified column value in runtime.
