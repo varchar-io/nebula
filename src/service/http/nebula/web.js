@@ -57,13 +57,19 @@ const time = neb.time;
 const $$ = (e) => $(e).val();
 
 // global value represents current data set
-let json = [];
+// keys + metrics: column names for each respectively, rows is array of row objects.
+let ds = {
+    keys: [],
+    metrics: [],
+    rows: []
+};
 
 // two calendar instances
 let fpcs, fpce;
 
 const timeCol = "_time_";
 const windowCol = "_window_";
+const autoKey = (c) => c == timeCol || c == windowCol;
 const charts = new Charts();
 const nebula = new Nebula();
 const formatTime = charts.formatTime;
@@ -397,14 +403,121 @@ const onQueryResult = (state, r) => {
     msg(`[query: latency=${r.duration}ms, scan=${r.rows_scan}, blocks=${r.blocks_scan}, rows=${r.rows_ret}]`);
 
     // JSON result
-    json = JSON.parse(atob(r.data));
+    ds.rows = JSON.parse(atob(r.data));
+    ds.keys = [...state.keys];
+    ds.metrics = [];
+    for (const key in ds.rows[0]) {
+        if (!ds.keys.includes(key) && !autoKey(key)) {
+            ds.metrics.push(key);
+        }
+    }
+
+    // if pivot is present - we will pivot specified column, make all its values as new column
+    // this has to be single metric query - metric value will become pivoted column's value
+    // e.g [K1, K2, K3, M1] -> pivot(K3) -> [K1, K2, K3V1, K3V2, ...]
+    if (state.pivot) {
+        const pvc = state.pivot;
+        const mc = ds.metrics[0];
+        const dataMap = {};
+
+        // new keys = keys excluding pivoted key
+        const keys = ds.keys.filter(e => e != pvc);
+        // put window column for data moving if present
+        if (+state.display == neb.DisplayType.TIMELINE) {
+            keys.push(windowCol);
+        }
+
+        const metrics = {};
+
+        // map key = keys - pivot
+        const mapKey = (row) => {
+            // use string as key since javascript doesn't support object as key directly
+            const key = [];
+            let value = {};
+            keys.forEach(e => {
+                const v = row[e];
+                value[e] = v;
+                key.push(`${v}`);
+            });
+
+            // check if this key already exists (keys.forEach ensures the order)
+            const keyStr = key.join('-');
+            if (keyStr in dataMap) {
+                value = dataMap[keyStr];
+            } else {
+                dataMap[keyStr] = value;
+            }
+
+            // populate the pivoted value into the value object
+            const pivotValue = row[pvc];
+            metrics[pivotValue] = 1;
+            value[pivotValue] = row[mc];
+        };
+
+        // process every row
+        ds.rows.forEach(mapKey);
+
+        // build new DS from the data map
+        // key is the string of non-pivoted table
+        const rows = [];
+        for (const k in dataMap) {
+            const r = dataMap[k];
+            // unnecessary? - check every value property bag to ensure all pvv is present
+            // if not assign 0 to that entry (instead of missing). 
+            // for example if pivoted column has two values: 
+            // [k1, k2, p1, p2] => [k1, k2, p1, p2]
+            // [k1, k2, p1]     => [k1, k2, p1, p2]
+            // [k1, k2, p2]     => [k1, k2, p1, p2]
+            for (const m in metrics) {
+                if (!(m in r)) {
+                    r[m] = 0;
+                }
+            }
+
+            rows.push(r);
+        }
+
+        // assign the new ds
+        ds.rows = rows;
+        ds.keys = keys.filter(e => e != windowCol);
+        ds.metrics = Object.keys(metrics);
+    }
+
+    // if map is present, we will transform some of the columns
+    if (state.map && state.map.length > 0) {
+        // make NMAP object available
+        const nmap = eval(state.map)();
+        if (nmap && typeof (nmap) == 'function') {
+            // process each row object
+            ds.rows.forEach(nmap);
+
+            // figure what metrics columns added
+            for (const col in ds.rows[0]) {
+                if (!autoKey(col) &&
+                    !ds.keys.includes(col) &&
+                    !ds.metrics.includes(col)) {
+                    // new metric column
+                    ds.metrics.push(col);
+                }
+            }
+        }
+    }
+
+    // if rm is present - we will remove some of the columns
+    if (state.rm && state.rm.length > 0) {
+        // only allow metrics to be removed
+        const reduced = ds.metrics.filter(e => !state.rm.includes(e));
+        if (reduced.length < ds.metrics.length) {
+            ds.metrics = reduced;
+        }
+    }
 
     // clear table data
     $('#table_head').html("");
     $('#table_content').html("");
 
     // get display option
-    if (json.length == 0) {
+    if (ds.rows.length == 0) {
         // TODO(cao): popuate scanned rows metric: rows: ${stats.getRowsscanned()}
         $('#show').html("<b>NO RESULTS.</b>");
         return;
@@ -421,19 +534,14 @@ const onQueryResult = (state, r) => {
 
         if (display == neb.DisplayType.SAMPLES ||
             display == neb.DisplayType.TABLE) {
-            charts.displayTable(chartId, json);
+            charts.displayTable(chartId, ds.rows, [timeCol, ...ds.keys], ds.metrics);
             return;
         }
 
         // figure out keys and metrics columns
-        const keys = state.keys.slice();
-        const data = json.slice();
-        const metrics = [];
-        for (const key in data[0]) {
-            if (!keys.includes(key) && key != timeCol && key != windowCol) {
-                metrics.push(key);
-            }
-        }
+        const keys = [...ds.keys];
+        const data = [...ds.rows];
+        const metrics = [...ds.metrics];
 
         // if there are multiple keys, we merge them into single one for display
         if (keys.length > 1) {

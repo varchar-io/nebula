@@ -8,7 +8,8 @@ However, a lot of times, we need to transform and customize the existing column 
 For example, we want to trim some long string literals into a fixed-size prefix and aggregate by it.
 
 Nebula SDK enables users to write code to run analytics as wish.
-## Demo Code Snippet
+
+## Example Code Snippet
 This demo code snippet is already shown in project homepage on Github, but let's revisit it again and explain all available functions provided by the SDK.
 
 ```javascript
@@ -29,6 +30,7 @@ This demo code snippet is already shown in project homepage on Github, but let's
                      .limit(100);
 
     // render the data result with a table
+    // other visuals can be achieved by different API: bar, pie, line, timeline(seconds)
     query.table();
 ```
 
@@ -111,15 +113,74 @@ SORT type is another enum object defined in nebula. Referenced by `nebula.Sort.A
 ### display
 `nebula` defines a list of APIs to allow display the query result in selected visual type.
 
-| Function |                  Definition                  |                                                                                              Note |
-| -------- | :------------------------------------------: | ------------------------------------------------------------------------------------------------: |
-| samples  |    browes sample rows of selected columns    |                                                 no aggregation function is allowed in select list |
-| table    |        display result in table format        |                                                              at least one aggregation is required |
-| pie      |        display result in a pie chart         |                                                  first aggregated column is used to slice the pie |
-| bar      |        display result in a bar chart         |                                                                   first aggregated column is used |
-| line     |        display result in a line chart        |                                                                   first aggregated column is used |
-| timeline | display result in a time line sliced by time |                            time interval is auto computed based on suitable number of data points |
-| flame    |        display result in flame graph         | this is special visual working for `tree` aggregation function only for meaningful flame analysis |
+| Function | Definition | Note |
+| -------- | :-----------------------------------: | -------------------------------: |
+| samples  | browes sample rows of selected columns    | no aggregation function is allowed in select list |
+| table    | display result in table format | at least one aggregation is required |
+| pie      | display result in a pie chart | first aggregated column is used to slice the pie |
+| bar      | display result in a bar chart | first aggregated column is used |
+| line     | display result in a line chart | first aggregated column is used |
+| timeline(0) | time line sliced by time | window size is auto computed if specified in seconds |
+| flame    | display result in flame graph | special visual of `tree` map for flame analysis |
+
+
+### pivot & map
+`pivot` is a method to pivot a key column to metrics. This is useful if you pivot a column's metric values into single row for meaningful comparison. Hence we only support pivot API when there is single metric column.
+
+Also, the column to be pivoted should be in low cardinality otherwise the number of columns will be exploded.
+for exmaple:
+```javascript
+    // this is valid pivot query
+    // the result will look like []
+    nebula
+        .source("data-set")
+        .time("-5h", "now")
+        .select("tag", count("id"))
+        .pivot("tag")
+        .table();
+```
+
+Another API is map which provides function to allow user to compute new columns per row.
+For example:
+The query returns data as [C1, C2, C3], map function can yield new row schema as [C1, C4=C2/C3].
+The schema will change from 3 columns to 2 columns, with the second column value equals C2 / C3.
+
+Both `pivot` and `map` are executed on the client side.
+| Function | Signature | Note |
+| -------- | :-----------------------------------: | -------------------------------: |
+| pivot    | pivot(col/key)     | pivot a key column - do not apply to a metric column |
+| map      | map(f, ...cols)    | f is a function to transform from original row, append metric column only. cols are optional metrics column names to remove in visualization | 
+
+for example:
+```javascript
+    // this map function will add a new metric column `x4` and remove metric column `id.COUNT`
+    nebula.source("nebula.test")
+        .time("2019-08-16", "2019-08-26")
+        .select("tag", "flag", count("id"))
+        .map(r => {
+            r["x4"] = r["id.COUNT"] * 4;
+        }, "id.COUNT")
+        .table();
+```
+
+Sometimes, we want to use `pivot` and `map` together to compute a new metric. 
+for example:
+```javascript
+    // below code is aggregate total count by "tag", "flag"
+    // and pivot by "flag" for each tag column
+    // and then compute false/true ratio and put it as a new column "ratio"
+    // remove the previous pivoted metrics for "false" and "true"
+    // this eventually display this ratio for each tag value
+    nebula.source("nebula.test")
+        .time("2019-08-16", "2019-08-26")
+        .select("tag", "flag", count("id"))
+        .pivot("flag")
+        .map(r => {
+        r["ratio"] = r["false"] / r["true"];
+        }, "true", "false")
+        .table();
+```
+
 
 # Thanks
 Without the great project QuickJS, we won't make this available in such an efficient way.

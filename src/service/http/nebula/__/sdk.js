@@ -94,7 +94,6 @@ export class Nebula {
             this.src_ = "";
             this.keys_ = [];
             this.metrics_ = [];
-            this.groups_ = [];
             this.start_ = 0;
             this.end_ = 0;
             this.columns_ = [];
@@ -102,8 +101,11 @@ export class Nebula {
             this.sort_ = this.Sort.ASC;
             this.limit_ = 100;
             this.filter_ = {};
+            this.pivot_ = "";
+            this.map_ = null;
+            this.rm_ = [];
 
-            // only useful for timeline
+            // only useful for timeline - in unit of seconds.
             this.window_ = 0;
         };
 
@@ -142,6 +144,28 @@ export class Nebula {
             return this;
         };
 
+        // this API allows user to pivot a column - only applied to single metric query.
+        // this could be extended to support pivot on a few columns (using combination).
+        this.pivot = (col) => {
+            if (!this.keys_.includes(col) || this.metrics_.length !== 1) {
+                except("pivot existing key for single metric.");
+            }
+
+            this.pivot_ = col;
+            return this;
+        };
+
+        // a map function is a function to transform each row to a new row
+        // the f should be function/lambda - we use unique name NMAP 
+        // indicating only one map function supported in each query
+        // we use `() => [];` pattern to support both function and lambda in evaluation
+        // so client can extract the method by eval(map)() pointing to the function body
+        this.map = (f, ...cols) => {
+            this.map_ = f ? `() => ${f.toString()};` : "";
+            this.rm_ = cols;
+            return this;
+        };
+
         this.where = (f) => {
             // one option is to translate the filter tree into filter structure.
             // the other option is to set expectation of the filter as boolean script column.
@@ -158,20 +182,6 @@ export class Nebula {
                         r: [f]
                     };
                 }
-            }
-
-            return this;
-        };
-
-        //  we can figure out keys-metrics from select already
-        // this is optional for user, but if specified, it will be used to validate the select statement
-        this.groupby = (...fields) => {
-            for (var i = 0; i < fields.length; ++i) {
-                const f = fields[i];
-                if (!isNumber(f)) {
-                    except("groupby - support key ordinal value only.");
-                }
-                this.groups_.push(f);
             }
 
             return this;
@@ -231,8 +241,9 @@ export class Nebula {
             return this;
         };
 
-        this.timeline = () => {
+        this.timeline = (window) => {
             this.display_ = DT.TIMELINE;
+            this.window_ = window || 0;
             return this;
         };
 
@@ -320,6 +331,14 @@ export class Nebula {
 
             // send columns back
             s.customs = this.columns_;
+
+            // pivot column set by user - used by client side only
+            s.pivot = this.pivot_;
+
+            // map is a transform method
+            // rm is columns to remove from previous dataset
+            s.map = this.map_;
+            s.rm = this.rm_;
 
             // return the q object
             return s;

@@ -24,6 +24,7 @@ import {
 const pad2 = (v) => `${v}`.padStart(2, 0);
 const isTime = (c) => c === "_time_";
 const windowKey = '_window_';
+const autoKey = (c) => isTime(c) || c == windowKey;
 
 export class Charts {
     constructor() {
@@ -45,7 +46,7 @@ export class Charts {
             const s = pad2(date.getUTCSeconds());
             return `${y}-${m}-${d} ${h}:${mi}:${s}`;
         };
-        this.displayTable = (chartId, json) => {
+        this.displayTable = (chartId, json, keys, metrics) => {
             // Get Table headers and print 
             if (json.length > 0) {
                 const area = $(chartId);
@@ -55,9 +56,10 @@ export class Charts {
                 const content = $("<tbody/>").appendTo(tb);
 
                 // append header
-                const keys = Object.keys(json[0]);
-                const width = Math.round(100 / keys.length);
-                keys.forEach(k =>
+                const included = [...keys, ...metrics];
+                const cols = Object.keys(json[0]).filter(e => e == autoKey(e) || included.includes(e));
+                const width = Math.round(100 / cols.length);
+                cols.forEach(k =>
                     $("<th/>").appendTo(head)
                     .attr("width", `${width}%`)
                     .text((isTime(k) ? "[time]" : k)));
@@ -65,7 +67,7 @@ export class Charts {
                 // Get table body and print 
                 json.forEach(row => {
                     const r = $("<tr/>").appendTo(content);
-                    keys.forEach(k => {
+                    cols.forEach(k => {
                         const v = row[k];
                         $("<td/>").appendTo(r).text(isTime(k) ? this.formatTime(v * 1000) : v);
                     });

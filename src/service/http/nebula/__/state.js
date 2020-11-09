@@ -33,7 +33,10 @@ export class State {
             sort: 0,
             limit: 0,
             code: "",
-            customs: []
+            customs: [],
+            pivot: "",
+            map: "",
+            rm: []
         };
     }
 };
