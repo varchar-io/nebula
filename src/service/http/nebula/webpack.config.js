@@ -76,21 +76,21 @@ const nodeConfig = {
     resolve: resolveConfig
 };
 
-const libConfig = {
+const libApiConfig = {
     mode: "production",
     target: "node",
     context: __dirname,
     node: false,
     externals: [nodeExternals()],
     entry: {
-        lib: './n/lib.js'
+        lib: './n/lib-api.js'
     },
     output: {
         // UMD works fine too, such as library='neb', libraryTarget='umd'
         // for commonjs, we rename the file ext as cjs for working better in ESM env.
         // note that, webpack doesn't crunch 'cjs' but 'js', so the file will be larger
-        filename: './index.js',
-        path: path.resolve(__dirname, 'dist'),
+        filename: './index.cjs',
+        path: path.resolve(__dirname, ''),
         library: '',
         libraryTarget: 'commonjs',
         libraryExport: 'default'
@@ -98,4 +98,24 @@ const libConfig = {
     resolve: resolveConfig
 };
 
-module.exports = [webConfig, web2Config, nodeConfig, libConfig];
+const libUiConfig = {
+    mode: "production",
+    target: "web",
+    context: __dirname,
+    node: false,
+    externals: [nodeExternals()],
+    entry: {
+        lib: './n/lib-ui.js'
+    },
+    output: {
+        // UMD works fine too, such as library='neb', libraryTarget='umd'
+        // for commonjs, we rename the file ext as cjs for working better in ESM env.
+        // note that, webpack doesn't crunch 'cjs' but 'js', so the file will be larger
+        filename: './ui.js',
+        path: path.resolve(__dirname, ''),
+        library: 'n'
+    },
+    resolve: resolveConfig
+};
+
+module.exports = [webConfig, web2Config, nodeConfig, libApiConfig, libUiConfig];

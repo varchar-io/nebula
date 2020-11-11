@@ -629,7 +629,9 @@ const execute = (state) => {
     timer = animate('soaring in nebula ');
 
     // fetch the query
-    fetch(`/?api=query&start=0&end=0&query=${encodeURIComponent(JSON.stringify(state))}`, FETCH_OPT)
+    const url = `/?api=query&start=0&end=0&query=${encodeURIComponent(JSON.stringify(state))}`;
+    // console.log(`API url=${url}`);
+    fetch(url, FETCH_OPT)
         .then(response => response.json())
         .then((data) => {
             clsTimer();
