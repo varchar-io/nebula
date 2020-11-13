@@ -194,7 +194,7 @@ public:
 private:
   // store all null positions
   // call runOptimize() to compress the bitmap when finalizing.
-  Roaring nulls_;
+  roaring::Roaring nulls_;
 
   // save partition values within a space
   // it should be a few bits - but we start with non-compressed

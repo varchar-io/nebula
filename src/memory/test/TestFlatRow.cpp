@@ -53,7 +53,7 @@ TEST(FlatRowTest, TestFlatRow) {
     EXPECT_EQ(row.readInt("id"), 2);
     EXPECT_EQ(row.readString("name"), "nebula");
     EXPECT_EQ(row.readFloat("weight"), 23.5);
-    EXPECT_EQ(row.readInt128("i128"), 128);
+    EXPECT_TRUE(row.readInt128("i128") == 128);
 
     {
       auto list1 = row.readList("hobbies");

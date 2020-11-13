@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <valarray>
+
 #include "common/Memory.h"
-#include "fmt/format.h"
 #include "memory/Batch.h"
 #include "memory/DataNode.h"
 #include "memory/FlatRow.h"
@@ -242,7 +243,7 @@ TEST(BatchTest, TestStringDictionary) {
     const auto& r1 = rows[i];
     const auto& r2 = accessor->seek(i);
     EXPECT_EQ(r1.readString("event"), r2.readString("event"));
-    EXPECT_EQ(r1.readInt128("stamp"), r2.readInt128("stamp"));
+    EXPECT_TRUE(r1.readInt128("stamp") == r2.readInt128("stamp"));
   }
 
   LOG(INFO) << "Verified total rows: " << count;

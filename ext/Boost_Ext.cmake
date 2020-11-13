@@ -7,39 +7,46 @@
 # 5. sudo ./b2 stage threading=multi -j36
 # 6. sudo ./b2 install
 # define boost
-set(boostDir /usr/local)
-set(Boost_INCLUDE_DIRS ${boostDir}/include)
-set(BOOST_CONTEXT_PATH ${boostDir}/lib/libboost_context.a)
-# boost_context
+find_package(Boost 1.65 MODULE
+  COMPONENTS
+    context
+    filesystem
+    program_options
+    regex
+    system
+    thread
+  REQUIRED)
 
+# boost_context
+set(BOOST_CONTEXT_PATH ${Boost_LIBRARY_DIRS}/libboost_context.a)
 set(BOOST_CONTEXT_LIBRARY boost_context)
 add_library(${BOOST_CONTEXT_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${BOOST_CONTEXT_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${BOOST_CONTEXT_PATH}")
 
 # boost_system
-set(BOOST_SYSTEM_PATH ${boostDir}/lib/libboost_system.a)
+set(BOOST_SYSTEM_PATH ${Boost_LIBRARY_DIRS}/libboost_system.a)
 set(BOOST_SYSTEM_LIBRARY boost_system)
 add_library(${BOOST_SYSTEM_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${BOOST_SYSTEM_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${BOOST_SYSTEM_PATH}")
 
 # boost_regex
-set(BOOST_REGEX_PATH ${boostDir}/lib/libboost_regex.a)
+set(BOOST_REGEX_PATH ${Boost_LIBRARY_DIRS}/libboost_regex.a)
 set(BOOST_REGEX_LIBRARY boost_regex)
 add_library(${BOOST_REGEX_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${BOOST_REGEX_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${BOOST_REGEX_PATH}")
 
 # boost_filesystem
-set(BOOST_FIlESYSTEM_PATH ${boostDir}/lib/libboost_filesystem.a)
+set(BOOST_FIlESYSTEM_PATH ${Boost_LIBRARY_DIRS}/libboost_filesystem.a)
 set(BOOST_FS_LIBRARY boost_filesystem)
 add_library(${BOOST_FS_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${BOOST_FS_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${BOOST_FIlESYSTEM_PATH}")
 
 # boost_program_options
-set(BOOST_PROGRAM_OPTIONS_PATH ${boostDir}/lib/libboost_program_options.a)
+set(BOOST_PROGRAM_OPTIONS_PATH ${Boost_LIBRARY_DIRS}/libboost_program_options.a)
 set(BOOST_PROGRAM_OPTIONS_LIBRARY boost_program_options)
 add_library(${BOOST_PROGRAM_OPTIONS_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${BOOST_PROGRAM_OPTIONS_LIBRARY} PROPERTIES

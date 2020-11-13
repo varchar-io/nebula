@@ -47,7 +47,7 @@ SET(ARROW_OPTS
 ExternalProject_Add(arrow
   PREFIX arrow
   GIT_REPOSITORY https://github.com/apache/arrow.git
-  GIT_TAG apache-arrow-0.14.0
+  GIT_TAG apache-arrow-2.0.0
   SOURCE_SUBDIR cpp
   CMAKE_ARGS ${ARROW_OPTS}
   UPDATE_COMMAND ""
@@ -69,6 +69,8 @@ set_target_properties(${ARROW_LIBRARY} PROPERTIES
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${ARROW_INCLUDE_DIRS}")
 add_dependencies(${ARROW_LIBRARY} arrow)
+target_link_libraries(${ARROW_LIBRARY}
+  INTERFACE utf8proc)
 
 # declare parquet library
 set(PARQUET_INCLUDE_DIRS ${BINARY_DIR}/src)

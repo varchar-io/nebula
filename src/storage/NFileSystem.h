@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "common/Errors.h"
 
 /**

@@ -21,6 +21,7 @@ target_link_libraries(${NEBULA_STORAGE}
     PUBLIC ${ARROW_LIBRARY}
     PUBLIC ${AWS_LIBRARY}
     PUBLIC ${KAFKA_LIBRARY}
+    PUBLIC ${JSON_LIBRARY}
     PUBLIC ${THRIFT_LIBRARY})
 
 #build test binary

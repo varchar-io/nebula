@@ -90,8 +90,8 @@ bool writeParquetFile(const std::string& file, size_t rows) {
   try {
     // Create a local file output stream instance.
     using FileClass = ::arrow::io::FileOutputStream;
-    std::shared_ptr<FileClass> out_file;
-    PARQUET_THROW_NOT_OK(FileClass::Open(file, &out_file));
+    std::shared_ptr<FileClass>* out_file = nullptr;
+    PARQUET_THROW_NOT_OK(FileClass::Open(file, out_file));
 
     // Setup the parquet schema
     std::shared_ptr<GroupNode> schema = SetupSchema();
@@ -102,7 +102,7 @@ bool writeParquetFile(const std::string& file, size_t rows) {
     std::shared_ptr<parquet::WriterProperties> props = builder.build();
 
     // Create a ParquetFileWriter instance
-    std::shared_ptr<parquet::ParquetFileWriter> file_writer = parquet::ParquetFileWriter::Open(out_file, schema, props);
+    std::shared_ptr<parquet::ParquetFileWriter> file_writer = parquet::ParquetFileWriter::Open(*out_file, schema, props);
 
     // Append a BufferedRowGroup to keep the RowGroup open until a certain size
     parquet::RowGroupWriter* rg_writer = file_writer->AppendBufferedRowGroup();
@@ -211,7 +211,7 @@ bool writeParquetFile(const std::string& file, size_t rows) {
     file_writer->Close();
 
     // Write the bytes to file
-    DCHECK(out_file->Close().ok());
+    DCHECK((*out_file)->Close().ok());
     return true;
   } catch (const std::exception& e) {
     LOG(ERROR) << "Parquet write error: " << e.what();

@@ -2,6 +2,7 @@ find_package(Threads REQUIRED)
 
 include(ExternalProject)
 ExternalProject_Add(highway
+    PREFIX highway
     GIT_REPOSITORY https://github.com/google/highway.git
     UPDATE_COMMAND ""
     INSTALL_COMMAND ""

@@ -1,36 +1,121 @@
-# nebula
+# Work On Nebula
 
 ## Build the project
 
+These steps are tested for Ubuntu LTS 18. 
+Other linux os or macos should be similar.
+
 ### Install CMake
+Your system may not have new version of cmake required to build nebula.
+Recommend building a version of cmake from source (take 3.18.1 as example):
+1. wget https://cmake.org/files/v3.18/cmake-3.18.1.tar.gz
+2. tar -xzvf cmake-3.18.1.tar.gz
+3. cd cmake-3.18.1/
+4. ./bootstrap
+5. make -j$(nproc)
+6. sudo make install
+7. (Optional) sudo ln -s /usr/local/bin/cmake /usr/bin/cmake
 
-- https://cmake.org/download/ 
-- (MACOS: After intall the GUI, use this command to install the command line tool: sudo "/Applications/CMake.app/Contents/bin/cmake-gui" --install)
-- CMake Tutorial - https://cmake.org/cmake-tutorial/
-- CMake build system - https://cmake.org/cmake/help/latest/manual/cmake-buildsystem.7.html
-- Promote this video - https://www.youtube.com/watch?v=bsXLMQ6WgIk
-- A quick sample of quick module setup https://github.com/vargheseg/test
+### Install GCC-9
+1. sudo apt-get update
+2. sudo apt-get install -y gcc-9 g++-9
+3. sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 800 --slave /usr/bin/g++ g++ /usr/bin/g++-9
+4. (Optional) check version: `gcc -v`
 
-### Use CMake to build the project
+
+### Install CURL, UNWIND, IBERTY
+1. sudo apt-get install -y libcurl4-gnutls-dev
+2. sudo apt-get install -y libunwind-dev
+3. sudo apt-get install -y libiberty-dev
+
+### Install DOUBLE-CONVERSION
+1. git clone https://github.com/google/double-conversion.git
+2. cd double-conversion
+3. cmake -DBUILD_SHARED_LIBS=OFF . && make && sudo make install
+
+### Install GFLAGS, GLOG, GTEST
+1. sudo apt-get install -y libgflags-dev
+2. git clone https://github.com/google/glog.git
+3. cd glog && make . && sudo make install
+1. git clone https://github.com/google/googletest.git
+2. mkdir googletest/build && cd googletest/build
+3. cmake .. && make && sudo make install
+
+### install MBEDTLS
+1. git clone https://github.com/ARMmbed/mbedtls.git
+2. mkdir mbedtls/build && cd mbedtls/build
+3. cmake -DCMAKE_CXX_FLAGS=-fPIC -DCMAKE_C_FLAGS=-fPIC .. && make -j$(nproc)
+4. sudo make install
+
+### Install LIBEVENT
+1. git clone https://github.com/libevent/libevent.git
+2. cd libevent
+3. cmake . && make -j$(nproc)
+4. sudo make install
+
+### Install FMT
+1. git clone https://github.com/fmtlib/fmt.git
+2. cd fmt
+3. cmake . && make -j$(nproc)
+4. sudo make install
+
+### Install BOOST
+1. sudo apt-get install -y libboost-dev
+
+### Install Facebook Folly
+1. git clone https://github.com/facebook/folly.git
+2. mkdir _build && cd _build
+3. cmake ..
+4. make -j$(nproc)
+5. sudo make install
+
+### Install compression libs
+1. sudo apt-get install -y liblz4-dev
+2. sudo apt-get install -y libzstd-dev
+3. sudo apt-get install -y libsnappy-dev
+4. sudo apt-get install -y liblzma-dev
+
+### Install OpenSSL
+1. git clone https://github.com/openssl/openssl.git
+2. cd openssl
+3. ./config
+4. make -j$(nproc)
+5. sudo make install
+
+### Install gperftools
+1. sudo apt-get install -y autoconf
+2. git clone https://github.com/gperftools/gperftools.git
+3. cd gperftools && ./autogen.sh && ./configure && sudo make install
+
+### Install protobuf
+1. git clone https://github.com/protocolbuffers/protobuf.git
+2. cd protobuf && git submodule update --init --recursive && ./autogen.sh
+3. ./configure && make -j$(nproc) && sudo make install && sudo ldconfig
+
+### fix grpc
+A local change to solve the the build break (in `~/nebula/build`):
+1. grpc/src/grpc/include/grpcpp/impl/codegen/byte_buffer.h
+   move method to public grpc_byte_buffer* c_buffer() { return buffer_; }
+2. flatbuffers/src/flatbuffers/include/flatbuffers/grpc.h
+   use ByteBuffer as parameter type of Deserialize
+     + static grpc::Status Deserialize(ByteBuffer *bb, flatbuffers::grpc::Message<T> *msg) {
+     + grpc_byte_buffer* buffer = nullptr;
+     + if (!bb || !(buffer = bb->c_buffer())) {
+         return ::grpc::Status(::grpc::StatusCode::INTERNAL, "No payload");
+       }
+
+### Install linker dependencies
+1. sudo apt-get install -y gnutls-dev libgcrypt-dev libkrb5-dev libldap-dev
+2. sudo apt-get install -y librtmp-dev libnghttp2-dev libpsl-dev
+3. sudo apt-get install -y libutf8proc-dev
+
+### build nebula
 - mkdir build && cd build
 - cmake ..
 - make
-- make install
 
-### Use Facebook/folly library
-
-Folly is complex library so we don't embed it in our build system
-Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/folly/build
-- git clone https://github.com/facebook/folly.git
-- ./folly/folly/build/bootstrap-osx-homebrew.sh
-- (may need sudo to grant permission)
-- "brew install folly" should just work for MacOS
-- If you don't have brew on your mac, install it from here https://brew.sh/
-
-On linux - which makes folly dependency consistent
-- Now we have linuxbrew - https://docs.brew.sh/Homebrew-on-Linux
-
-### Use clang-format
+## Code Convention
+### Style - use clang-format
 
 - VS Code is the default IDE which has extension for clang-format to format our code
 - install clang-format so that IDE can invoke the formatter automatically on saving.
@@ -39,39 +124,15 @@ On linux - which makes folly dependency consistent
 - "clang-format.executable": "/absolute-path-to/clang-format"
 - If you don't have npm on your mac, install node from here https://nodejs.org/en/download/
 
-
-### Use Glog
-
-- GLog https://github.com/google/glog/blob/master/cmake/INSTALL.md
-- Glog has an issue as external project of missing log_severity.h in interface folder, just copy it
--- "~/nebula/build/glogp-prefix/src/glogp-build/glog/logging.h:512:10: fatal error: 'glog/log_severity.h' file not found"
--- build> cp ./glogp-prefix/src/glogp/src/glog/log_severity.h glogp-prefix/src/glogp-build/glog/
-- (tip - apply to others too, failed to download *.git file? delete invisible special character in URL)
-
-
-### GRPC + Flatbuffers
-- There are some incompatible interface between GRPC + flattbuffers on byte buffers and deserialize method
-- Apply these two changes respectively before it's fixed or submitted to both grpc/flatbuffers repo
-- GRPC: 
-(include/grpcpp/impl/codegen/byte_buffer.h)
-https://gist.github.com/shawncao/abc91b05ce6167ace226ead2383f2302
-- FB: 
-(include/flatbuffers/grpc.h)
-https://gist.github.com/shawncao/7f3d6bb26feb2e0f48888a5ea4ab0f53
-
-
-### Code Convention
+### Basic Code Convention
 
 - All path are in lower case - single word preferred.
 - All files follow camel naming convention.
 - Every module has its own folder and its cmake file as {module}.cmake
 
 
-### C++ Patterns References
-- SNIFAE - http://jguegant.github.io/blogs/tech/sfinae-introduction.html
-
-
-### profile C++ service running in a container 
+## Perf Profiling
+### Code profile C++ service running in a container 
 1. Run perf to profile the running server inside docker container
     update> apt-get update
     install perf > apt-get install linux-tools-generic
@@ -113,39 +174,7 @@ https://gist.github.com/shawncao/7f3d6bb26feb2e0f48888a5ea4ab0f53
    4.  To make perfiler to flush/write perf results out, we need the app to exit normally. Hence implemented a hook to shutdown first node.
        1.  http://dev-shawncao:8088/?api=nuclear
 
-### new fresh setup on ubuntu 18.04 recordings
-Source build usually are "cmake .. -DCMAKE_BUILD_TYPE=Release && make -j36 && sudo make install" except those tar.gz with bootstrap such as cmake, boost
-We will automate these steps one day.
-1.  install cmake (source build, tar, bootstrap)
-2.  install autoconf (apt-get)
-3.  install brew (sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)")
-4.  install gcc-9 and clang-8
-5.  install gflags (source build, github, cmake)
-6.  install glog (source build, github, cmake)
-7.  install double-conversion (source build, github, cmake)
-8.  install jemalloc (source build, github, autoconf, make OR "sudo apt-get install -y libjemalloc-dev")
-9.  install lz4 (source build, github, make)
-10. install zstd (source build, github, make)
-11. install snappy (source build, github, cmake)
-12. install libevent (source build, github, cmake)
-13. install libunwind (apt-get libunwind-dev)
-14. install libelf (apt-get libelf-dev)
-15. install libdwarf (source build, https://github.com/tomhughes/libdwarf, configure/make)
-16. "cp /usr/include/libdwarf/dwarf.h /usr/include/dwarf.h"
-17. install folly (source build, github, cmake)
-18. install boost 1.69.0 (check boost_ext.cmake)
-19. install flex (apt-get)
-20. install bison (apt-get)
-21. install openssl (source build, github, config, make install)
-22. install gtest (source build, github, cmake)
-23. install golang (apt-get install will not place go in /usr/local expected by grpc)
-24. install golang (tar unpack to /usr/local "tar -C /usr/local -xzf go$VERSION.$OS-$ARCH.tar.gz", export to path)
-25. install protobuf (source build, github, follow instructions strictly including "sudo ldconfig")
-26. install libcurl (apt-get, libcurl4-gnutls-dev and dependencies: libkrb5-dev, libgnutls28-dev, libgcrypt-dev, libldap-dev, librtmp-dev, libidn11-dev, libnghttp2-dev, libpsl-dev)
-27. install rapidjson (nebula build, rapidjson/buid, sudo make install)
-28. install libiberty (apt-get libiberty-dev)
-
-
+## Misc
 ### Docker images
 Docker images are available here: https://hub.docker.com/search?q=caoxhua%2Fnebula&type=image
 I published these images from a Ubuntu machine via these commands:

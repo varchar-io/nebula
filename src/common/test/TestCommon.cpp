@@ -200,7 +200,7 @@ TEST(CommonTest, TestSliceAndExtendableSlice) {
   EXPECT_EQ(slice.read<double>(20), 6.4);
   EXPECT_EQ(slice.read<long double>(28), 8.9L);
   EXPECT_EQ(slice.read(44, 6), "abcxyz");
-  EXPECT_EQ(slice.read<int128_t>(50), i128);
+  EXPECT_TRUE(slice.read<int128_t>(50) == i128);
 
   // write to position overflow sinle slice - paged slice will auto grow
   slice.write(1050, 1.0);
