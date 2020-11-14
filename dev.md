@@ -24,9 +24,10 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 
 
 ### Install CURL, UNWIND, IBERTY
-1. sudo apt-get install -y libcurl4-gnutls-dev
-2. sudo apt-get install -y libunwind-dev
-3. sudo apt-get install -y libiberty-dev
+1. sudo apt-get install -y libcurl4-gnutls-dev libunwind-dev libiberty-dev
+2. sudo apt-get install -y gnutls-dev libgcrypt-dev libkrb5-dev libldap-dev
+3. sudo apt-get install -y librtmp-dev libnghttp2-dev libpsl-dev
+4. sudo apt-get install -y libutf8proc-dev
 
 ### Install DOUBLE-CONVERSION
 1. git clone https://github.com/google/double-conversion.git
@@ -62,13 +63,6 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 ### Install BOOST
 1. sudo apt-get install -y libboost-dev
 
-### Install Facebook Folly
-1. git clone https://github.com/facebook/folly.git
-2. mkdir _build && cd _build
-3. cmake ..
-4. make -j$(nproc)
-5. sudo make install
-
 ### Install compression libs
 1. sudo apt-get install -y liblz4-dev
 2. sudo apt-get install -y libzstd-dev
@@ -79,6 +73,13 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 1. git clone https://github.com/openssl/openssl.git
 2. cd openssl
 3. ./config
+4. make -j$(nproc)
+5. sudo make install
+
+### Install Facebook Folly
+1. git clone https://github.com/facebook/folly.git
+2. mkdir _build && cd _build
+3. cmake ..
 4. make -j$(nproc)
 5. sudo make install
 
@@ -103,11 +104,6 @@ A local change to solve the the build break (in `~/nebula/build`):
      + if (!bb || !(buffer = bb->c_buffer())) {
          return ::grpc::Status(::grpc::StatusCode::INTERNAL, "No payload");
        }
-
-### Install linker dependencies
-1. sudo apt-get install -y gnutls-dev libgcrypt-dev libkrb5-dev libldap-dev
-2. sudo apt-get install -y librtmp-dev libnghttp2-dev libpsl-dev
-3. sudo apt-get install -y libutf8proc-dev
 
 ### build nebula
 - mkdir build && cd build
