@@ -30,6 +30,14 @@ Manual installation steps (Macos) https://github.com/facebook/folly/tree/master/
 On linux - which makes folly dependency consistent
 - Now we have linuxbrew - https://docs.brew.sh/Homebrew-on-Linux
 
+### Use Double-conversion as folly's dependency
+Manual installation steps:
+- git clone https://github.com/google/double-conversion.git
+- cd double-conversion
+- cmake -DBUILD_SHARED_LIBS=ON .
+- make -j $(nproc)
+- sudo make install
+
 ### Use clang-format
 
 - VS Code is the default IDE which has extension for clang-format to format our code
