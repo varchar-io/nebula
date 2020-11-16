@@ -64,7 +64,9 @@ int eval_buf(JSContext* ctx, const std::string& buf) {
 void run(const std::string& script) {
   // create a runtime (can have multiple runtime)
   JSRuntime* rt = JS_NewRuntime();
+  js_std_init_handlers(rt);
   JSContext* ctx = JS_NewContext(rt);
+
 
   // set module loader for ES6 modules
   JS_SetModuleLoaderFunc(rt, NULL, js_module_loader, NULL);
@@ -158,6 +160,7 @@ JSModuleDef* js_init_module_fib(JSContext* ctx, const char* module_name) {
 TEST(JSTest, TestCustomModule) {
   // create a runtime (can have multiple runtime)
   JSRuntime* rt = JS_NewRuntime();
+  js_std_init_handlers(rt);
   JSContext* ctx = JS_NewContext(rt);
 
   // set module loader for ES6 modules

@@ -51,10 +51,10 @@ set_target_properties(${ZSTD_LIBRARY} PROPERTIES
 # lz4
 if(APPLE)
     set(LZ4_ROOT ${CELLAR_ROOT}/lz4/1.9.2)
-    set(LZ4_INCLUDE_DIR /usr/include)
-    set(LZ4_LIBRARY_PATH ${COM_LIB_DIR}/liblz4.a)
+    set(LZ4_INCLUDE_DIR ${LZ4_ROOT}/include)
+    set(LZ4_LIBRARY_PATH ${LZ4_ROOT}/lib/liblz4.a)
 else()
-    set(LZ4_INCLUDE_DIR /usr/local/include)
+    set(LZ4_INCLUDE_DIR /usr/include)
     set(LZ4_LIBRARY_PATH ${COM_LIB_DIR}/liblz4.a)
 endif()
 set(LZ4_LIBRARY lz4)

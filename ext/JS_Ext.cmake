@@ -9,11 +9,12 @@ find_package(Threads REQUIRED)
 # We have a bunch of choices such as Chrome V8, Mozilla SpiderMonkey
 # But this awesome lightweight quickjs is the first thing we're trying.
 # Unless we see performance issue - this is a very good fit.
-#
+# Current commit 204682fb87ab9312f0cf81f959ecd181180457bc @ 11/08
 include(ExternalProject)
 ExternalProject_Add(quickjs
     PREFIX quickjs
-    GIT_REPOSITORY https://github.com/horhof/quickjs.git
+    GIT_REPOSITORY https://github.com/bellard/quickjs
+    GIT_TAG 204682fb87ab9312f0cf81f959ecd181180457bc
     UPDATE_COMMAND ""
     INSTALL_COMMAND ""
     CONFIGURE_COMMAND ""

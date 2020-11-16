@@ -173,6 +173,7 @@ public:
   ScriptContext(RowGetter&& getter, ColTyper&& typer)
     : getter_{ std::move(getter) }, typer_{ std::move(typer) } {
     rt_ = JS_NewRuntime();
+    js_std_init_handlers(rt_);
     ctx_ = JS_NewContext(rt_);
 
     // set current script context to JS context

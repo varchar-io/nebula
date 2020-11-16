@@ -12,8 +12,8 @@ if(APPLE)
     LOG_BUILD ON)
 
   # get source dir after download step
-  ExternalProject_Get_Property(gflagsp SOURCE_DIR)
-  ExternalProject_Get_Property(gflagsp BINARY_DIR)
+  ExternalProject_Get_Property(gflags SOURCE_DIR)
+  ExternalProject_Get_Property(gflags BINARY_DIR)
   set(GFLAGS_INCLUDE_DIRS ${BINARY_DIR}/include)
   file(MAKE_DIRECTORY ${GFLAGS_INCLUDE_DIRS})
   set(GFLAGS_LIBRARY_PATH ${BINARY_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}gflags.a)

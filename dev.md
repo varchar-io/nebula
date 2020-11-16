@@ -3,7 +3,7 @@
 ## Build the project
 
 These steps are tested for Ubuntu LTS 18. 
-Other linux os or macos should be similar.
+Other linux os or macos uses different package manager such as homebrew.
 
 ### Install CMake
 Your system may not have new version of cmake required to build nebula.
@@ -37,10 +37,10 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 ### Install GFLAGS, GLOG, GTEST
 1. sudo apt-get install -y libgflags-dev
 2. git clone https://github.com/google/glog.git
-3. cd glog && make . && sudo make install
+3. cd glog && cmake . && make . && sudo make install
 1. git clone https://github.com/google/googletest.git
 2. mkdir googletest/build && cd googletest/build
-3. cmake .. && make && sudo make install
+3. cmake -DCMAKE_CXX_FLAGS=-fPIC -DCMAKE_C_FLAGS=-fPIC .. && make && sudo make install
 
 ### install MBEDTLS
 1. git clone https://github.com/ARMmbed/mbedtls.git
@@ -71,17 +71,12 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 
 ### Install OpenSSL
 1. git clone https://github.com/openssl/openssl.git
-2. cd openssl
-3. ./config
-4. make -j$(nproc)
-5. sudo make install
+2. cd openssl && ./config && make -j$(nproc) && sudo make install
 
 ### Install Facebook Folly
 1. git clone https://github.com/facebook/folly.git
-2. mkdir _build && cd _build
-3. cmake ..
-4. make -j$(nproc)
-5. sudo make install
+2. cd folly && git checkout v2020.09.21.00
+3. mkdir _build && cd _build && cmake -DFOLLY_HAVE_PREADV=OFF -DFOLLY_HAVE_PWRITEV=OFF .. && make -j$(nproc) && sudo make install
 
 ### Install gperftools
 1. sudo apt-get install -y autoconf
