@@ -90,6 +90,7 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 
 ### fix grpc
 A local change to solve the the build break (in `~/nebula/build`):
+0. ensure `flatbuffers` and `grpc` downloaded by command `make flatbuffers && make grpc`
 1. grpc/src/grpc/include/grpcpp/impl/codegen/byte_buffer.h
    move method to public grpc_byte_buffer* c_buffer() { return buffer_; }
 2. flatbuffers/src/flatbuffers/include/flatbuffers/grpc.h
