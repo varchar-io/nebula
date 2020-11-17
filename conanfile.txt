@@ -1,6 +1,0 @@
-[requires]
-folly/2018.11.12.00@bincrafters/stable
-gflags/2.2.1@bincrafters/stable
-
-[generators]
-cmake

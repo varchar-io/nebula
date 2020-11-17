@@ -380,7 +380,7 @@ TEST(UDFTest, TestSum128) {
 
   // we will ask itself for finalize
   auto sum4 = sum1->finalize();
-  EXPECT_EQ(sum4, expected);
+  EXPECT_TRUE(sum4 == expected);
 }
 
 TEST(UDFTest, TestMin) {
@@ -571,7 +571,7 @@ TEST(UDFTest, TestAvgInt128) {
 
   // we will ask itself for finalize
   CType::NativeType avg4 = avg1->finalize();
-  EXPECT_EQ(avg4, sum / count);
+  EXPECT_TRUE(avg4 == sum / count);
 }
 
 TEST(UDFTest, TestPct) {

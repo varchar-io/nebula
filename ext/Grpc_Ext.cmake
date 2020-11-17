@@ -71,6 +71,7 @@ add_dependencies(${CARES_LIBRARY} c-ares)
 ExternalProject_Add(flatbuffers
   PREFIX flatbuffers
   GIT_REPOSITORY https://github.com/google/flatbuffers.git
+  GIT_TAG v1.12.0
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   LOG_DOWNLOAD ON

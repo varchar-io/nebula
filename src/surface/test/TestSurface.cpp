@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#include "gtest/gtest.h"
+#include <fmt/format.h>
 #include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <valarray>
+
 #include "common/Evidence.h"
-#include "fmt/format.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "surface/eval/Script.h"
@@ -73,7 +74,7 @@ TEST(SurfaceTest, TestInt128Surface) {
   nebula::surface::MockRowData mock2(seed);
 
   for (auto i = 0; i < 1024; ++i) {
-    EXPECT_EQ(mock1.readInt128("b"), mock2.readInt128("b"));
+    EXPECT_TRUE(mock1.readInt128("b") == mock2.readInt128("b"));
   }
 }
 

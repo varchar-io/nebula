@@ -43,7 +43,7 @@ set(NC gcc)
 if(APPLE)
   set(NCXX /usr/bin/g++)
   set(NCC /usr/bin/gcc)
-  set(NCFLAGS "-Wall -Wextra -Werror -Wno-error=inconsistent-missing-override -Wno-error=nullability-completeness -Wno-error=sign-compare -Wno-error=unknown-warning-option")
+  set(NCFLAGS "-Wall -Wextra -Werror -Wno-error=extern-c-compat -Wno-error=inconsistent-missing-override -Wno-error=nullability-completeness -Wno-error=sign-compare -Wno-error=unknown-warning-option")
   set(NCFLAGS_RELEASE "-O3")
 else()
   if(${NC} STREQUAL "clang")
@@ -190,15 +190,16 @@ endif()
 # TODO(cao) - move to jemalloc
 # ref https://www.facebook.com/notes/facebook-engineering/scalable-memory-allocation-using-jemalloc/480222803919/
 
-# include basic boost library
-# set(Boost_USE_STATIC_LIBS        ON) # only find static libs
-# set(Boost_USE_MULTITHREADED      ON)
-# set(Boost_USE_STATIC_RUNTIME    OFF)
-# find_package(Boost 1.69.0)
-# if(Boost_FOUND)
-#   include_directories(${Boost_INCLUDE_DIRS})
-#   # depenency as ${Boost_LIBRARIES}
-# endif()
+# find boost
+find_package(Boost 1.65 MODULE
+  COMPONENTS
+    context
+    filesystem
+    program_options
+    regex
+    system
+    thread
+  REQUIRED)
 
 # add dependency of compression
 include(ext/Compression_Ext.cmake)
@@ -236,9 +237,6 @@ include(ext/Gtest_Ext.cmake)
 # set up directory to search for headers
 include_directories(include ${GTEST_INCLUDE_DIRS})
 include_directories(include ${GMOCK_INCLUDE_DIRS})
-
-# add boost modules definition
-include(ext/Boost_Ext.cmake)
 
 # add open ssl definition
 include(ext/Openssl_Ext.cmake)
