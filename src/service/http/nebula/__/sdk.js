@@ -68,7 +68,6 @@ const except = msg => {
 };
 
 const CT = neb.CustomType;
-const DT = neb.DisplayType;
 const OT = neb.OrderType;
 const RU = neb.Rollup;
 const OP = neb.Operation;

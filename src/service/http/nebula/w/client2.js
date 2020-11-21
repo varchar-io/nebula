@@ -32,7 +32,6 @@ const {
     Metric,
     Order,
     OrderType,
-    DisplayType,
     CustomType
 } = require('nebula-pb');
 
@@ -45,7 +44,6 @@ export default {
     Metric,
     Order,
     OrderType,
-    DisplayType,
     CustomType,
     time,
     bytes2utf8

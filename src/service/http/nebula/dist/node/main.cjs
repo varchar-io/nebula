@@ -107,7 +107,6 @@ var global = Function('return this')();
 goog.exportSymbol('proto.nebula.service.CustomColumn', null, global);
 goog.exportSymbol('proto.nebula.service.CustomType', null, global);
 goog.exportSymbol('proto.nebula.service.DataType', null, global);
-goog.exportSymbol('proto.nebula.service.DisplayType', null, global);
 goog.exportSymbol('proto.nebula.service.EchoRequest', null, global);
 goog.exportSymbol('proto.nebula.service.EchoResponse', null, global);
 goog.exportSymbol('proto.nebula.service.ListTables', null, global);
@@ -3080,7 +3079,7 @@ proto.nebula.service.QueryRequest.toObject = function(includeInstance, msg) {
     proto.nebula.service.Metric.toObject, includeInstance),
     top: jspb.Message.getFieldWithDefault(msg, 9, 0),
     order: (f = msg.getOrder()) && proto.nebula.service.Order.toObject(includeInstance, f),
-    display: jspb.Message.getFieldWithDefault(msg, 11, 0),
+    timeline: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
     customList: jspb.Message.toObjectList(msg.getCustomList(),
     proto.nebula.service.CustomColumn.toObject, includeInstance)
   };
@@ -3164,8 +3163,8 @@ proto.nebula.service.QueryRequest.deserializeBinaryFromReader = function(msg, re
       msg.setOrder(value);
       break;
     case 11:
-      var value = /** @type {!proto.nebula.service.DisplayType} */ (reader.readEnum());
-      msg.setDisplay(value);
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setTimeline(value);
       break;
     case 12:
       var value = new proto.nebula.service.CustomColumn;
@@ -3275,9 +3274,9 @@ proto.nebula.service.QueryRequest.serializeBinaryToWriter = function(message, wr
       proto.nebula.service.Order.serializeBinaryToWriter
     );
   }
-  f = message.getDisplay();
-  if (f !== 0.0) {
-    writer.writeEnum(
+  f = message.getTimeline();
+  if (f) {
+    writer.writeBool(
       11,
       f
     );
@@ -3570,20 +3569,20 @@ proto.nebula.service.QueryRequest.prototype.hasOrder = function() {
 
 
 /**
- * optional DisplayType display = 11;
- * @return {!proto.nebula.service.DisplayType}
+ * optional bool timeline = 11;
+ * @return {boolean}
  */
-proto.nebula.service.QueryRequest.prototype.getDisplay = function() {
-  return /** @type {!proto.nebula.service.DisplayType} */ (jspb.Message.getFieldWithDefault(this, 11, 0));
+proto.nebula.service.QueryRequest.prototype.getTimeline = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 11, false));
 };
 
 
 /**
- * @param {!proto.nebula.service.DisplayType} value
+ * @param {boolean} value
  * @return {!proto.nebula.service.QueryRequest} returns this
  */
-proto.nebula.service.QueryRequest.prototype.setDisplay = function(value) {
-  return jspb.Message.setProto3EnumField(this, 11, value);
+proto.nebula.service.QueryRequest.prototype.setTimeline = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 11, value);
 };
 
 
@@ -4953,19 +4952,6 @@ proto.nebula.service.OrderType = {
 /**
  * @enum {number}
  */
-proto.nebula.service.DisplayType = {
-  SAMPLES: 0,
-  TABLE: 1,
-  TIMELINE: 2,
-  BAR: 3,
-  PIE: 4,
-  LINE: 5,
-  FLAME: 6
-};
-
-/**
- * @enum {number}
- */
 proto.nebula.service.CustomType = {
   INT: 0,
   LONG: 1,
@@ -5379,7 +5365,6 @@ const static_res = (req, res) => {
     Metric: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["Metric"],
     Order: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["Order"],
     OrderType: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["OrderType"],
-    DisplayType: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["DisplayType"],
     CustomType: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["CustomType"],
     CustomColumn: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["CustomColumn"],
     QueryRequest: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["QueryRequest"],

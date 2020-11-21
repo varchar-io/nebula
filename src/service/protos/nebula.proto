@@ -151,19 +151,6 @@ message Order {
   OrderType type = 2;
 }
 
-// display type of the result data set in client side
-// This may or may not be used by server
-// It is optional for potential optimization
-enum DisplayType {
-  SAMPLES = 0;
-  TABLE = 1;
-  TIMELINE = 2;
-  BAR = 3;
-  PIE = 4;
-  LINE = 5;
-  FLAME = 6;
-}
-
 // define supported custom column type which is a sub set of nebula types
 enum CustomType {
   INT = 0;
@@ -213,7 +200,7 @@ message QueryRequest {
   Order order = 10;
 
   // display type for query result
-  DisplayType display = 11;
+  bool timeline = 11;
 
   // custom column list
   repeated CustomColumn custom = 12;

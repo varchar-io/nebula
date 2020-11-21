@@ -83,7 +83,7 @@ TEST(ServiceTest, TestQueryTimeline) {
   }
 
   // set the query purpose as timeline
-  request.set_display(DisplayType::TIMELINE);
+  request.set_timeline(true);
   request.set_window(7 * 24 * 3600);
   auto metric = request.add_metric();
   metric->set_column("value");
@@ -137,7 +137,6 @@ TEST(ServiceTest, TestStringFilters) {
   }
 
   // set the query purpose as timeline
-  request.set_display(DisplayType::TABLE);
   auto metric = request.add_metric();
   metric->set_column("value");
   metric->set_method(Rollup::COUNT);
@@ -193,7 +192,6 @@ TEST(ServiceTest, TestQuerySamples) {
   }
 
   // set the query purpose as timeline
-  request.set_display(DisplayType::TABLE);
   request.add_dimension("id");
   request.add_dimension("event");
   request.add_dimension("flag");

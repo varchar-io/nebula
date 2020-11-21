@@ -53,7 +53,6 @@ const {
     PredicateOr,
     Metric,
     Order,
-    DisplayType,
     CustomColumn,
     QueryRequest,
     LoadType,
@@ -223,16 +222,11 @@ const webq = (q, handler, client) => {
 
     // set dimension
     const keys = state.keys;
-    const display = state.display;
-    if (display == DisplayType.SAMPLES) {
-        setOrder(keys[0], state.sort, req);
-        keys.unshift(timeCol);
-    }
+    // keys.unshift(timeCol);
     req.setDimensionList(keys);
 
-
     // set query type and window
-    req.setDisplay(display);
+    req.setTimeline(state.timeline);
     req.setWindow(state.window);
 
     // TODO(cao) - this part logic does not exist in web mode (arch=1)
@@ -251,12 +245,10 @@ const webq = (q, handler, client) => {
 
     // set metric for non-samples query 
     // (use implicit type convert != instead of !==)
-    if (display != DisplayType.SAMPLES) {
+    if (state.metrics.length > 0) {
         const metrics = [];
-        let m1 = null;
         state.metrics.forEach(e => {
             const m = new Metric();
-            m1 = e.C;
             m.setColumn(e.C);
             m.setMethod(e.M);
             metrics.push(m);
@@ -264,7 +256,8 @@ const webq = (q, handler, client) => {
         req.setMetricList(metrics);
 
         // set order on metric only means we don't order on samples for now
-        setOrder(m1, state.sort, req);
+        const firstMetricColumn = state.metrics[0].C;
+        setOrder(firstMetricColumn, state.sort, req);
     }
 
     // set limit

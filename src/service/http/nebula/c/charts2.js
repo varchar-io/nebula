@@ -62,7 +62,7 @@ export class Charts {
                 cols.forEach(k =>
                     $("<th/>").appendTo(head)
                     .attr("width", `${width}%`)
-                    .text((isTime(k) ? "[time]" : k)));
+                    .text((autoKey(k) ? "[time]" : k)));
 
                 // Get table body and print 
                 json.forEach(row => {
