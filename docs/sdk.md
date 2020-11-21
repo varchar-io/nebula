@@ -31,7 +31,7 @@ This demo code snippet is already shown in project homepage on Github, but let's
 
     // render the data result with a table
     // other visuals can be achieved by different API: bar, pie, line, timeline(seconds)
-    query.table();
+    query.run();
 ```
 
 ## Nebula SDK
@@ -110,19 +110,14 @@ SORT type is another enum object defined in nebula. Referenced by `nebula.Sort.A
 - DESC:     descending order
 - NONE:     no sorting 
   
-### display
+### execute query
 `nebula` defines a list of APIs to allow display the query result in selected visual type.
 
-| Function | Definition | Note |
-| -------- | :-----------------------------------: | -------------------------------: |
-| samples  | browes sample rows of selected columns    | no aggregation function is allowed in select list |
-| table    | display result in table format | at least one aggregation is required |
-| pie      | display result in a pie chart | first aggregated column is used to slice the pie |
-| bar      | display result in a bar chart | first aggregated column is used |
-| line     | display result in a line chart | first aggregated column is used |
-| timeline(0) | time line sliced by time | window size is auto computed if specified in seconds |
-| flame    | display result in flame graph | special visual of `tree` map for flame analysis |
 
+| Function | Definition | Note |
+| -------------------------- | :-----------------------------------: | -------------------------------: |
+| run (timeline, window)  | execute current query    | run the query |
+| timeline (window)    | a short cut for run(true, window) |
 
 ### pivot & map
 `pivot` is a method to pivot a key column to metrics. This is useful if you pivot a column's metric values into single row for meaningful comparison. Hence we only support pivot API when there is single metric column.
@@ -137,7 +132,7 @@ for exmaple:
         .time("-5h", "now")
         .select("tag", count("id"))
         .pivot("tag")
-        .table();
+        .run();
 ```
 
 Another API is map which provides function to allow user to compute new columns per row.
@@ -160,7 +155,7 @@ for example:
         .map(r => {
             r["x4"] = r["id.COUNT"] * 4;
         }, "id.COUNT")
-        .table();
+        .run();
 ```
 
 Sometimes, we want to use `pivot` and `map` together to compute a new metric. 
@@ -178,7 +173,7 @@ for example:
         .map(r => {
         r["ratio"] = r["false"] / r["true"];
         }, "true", "false")
-        .table();
+        .run();
 ```
 
 

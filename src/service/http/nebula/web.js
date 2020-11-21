@@ -48,7 +48,7 @@ import {
 } from '../c/constraints.min.js';
 import {
     Charts
-} from "./c/charts2.min.js";
+} from "./c/charts2.js";
 
 // define jquery style selector 
 const time = neb.time;
@@ -86,6 +86,7 @@ const tablesId = '#tables';
 const startId = '#start';
 const endId = '#end';
 const windowId = '#window';
+const displayId = '#display';
 
 const NoRollup = -1;
 const msg = (text) => $('#qr').text(text);
@@ -233,6 +234,11 @@ const checkRequest = (state) => {
                 msg(`Too many data points to return ${buckets}, please increase window granularity.`);
                 return true;
             }
+        }
+
+        if (state.metrics.length == 0) {
+            msg(`Timeline requires metric fields.`);
+            return true;
         }
     }
 
@@ -525,6 +531,35 @@ const onQueryResult = (state, r) => {
         return;
     }
 
+    // decide what chart options are available to current query
+    const choices = (list) => {
+        // hide it if there is no choice
+        const arr = (list || []);
+        if (arr.length > 0) {
+            $(displayId).show();
+        } else {
+            $(displayId).hide();
+        }
+
+        // add all options in the list
+        $(displayId).html('');
+        arr.sort().forEach(t => $('<option/>').appendTo($(displayId)).text(t).val(t));
+    };
+    // if time line, we may enable  area or bar for each data point
+    if (ds.timeline) {
+        choices(['timeline']);
+    }
+    // tree merge metrics
+    else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['TREEMERGE']) {
+        choices(['flame']);
+    }
+    // others
+    else if (state.metrics.length > 0) {
+        choices(['column', 'bar', 'doughnut', 'pie', 'line']);
+    } else {
+        choices();
+    }
+
     const draw = () => {
         // clear chart
         $(chartId).html("");
@@ -561,16 +596,33 @@ const onQueryResult = (state, r) => {
         // if aggregation specified multiple keys, we merge them into a single key
         let err = null;
 
-        // if current query is asking for timeline
-        if (ds.timeline) {
-            const beginMs = time.seconds(state.start) * 1000;
-            err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs);
-        } else {
-            err = charts.displayBar(chartId, data, keys, metrics);
-            // render other chart type for user to switch
-            // err = charts.displayPie(chartId, data, keys, metrics);
-            // err = charts.displayLine(chartId, data, keys, metrics);
-            // err = charts.displayFlame(chartId, data, keys, metrics);
+        // render data based on visual choice
+        const choice = $(displayId).val();
+        switch (choice) {
+            case 'timeline':
+                const beginMs = time.seconds(state.start) * 1000;
+                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs);
+                break;
+            case 'flame':
+                err = charts.displayFlame(chartId, data, keys, metrics);
+                break;
+            case 'column':
+                err = charts.displayBar(chartId, data, keys, metrics, true);
+                break;
+            case 'bar':
+                err = charts.displayBar(chartId, data, keys, metrics, false);
+                break;
+            case 'doughnut':
+                err = charts.displayPie(chartId, data, keys, metrics, true);
+                break;
+            case 'pie':
+                err = charts.displayPie(chartId, data, keys, metrics, false);
+                break;
+            case 'line':
+                err = charts.displayLine(chartId, data, keys, metrics);
+                break;
+            default:
+                break;
         }
 
         // display error if any
@@ -586,6 +638,9 @@ const onQueryResult = (state, r) => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(draw, 200);
     });
+
+    //  display change will also trigger draw
+    $(displayId).change(draw);
 };
 
 const url2state = () => {

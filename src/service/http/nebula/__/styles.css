@@ -148,7 +148,8 @@ button {
 }
 
 .fh300 {
-    max-height: 300px;
+    margin-top: 50px;
+    max-height: 350px;
     overflow: scroll;
 }
 
@@ -178,6 +179,10 @@ thead {
 tbody {
     text-align: left;
     background: #eee;
+}
+
+.display {
+    float: right
 }
 
 /* code area switch */

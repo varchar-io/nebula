@@ -106,6 +106,9 @@ A local change to solve the the build break (in `~/nebula/build`):
 - cmake ..
 - make
 
+### run nebula
+After you build nebula successfully, you can run this script to run all services locally by `./run.sh`.
+
 ## Code Convention
 ### Style - use clang-format
 

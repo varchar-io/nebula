@@ -96,7 +96,7 @@ export class Nebula {
             this.start_ = 0;
             this.end_ = 0;
             this.columns_ = [];
-            this.display_ = -1;
+            this.timeline_ = false;
             this.sort_ = this.Sort.ASC;
             this.limit_ = 100;
             this.filter_ = {};
@@ -230,40 +230,14 @@ export class Nebula {
         };
 
         // all display types
-        this.samples = () => {
-            this.display_ = DT.SAMPLES;
-            return this;
-        };
-
-        this.table = () => {
-            this.display_ = DT.TABLE;
-            return this;
-        };
-
-        this.timeline = (window) => {
-            this.display_ = DT.TIMELINE;
+        this.run = (timeline, window) => {
+            this.timeline_ = !!timeline;
             this.window_ = window || 0;
             return this;
         };
 
-        this.bar = () => {
-            this.display_ = DT.BAR;
-            return this;
-        };
-
-        this.pie = () => {
-            this.display_ = DT.PIE;
-            return this;
-        };
-
-        this.line = () => {
-            this.display_ = DT.LINE;
-            return this;
-        };
-
-        this.flame = () => {
-            this.display_ = DT.FLAME;
-            return this;
+        this.timeline = (window) => {
+            return this.run(true, window);
         };
 
         // validate the properties
@@ -279,20 +253,9 @@ export class Nebula {
                 return "Invalid time range.";
             }
 
-            // display type is specified
-            if (this.display_ === -1) {
-                return "Invalid display type.";
-            }
-
             // we should have keys, metrics or both
             if (this.keys_.length === 0 && this.metrics_.length === 0) {
                 return "Keys or metrics missing";
-            }
-
-            // samples can't have metrics
-            if (this.display_ === DT['SAMPLES'] && this.metrics_.length > 0) {
-                log("Can't have metrics in samples display mode.");
-                return "No metrics allowed in samples mode.";
             }
 
             // limit needs to be a valid value 
@@ -322,7 +285,7 @@ export class Nebula {
             s.end = this.end_;
             s.keys = this.keys_;
             s.window = this.window_;
-            s.display = this.display_;
+            s.timeline = this.timeline_;
             s.limit = this.limit_;
             s.sort = this.sort_;
             s.metrics = this.metrics_;
