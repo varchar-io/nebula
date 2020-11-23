@@ -40,7 +40,7 @@
                     .orderby(2, nebula.SORT.DESC);
 
    // render the data result with PIE chart with x-axis from "colx" and y-axis from "count"
-   query.pie();
+   query.run();
 */
 
 import {

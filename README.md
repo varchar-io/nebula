@@ -78,5 +78,5 @@ On the page top, the demo video shows how nebula client SDK is used and tables a
                      .limit(100);
 
     // render the data result with PIE chart
-    query.pie();
+    query.run();
 ```
