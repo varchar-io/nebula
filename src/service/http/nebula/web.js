@@ -48,7 +48,7 @@ import {
 } from '../c/constraints.min.js';
 import {
     Charts
-} from "./c/charts2.js";
+} from "./c/charts2.min.js";
 
 // define jquery style selector 
 const time = neb.time;
@@ -543,7 +543,7 @@ const onQueryResult = (state, r) => {
 
         // add all options in the list
         $(displayId).html('');
-        arr.sort().forEach(t => $('<option/>').appendTo($(displayId)).text(t).val(t));
+        arr.forEach(t => $('<option/>').appendTo($(displayId)).text(t).val(t));
     };
     // if time line, we may enable  area or bar for each data point
     if (ds.timeline) {
@@ -551,7 +551,7 @@ const onQueryResult = (state, r) => {
     }
     // tree merge metrics
     else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['TREEMERGE']) {
-        choices(['flame']);
+        choices(['icicle', 'flame']);
     }
     // others
     else if (state.metrics.length > 0) {
@@ -603,8 +603,11 @@ const onQueryResult = (state, r) => {
                 const beginMs = time.seconds(state.start) * 1000;
                 err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs);
                 break;
+            case 'icicle':
+                err = charts.displayFlame(chartId, data, keys, metrics, false);
+                break;
             case 'flame':
-                err = charts.displayFlame(chartId, data, keys, metrics);
+                err = charts.displayFlame(chartId, data, keys, metrics, true);
                 break;
             case 'column':
                 err = charts.displayBar(chartId, data, keys, metrics, true);

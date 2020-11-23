@@ -379,7 +379,7 @@ export class Charts {
             this.displayGeneric(this.id, model, false);
         };
 
-        this.displayFlame = (chartId, json, keys, metrics) => {
+        this.displayFlame = (chartId, json, keys, metrics, flame) => {
             if (metrics.length !== 1 || !metrics[0].endsWith('.TREEMERGE')) {
                 return 'Flame view supports only single metric resulting by treemerge function';
             }
@@ -397,7 +397,7 @@ export class Charts {
                 const id = `fg_${i++}`;
                 area.append(`<center>${title}</center>`);
                 area.append(`<canvas id='${id}' width='${area.width()}'/>`);
-                new Flame(id, JSON.parse(stack));
+                new Flame(id, JSON.parse(stack), flame);
             });
         };
     }
