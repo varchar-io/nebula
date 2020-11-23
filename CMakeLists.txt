@@ -191,6 +191,7 @@ endif()
 # ref https://www.facebook.com/notes/facebook-engineering/scalable-memory-allocation-using-jemalloc/480222803919/
 
 # find boost
+set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost 1.65 MODULE
   COMPONENTS
     context

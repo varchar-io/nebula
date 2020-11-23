@@ -91,14 +91,14 @@ bool writeParquetFile(const std::string& file, size_t rows) {
     // Create a local file output stream instance.
     using FileClass = ::arrow::io::FileOutputStream;
     std::shared_ptr<FileClass> out_file;
-    PARQUET_ASSIGN_OR_THROW(out_file, FileClass::Open(file, false));
+    PARQUET_THROW_NOT_OK(FileClass::Open(file, &out_file));
 
     // Setup the parquet schema
     std::shared_ptr<GroupNode> schema = SetupSchema();
 
     // Add writer properties
     parquet::WriterProperties::Builder builder;
-    builder.compression(parquet::Compression::UNCOMPRESSED);
+    builder.compression(parquet::Compression::GZIP);
     std::shared_ptr<parquet::WriterProperties> props = builder.build();
 
     // Create a ParquetFileWriter instance
