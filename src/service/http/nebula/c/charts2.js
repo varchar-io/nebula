@@ -242,6 +242,7 @@ export class Charts {
             // pie chart remove y-axis
             if (model.type === 'pie' || model.type === 'doughnut') {
                 opts.scales.yAxes = [];
+                opts.scales.xAxes = [];
             }
 
             // if x-axis is time scale
@@ -296,7 +297,7 @@ export class Charts {
             return opts;
         };
 
-        this.displayGeneric = (chartId, model, bg) => {
+        this.displayGeneric = (chartId, model, bg, fil) => {
             // process the data model
             const dataset = {
                 labels: model.labels,
@@ -308,7 +309,7 @@ export class Charts {
             for (const name in model.series) {
                 const d = {
                     label: name,
-                    fill: false,
+                    fill: fil || false,
                     pointRadius: 0,
                     data: model.series[name]
                 };
@@ -368,15 +369,16 @@ export class Charts {
             this.displayGeneric(this.id, model, true);
         };
 
-        this.displayTimeline = (chartId, json, keys, metrics, timeCol, start) => {
+        // mode: 0-line, 1-area, 2-bar
+        this.displayTimeline = (chartId, json, keys, metrics, timeCol, start, mode) => {
             // clear the area first
             this.cls(chartId);
 
             // const time = row[timeCol] * 1000 + start;
             const model = this.process(json, keys, metrics, timeCol, (x) => this.formatTime(x * 1000 + start));
             model.xtime = true;
-            model.type = 'line';
-            this.displayGeneric(this.id, model, false);
+            model.type = mode == 2 ? 'bar' : 'line';
+            this.displayGeneric(this.id, model, mode, mode == 1);
         };
 
         this.displayFlame = (chartId, json, keys, metrics, flame) => {

@@ -547,7 +547,7 @@ const onQueryResult = (state, r) => {
     };
     // if time line, we may enable  area or bar for each data point
     if (ds.timeline) {
-        choices(['timeline']);
+        choices(['timeline', 'timeline-area', 'timeline-bar']);
     }
     // tree merge metrics
     else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['TREEMERGE']) {
@@ -598,10 +598,16 @@ const onQueryResult = (state, r) => {
 
         // render data based on visual choice
         const choice = $(displayId).val();
+        const beginMs = time.seconds(state.start) * 1000
         switch (choice) {
             case 'timeline':
-                const beginMs = time.seconds(state.start) * 1000;
-                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs);
+                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs, 0);
+                break;
+            case 'timeline-area':
+                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs, 1);
+                break;
+            case 'timeline-bar':
+                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs, 2);
                 break;
             case 'icicle':
                 err = charts.displayFlame(chartId, data, keys, metrics, false);
