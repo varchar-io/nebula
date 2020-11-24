@@ -3,7 +3,7 @@ include(ExternalProject)
 
 # lib thrift name
 set(THRIFT_LIBRARY libthrift)
-add_custom_target(copyConfig)
+# add_custom_target(copyConfig)
 
 if(APPLE)
   # MacOs has problem to build thrift with libcrypto
@@ -45,7 +45,7 @@ else()
   # get source dir after download step
   ExternalProject_Get_Property(thrift SOURCE_DIR)
   ExternalProject_Get_Property(thrift BINARY_DIR)
-  set(THRIFT_INCLUDE_DIR ${SOURCE_DIR}/lib/cpp/src)
+  set(THRIFT_INCLUDE_DIR ${SOURCE_DIR}/lib/cpp/src ${BINARY_DIR})
   file(MAKE_DIRECTORY ${THRIFT_INCLUDE_DIR})
   set(THRIFT_LIBRARY_PATH ${BINARY_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}thrift.a)
 
@@ -54,9 +54,9 @@ else()
   # configure_file is invoked in configuration step, we should use post build command
   # to copy the build output instead
   # configure_file(${THRIFT_INCLUDE_DIR}/thrift/ ${BINARY_DIR}/thrift/ COPYONLY)
-  set(THRIFT_CONFIG ${BINARY_DIR}/thrift/config.h)
-  add_custom_command(TARGET copyConfig POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy ${THRIFT_CONFIG} ${THRIFT_INCLUDE_DIR}/thrift/config.h)
+  # set(THRIFT_CONFIG ${BINARY_DIR}/thrift/config.h)
+  # add_custom_command(TARGET copyConfig POST_BUILD
+  #  COMMAND ${CMAKE_COMMAND} -E copy ${THRIFT_CONFIG} ${THRIFT_INCLUDE_DIR}/thrift/config.h)
 
 endif()
 
@@ -65,4 +65,4 @@ set_target_properties(${THRIFT_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${THRIFT_LIBRARY_PATH}"
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${THRIFT_INCLUDE_DIR}")
-add_dependencies(${THRIFT_LIBRARY} copyConfig)
+# add_dependencies(${THRIFT_LIBRARY} copyConfig)
