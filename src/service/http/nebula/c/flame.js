@@ -46,7 +46,8 @@ export class Flame {
         }
 
         this.updateH = (height) => {
-            this.canvas.height = height;
+            this.canvas.style.height = height + 'px';
+            this.canvas.height = height * ratio;
             this.ctx.scale(ratio, ratio);
         };
 
@@ -71,13 +72,15 @@ export class Flame {
             return Color.get(type + offset);
         }
 
+        this.yp = (c) => this.reverse ? (this.height - c.y - frameH) : c.y;
+
         this.draw = (frame) => {
             const name = frame.name || "all";
             const width = frame.width;
             const c = frame.coord;
             // render frame only if its width is more than 1px
             if (c.x < this.canvas.offsetWidth && width > 1) {
-                const y = this.reverse ? (this.height - c.y) : c.y;
+                const y = this.yp(c);
                 this.ctx.fillStyle = this.color(name);
                 this.ctx.fillRect(c.x, y, width, frameH);
 
@@ -220,7 +223,7 @@ export class Flame {
         this.find = (frame, coord) => {
             // find the band first
             const c = frame.coord;
-            const y = this.reverse ? (this.height - c.y) : c.y;
+            const y = this.yp(c);
             if (frame.show &&
                 coord.y >= y &&
                 coord.y <= (y + frameH) &&

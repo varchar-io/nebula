@@ -21,23 +21,18 @@
             </div>
             <div id="stats"></div>
             <hr />
+            <div style="display: flow-root">
+                <button id="exec">Soar</button>
+            </div>
+            <hr />
             <div class="code-tune">{code}<a id="ui" class="code-tap">⇌</a></div>
             <hr />
             <!-- code editor tap off by default -->
             <div class="tap-off">
                 <textarea id="code" name="code">//@ref https://nebula.bz/sdk.html</textarea>
-                <div>
-                    <hr>
-                    <button id="exec">Soar</button>
-                </div>
             </div>
             <!-- all visual interface tap on by default -->
-            <div class="tap-on">
-                <div>
-                    <select id="display"></select>
-                    <button id="soar">Soar</button>
-                </div>
-                <hr />
+            <div id="qc" class="tap-on">
                 <div>
                     <label class="lbl">Start:</label>
                     <input type="text" id="start">
@@ -49,12 +44,17 @@
                     <a id="endc"><img src="f/ct.png" class="calendar"></a>
                 </div>
                 <div>
-                    <label class="lbl">Interval:</label>
+                    <label class="lbl">Timeline:</label>
+                    <input type="checkbox" id="timeline" class="cb">
                     <select id="window">
                         <option value="0">auto</option>
                         <option value="60">1 minute</option>
+                        <option value="300">5 minutes</option>
+                        <option value="900">15 minutes</option>
+                        <option value="1800">30 minutes</option>
                         <option value="3600">1 hour</option>
                         <option value="21600">6 hrs</option>
+                        <option value="43200">12 hrs</option>
                         <option value="86400">1 day</option>
                         <option value="604800">1 week</option>
                     </select>
@@ -74,6 +74,7 @@
                     <select id="limit">
                         <option value="10">10</option>
                         <option value="20">20</option>
+                        <option value="50">50</option>
                         <option value="100">100</option>
                         <option value="200">200</option>
                         <option value="500">500</option>
@@ -95,7 +96,11 @@
             </div>
             <div class="content">
                 <div id="qr" class="message"></div>
+                <div>
+                    <select id='display' class="display"></select>
+                </div>
                 <div id='show'></div>
+                <div id='table'></div>
             </div>
         </div>
     </div>
@@ -130,7 +135,7 @@
         integrity="sha512-Nc36QpQAS2BOjt0g/CqfIi54O6+UWTI3fmqJsnXoU6rNYRq8vIQQkZmkrRnnk4xKgMC3ESWp69ilLpDm6Zu8wQ=="
         crossorigin="anonymous"></script>
     <!-- core nebula web js -->
-    <script type="module" src="web.min.js?v=10"></script>
+    <script type="module" src="web.min.js?v=11"></script>
 </body>
 
 </html>

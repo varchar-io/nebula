@@ -64,6 +64,9 @@ let ds = {
     rows: []
 };
 
+// current table info, change when switching different tables
+let tableInfo = {};
+
 // two calendar instances
 let fpcs, fpce;
 
@@ -82,11 +85,12 @@ const tablesId = '#tables';
 // start/end elements
 const startId = '#start';
 const endId = '#end';
-// visual choice element ID
+const windowId = '#window';
 const displayId = '#display';
 
 const NoRollup = -1;
 const msg = (text) => $('#qr').text(text);
+const vis = (id, flag) => $(id).css('visibility', flag ? 'visible' : 'hidden');
 const FETCH_OPT = {
     method: 'GET'
 };
@@ -134,12 +138,14 @@ const makeCalendar = (obj, id, btn, def, min, max) => {
     });
 };
 
-const onTableState = (state, stats, callback) => {
-    const bc = state.bc;
-    const rc = Math.round(state.rc / 10000) / 100;
-    const ms = Math.round(state.ms / 10000000) / 100;
-    const mints = formatTime(state.mt * 1000);
-    const maxts = formatTime(state.xt * 1000 + 1);
+const onTableState = (tb, stats, callback) => {
+    // save current selected table
+    tableInfo = tb;
+    const bc = tb.bc;
+    const rc = Math.round(tb.rc / 10000) / 100;
+    const ms = Math.round(tb.ms / 10000000) / 100;
+    const mints = formatTime(tb.mt * 1000);
+    const maxts = formatTime(tb.xt * 1000 + 1);
 
     stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${mints}, Max T: ${maxts}]`);
 
@@ -148,8 +154,8 @@ const onTableState = (state, stats, callback) => {
 
     // populate all columns with pairs {M:, C:, T:} for "method", "column", "text"
     // for normal dimension, M will be -1, C==T
-    const strColumns = (state.dl || []).filter((v) => v !== timeCol);
-    const numColumns = (state.ml || []).filter((v) => v !== timeCol);
+    const strColumns = (tb.dl || []).filter((v) => v !== timeCol);
+    const numColumns = (tb.ml || []).filter((v) => v !== timeCol);
     const allColumns = strColumns.concat(numColumns);
     const all = [];
 
@@ -188,14 +194,6 @@ const onTableState = (state, stats, callback) => {
         persist: false
     });
 
-    // populate all display types
-    $(displayId).html('');
-    Object.keys(neb.DisplayType).forEach(k => {
-        $("<option/>").appendTo($(displayId))
-            .text(k.toLowerCase())
-            .val(neb.DisplayType[k]);
-    });
-
     // order type 
     $('#ob').html('');
     Object.keys(neb.OrderType).forEach(k => {
@@ -226,8 +224,7 @@ const checkRequest = (state) => {
     }
 
     // 1. timeline query
-    const display = state.display;
-    if (display == neb.DisplayType.TIMELINE) {
+    if (state.timeline) {
         const windowSize = state.window;
         // window size == 0: auto
         if (windowSize > 0) {
@@ -238,12 +235,9 @@ const checkRequest = (state) => {
                 return true;
             }
         }
-    }
 
-    if (display == neb.DisplayType.SAMPLES) {
-        // TODO(cao) - support * when user doesn't select any dimemsions
-        if (state.keys.length == 0) {
-            msg(`Please specify dimensions for samples`);
+        if (state.metrics.length == 0) {
+            msg(`Timeline requires metric fields.`);
             return true;
         }
     }
@@ -261,12 +255,6 @@ const hash = (v) => {
 };
 
 const build = (s) => {
-    // TODO(cao) - we should set state value to all UI fields
-    // restore state like refresh page. sync display
-    if (s) {
-        $(displayId).val(s.display);
-    }
-
     // read values from 'fields' multi-input
     // and split them into keys and metrics for query build
     const keys = [];
@@ -280,6 +268,24 @@ const build = (s) => {
         }
     });
 
+    // support empty fields -> *
+    if (keys.length == 0 && metrics.length == 0) {
+        keys.push(...tableInfo.dl);
+        keys.push(...tableInfo.ml);
+        keys.sort();
+    }
+
+    // if having metrics - do not let keys more than 2
+    if (metrics.length > 0 && keys.length > 2) {
+        msg('Risk: too many keys to aggregate by.');
+        return;
+    }
+
+    // if do not have metrics
+    if (metrics.length == 0) {
+        keys.unshift(timeCol);
+    }
+
     // build URL and set URL
     const state = s || {
         table: $$(tablesId),
@@ -287,8 +293,8 @@ const build = (s) => {
         end: $$(endId),
         filter: filters.expr(),
         keys: keys,
-        window: $$("#window"),
-        display: $$(displayId),
+        timeline: $('#timeline').is(':checked'),
+        window: $$(windowId),
         metrics: metrics,
         sort: $$('#ob'),
         limit: $$('#limit')
@@ -348,8 +354,9 @@ const restore = () => {
             // set other fields
             set(startId, state.start);
             set(endId, state.end);
-            set("#window", state.window);
-            set(displayId, state.display);
+            $('#timeline').prop('checked', state.timeline);
+            set(windowId, state.window);
+            vis(windowId, state.timeline);
             set('#ob', state.sort);
             set('#limit', state.limit);
 
@@ -403,6 +410,7 @@ const onQueryResult = (state, r) => {
     msg(`[query: latency=${r.duration}ms, scan=${r.rows_scan}, blocks=${r.blocks_scan}, rows=${r.rows_ret}]`);
 
     // JSON result
+    ds.timeline = state.timeline;
     ds.rows = JSON.parse(atob(r.data));
     ds.keys = [...state.keys];
     ds.metrics = [];
@@ -423,7 +431,7 @@ const onQueryResult = (state, r) => {
         // new keys = keys excluding pivoted key
         const keys = ds.keys.filter(e => e != pvc);
         // put window column for data moving if present
-        if (+state.display == neb.DisplayType.TIMELINE) {
+        if (state.timeline) {
             keys.push(windowCol);
         }
 
@@ -513,8 +521,8 @@ const onQueryResult = (state, r) => {
     }
 
     // clear table data
-    $('#table_head').html("");
-    $('#table_content').html("");
+    $('#table').html("");
+    $(displayId).hide();
 
     // get display option
     if (ds.rows.length == 0) {
@@ -523,25 +531,53 @@ const onQueryResult = (state, r) => {
         return;
     }
 
+    // decide what chart options are available to current query
+    const choices = (list) => {
+        // hide it if there is no choice
+        const arr = (list || []);
+        if (arr.length > 0) {
+            $(displayId).show();
+        } else {
+            $(displayId).hide();
+        }
+
+        // add all options in the list
+        $(displayId).html('');
+        arr.forEach(t => $('<option/>').appendTo($(displayId)).text(t).val(t));
+    };
+    // if time line, we may enable  area or bar for each data point
+    if (ds.timeline) {
+        choices(['timeline', 'timeline-area', 'timeline-bar']);
+    }
+    // tree merge metrics
+    else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['TREEMERGE']) {
+        choices(['icicle', 'flame']);
+    }
+    // others
+    else if (state.metrics.length > 0) {
+        choices(['column', 'bar', 'doughnut', 'pie', 'line']);
+    } else {
+        choices();
+    }
+
     const draw = () => {
-        // enum value are number and switch/case are strong typed match
-        const display = +state.display;
+        // clear chart
+        $(chartId).html("");
 
-        // draw may be triggered by resize - stale data may mess
-        if (display != +$$(displayId)) {
-            return;
-        }
-
-        if (display == neb.DisplayType.SAMPLES ||
-            display == neb.DisplayType.TABLE) {
-            charts.displayTable(chartId, ds.rows, [timeCol, ...ds.keys], ds.metrics);
-            return;
-        }
+        // always display data in table
+        $("#table").attr("class", "fh300");
+        charts.displayTable("#table", ds.rows, [timeCol, windowCol, ...ds.keys], ds.metrics);
 
         // figure out keys and metrics columns
         const keys = [...ds.keys];
         const data = [...ds.rows];
         const metrics = [...ds.metrics];
+
+        // if there is no metrics, do not limit table height
+        if (metrics.length == 0) {
+            $("#table").removeClass("fh300");
+            return;
+        }
 
         // if there are multiple keys, we merge them into single one for display
         if (keys.length > 1) {
@@ -559,24 +595,45 @@ const onQueryResult = (state, r) => {
 
         // if aggregation specified multiple keys, we merge them into a single key
         let err = null;
-        switch (display) {
-            case neb.DisplayType.TIMELINE:
-                const beginMs = time.seconds(state.start) * 1000;
-                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs);
+
+        // render data based on visual choice
+        const choice = $(displayId).val();
+        const beginMs = time.seconds(state.start) * 1000
+        switch (choice) {
+            case 'timeline':
+                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs, 0);
                 break;
-            case neb.DisplayType.BAR:
-                err = charts.displayBar(chartId, data, keys, metrics);
+            case 'timeline-area':
+                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs, 1);
                 break;
-            case neb.DisplayType.PIE:
-                err = charts.displayPie(chartId, data, keys, metrics);
+            case 'timeline-bar':
+                err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs, 2);
                 break;
-            case neb.DisplayType.LINE:
+            case 'icicle':
+                err = charts.displayFlame(chartId, data, keys, metrics, false);
+                break;
+            case 'flame':
+                err = charts.displayFlame(chartId, data, keys, metrics, true);
+                break;
+            case 'column':
+                err = charts.displayBar(chartId, data, keys, metrics, true);
+                break;
+            case 'bar':
+                err = charts.displayBar(chartId, data, keys, metrics, false);
+                break;
+            case 'doughnut':
+                err = charts.displayPie(chartId, data, keys, metrics, true);
+                break;
+            case 'pie':
+                err = charts.displayPie(chartId, data, keys, metrics, false);
+                break;
+            case 'line':
                 err = charts.displayLine(chartId, data, keys, metrics);
                 break;
-            case neb.DisplayType.FLAME:
-                err = charts.displayFlame(chartId, data, keys, metrics);
+            default:
                 break;
         }
+
         // display error if any
         if (err) {
             msg(`Error: ${err}`);
@@ -590,6 +647,9 @@ const onQueryResult = (state, r) => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(draw, 200);
     });
+
+    //  display change will also trigger draw
+    $(displayId).change(draw);
 };
 
 const url2state = () => {
@@ -630,7 +690,6 @@ const execute = (state) => {
 
     // fetch the query
     const url = `/?api=query&start=0&end=0&query=${encodeURIComponent(JSON.stringify(state))}`;
-    // console.log(`API url=${url}`);
     fetch(url, FETCH_OPT)
         .then(response => response.json())
         .then((data) => {
@@ -641,8 +700,6 @@ const execute = (state) => {
             msg(`Error: ${err}`);
         });
 };
-
-$('#soar').on("click", (e) => build());
 
 // when user click share button
 $('#share').on("click", () => {
@@ -680,7 +737,7 @@ const ide = () => {
     setTimeout(() => editor.refresh(), 5);
 };
 
-$('#ui').on("click", ide);
+const iside = () => $('#qc').attr('class') == 'tap-off';
 
 /** execute the code written by user */
 const exec = () => {
@@ -717,7 +774,6 @@ const exec = () => {
     // build this state as a query
     build(state);
 };
-$('#exec').on("click", exec);
 
 // hook up hash change event
 window.onhashchange = function () {
@@ -757,4 +813,18 @@ $(() => {
         .then((data) => {
             $('#user').text(data.auth ? data.user : "unauth");
         });
+});
+
+// either  execute code or build UI
+$('#exec').click((e) => {
+    if (iside()) exec();
+    else build();
+});
+
+// switch between UI and IDE
+$('#ui').on("click", ide);
+
+// show | hide window for timeline query
+$('#timeline').click(function () {
+    vis(windowId, $(this).is(':checked'));
 });

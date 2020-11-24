@@ -60,9 +60,6 @@ std::unique_ptr<RdKafka::KafkaConsumer> KafkaProvider::getConsumer(
     }
   }
 
-  // set up gzip
-  SET_KEY_VALUE_CHECK("compression.codec", "snappy")
-
   // set brokers
   SET_KEY_VALUE_CHECK("metadata.broker.list", brokers)
 

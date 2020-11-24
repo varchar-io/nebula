@@ -40,7 +40,6 @@ const {
     Metric,
     Order,
     OrderType,
-    DisplayType,
     CustomType
 } = require('nebula-pb');
 
@@ -53,7 +52,6 @@ export default {
     Metric,
     Order,
     OrderType,
-    DisplayType,
     CustomType,
     d3,
     flamegraph,

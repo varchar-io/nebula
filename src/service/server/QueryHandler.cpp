@@ -224,7 +224,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
   std::vector<std::string> columns;
 
   // If this is a timeline query, we only build time as dimension ignoring any any pre-set dimensions
-  const auto isTimeline = req.display() == DisplayType::TIMELINE;
+  const auto isTimeline = req.timeline();
   const auto& timeColumn = Table::TIME_COLUMN;
 
   // handle query schema for timeline
@@ -291,7 +291,6 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
   // build sorting and limit/top property
   // TODO(cao): BUG investigation - turn on sort by 1 field on samples
   // serialization will be broken, why?
-  // const auto isSamples = req.display() == DisplayType::SAMPLES;
   if (isTimeline) {
     // timeline always sort by time window as first column
     q->sortby({ 1 });

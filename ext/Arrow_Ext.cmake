@@ -41,14 +41,13 @@ SET(ARROW_OPTS
   -DPARQUET_BUILD_ENCRYPTION=OFF
   -DPARQUET_MINIMAL_DEPENDENCY=ON
   -DPARQUET_ARROW_LINKAGE=static
-  -DCMAKE_BUILD_TYPE=Release
-  -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT})
+  -DCMAKE_BUILD_TYPE=Release)
 
 # arrow versions after 0.13.0 does not work with boost 70
 ExternalProject_Add(arrow
   PREFIX arrow
   GIT_REPOSITORY https://github.com/apache/arrow.git
-  GIT_TAG apache-arrow-2.0.0
+  GIT_TAG apache-arrow-0.14.0
   SOURCE_SUBDIR cpp
   CMAKE_ARGS ${ARROW_OPTS}
   UPDATE_COMMAND ""

@@ -39,9 +39,6 @@ bool KafkaTopic::init() noexcept {
     return false;                                            \
   }
 
-  // set up gzip
-  SET_KEY_VALUE_CHECK(compression.codec, gzip)
-
   // set brokers
   conf_->set("metadata.broker.list", brokers_, error);
 

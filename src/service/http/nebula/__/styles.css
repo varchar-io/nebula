@@ -95,6 +95,11 @@ hr {
     margin: 10pt 0;
 }
 
+.cb {
+    vertical-align: middle;
+    margin-right: 15px;
+}
+
 #tables {
     width: 100%;
 }
@@ -142,6 +147,12 @@ button {
     cursor: pointer;
 }
 
+.fh300 {
+    margin-top: 50px;
+    max-height: 350px;
+    overflow: scroll;
+}
+
 table {
     width: 100%;
     margin: auto;
@@ -155,7 +166,7 @@ tr {
 th,
 td {
     box-sizing: border-box;
-    padding: 15px;
+    padding: 5px;
 }
 
 thead {
@@ -168,6 +179,10 @@ thead {
 tbody {
     text-align: left;
     background: #eee;
+}
+
+.display {
+    float: right
 }
 
 /* code area switch */

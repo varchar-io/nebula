@@ -229,12 +229,6 @@ TEST(KafkaTest, DISABLED_TestLibKafkaConsumer) {
     exit(1);
   }
 
-  // set compression
-  if (conf->set("compression.codec", "gzip", errstr) != RdKafka::Conf::CONF_OK) {
-    LOG(ERROR) << errstr;
-    exit(1);
-  }
-
   // exit when reaching end of stream
   exit_eof = true;
 

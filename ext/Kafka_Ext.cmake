@@ -14,6 +14,7 @@ SET(KAFKA_OPTS
 ExternalProject_Add(kafka
   PREFIX kafka
   GIT_REPOSITORY https://github.com/edenhill/librdkafka.git
+  GIT_TAG v1.5.2
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   CMAKE_ARGS ${KAFKA_OPTS}

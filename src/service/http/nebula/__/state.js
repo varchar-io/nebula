@@ -28,7 +28,7 @@ export class State {
             filter: {},
             keys: [],
             metrics: [],
-            display: 0,
+            timeline: false,
             window: 0,
             sort: 0,
             limit: 0,

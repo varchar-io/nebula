@@ -62,7 +62,7 @@ export class Charts {
                 cols.forEach(k =>
                     $("<th/>").appendTo(head)
                     .attr("width", `${width}%`)
-                    .text((isTime(k) ? "[time]" : k)));
+                    .text((autoKey(k) ? "[time]" : k)));
 
                 // Get table body and print 
                 json.forEach(row => {
@@ -231,12 +231,18 @@ export class Charts {
                             beginAtZero: true
                         }
                     }],
+                    xAxes: [{
+                        ticks: {
+                            beginAtZero: true
+                        }
+                    }],
                 }
             };
 
             // pie chart remove y-axis
             if (model.type === 'pie' || model.type === 'doughnut') {
                 opts.scales.yAxes = [];
+                opts.scales.xAxes = [];
             }
 
             // if x-axis is time scale
@@ -291,7 +297,7 @@ export class Charts {
             return opts;
         };
 
-        this.displayGeneric = (chartId, model) => {
+        this.displayGeneric = (chartId, model, bg, fil) => {
             // process the data model
             const dataset = {
                 labels: model.labels,
@@ -301,12 +307,15 @@ export class Charts {
             // push all data sets
             let idx = 0;
             for (const name in model.series) {
-                dataset.datasets.push({
+                const d = {
                     label: name,
-                    backgroundColor: Color.get(idx++),
+                    fill: fil || false,
                     pointRadius: 0,
                     data: model.series[name]
-                });
+                };
+                // color background or border
+                d[bg ? 'backgroundColor' : 'borderColor'] = Color.get(idx++);
+                dataset.datasets.push(d);
             }
 
             // for single key and single metric
@@ -335,43 +344,44 @@ export class Charts {
 
         // if data specified as pair [], it will be used as min/max display for each label
         // 'bar'=>column, 'horizontalBar' for normal bar
-        this.displayBar = (chartId, json, keys, metrics) => {
+        this.displayBar = (chartId, json, keys, metrics, vertical) => {
             this.cls(chartId);
             const model = this.process(json, keys, metrics);
-            model.type = 'bar';
-            this.displayGeneric(this.id, model);
+            model.type = vertical ? 'bar' : 'horizontalBar';
+            this.displayGeneric(this.id, model, true);
         };
 
         this.displayLine = (chartId, json, keys, metrics) => {
             this.cls(chartId);
             const model = this.process(json, keys, metrics);
             model.type = 'line';
-            this.displayGeneric(this.id, model);
+            this.displayGeneric(this.id, model, false);
         };
 
-        this.displayPie = (chartId, json, keys, metrics) => {
+        this.displayPie = (chartId, json, keys, metrics, doughnut) => {
             this.cls(chartId);
             // clear the area first
             const model = this.process(json, keys, metrics);
 
             // pie chart display tooltip with percentage
             model.pct = true;
-            model.type = 'pie';
-            this.displayGeneric(this.id, model);
+            model.type = doughnut ? 'doughnut' : 'pie';
+            this.displayGeneric(this.id, model, true);
         };
 
-        this.displayTimeline = (chartId, json, keys, metrics, timeCol, start) => {
+        // mode: 0-line, 1-area, 2-bar
+        this.displayTimeline = (chartId, json, keys, metrics, timeCol, start, mode) => {
             // clear the area first
             this.cls(chartId);
 
             // const time = row[timeCol] * 1000 + start;
             const model = this.process(json, keys, metrics, timeCol, (x) => this.formatTime(x * 1000 + start));
             model.xtime = true;
-            model.type = 'line';
-            this.displayGeneric(this.id, model);
+            model.type = mode == 2 ? 'bar' : 'line';
+            this.displayGeneric(this.id, model, mode, mode == 1);
         };
 
-        this.displayFlame = (chartId, json, keys, metrics) => {
+        this.displayFlame = (chartId, json, keys, metrics, flame) => {
             if (metrics.length !== 1 || !metrics[0].endsWith('.TREEMERGE')) {
                 return 'Flame view supports only single metric resulting by treemerge function';
             }
@@ -389,7 +399,7 @@ export class Charts {
                 const id = `fg_${i++}`;
                 area.append(`<center>${title}</center>`);
                 area.append(`<canvas id='${id}' width='${area.width()}'/>`);
-                new Flame(id, JSON.parse(stack));
+                new Flame(id, JSON.parse(stack), flame);
             });
         };
     }
