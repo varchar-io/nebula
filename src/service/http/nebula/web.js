@@ -521,8 +521,8 @@ const onQueryResult = (state, r) => {
     }
 
     // clear table data
-    $('#table_head').html("");
-    $('#table_content').html("");
+    $('#table').html("");
+    $(displayId).hide();
 
     // get display option
     if (ds.rows.length == 0) {
@@ -690,7 +690,6 @@ const execute = (state) => {
 
     // fetch the query
     const url = `/?api=query&start=0&end=0&query=${encodeURIComponent(JSON.stringify(state))}`;
-    // console.log(`API url=${url}`);
     fetch(url, FETCH_OPT)
         .then(response => response.json())
         .then((data) => {

@@ -34,8 +34,8 @@ export class Handler {
     // static error message - do not use lambda since some runtime does not support it
     static error(msg) {
         return JSON.stringify({
-            "error": msg,
-            "duration": 0
+            error: msg,
+            duration: 0
         });
     };
 
