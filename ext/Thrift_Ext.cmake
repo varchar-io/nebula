@@ -49,15 +49,6 @@ else()
   file(MAKE_DIRECTORY ${THRIFT_INCLUDE_DIR})
   set(THRIFT_LIBRARY_PATH ${BINARY_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}thrift.a)
 
-  # during the build, it will generate one config.h in BINARY_DIR
-  # we either can add that path to include path or copy this single file to SRC folder
-  # configure_file is invoked in configuration step, we should use post build command
-  # to copy the build output instead
-  # configure_file(${THRIFT_INCLUDE_DIR}/thrift/ ${BINARY_DIR}/thrift/ COPYONLY)
-  # set(THRIFT_CONFIG ${BINARY_DIR}/thrift/config.h)
-  # add_custom_command(TARGET copyConfig POST_BUILD
-  #  COMMAND ${CMAKE_COMMAND} -E copy ${THRIFT_CONFIG} ${THRIFT_INCLUDE_DIR}/thrift/config.h)
-
 endif()
 
 add_library(${THRIFT_LIBRARY} UNKNOWN IMPORTED)
@@ -65,4 +56,3 @@ set_target_properties(${THRIFT_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${THRIFT_LIBRARY_PATH}"
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${THRIFT_INCLUDE_DIR}")
-# add_dependencies(${THRIFT_LIBRARY} copyConfig)

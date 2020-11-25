@@ -7,10 +7,15 @@
 
 # Unfortunately we still need to manually fix the GRPC issue listed in dev.md
 
-if [ "$(expr substr $(uname -s) 1 5)" != "Linux" ]; then
+if [ "$(uname -s)" != "Linux" ]; then
   echo "Must be on Linux machine to run this script"
   exit
 fi
+
+ROOT=$(git rev-parse --show-toplevel)
+BUILD_DIR=$ROOT/build
+# enter into nebula build folder
+mkdir -p $BUILD_DIR && cd $BUILD_DIR
 
 # packages could be installed by apt-get install
 aptGetInstallPackages=(
@@ -32,7 +37,6 @@ aptGetInstallPackages=(
   "libsnappy-dev"
   "liblzma-dev"
   "autoconf"
-  "rapidjson-dev"
   "flex"
   "bison"
 )
@@ -40,7 +44,7 @@ aptGetInstallPackages=(
 # Install Prerequisites
 # install cmake and gcc-9
 (
-  cd ..
+  cd $BUILD_DIR
   wget https://cmake.org/files/v3.18/cmake-3.18.1.tar.gz
   tar -xzvf cmake-3.18.1.tar.gz
   cd cmake-3.18.1/
@@ -60,7 +64,7 @@ done
 
 # Install DOUBLE-CONVERSION
 (
-  cd ..
+  cd $BUILD_DIR
   if [ -z "$(ls -A ./double-conversion)" ]; then
     git clone https://github.com/google/double-conversion.git
     cd double-conversion
@@ -70,7 +74,7 @@ done
 
 # Install GLOG, GTEST
 (
-  cd ..
+  cd $BUILD_DIR
   if [ -z "$(ls -A ./glog)" ]; then
     git clone https://github.com/google/glog.git
     cd glog && cmake . && make . && sudo make install
@@ -84,7 +88,7 @@ done
 
 # Install MBEDTLS
 (
-  cd ..
+  cd $BUILD_DIR
   if [ -z "$(ls -A ./mbedtls)" ]; then
     git clone https://github.com/ARMmbed/mbedtls.git
     cd mbedtls && mkdir build && cd build
@@ -95,7 +99,7 @@ done
 
 # Install LIBEVENT
 (
-  cd ..
+  cd $BUILD_DIR
   if [ -z "$(ls -A ./libevent)" ]; then
     git clone https://github.com/libevent/libevent.git
     cd libevent
@@ -106,7 +110,7 @@ done
 
 # Install FMT
 (
-  cd ..
+  cd $BUILD_DIR
   if [ -z "$(ls -A ./fmt)" ]; then
     git clone https://github.com/fmtlib/fmt.git
     cd fmt
@@ -117,7 +121,7 @@ done
 
 # Install OpenSSL
 (
-  cd ..
+  cd $BUILD_DIR
   if [ -z "$(ls -A ./openssl)" ]; then
     git clone https://github.com/openssl/openssl.git
     cd openssl && ./config && make -j$(nproc) && sudo make install
@@ -126,7 +130,7 @@ done
 
 # Install Facebook Folly
 (
-  cd ..
+  cd $BUILD_DIR
   if [ -z "$(ls -A ./folly)" ]; then
     git clone https://github.com/facebook/folly.git
     cd folly && git checkout v2020.09.21.00
@@ -136,7 +140,7 @@ done
 
 # Install gperftools
 (
-  cd ..
+  cd $BUILD_DIR
   if [ -z "$(ls -A ./gperftools)" ]; then
     git clone https://github.com/gperftools/gperftools.git
     cd gperftools && ./autogen.sh && ./configure && sudo make install
@@ -145,16 +149,13 @@ done
 
 # Install protobuf
 (
-  cd ..
+  cd $BUILD_DIR
   if [ -z "$(ls -A ./protobuf)" ]; then
     git clone https://github.com/protocolbuffers/protobuf.git
     cd protobuf && git submodule update --init --recursive && ./autogen.sh
     ./configure && make -j$(nproc) && sudo make install && sudo ldconfig
   fi
 )
-
-# enter into nebula build folder
-mkdir -p build && cd build
 
 # make nebula
 cmake .. && make
