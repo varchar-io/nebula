@@ -68,7 +68,7 @@ get_filename_component(nfbs_path "${nfbs}" PATH)
 # Generated sources from proto file
 set(NODE_GEN_DIR "${GEN_DIR}/node")
 file(MAKE_DIRECTORY ${NODE_GEN_DIR})
-add_custom_target(compile_fbs ALL 
+add_custom_target(compile_fbs ALL
   COMMAND ${FLATBUFFERS_COMPILER} -b -o "${NODE_GEN_DIR}" --cpp --grpc "${nfbs}"
 DEPENDS ${nfbs})
 
@@ -104,6 +104,8 @@ target_link_libraries(${NEBULA_SERVICE}
     PUBLIC ${ROARING_LIBRARY}
     PUBLIC ${MSGPACK_LIBRARY}
     PUBLIC ${LEVELDB_LIBRARY})
+
+add_dependencies(${NEBULA_SERVICE} compile_fbs)
 
 if(APPLE)
     target_compile_options(${NEBULA_SERVICE} 
