@@ -2,7 +2,7 @@
 
 ## Build the project
 
-These steps are tested for Ubuntu LTS 18. 
+These steps are tested for Ubuntu LTS 18. Ubuntu 20.10
 Other linux os or macos uses different package manager such as homebrew.
 
 ### Install CMake
@@ -20,7 +20,8 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 1. sudo apt-get update
 2. sudo apt-get install -y gcc-9 g++-9
 3. sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 800 --slave /usr/bin/g++ g++ /usr/bin/g++-9
-4. (Optional) check version: `gcc -v`
+4. sudo update-alternatives --install /usr/bin/gcc-ar gcc-ar /usr/bin/gcc-ar-9 800 --slave /usr/bin/gcc-nm gcc-nm /usr/bin/gcc-nm-9 (Ubuntu 20.10)
+5. (Optional) check version: `gcc -v`
 
 
 ### Install CURL, UNWIND, IBERTY
@@ -100,6 +101,8 @@ A local change to solve the the build break (in `~/nebula/build`):
      + if (!bb || !(buffer = bb->c_buffer())) {
          return ::grpc::Status(::grpc::StatusCode::INTERNAL, "No payload");
        }
+3. gettid() needs to be commmented in various .cc files when using latest glibc (Ubuntu 20.10)
+4. run make roaring && make thrift (Ubuntu 20.10)
 
 ### build nebula
 - mkdir build && cd build
@@ -107,6 +110,7 @@ A local change to solve the the build break (in `~/nebula/build`):
 - make
 
 ### run nebula
+- sudo apt install cmdtest
 After you build nebula successfully, you can run this script to run all services locally by `./run.sh`.
 
 ## Code Convention
