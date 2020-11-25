@@ -5,7 +5,7 @@
 # This script is basically automation script of dev.md
 # It is supposed to run in same folder where the file lives (root).
 
-# Unfortunately we still need to manually fix the GPRC issue listed in dev.md
+# Unfortunately we still need to manually fix the GRPC issue listed in dev.md
 
 if [ "$(expr substr $(uname -s) 1 5)" != "Linux" ]; then
   echo "Must be on Linux machine to run this script"
@@ -32,6 +32,9 @@ aptGetInstallPackages=(
   "libsnappy-dev"
   "liblzma-dev"
   "autoconf"
+  "rapidjson-dev"
+  "flex"
+  "bison"
 )
 
 # Install Prerequisites

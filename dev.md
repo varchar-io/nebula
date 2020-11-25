@@ -4,6 +4,7 @@
 
 These steps are tested for Ubuntu LTS 18. 
 Other linux os or macos uses different package manager such as homebrew.
+run build.sh for automate setup, build.sh is a script that runs below steps
 
 ### Install CMake
 Your system may not have new version of cmake required to build nebula.
@@ -44,7 +45,7 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 
 ### install MBEDTLS
 1. git clone https://github.com/ARMmbed/mbedtls.git
-2. mkdir mbedtls/build && cd mbedtls/build
+2. cd mbedtls && mkdir build && cd build
 3. cmake -DCMAKE_CXX_FLAGS=-fPIC -DCMAKE_C_FLAGS=-fPIC .. && make -j$(nproc)
 4. sudo make install
 
@@ -87,6 +88,11 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 1. git clone https://github.com/protocolbuffers/protobuf.git
 2. cd protobuf && git submodule update --init --recursive && ./autogen.sh
 3. ./configure && make -j$(nproc) && sudo make install && sudo ldconfig
+
+### Install flex bison rapidjson-dev
+1. sudo apt-get install -y rapidjson-dev
+2. sudo apt-get install -y flex
+3. sudo apt-get install -y bison
 
 ### fix grpc
 A local change to solve the the build break (in `~/nebula/build`):
