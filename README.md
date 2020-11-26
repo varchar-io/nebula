@@ -26,8 +26,8 @@ Follow the `3 simple steps` to get a local run (Linux box),  or see more details
 
 0. Clone "Nebula" repo.
 > And assume you're in ~/nebula/test directory.
-1. Edit [cluster config](./test/local-cluster.yml) by replace `<hostname>` with your running hosts.
-> or run `sed -i "s/<hostname>/$HOSTNAME/g" local-cluster.yml`
+1. Edit [test cluster config (./test/local-cluster.yml)](./test/local-cluster.yml) by replace `<hostname>` with your running hosts.
+> or run `sed -i "s/<hostname>/$HOSTNAME/g" local-cluster.yml` in Ubuntu (if you are using mac, run `sed -i -e 's/<hostname>/$HOSTNAME/g' local-cluster.yml`)
 1. Run Nebula (requires docker/docker-compose installeds)
 > ./local-run.sh  (may need `chmod +777 ./local-run.sh` before run)
 3. Check it out through Nebula UI at: http://&lt;hostname&gt;:8088
