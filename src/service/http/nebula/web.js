@@ -564,20 +564,10 @@ const onQueryResult = (state, r) => {
         // clear chart
         $(chartId).html("");
 
-        // always display data in table
-        $("#table").attr("class", "fh300");
-        charts.displayTable("#table", ds.rows, [timeCol, windowCol, ...ds.keys], ds.metrics);
-
         // figure out keys and metrics columns
         const keys = [...ds.keys];
         const data = [...ds.rows];
         const metrics = [...ds.metrics];
-
-        // if there is no metrics, do not limit table height
-        if (metrics.length == 0) {
-            $("#table").removeClass("fh300");
-            return;
-        }
 
         // if there are multiple keys, we merge them into single one for display
         if (keys.length > 1) {
@@ -598,7 +588,8 @@ const onQueryResult = (state, r) => {
 
         // render data based on visual choice
         const choice = $(displayId).val();
-        const beginMs = time.seconds(state.start) * 1000
+        const beginMs = time.seconds(state.start) * 1000;
+        let showTable = true;
         switch (choice) {
             case 'timeline':
                 err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs, 0);
@@ -611,9 +602,11 @@ const onQueryResult = (state, r) => {
                 break;
             case 'icicle':
                 err = charts.displayFlame(chartId, data, keys, metrics, false);
+                showTable = false;
                 break;
             case 'flame':
                 err = charts.displayFlame(chartId, data, keys, metrics, true);
+                showTable = false;
                 break;
             case 'column':
                 err = charts.displayBar(chartId, data, keys, metrics, true);
@@ -632,6 +625,17 @@ const onQueryResult = (state, r) => {
                 break;
             default:
                 break;
+        }
+
+        // display data table
+        if (showTable) {
+            // always display data in table
+            $("#table").attr("class", "fh300");
+            charts.displayTable("#table", ds.rows, [timeCol, windowCol, ...ds.keys], ds.metrics);
+            // if there is no metrics, do not limit table height
+            if (metrics.length == 0) {
+                $("#table").removeClass("fh300");
+            }
         }
 
         // display error if any
