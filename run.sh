@@ -29,17 +29,25 @@ shopt -u nocasematch
 
 # get os name
 os=$(uname -s)
+os_dir=
+if [ "$os" == "Linux" ]; then
+    os_dir="linux"
+fi
+
+if [ "$os" == "Darwin" ]; then
+    os_dir="macos"
+fi
 
 # assuming nebula code is ~/nebula
-base=~/nebula
+base=$(git rev-parse --show-toplevel)
 
 # run the nebula node and nebula server on current box
 build=$base/build
+prebuilt=$base/test/bin/$os_dir
 node=$build/NodeServer
-#   check if file exists
-if ! [ -z "$GIT_DIR" ]; then
-    echo 'please build first - looking for $node';
-    exit 1
+#   check if file not exists, use pre-built version
+if ! [ -z "$node" ]; then
+    node=$prebuilt/NodeServer
 fi
 
 if ! grep -q "$node" <<< `ps aux` ; then
@@ -50,6 +58,12 @@ fi
 
 server=$build/NebulaServer
 config=$build/configs/test.yml
+#   check if file not exists, use pre-built version
+if ! [ -z "$server" ]; then
+    server=$prebuilt/NebulaServer
+    config=$base/src/configs/test.yml
+fi
+
 if ! grep -q "$server" <<< `ps aux` ; then
     $server --CLS_CONF  $config &
 else
