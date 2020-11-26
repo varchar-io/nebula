@@ -6,10 +6,11 @@ These steps are tested for Ubuntu LTS 18.
 Other linux os or macos uses different package manager such as homebrew.
 
 ### Install dependencies and build
-run build.sh for automate setup (All steps in the build.sh script also listed on the bottom of this page as well)
+run `~/nebula/build.sh` for automate setup (All steps in the build.sh script also listed on the bottom of this page as well)
 a little hiccup of this script is we still need to fix below issue manually, hopefully this manual step won't be required after a version upgrade
+
 ### fix grpc
-A local change to solve the the build break (in `~/nebula/build`):
+A local change to solve the the build break (in `~/nebula/build.sh`):
 0. ensure `flatbuffers` and `grpc` downloaded by command `make flatbuffers && make grpc`
 1. grpc/src/grpc/include/grpcpp/impl/codegen/byte_buffer.h
    move method to public grpc_byte_buffer* c_buffer() { return buffer_; }
