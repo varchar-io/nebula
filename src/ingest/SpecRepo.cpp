@@ -50,6 +50,8 @@ using nebula::storage::kafka::KafkaTopic;
 
 constexpr auto HOUR_SECONDS = 3600;
 constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
+constexpr auto DAY_HOURS = 24;
+constexpr auto HOUR_MINUTES = 60;
 
 // specified batch size in table config - not kafka specific
 constexpr auto S_BATCH = "batch";
@@ -137,6 +139,26 @@ void genSpecs4Swap(const std::string& version,
   LOG(WARNING) << "only s3 supported for now";
 }
 
+inline void genSpecs4HourlyRoll(const std::string& version,
+                           const TableSpecPtr& table,
+                           const size_t endHour, const size_t currDay,
+                           std::vector<std::shared_ptr<IngestSpec>>& specs) {
+  const auto now = Evidence::now();
+  // parse location to get protocol, domain/bucket, path
+  auto sourceInfo = nebula::storage::parse(table->location);
+  auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
+
+  // scan hourly partition of last day
+  for(size_t j = 0 ; j < endHour ; j++) {
+    auto timeValue = now - currDay * DAY_SECONDS;
+    auto path = fmt::format(
+      sourceInfo.path, fmt::arg("date",
+                                Evidence::fmt_ymd_dash(timeValue)),
+      fmt::arg("hour", std::to_string(j)));
+    auto files = fs->list(path);
+    genSpecPerFile(table, version, files, specs, timeValue);
+  }
+}
 void genSpecs4Roll(const std::string& version,
                    const TableSpecPtr& table,
                    std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
@@ -151,8 +173,14 @@ void genSpecs4Roll(const std::string& version,
     // A roll spec will cover X days given table location of source data
     const auto now = Evidence::now();
     const auto max_days = table->max_hr / 24;
-    for (size_t i = 0; i <= max_days; ++i) {
-      // we only provide single macro for now
+    size_t i;
+    for (i = 0; i <= max_days; ++i) {
+      // run hourly partition list
+      for(size_t j = 0 ; j < DAY_HOURS; j++) {
+        genSpecs4HourlyRoll(version, table, 24, i, specs);
+      }
+      // TODO: refactor to have better support export from HMS chenqin
+      // run daily partition list
       auto timeValue = now - i * DAY_SECONDS;
       auto path = fmt::format(
         sourceInfo.path, fmt::arg("date", Evidence::fmt_ymd_dash(timeValue)));
@@ -160,6 +188,8 @@ void genSpecs4Roll(const std::string& version,
       genSpecPerFile(table, version, files, specs, timeValue);
     }
 
+    // last day hourly parition
+    genSpecs4HourlyRoll(version, table, table->max_hr % 24, i, specs);
     return;
   }
 
