@@ -291,7 +291,7 @@ bool IngestSpec::loadGSheet(BlockList& blocks) noexcept {
   auto tb = table_->to();
   TableService::singleton()->enroll(tb);
 
-  TimeRow timeRow(table_->timeSpec, mdate_);
+  TimeRow timeRow(table_->timeSpec, watermark_);
   return build(tb, reader, blocks, FLAGS_NBLOCK_MAX_ROWS, id_, timeRow);
 }
 
@@ -306,7 +306,7 @@ bool IngestSpec::loadKafka() noexcept {
   KafkaReader reader(table_, std::move(segment));
 
   // time function
-  TimeRow timeRow(table_->timeSpec, mdate_);
+  TimeRow timeRow(table_->timeSpec, watermark_);
 
   // get a table definition
   auto table = table_->to();
@@ -371,7 +371,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   // to other columns for simple transformation
   // but right now, we're expecting the same schema of data
   // based on time spec, we need to replace or append time column
-  TimeRow timeRow(table_->timeSpec, mdate_);
+  TimeRow timeRow(table_->timeSpec, watermark_);
   auto table = table_->to();
 
   // enroll the table in case it is the first time

@@ -142,8 +142,7 @@ private:
       break;
     }
     case nebula::meta::TimeType::MACRO: {
-      // TODO(cao) - support only one macro for now, need to generalize it
-      if (ts.pattern == "date") {
+      if (nebula::meta::extractPattern(ts.pattern) != nebula::meta::PatternMacro::INVALID) {
         return [mdate](const nebula::surface::RowData*) {
           return mdate;
         };

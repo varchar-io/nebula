@@ -48,10 +48,11 @@ using nebula::storage::FileInfo;
 using nebula::storage::kafka::KafkaSegment;
 using nebula::storage::kafka::KafkaTopic;
 
-constexpr auto HOUR_SECONDS = 3600;
-constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
-constexpr auto DAY_HOURS = 24;
 constexpr auto HOUR_MINUTES = 60;
+constexpr auto MINUTE_SECONDS = 60;
+constexpr auto DAY_HOURS = 24;
+constexpr auto HOUR_SECONDS = HOUR_MINUTES * MINUTE_SECONDS;
+constexpr auto DAY_SECONDS = HOUR_SECONDS * DAY_HOURS;
 
 // specified batch size in table config - not kafka specific
 constexpr auto S_BATCH = "batch";
@@ -78,7 +79,7 @@ void SpecRepo::refresh(const ClusterInfo& ci) noexcept {
   update(specs);
 }
 
-std::string buildIndentityByTime(const TimeSpec& time) {
+std::string buildIdentityByTime(const TimeSpec& time) {
   switch (time.type) {
   case TimeType::STATIC: {
     // the static time stamp value is its identity
@@ -96,7 +97,7 @@ void genSpecPerFile(const TableSpecPtr& table,
                     const std::string& version,
                     const std::vector<FileInfo>& files,
                     std::vector<std::shared_ptr<IngestSpec>>& specs,
-                    size_t macroDate) noexcept {
+                    size_t watermark) noexcept {
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
     if (!itr->isDir) {
       // we do not generate empty files
@@ -108,7 +109,7 @@ void genSpecPerFile(const TableSpecPtr& table,
       // generate a ingest spec from given file info
       // use name as its identifier
       auto spec = std::make_shared<IngestSpec>(
-        table, version, itr->name, itr->domain, itr->size, SpecState::NEW, macroDate);
+        table, version, itr->name, itr->domain, itr->size, SpecState::NEW, watermark);
 
       // push to the repo
       specs.push_back(spec);
@@ -139,26 +140,6 @@ void genSpecs4Swap(const std::string& version,
   LOG(WARNING) << "only s3 supported for now";
 }
 
-inline void genSpecs4HourlyRoll(const std::string& version,
-                           const TableSpecPtr& table,
-                           const size_t endHour, const size_t currDay,
-                           std::vector<std::shared_ptr<IngestSpec>>& specs) {
-  const auto now = Evidence::now();
-  // parse location to get protocol, domain/bucket, path
-  auto sourceInfo = nebula::storage::parse(table->location);
-  auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
-
-  // scan hourly partition of last day
-  for(size_t j = 0 ; j < endHour ; j++) {
-    auto timeValue = now - currDay * DAY_SECONDS;
-    auto path = fmt::format(
-      sourceInfo.path, fmt::arg("date",
-                                Evidence::fmt_ymd_dash(timeValue)),
-      fmt::arg("hour", std::to_string(j)));
-    auto files = fs->list(path);
-    genSpecPerFile(table, version, files, specs, timeValue);
-  }
-}
 void genSpecs4Roll(const std::string& version,
                    const TableSpecPtr& table,
                    std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
@@ -169,30 +150,70 @@ void genSpecs4Roll(const std::string& version,
     // making a s3 fs with given host
     auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
 
+    // exact macro pattern type
+    auto pt = nebula::meta::extractPattern(table->timeSpec.pattern);
+
     // list all objects/files from given path
     // A roll spec will cover X days given table location of source data
     const auto now = Evidence::now();
     const auto max_days = table->max_hr / 24;
-    size_t i;
-    for (i = 0; i <= max_days; ++i) {
-      // run hourly partition list
-      for(size_t j = 0 ; j < DAY_HOURS; j++) {
-        genSpecs4HourlyRoll(version, table, 24, i, specs);
-      }
-      // TODO: refactor to have better support export from HMS chenqin
-      // run daily partition list
-      auto timeValue = now - i * DAY_SECONDS;
-      auto path = fmt::format(
-        sourceInfo.path, fmt::arg("date", Evidence::fmt_ymd_dash(timeValue)));
-      auto files = fs->list(path);
-      genSpecPerFile(table, version, files, specs, timeValue);
-    }
+    // start spec in ascending order
+    long startTime = now - max_days * DAY_SECONDS - (table->max_hr % 24) * HOUR_SECONDS;
 
-    // last day hourly parition
-    genSpecs4HourlyRoll(version, table, table->max_hr % 24, i, specs);
+    /**
+     * max_hr could cross day boundary so we starts with a day before max_hr cut-off date
+     * and skip those earlier than startTime, we only generate spec watermark
+     * - in timestamp ascending order
+     * - at leaf dirs match pattern defines as specific granularity (date,hour,minute,second)
+     */
+    for (long day_ago = max_days + 1; day_ago >= 0; day_ago--) {
+      // dataset bucket timestamp, hints complete dataset before watermark already ingested
+      auto watermark = now - day_ago * DAY_SECONDS;
+      auto day_path = fmt::format(
+        sourceInfo.path, fmt::arg(nebula::meta::getVal(nebula::meta::PatternMacro::DATE), Evidence::fmt_ymd_dash(watermark)));
+
+      // handle dt=?
+      if (pt == nebula::meta::PatternMacro::DATE && watermark >= startTime) {
+        genSpecPerFile(table, version, fs->list(day_path), specs, watermark);
+        continue;
+      }
+
+      for (long hour_ago = DAY_HOURS - 1; hour_ago >= 0; hour_ago--) {
+        watermark = now - day_ago * DAY_SECONDS - hour_ago * HOUR_SECONDS;
+        auto hour_path = fmt::format(
+          day_path, fmt::arg(nebula::meta::getVal(nebula::meta::PatternMacro::HOUR), Evidence::fmt_hour(watermark)));
+        // handle dt=?/hr=?
+        if (pt == nebula::meta::PatternMacro::HOUR && watermark >= startTime) {
+          genSpecPerFile(table, version, fs->list(hour_path), specs, watermark);
+          continue;
+        }
+
+        for (long min_ago = HOUR_MINUTES - 1; min_ago >= 0; min_ago--) {
+          watermark = now - day_ago * DAY_SECONDS - hour_ago * HOUR_SECONDS - min_ago * MINUTE_SECONDS;
+          auto minute_path = fmt::format(
+            hour_path, fmt::arg(nebula::meta::getVal(nebula::meta::PatternMacro::MINUTE), Evidence::fmt_minute(watermark)));
+
+          // handle dt=?/hr=?/mi=?
+          if (pt == nebula::meta::PatternMacro::MINUTE && watermark >= startTime) {
+            genSpecPerFile(table, version, fs->list(minute_path), specs, watermark);
+            continue;
+          }
+
+          for (long sec_ago = MINUTE_SECONDS - 1; sec_ago >= 0; sec_ago--) {
+            watermark = now - day_ago * DAY_SECONDS - hour_ago * HOUR_SECONDS - min_ago * MINUTE_SECONDS - sec_ago;
+            auto second_path = fmt::format(
+              minute_path, fmt::arg(nebula::meta::getVal(nebula::meta::PatternMacro::SECOND), Evidence::fmt_second(watermark)));
+
+            // handle dt=?/hr=?/mi=?/se=?
+            if (pt == nebula::meta::PatternMacro::SECOND && watermark >= startTime) {
+              genSpecPerFile(table, version, fs->list(second_path), specs, watermark);
+            }
+          }
+        }
+      }
+    }
     return;
   }
-
   LOG(WARNING) << "only s3 supported for now";
 }
 
@@ -247,7 +268,7 @@ void SpecRepo::process(
   if (table->loader == "NebulaTest") {
     // single spec for nebula test loader
     specs.push_back(std::make_shared<IngestSpec>(
-      table, version, buildIndentityByTime(table->timeSpec), table->name, 0, SpecState::NEW, 0));
+      table, version, buildIdentityByTime(table->timeSpec), table->name, 0, SpecState::NEW, 0));
     return;
   }
 

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <regex>
 #include <unordered_map>
 
 #include "meta/Table.h"
@@ -54,6 +55,22 @@ enum class TimeType {
   // system will provide depending on sub-system behavior
   // such as, Kafka will fill message timestamp for it
   PROVIDED
+};
+
+// type of macros accepted in table spec
+enum class PatternMacro {
+  // Daily partition /dt=?
+  DATE,
+  // hourly partition name /dt=?/hr=?
+  HOUR,
+  // minute partition name /dt=?/hr=?/mi=?
+  MINUTE,
+  // use second level directory name /dt=?/hr=?/mi=?/se=?
+  SECOND,
+  // use directory name in unix timestamp /ts=?
+  TIMESTAMP,
+  // placeholder for not accepted marcos
+  INVALID,
 };
 
 struct TimeSpec {
@@ -185,5 +202,58 @@ public:
 
 using TableSpecSet = nebula::common::unordered_set<TableSpecPtr, TableSpecHash, TableSpecEqual>;
 
+// enum to string
+inline auto getVal = [](nebula::meta::PatternMacro p) {
+  switch (p) {
+  case nebula::meta::PatternMacro::DATE:
+    return "date";
+  case nebula::meta::PatternMacro::HOUR:
+    return "hour";
+  case nebula::meta::PatternMacro::MINUTE:
+    return "minute";
+  case nebula::meta::PatternMacro::SECOND:
+    return "second";
+  case nebula::meta::PatternMacro::TIMESTAMP:
+    return "timestamp";
+  default: return "";
+  }
+};
+
+// check if pattern string type
+inline nebula::meta::PatternMacro extractPattern(std::string pattern) {
+  // ts=?
+  if (pattern.find(getVal(nebula::meta::PatternMacro::TIMESTAMP))) {
+    if (!pattern.find(getVal(nebula::meta::PatternMacro::DATE)) && !pattern.find(getVal(nebula::meta::PatternMacro::HOUR)) && !pattern.find(getVal(nebula::meta::PatternMacro::MINUTE)) && !pattern.find(getVal(nebula::meta::PatternMacro::SECOND))) {
+      return nebula::meta::PatternMacro::TIMESTAMP;
+    }
+  } else {
+    // dt=?/hr=?/mi=?/se=?
+    if (pattern.find(getVal(nebula::meta::PatternMacro::SECOND))) {
+      if (pattern.find(getVal(nebula::meta::PatternMacro::DATE)) && pattern.find(getVal(nebula::meta::PatternMacro::HOUR)) && pattern.find(getVal(nebula::meta::PatternMacro::MINUTE))) {
+        return nebula::meta::PatternMacro::SECOND;
+      }
+    } else {
+      // dt=?/hr=?/mi=?
+      if (pattern.find(getVal(nebula::meta::PatternMacro::MINUTE))) {
+        if (pattern.find(getVal(nebula::meta::PatternMacro::DATE)) && pattern.find(getVal(nebula::meta::PatternMacro::HOUR))) {
+          return nebula::meta::PatternMacro::MINUTE;
+        }
+      } else {
+        // dt=?/hr=?
+        if (pattern.find(getVal(nebula::meta::PatternMacro::HOUR))) {
+          if (pattern.find(getVal(nebula::meta::PatternMacro::DATE))) {
+            return nebula::meta::PatternMacro::HOUR;
+          }
+        } else {
+          //dt=?
+          if (pattern.find(getVal(nebula::meta::PatternMacro::DATE))) {
+            return nebula::meta::PatternMacro::DATE;
+          }
+        }
+      }
+    }
+  }
+  return nebula::meta::PatternMacro::INVALID;
+}
 } // namespace meta
 } // namespace nebula

@@ -55,6 +55,15 @@ enum class SpecState : char {
   EXPIRED = 'E'
 };
 
+//bucket by date
+const static std::string DateMacro = "_date";
+// bucket by date and hour
+const static std::string HourMacro = "_hour";
+// bucket by date hour and minute
+const static std::string MinuteMacro = "_minute";
+// free form grouping by unix timestamp
+const static std::string TimestampMacro = "_timestamp";
+
 // a ingest spec defines a task specification to ingest some data
 class IngestSpec : public nebula::common::Identifiable {
 public:
@@ -65,14 +74,14 @@ public:
     const std::string& domain,
     size_t size,
     SpecState state,
-    size_t date)
+    size_t watermark)
     : table_{ table },
       version_{ version },
       path_{ path },
       domain_{ domain },
       size_{ size },
       state_{ state },
-      mdate_{ date },
+      watermark_{ watermark },
       node_{ nebula::meta::NNode::invalid() },
       id_{ fmt::format("{0}@{1}@{2}", table_->name, path_, size_) } {}
   virtual ~IngestSpec() = default;
@@ -130,9 +139,9 @@ public:
   inline const std::string& path() const {
     return path_;
   }
-
-  inline size_t macroDate() const {
-    return mdate_;
+  // watermark provides hints data is complete before this given timestamp
+  inline size_t watermark() const {
+    return watermark_;
   }
 
   // do the work based on current spec
@@ -169,8 +178,10 @@ private:
   std::string domain_;
   size_t size_;
   SpecState state_;
-  // macro date value in unix time stamp
-  size_t mdate_;
+  // list of macros (date, hour, minute, second) works with
+  std::vector<std::string> macros;
+  // macro watermark in unix time stamp
+  size_t watermark_;
 
   // node info if the spec has affinity on a node
   nebula::meta::NNode node_;
