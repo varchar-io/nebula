@@ -151,7 +151,7 @@ void genSpecs4Roll(const std::string& version,
     auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
 
     // exact macro pattern type
-    auto pt = nebula::meta::extractPattern(table->timeSpec.pattern);
+    auto pt = nebula::meta::extractPatternMacro(table->timeSpec.pattern);
 
     // list all objects/files from given path
     // A roll spec will cover X days given table location of source data
@@ -170,7 +170,7 @@ void genSpecs4Roll(const std::string& version,
       // dataset bucket timestamp, hints complete dataset before watermark already ingested
       auto watermark = now - day_ago * DAY_SECONDS;
       auto day_path = fmt::format(
-        sourceInfo.path, fmt::arg(nebula::meta::getVal(nebula::meta::PatternMacro::DATE), Evidence::fmt_ymd_dash(watermark)));
+        sourceInfo.path, fmt::arg(nebula::meta::macrovals.at(nebula::meta::PatternMacro::DATE).c_str(), Evidence::fmt_ymd_dash(watermark)));
 
       // handle dt=?
       if (pt == nebula::meta::PatternMacro::DATE && watermark >= startTime) {
@@ -181,7 +181,7 @@ void genSpecs4Roll(const std::string& version,
       for (long hour_ago = DAY_HOURS - 1; hour_ago >= 0; hour_ago--) {
         watermark = now - day_ago * DAY_SECONDS - hour_ago * HOUR_SECONDS;
         auto hour_path = fmt::format(
-          day_path, fmt::arg(nebula::meta::getVal(nebula::meta::PatternMacro::HOUR), Evidence::fmt_hour(watermark)));
+          day_path, fmt::arg(nebula::meta::macrovals.at(nebula::meta::PatternMacro::HOUR).c_str(), Evidence::fmt_hour(watermark)));
         // handle dt=?/hr=?
         if (pt == nebula::meta::PatternMacro::HOUR && watermark >= startTime) {
           genSpecPerFile(table, version, fs->list(hour_path), specs, watermark);
@@ -191,7 +191,7 @@ void genSpecs4Roll(const std::string& version,
         for (long min_ago = HOUR_MINUTES - 1; min_ago >= 0; min_ago--) {
           watermark = now - day_ago * DAY_SECONDS - hour_ago * HOUR_SECONDS - min_ago * MINUTE_SECONDS;
           auto minute_path = fmt::format(
-            hour_path, fmt::arg(nebula::meta::getVal(nebula::meta::PatternMacro::MINUTE), Evidence::fmt_minute(watermark)));
+            hour_path, fmt::arg(nebula::meta::macrovals.at(nebula::meta::PatternMacro::MINUTE).c_str(), Evidence::fmt_minute(watermark)));
 
           // handle dt=?/hr=?/mi=?
           if (pt == nebula::meta::PatternMacro::MINUTE && watermark >= startTime) {
@@ -202,7 +202,7 @@ void genSpecs4Roll(const std::string& version,
           for (long sec_ago = MINUTE_SECONDS - 1; sec_ago >= 0; sec_ago--) {
             watermark = now - day_ago * DAY_SECONDS - hour_ago * HOUR_SECONDS - min_ago * MINUTE_SECONDS - sec_ago;
             auto second_path = fmt::format(
-              minute_path, fmt::arg(nebula::meta::getVal(nebula::meta::PatternMacro::SECOND), Evidence::fmt_second(watermark)));
+              minute_path, fmt::arg(nebula::meta::macrovals.at(nebula::meta::PatternMacro::SECOND).c_str(), Evidence::fmt_second(watermark)));
 
             // handle dt=?/hr=?/mi=?/se=?
             if (pt == nebula::meta::PatternMacro::SECOND && watermark >= startTime) {

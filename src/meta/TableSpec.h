@@ -202,51 +202,36 @@ public:
 
 using TableSpecSet = nebula::common::unordered_set<TableSpecPtr, TableSpecHash, TableSpecEqual>;
 
-// enum to string
-inline auto getVal = [](nebula::meta::PatternMacro p) {
-  switch (p) {
-  case nebula::meta::PatternMacro::DATE:
-    return "date";
-  case nebula::meta::PatternMacro::HOUR:
-    return "hour";
-  case nebula::meta::PatternMacro::MINUTE:
-    return "minute";
-  case nebula::meta::PatternMacro::SECOND:
-    return "second";
-  case nebula::meta::PatternMacro::TIMESTAMP:
-    return "timestamp";
-  default: return "";
-  }
-};
+const static nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> macrovals{ { nebula::meta::PatternMacro::DATE, "date" }, { nebula::meta::PatternMacro::HOUR, "hour" }, { nebula::meta::PatternMacro::MINUTE, "minute" }, { nebula::meta::PatternMacro::SECOND, "second" }, { nebula::meta::PatternMacro::TIMESTAMP, "timestamp" } };
 
 // check if pattern string type
-inline nebula::meta::PatternMacro extractPattern(std::string pattern) {
+inline nebula::meta::PatternMacro extractPatternMacro(std::string pattern) {
   // ts=?
-  if (pattern.find(getVal(nebula::meta::PatternMacro::TIMESTAMP))) {
-    if (!pattern.find(getVal(nebula::meta::PatternMacro::DATE)) && !pattern.find(getVal(nebula::meta::PatternMacro::HOUR)) && !pattern.find(getVal(nebula::meta::PatternMacro::MINUTE)) && !pattern.find(getVal(nebula::meta::PatternMacro::SECOND))) {
+  if (pattern.find(macrovals.at(nebula::meta::PatternMacro::TIMESTAMP))) {
+    if (!pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE)) && !pattern.find(macrovals.at(nebula::meta::PatternMacro::HOUR)) && !pattern.find(macrovals.at(nebula::meta::PatternMacro::MINUTE)) && !pattern.find(macrovals.at(nebula::meta::PatternMacro::SECOND))) {
       return nebula::meta::PatternMacro::TIMESTAMP;
     }
   } else {
     // dt=?/hr=?/mi=?/se=?
-    if (pattern.find(getVal(nebula::meta::PatternMacro::SECOND))) {
-      if (pattern.find(getVal(nebula::meta::PatternMacro::DATE)) && pattern.find(getVal(nebula::meta::PatternMacro::HOUR)) && pattern.find(getVal(nebula::meta::PatternMacro::MINUTE))) {
+    if (pattern.find(macrovals.at(nebula::meta::PatternMacro::SECOND))) {
+      if (pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE)) && pattern.find(macrovals.at(nebula::meta::PatternMacro::HOUR)) && pattern.find(macrovals.at(nebula::meta::PatternMacro::MINUTE))) {
         return nebula::meta::PatternMacro::SECOND;
       }
     } else {
       // dt=?/hr=?/mi=?
-      if (pattern.find(getVal(nebula::meta::PatternMacro::MINUTE))) {
-        if (pattern.find(getVal(nebula::meta::PatternMacro::DATE)) && pattern.find(getVal(nebula::meta::PatternMacro::HOUR))) {
+      if (pattern.find(macrovals.at(nebula::meta::PatternMacro::MINUTE))) {
+        if (pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE)) && pattern.find(macrovals.at(nebula::meta::PatternMacro::HOUR))) {
           return nebula::meta::PatternMacro::MINUTE;
         }
       } else {
         // dt=?/hr=?
-        if (pattern.find(getVal(nebula::meta::PatternMacro::HOUR))) {
-          if (pattern.find(getVal(nebula::meta::PatternMacro::DATE))) {
+        if (pattern.find(macrovals.at(nebula::meta::PatternMacro::HOUR))) {
+          if (pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE))) {
             return nebula::meta::PatternMacro::HOUR;
           }
         } else {
           //dt=?
-          if (pattern.find(getVal(nebula::meta::PatternMacro::DATE))) {
+          if (pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE))) {
             return nebula::meta::PatternMacro::DATE;
           }
         }

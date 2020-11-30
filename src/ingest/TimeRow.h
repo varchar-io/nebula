@@ -142,7 +142,7 @@ private:
       break;
     }
     case nebula::meta::TimeType::MACRO: {
-      if (nebula::meta::extractPattern(ts.pattern) != nebula::meta::PatternMacro::INVALID) {
+      if (nebula::meta::extractPatternMacro(ts.pattern) != nebula::meta::PatternMacro::INVALID) {
         return [mdate](const nebula::surface::RowData*) {
           return mdate;
         };

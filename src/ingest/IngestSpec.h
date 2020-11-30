@@ -178,8 +178,6 @@ private:
   std::string domain_;
   size_t size_;
   SpecState state_;
-  // list of macros (date, hour, minute, second) works with
-  std::vector<std::string> macros;
   // macro watermark in unix time stamp
   size_t watermark_;
 
