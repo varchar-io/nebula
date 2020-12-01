@@ -28,12 +28,11 @@ After you build nebula successfully, you can run this script to run all services
 ## Code Convention
 ### Style - use clang-format
 
-- VS Code is the default IDE which has extension for clang-format to format our code
-- install clang-format so that IDE can invoke the formatter automatically on saving.
-- https://packagecontrol.io/packages/Clang%20Format
-- On MacOS (npm install clang-format) and edit user-settings with below settings
-- "clang-format.executable": "/absolute-path-to/clang-format"
-- If you don't have npm on your mac, install node from here https://nodejs.org/en/download/
+- install clang-format (user dir): `npm install clang-format`
+- open preferences/settings `CMD+,`
+- enter value for "clang-format.executable": `~/node_modules/clang-format/bin/darwin_x64/clang-format`
+- check above path exists (it may change across versions depending on time run the installation)
+- my format key binding is `SHIFT+ALT+F` (check your own bindings)
 
 ### Basic Code Convention
 

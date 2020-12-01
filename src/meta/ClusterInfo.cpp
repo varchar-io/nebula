@@ -95,6 +95,10 @@ DataSource asDataSource(const std::string& data) {
     return DataSource::KAFKA;
   }
 
+  if (data == "local") {
+    return DataSource::LOCAL;
+  }
+
   throw NException("Misconfigured data source");
 }
 
