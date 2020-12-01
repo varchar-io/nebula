@@ -202,36 +202,45 @@ public:
 
 using TableSpecSet = nebula::common::unordered_set<TableSpecPtr, TableSpecHash, TableSpecEqual>;
 
-const static nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> macrovals{ { nebula::meta::PatternMacro::DATE, "date" }, { nebula::meta::PatternMacro::HOUR, "hour" }, { nebula::meta::PatternMacro::MINUTE, "minute" }, { nebula::meta::PatternMacro::SECOND, "second" }, { nebula::meta::PatternMacro::TIMESTAMP, "timestamp" } };
+constexpr auto HOUR_MINUTES = 60;
+constexpr auto MINUTE_SECONDS = 60;
+constexpr auto DAY_HOURS = 24;
+constexpr auto HOUR_SECONDS = HOUR_MINUTES * MINUTE_SECONDS;
+constexpr auto DAY_SECONDS = HOUR_SECONDS * DAY_HOURS;
+
+const static nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternStr{ { nebula::meta::PatternMacro::DATE, "date" }, { nebula::meta::PatternMacro::HOUR, "hour" }, { nebula::meta::PatternMacro::MINUTE, "minute" }, { nebula::meta::PatternMacro::SECOND, "second" }, { nebula::meta::PatternMacro::TIMESTAMP, "timestamp" } };
+const static nebula::common::unordered_map<nebula::meta::PatternMacro, nebula::meta::PatternMacro> childPattern{ { nebula::meta::PatternMacro::DATE, nebula::meta::PatternMacro::HOUR }, { nebula::meta::PatternMacro::HOUR, nebula::meta::PatternMacro::MINUTE }, { nebula::meta::PatternMacro::MINUTE, nebula::meta::PatternMacro::SECOND } };
+const static nebula::common::unordered_map<nebula::meta::PatternMacro, int> partitionInSeconds{ { nebula::meta::PatternMacro::DATE, DAY_SECONDS }, { nebula::meta::PatternMacro::HOUR, HOUR_SECONDS }, { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS } };
+const static nebula::common::unordered_map<nebula::meta::PatternMacro, int> partitionSize{ { nebula::meta::PatternMacro::DATE, DAY_HOURS }, { nebula::meta::PatternMacro::HOUR, HOUR_MINUTES }, { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS } };
 
 // check if pattern string type
 inline nebula::meta::PatternMacro extractPatternMacro(std::string pattern) {
   // ts=?
-  if (pattern.find(macrovals.at(nebula::meta::PatternMacro::TIMESTAMP))) {
-    if (!pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE)) && !pattern.find(macrovals.at(nebula::meta::PatternMacro::HOUR)) && !pattern.find(macrovals.at(nebula::meta::PatternMacro::MINUTE)) && !pattern.find(macrovals.at(nebula::meta::PatternMacro::SECOND))) {
+  if (pattern.find(patternStr.at(nebula::meta::PatternMacro::TIMESTAMP))) {
+    if (!pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE)) && !pattern.find(patternStr.at(nebula::meta::PatternMacro::HOUR)) && !pattern.find(patternStr.at(nebula::meta::PatternMacro::MINUTE)) && !pattern.find(patternStr.at(nebula::meta::PatternMacro::SECOND))) {
       return nebula::meta::PatternMacro::TIMESTAMP;
     }
   } else {
     // dt=?/hr=?/mi=?/se=?
-    if (pattern.find(macrovals.at(nebula::meta::PatternMacro::SECOND))) {
-      if (pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE)) && pattern.find(macrovals.at(nebula::meta::PatternMacro::HOUR)) && pattern.find(macrovals.at(nebula::meta::PatternMacro::MINUTE))) {
+    if (pattern.find(patternStr.at(nebula::meta::PatternMacro::SECOND))) {
+      if (pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE)) && pattern.find(patternStr.at(nebula::meta::PatternMacro::HOUR)) && pattern.find(patternStr.at(nebula::meta::PatternMacro::MINUTE))) {
         return nebula::meta::PatternMacro::SECOND;
       }
     } else {
       // dt=?/hr=?/mi=?
-      if (pattern.find(macrovals.at(nebula::meta::PatternMacro::MINUTE))) {
-        if (pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE)) && pattern.find(macrovals.at(nebula::meta::PatternMacro::HOUR))) {
+      if (pattern.find(patternStr.at(nebula::meta::PatternMacro::MINUTE))) {
+        if (pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE)) && pattern.find(patternStr.at(nebula::meta::PatternMacro::HOUR))) {
           return nebula::meta::PatternMacro::MINUTE;
         }
       } else {
         // dt=?/hr=?
-        if (pattern.find(macrovals.at(nebula::meta::PatternMacro::HOUR))) {
-          if (pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE))) {
+        if (pattern.find(patternStr.at(nebula::meta::PatternMacro::HOUR))) {
+          if (pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE))) {
             return nebula::meta::PatternMacro::HOUR;
           }
         } else {
           //dt=?
-          if (pattern.find(macrovals.at(nebula::meta::PatternMacro::DATE))) {
+          if (pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE))) {
             return nebula::meta::PatternMacro::DATE;
           }
         }

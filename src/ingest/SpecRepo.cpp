@@ -48,12 +48,6 @@ using nebula::storage::FileInfo;
 using nebula::storage::kafka::KafkaSegment;
 using nebula::storage::kafka::KafkaTopic;
 
-constexpr auto HOUR_MINUTES = 60;
-constexpr auto MINUTE_SECONDS = 60;
-constexpr auto DAY_HOURS = 24;
-constexpr auto HOUR_SECONDS = HOUR_MINUTES * MINUTE_SECONDS;
-constexpr auto DAY_SECONDS = HOUR_SECONDS * DAY_HOURS;
-
 // specified batch size in table config - not kafka specific
 constexpr auto S_BATCH = "batch";
 // specified kafka partition /offset to consume - kafka specific
@@ -140,6 +134,33 @@ void genSpecs4Swap(const std::string& version,
   LOG(WARNING) << "only s3 supported for now";
 }
 
+inline void genSpec(long start,
+                    nebula::meta::PatternMacro curr, nebula::meta::PatternMacro dest,
+                    std::time_t now, std::string path,
+                    std::time_t cutOffTime,
+                    const std::string& version, const TableSpecPtr& table,
+                    std::vector<std::shared_ptr<IngestSpec>>& specs) {
+
+  auto sourceInfo = nebula::storage::parse(table->location);
+  auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
+
+  for (long i = start - 1; i >= 0; i--) {
+    auto watermark = now - i * nebula::meta::partitionInSeconds.at(curr);
+    auto _path = fmt::format(
+      path, fmt::arg(nebula::meta::patternStr.at(curr).c_str(), Evidence::fmt_ymd_dash(watermark)));
+
+    if (watermark >= cutOffTime) {
+      genSpecPerFile(table, version, fs->list(_path), specs, watermark);
+      continue;
+    }
+
+    if (curr != dest) {
+      nebula::meta::PatternMacro childMarco = nebula::meta::childPattern.at(curr);
+      genSpec(nebula::meta::partitionSize.at(childMarco), childMarco, dest, watermark, _path, cutOffTime, version, table, specs);
+    }
+  }
+}
+
 void genSpecs4Roll(const std::string& version,
                    const TableSpecPtr& table,
                    std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
@@ -157,61 +178,12 @@ void genSpecs4Roll(const std::string& version,
     // A roll spec will cover X days given table location of source data
     const auto now = Evidence::now();
     const auto max_days = table->max_hr / 24;
-    // start spec in ascending order
-    long startTime = now - max_days * DAY_SECONDS - (table->max_hr % 24) * HOUR_SECONDS;
 
-    /**
-     * max_hr could cross day boundary so we starts with a day before max_hr cut-off date
-     * and skip those earlier than startTime, we only generate spec watermark
-     * - in timestamp ascending order
-     * - at leaf dirs match pattern defines as specific granularity (date,hour,minute,second)
-     */
-    for (long day_ago = max_days + 1; day_ago >= 0; day_ago--) {
-      // dataset bucket timestamp, hints complete dataset before watermark already ingested
-      auto watermark = now - day_ago * DAY_SECONDS;
-      auto day_path = fmt::format(
-        sourceInfo.path, fmt::arg(nebula::meta::macrovals.at(nebula::meta::PatternMacro::DATE).c_str(), Evidence::fmt_ymd_dash(watermark)));
+    // earliest time in second to process in ascending order
+    long cutOffTime = now - table->max_hr * nebula::meta::partitionInSeconds.at(nebula::meta::PatternMacro::HOUR);
 
-      // handle dt=?
-      if (pt == nebula::meta::PatternMacro::DATE && watermark >= startTime) {
-        genSpecPerFile(table, version, fs->list(day_path), specs, watermark);
-        continue;
-      }
-
-      for (long hour_ago = DAY_HOURS - 1; hour_ago >= 0; hour_ago--) {
-        watermark = now - day_ago * DAY_SECONDS - hour_ago * HOUR_SECONDS;
-        auto hour_path = fmt::format(
-          day_path, fmt::arg(nebula::meta::macrovals.at(nebula::meta::PatternMacro::HOUR).c_str(), Evidence::fmt_hour(watermark)));
-        // handle dt=?/hr=?
-        if (pt == nebula::meta::PatternMacro::HOUR && watermark >= startTime) {
-          genSpecPerFile(table, version, fs->list(hour_path), specs, watermark);
-          continue;
-        }
-
-        for (long min_ago = HOUR_MINUTES - 1; min_ago >= 0; min_ago--) {
-          watermark = now - day_ago * DAY_SECONDS - hour_ago * HOUR_SECONDS - min_ago * MINUTE_SECONDS;
-          auto minute_path = fmt::format(
-            hour_path, fmt::arg(nebula::meta::macrovals.at(nebula::meta::PatternMacro::MINUTE).c_str(), Evidence::fmt_minute(watermark)));
-
-          // handle dt=?/hr=?/mi=?
-          if (pt == nebula::meta::PatternMacro::MINUTE && watermark >= startTime) {
-            genSpecPerFile(table, version, fs->list(minute_path), specs, watermark);
-            continue;
-          }
-
-          for (long sec_ago = MINUTE_SECONDS - 1; sec_ago >= 0; sec_ago--) {
-            watermark = now - day_ago * DAY_SECONDS - hour_ago * HOUR_SECONDS - min_ago * MINUTE_SECONDS - sec_ago;
-            auto second_path = fmt::format(
-              minute_path, fmt::arg(nebula::meta::macrovals.at(nebula::meta::PatternMacro::SECOND).c_str(), Evidence::fmt_second(watermark)));
-
-            // handle dt=?/hr=?/mi=?/se=?
-            if (pt == nebula::meta::PatternMacro::SECOND && watermark >= startTime) {
-              genSpecPerFile(table, version, fs->list(second_path), specs, watermark);
-            }
-          }
-        }
-      }
-    }
+    //TODO: don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet. chenqin
+    genSpec(max_days + 2, nebula::meta::PatternMacro::DATE, pt, now, sourceInfo.path, cutOffTime, version, table, specs);
     return;
   }
   LOG(WARNING) << "only s3 supported for now";
@@ -255,7 +227,7 @@ void genKafkaSpec(const std::string& version,
   }
 
   // set start time
-  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * HOUR_SECONDS);
+  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * nebula::meta::HOUR_SECONDS);
   auto segments = topic.segmentsByTimestamp(startMs, batch);
   convert(segments);
 }
