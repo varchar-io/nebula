@@ -66,4 +66,4 @@ tables:
     time:
       type: macro
       # support granularity between date to date hour minute second
-      pattern: date
+      pattern: \{date\}
