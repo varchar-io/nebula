@@ -55,15 +55,6 @@ enum class SpecState : char {
   EXPIRED = 'E'
 };
 
-//bucket by date
-const static std::string DateMacro = "_date";
-// bucket by date and hour
-const static std::string HourMacro = "_hour";
-// bucket by date hour and minute
-const static std::string MinuteMacro = "_minute";
-// free form grouping by unix timestamp
-const static std::string TimestampMacro = "_timestamp";
-
 // a ingest spec defines a task specification to ingest some data
 class IngestSpec : public nebula::common::Identifiable {
 public:

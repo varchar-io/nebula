@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <regex>
 #include <unordered_map>
 
 #include "meta/Table.h"
@@ -208,45 +207,33 @@ constexpr auto DAY_HOURS = 24;
 constexpr auto HOUR_SECONDS = HOUR_MINUTES * MINUTE_SECONDS;
 constexpr auto DAY_SECONDS = HOUR_SECONDS * DAY_HOURS;
 
-const static nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternStr{ { nebula::meta::PatternMacro::DATE, "date" }, { nebula::meta::PatternMacro::HOUR, "hour" }, { nebula::meta::PatternMacro::MINUTE, "minute" }, { nebula::meta::PatternMacro::SECOND, "second" }, { nebula::meta::PatternMacro::TIMESTAMP, "timestamp" } };
-const static nebula::common::unordered_map<nebula::meta::PatternMacro, nebula::meta::PatternMacro> childPattern{ { nebula::meta::PatternMacro::DATE, nebula::meta::PatternMacro::HOUR }, { nebula::meta::PatternMacro::HOUR, nebula::meta::PatternMacro::MINUTE }, { nebula::meta::PatternMacro::MINUTE, nebula::meta::PatternMacro::SECOND } };
-const static nebula::common::unordered_map<nebula::meta::PatternMacro, int> partitionInSeconds{ { nebula::meta::PatternMacro::DATE, DAY_SECONDS }, { nebula::meta::PatternMacro::HOUR, HOUR_SECONDS }, { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS } };
-const static nebula::common::unordered_map<nebula::meta::PatternMacro, int> partitionSize{ { nebula::meta::PatternMacro::DATE, DAY_HOURS }, { nebula::meta::PatternMacro::HOUR, HOUR_MINUTES }, { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS } };
+const nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternStr{ { nebula::meta::PatternMacro::DATE, "date" }, { nebula::meta::PatternMacro::HOUR, "hour" }, { nebula::meta::PatternMacro::MINUTE, "minute" }, { nebula::meta::PatternMacro::SECOND, "second" }, { nebula::meta::PatternMacro::TIMESTAMP, "timestamp" } };
+const nebula::common::unordered_map<nebula::meta::PatternMacro, nebula::meta::PatternMacro> childPattern{ { nebula::meta::PatternMacro::DATE, nebula::meta::PatternMacro::HOUR }, { nebula::meta::PatternMacro::HOUR, nebula::meta::PatternMacro::MINUTE }, { nebula::meta::PatternMacro::MINUTE, nebula::meta::PatternMacro::SECOND } };
+const nebula::common::unordered_map<nebula::meta::PatternMacro, int> unitInSeconds{ { nebula::meta::PatternMacro::DATE, DAY_SECONDS }, { nebula::meta::PatternMacro::HOUR, HOUR_SECONDS }, { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS } };
+const nebula::common::unordered_map<nebula::meta::PatternMacro, int> childSize{ { nebula::meta::PatternMacro::DATE, DAY_HOURS }, { nebula::meta::PatternMacro::HOUR, HOUR_MINUTES }, { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS } };
 
 // check if pattern string type
 inline nebula::meta::PatternMacro extractPatternMacro(std::string pattern) {
-  // ts=?
-  if (pattern.find(patternStr.at(nebula::meta::PatternMacro::TIMESTAMP))) {
-    if (!pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE)) && !pattern.find(patternStr.at(nebula::meta::PatternMacro::HOUR)) && !pattern.find(patternStr.at(nebula::meta::PatternMacro::MINUTE)) && !pattern.find(patternStr.at(nebula::meta::PatternMacro::SECOND))) {
-      return nebula::meta::PatternMacro::TIMESTAMP;
-    }
-  } else {
-    // dt=?/hr=?/mi=?/se=?
-    if (pattern.find(patternStr.at(nebula::meta::PatternMacro::SECOND))) {
-      if (pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE)) && pattern.find(patternStr.at(nebula::meta::PatternMacro::HOUR)) && pattern.find(patternStr.at(nebula::meta::PatternMacro::MINUTE))) {
-        return nebula::meta::PatternMacro::SECOND;
-      }
-    } else {
-      // dt=?/hr=?/mi=?
-      if (pattern.find(patternStr.at(nebula::meta::PatternMacro::MINUTE))) {
-        if (pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE)) && pattern.find(patternStr.at(nebula::meta::PatternMacro::HOUR))) {
-          return nebula::meta::PatternMacro::MINUTE;
-        }
-      } else {
-        // dt=?/hr=?
-        if (pattern.find(patternStr.at(nebula::meta::PatternMacro::HOUR))) {
-          if (pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE))) {
-            return nebula::meta::PatternMacro::HOUR;
-          }
-        } else {
-          //dt=?
-          if (pattern.find(patternStr.at(nebula::meta::PatternMacro::DATE))) {
-            return nebula::meta::PatternMacro::DATE;
-          }
-        }
-      }
-    }
+  const auto tsMacroFound = pattern.find(patternStr.at(PatternMacro::TIMESTAMP)) != std::string::npos;
+  const auto dateMacroFound = pattern.find(patternStr.at(PatternMacro::DATE)) != std::string::npos;
+  const auto hourMacroFound = pattern.find(patternStr.at(PatternMacro::HOUR)) != std::string::npos;
+  const auto minuteMacroFound = pattern.find(patternStr.at(PatternMacro::MINUTE)) != std::string::npos;
+  const auto secondMacroFound = pattern.find(patternStr.at(PatternMacro::SECOND)) != std::string::npos;
+
+  if (secondMacroFound && minuteMacroFound && hourMacroFound && dateMacroFound) {
+    return PatternMacro::SECOND;
+  } else if (minuteMacroFound && hourMacroFound && dateMacroFound) {
+    return PatternMacro::MINUTE;
+  } else if (hourMacroFound && dateMacroFound) {
+    return PatternMacro::HOUR;
+  } else if (dateMacroFound) {
+    return PatternMacro::DATE;
   }
+
+  if (tsMacroFound) {
+    return PatternMacro::TIMESTAMP;
+  }
+
   return nebula::meta::PatternMacro::INVALID;
 }
 } // namespace meta

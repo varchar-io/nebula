@@ -27,8 +27,8 @@ namespace ingest {
 // row wrapper to translate "date" string into reserved "_time_" column
 class TimeRow : public nebula::surface::RowData {
 public:
-  TimeRow(const nebula::meta::TimeSpec& ts, size_t mdate)
-    : timeFunc_{ makeTimeFunc(ts, mdate) } {}
+  TimeRow(const nebula::meta::TimeSpec& ts, size_t watermark)
+    : timeFunc_{ makeTimeFunc(ts, watermark) } {}
   ~TimeRow() = default;
 
   const TimeRow& set(const nebula::surface::RowData* row) {
@@ -74,7 +74,7 @@ public:
 
 private:
   // A method to convert time spec into a time function
-  std::function<int64_t(const nebula::surface::RowData*)> makeTimeFunc(const nebula::meta::TimeSpec& ts, size_t mdate) {
+  std::function<int64_t(const nebula::surface::RowData*)> makeTimeFunc(const nebula::meta::TimeSpec& ts, size_t watermark) {
     // static time spec
     switch (ts.type) {
     case nebula::meta::TimeType::STATIC: {
@@ -143,8 +143,9 @@ private:
     }
     case nebula::meta::TimeType::MACRO: {
       if (nebula::meta::extractPatternMacro(ts.pattern) != nebula::meta::PatternMacro::INVALID) {
-        return [mdate](const nebula::surface::RowData*) {
-          return mdate;
+        // use partition time as batch watermark
+        return [watermark](const nebula::surface::RowData*) {
+          return watermark;
         };
       } else {
         return [](const nebula::surface::RowData*) { return 0; };

@@ -135,28 +135,30 @@ void genSpecs4Swap(const std::string& version,
 }
 
 inline void genSpec(long start,
-                    nebula::meta::PatternMacro curr, nebula::meta::PatternMacro dest,
-                    std::time_t now, std::string path,
+                    nebula::meta::PatternMacro curr,
+                    nebula::meta::PatternMacro dest,
+                    std::time_t now, const std::string& pathTemplate,
                     std::time_t cutOffTime,
-                    const std::string& version, const TableSpecPtr& table,
+                    const std::string& version,
+                    const TableSpecPtr& table,
                     std::vector<std::shared_ptr<IngestSpec>>& specs) {
 
   auto sourceInfo = nebula::storage::parse(table->location);
   auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
 
   for (long i = start - 1; i >= 0; i--) {
-    auto watermark = now - i * nebula::meta::partitionInSeconds.at(curr);
-    auto _path = fmt::format(
-      path, fmt::arg(nebula::meta::patternStr.at(curr).c_str(), Evidence::fmt_ymd_dash(watermark)));
+    auto watermark = now - i * nebula::meta::unitInSeconds.at(curr);
+    auto path = fmt::format(
+      pathTemplate, fmt::arg(nebula::meta::patternStr.at(curr).c_str(), Evidence::fmt_ymd_dash(watermark)));
 
     if (watermark >= cutOffTime) {
-      genSpecPerFile(table, version, fs->list(_path), specs, watermark);
+      genSpecPerFile(table, version, fs->list(path), specs, watermark);
       continue;
     }
 
     if (curr != dest) {
       nebula::meta::PatternMacro childMarco = nebula::meta::childPattern.at(curr);
-      genSpec(nebula::meta::partitionSize.at(childMarco), childMarco, dest, watermark, _path, cutOffTime, version, table, specs);
+      genSpec(nebula::meta::childSize.at(childMarco), childMarco, dest, watermark, path, cutOffTime, version, table, specs);
     }
   }
 }
@@ -180,9 +182,9 @@ void genSpecs4Roll(const std::string& version,
     const auto max_days = table->max_hr / 24;
 
     // earliest time in second to process in ascending order
-    long cutOffTime = now - table->max_hr * nebula::meta::partitionInSeconds.at(nebula::meta::PatternMacro::HOUR);
+    long cutOffTime = now - table->max_hr * nebula::meta::unitInSeconds.at(nebula::meta::PatternMacro::HOUR);
 
-    //TODO: don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet. chenqin
+    // TODO(chenqin): don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet. chenqin
     genSpec(max_days + 2, nebula::meta::PatternMacro::DATE, pt, now, sourceInfo.path, cutOffTime, version, table, specs);
     return;
   }
