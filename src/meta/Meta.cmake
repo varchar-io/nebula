@@ -33,17 +33,17 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 
 # build test binary
 add_executable(MetaTests
-        ${NEBULA_SRC}/meta/test/TestMeta.cpp
-        ${NEBULA_SRC}/meta/test/TestPartition.cpp
-        ${NEBULA_SRC}/meta/test/TestTableSpec.cpp)
+    ${NEBULA_SRC}/meta/test/TestMeta.cpp
+    ${NEBULA_SRC}/meta/test/TestPartition.cpp
+    ${NEBULA_SRC}/meta/test/TestTableSpec.cpp)
 
 target_link_libraries(MetaTests
-        PRIVATE ${NEBULA_META}
-        PRIVATE ${GTEST_LIBRARY}
-        PRIVATE ${GTEST_MAIN_LIBRARY}
-        PRIVATE ${GLOG_LIBRARY}
-        PRIVATE ${GFLAGS_LIBRARY}
-        PRIVATE ${FOLLY_LIBRARY})
+    PRIVATE ${NEBULA_META}
+    PRIVATE ${GTEST_LIBRARY}
+    PRIVATE ${GTEST_MAIN_LIBRARY}
+    PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${FOLLY_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)

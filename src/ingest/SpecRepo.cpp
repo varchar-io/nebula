@@ -145,22 +145,26 @@ inline void genSpec(long start,
                     const TableSpecPtr& table,
                     std::vector<std::shared_ptr<IngestSpec>>& specs) {
 
-  auto sourceInfo = nebula::storage::parse(table->location);
+  const auto curUnitInSeconds = nebula::meta::unitInSeconds.at(curr);
+  const auto curPatternStr = nebula::meta::patternStr.at(curr);
+  const auto childMarco = nebula::meta::childPattern.at(curr);
+  const auto startChildPatternIndex = nebula::meta::childSize.at(childMarco) - 1;
+  const auto sourceInfo = nebula::storage::parse(table->location);
+
   auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
 
   for (long i = start; i >= 0; i--) {
-    auto watermark = now - i * nebula::meta::unitInSeconds.at(curr);
+    auto watermark = now - i * curUnitInSeconds;
     auto path = fmt::format(
-      pathTemplate, fmt::arg(nebula::meta::patternStr.at(curr).c_str(), Evidence::fmt_ymd_dash(watermark)));
+      pathTemplate, fmt::arg(curPatternStr.c_str(), Evidence::fmt_ymd_dash(watermark)));
 
-    if (watermark >= cutOffTime) {
+    // watermark is mono incremental when curr == dest, always smaller or equal when scan child marco
+    if (watermark < cutOffTime) continue;
+
+    if (curr == dest) {
       genSpecPerFile(table, version, fs->list(path), specs, watermark);
-      continue;
-    }
-
-    if (curr != dest) {
-      nebula::meta::PatternMacro childMarco = nebula::meta::childPattern.at(curr);
-      genSpec(nebula::meta::childSize.at(childMarco) - 1, childMarco, dest, watermark, path, cutOffTime, version, table, specs);
+    } else {
+      genSpec(startChildPatternIndex, childMarco, dest, watermark, path, cutOffTime, version, table, specs);
     }
   }
 }
