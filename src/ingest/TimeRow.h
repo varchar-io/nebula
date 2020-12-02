@@ -143,7 +143,6 @@ private:
     }
     case nebula::meta::TimeType::MACRO: {
       if (nebula::meta::extractPatternMacro(ts.pattern) != nebula::meta::PatternMacro::INVALID) {
-        // use partition time as batch watermark
         return [watermark](const nebula::surface::RowData*) {
           return watermark;
         };

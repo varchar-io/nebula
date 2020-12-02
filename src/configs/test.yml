@@ -65,4 +65,5 @@ tables:
         dict: true
     time:
       type: macro
+      # support granularity between date to date hour minute second
       pattern: date
