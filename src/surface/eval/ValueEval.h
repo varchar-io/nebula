@@ -120,11 +120,11 @@ std::unique_ptr<ValueEval> custom(const std::string& name, const std::string& ex
         fmt::format("({0}{1}{2})", s1, #SIGN, s2),                                                \
         ExpressionType::ARTHMETIC,                                                                \
         OPT_LAMBDA({                                                                              \
-          auto v1 = ctx.eval<T1>(*children[0], valid);                                            \
+          auto v1 = children.at(0)->eval<T1>(ctx, valid);                                         \
           if (UNLIKELY(!valid)) {                                                                 \
             return INVALID;                                                                       \
           }                                                                                       \
-          auto v2 = ctx.eval<T2>(*children[1], valid);                                            \
+          auto v2 = children.at(1)->eval<T2>(ctx, valid);                                         \
           if (UNLIKELY(!valid)) {                                                                 \
             return INVALID;                                                                       \
           }                                                                                       \
@@ -182,11 +182,11 @@ BEB_LOGICAL(OR)
         fmt::format("({0}{1}{2})", s1, #SIGN, s2),                                                \
         ExpressionType::LOGICAL,                                                                  \
         OPT_LAMBDA({                                                                              \
-          auto v1 = ctx.eval<T1>(*children.at(0), valid);                                         \
+          auto v1 = children.at(0)->eval<T1>(ctx, valid);                                         \
           if (UNLIKELY(!valid)) {                                                                 \
             return false;                                                                         \
           }                                                                                       \
-          auto v2 = ctx.eval<T2>(*children.at(1), valid);                                         \
+          auto v2 = children.at(1)->eval<T2>(ctx, valid);                                         \
           if (UNLIKELY(!valid)) {                                                                 \
             return false;                                                                         \
           }                                                                                       \

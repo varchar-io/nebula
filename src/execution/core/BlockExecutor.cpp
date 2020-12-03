@@ -16,9 +16,16 @@
 
 #include "BlockExecutor.h"
 
+#include <gflags/gflags.h>
+#include <gperftools/profiler.h>
+
 #include "AggregationMerge.h"
+#include "common/Likely.h"
 #include "memory/keyed/HashFlat.h"
 #include "surface/eval/UDF.h"
+
+DEFINE_bool(CPU_PROF, false, "Enable cpu profile");
+DEFINE_string(PROF_FILE, "/tmp/cpu_prof.out", "CPU profile output file");
 
 /**
  * Nebula runtime / online meta data.
@@ -48,6 +55,11 @@ RowCursorPtr compute(const EvaledBlock& data, const nebula::execution::BlockPhas
 }
 
 void BlockExecutor::compute() {
+  // instrumentation for profiling on compute branch
+  if (UNLIKELY(FLAGS_CPU_PROF)) {
+    ProfilerStart(FLAGS_PROF_FILE.c_str());
+  }
+
   // process every single row and put result in HashFlat
   auto accessor = data_.first->makeAccessor();
   const auto& fields = plan_.fields();
@@ -84,7 +96,7 @@ void BlockExecutor::compute() {
     // ignore valid here - if system can't determine how to act on NULL value
     // we don't know how to make decision here too
     bool valid = true;
-    if (!scanAll && !ctx->eval<bool>(filter, valid)) {
+    if (!scanAll && !filter.eval<bool>(*ctx, valid)) {
       continue;
     }
 
@@ -95,6 +107,10 @@ void BlockExecutor::compute() {
   // after the compute flat should contain all the data we need.
   index_ = 0;
   size_ = result_->getRows();
+
+  if (UNLIKELY(FLAGS_CPU_PROF)) {
+    ProfilerStop();
+  }
 }
 
 void SamplesExecutor::compute() {

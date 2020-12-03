@@ -33,7 +33,7 @@ bool ComputedRow::isNull(IndexType) const {
 #define FORWARD_EVAL_FIELD(TYPE, NAME)               \
   TYPE ComputedRow::NAME(IndexType index) const {    \
     bool valid = true;                               \
-    return ctx_->eval<TYPE>(*fields_[index], valid); \
+    return fields_[index]->eval<TYPE>(*ctx_, valid); \
   }
 
 FORWARD_EVAL_FIELD(bool, readBool)

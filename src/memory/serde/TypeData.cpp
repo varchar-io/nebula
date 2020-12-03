@@ -17,20 +17,6 @@
 #include "TypeData.h"
 
 #include <folly/Conv.h>
-#include <gflags/gflags.h>
-
-// initialize data page for each type with heuristic assumptions.
-// this can be optimized in the future when the system can learn different category's data statistics.
-// it can be allocated by external metadata hints.
-DEFINE_int32(META_PAGE_SIZE, 4 * 1024, "page size for meta data");
-DEFINE_int32(BOOL_PAGE_SIZE, 1024, "BOOL data page size");
-DEFINE_int32(BYTE_PAGE_SIZE, 2 * 1024, "BYTE data page size");
-DEFINE_int32(SHORT_PAGE_SIZE, 2 * 1024, "SHORT data page size");
-DEFINE_int32(INT_PAGE_SIZE, 4 * 1024, "int data page size");
-DEFINE_int32(LONG_PAGE_SIZE, 8 * 1024, "long data page size");
-DEFINE_int32(REAL_PAGE_SIZE, 8 * 1024, "real data page size");
-DEFINE_int32(BINARY_PAGE_SIZE, 32 * 1024, "string or bytes data page size");
-DEFINE_int32(EMPTY_PAGE_SIZE, 8, "for compability only - compound types do not have data");
 
 namespace nebula {
 namespace memory {
@@ -45,30 +31,31 @@ void* void_any(const std::string&) {
   return nullptr;
 }
 
-#define TYPE_DATA_CONSTR(TYPE, SLICE_PAGE, CONV)                             \
-  template <>                                                                \
-  TYPE::TypeDataImpl(const Column& column, size_t batchSize)                 \
-    : slice_{ (size_t)SLICE_PAGE, column.withCompress ? CT_LZ4 : CT_NONE },  \
-      bf_{ nullptr } {                                                       \
-    if (column.withBloomFilter && Scalar) {                                  \
-      bf_ = std::make_unique<nebula::common::BloomFilter<NType>>(batchSize); \
-    }                                                                        \
-                                                                             \
-    if (column.defaultValue.size() > 0) {                                    \
-      default_ = CONV(column.defaultValue);                                  \
-    }                                                                        \
+// we allocate slice as `unit * batch_size / 16` to control maximum 8 slics for stream
+#define TYPE_DATA_CONSTR(TYPE, CONV)                                           \
+  template <>                                                                  \
+  TYPE::TypeDataImpl(const Column& column, size_t batchSize)                   \
+    : slice_{ Unit * batchSize / 16, column.withCompress ? CT_LZ4 : CT_NONE }, \
+      bf_{ nullptr } {                                                         \
+    if (column.withBloomFilter && Scalar) {                                    \
+      bf_ = std::make_unique<nebula::common::BloomFilter<NType>>(batchSize);   \
+    }                                                                          \
+                                                                               \
+    if (column.defaultValue.size() > 0) {                                      \
+      default_ = CONV(column.defaultValue);                                    \
+    }                                                                          \
   }
 
-TYPE_DATA_CONSTR(BoolData, FLAGS_BOOL_PAGE_SIZE, folly::to<NType>)
-TYPE_DATA_CONSTR(ByteData, FLAGS_BYTE_PAGE_SIZE, folly::to<NType>)
-TYPE_DATA_CONSTR(ShortData, FLAGS_SHORT_PAGE_SIZE, folly::to<NType>)
-TYPE_DATA_CONSTR(IntData, FLAGS_INT_PAGE_SIZE, folly::to<NType>)
-TYPE_DATA_CONSTR(LongData, FLAGS_LONG_PAGE_SIZE, folly::to<NType>)
-TYPE_DATA_CONSTR(FloatData, FLAGS_REAL_PAGE_SIZE, folly::to<NType>)
-TYPE_DATA_CONSTR(DoubleData, FLAGS_REAL_PAGE_SIZE, folly::to<NType>)
-TYPE_DATA_CONSTR(Int128Data, FLAGS_LONG_PAGE_SIZE, folly::to<NType>)
-TYPE_DATA_CONSTR(StringData, FLAGS_BINARY_PAGE_SIZE, )
-TYPE_DATA_CONSTR(EmptyData, FLAGS_EMPTY_PAGE_SIZE, void_any)
+TYPE_DATA_CONSTR(BoolData, folly::to<NType>)
+TYPE_DATA_CONSTR(ByteData, folly::to<NType>)
+TYPE_DATA_CONSTR(ShortData, folly::to<NType>)
+TYPE_DATA_CONSTR(IntData, folly::to<NType>)
+TYPE_DATA_CONSTR(LongData, folly::to<NType>)
+TYPE_DATA_CONSTR(FloatData, folly::to<NType>)
+TYPE_DATA_CONSTR(DoubleData, folly::to<NType>)
+TYPE_DATA_CONSTR(Int128Data, folly::to<NType>)
+TYPE_DATA_CONSTR(StringData, )
+TYPE_DATA_CONSTR(EmptyData, void_any)
 
 #undef TYPE_DATA_CONSTR
 

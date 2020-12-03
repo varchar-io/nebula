@@ -279,44 +279,6 @@ public:
   // and start build cache based on evaluation signautre.
   void reset(const nebula::surface::RowData&);
 
-  // evaluate a value eval object in current context and return value reference.
-  template <typename T>
-  T eval(const ValueEval& ve, bool& valid) {
-    if (LIKELY(!cache_)) {
-      return ve.eval<T>(*this, valid);
-    }
-
-    const auto& sign = ve.signature();
-
-    // if in evaluated list
-    auto& map = cache_->map;
-    auto& slice = cache_->slice;
-    auto& cursor = cache_->cursor;
-
-    auto itr = map.find(sign);
-    if (itr != map.end()) {
-      auto offset = itr->second.first;
-      valid = offset > 0;
-      if (!valid) {
-        return nebula::type::TypeDetect<T>::value;
-      }
-
-      return slice.read<T>(offset);
-    }
-
-    N_ENSURE_NOT_NULL(row_, "reference a row object before evaluation.");
-    const auto value = ve.eval<T>(*this, valid);
-    if (!valid) {
-      map[sign] = { 0, 0 };
-      return nebula::type::TypeDetect<T>::value;
-    }
-    const auto offset = cursor;
-    map[sign] = { offset, 0 };
-    cursor += slice.write<T>(cursor, value);
-
-    return slice.read<T>(offset);
-  }
-
 #define NULL_CHECK(R)                \
   if (UNLIKELY(row_->isNull(col))) { \
     valid = false;                   \
@@ -421,9 +383,6 @@ private:
   // row object pointer
   const nebula::surface::RowData* row_;
 };
-
-template <>
-std::string_view EvalContext::eval(const ValueEval& ve, bool& valid);
 
 } // namespace eval
 } // namespace surface

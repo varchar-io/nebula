@@ -43,11 +43,8 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
   return *this;
 }
 
-bool RowAccessor::isNull(const std::string& field) const {
-  // check if field existing
-  const auto& itr = dnMap_.find(field);
-  N_ENSURE(itr != dnMap_.end(), fmt::format("field {0} not found!", field));
-  return itr->second->isNull(current_);
+inline bool RowAccessor::isNull(const std::string& field) const {
+  return dnMap_.at(field)->isNull(current_);
 }
 
 #define READ_TYPE_BY_FIELD(TYPE, FUNC)                                                        \

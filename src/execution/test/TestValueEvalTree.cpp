@@ -278,7 +278,7 @@ TEST(ValueEvalTest, TestEvaluationContext) {
     LOG(INFO) << "signature of b5=" << b5->signature();
     for (auto i = 0; i < 1000; ++i) {
       EXPECT_EQ(valid, true);
-      EXPECT_EQ(ctx.eval<bool>(*b5, valid), false);
+      EXPECT_EQ(b5->eval<bool>(ctx, valid), false);
     }
   }
 
@@ -292,7 +292,7 @@ TEST(ValueEvalTest, TestEvaluationContext) {
     bool valid = true;
     ctx.reset(row);
     for (auto i = 0; i < 1000; ++i) {
-      auto result = ctx.eval<bool>(*b5, valid);
+      auto result = b5->eval<bool>(ctx, valid);
       EXPECT_EQ(valid, true);
       EXPECT_EQ(result, true);
     }
@@ -308,7 +308,7 @@ TEST(ValueEvalTest, TestEvaluationContext) {
     ctx.reset(row);
     for (auto i = 0; i < 1000; ++i) {
       bool valid = true;
-      auto result = ctx.eval<bool>(*b5, valid);
+      auto result = b5->eval<bool>(ctx, valid);
       EXPECT_EQ(valid, false);
       if (valid) {
         EXPECT_EQ(result, true);

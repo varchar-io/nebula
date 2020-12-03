@@ -37,46 +37,6 @@ void EvalContext::reset(const nebula::surface::RowData& row) {
   }
 }
 
-template <>
-std::string_view EvalContext::eval(const ValueEval& ve, bool& valid) {
-  if (LIKELY(!cache_)) {
-    return ve.eval<std::string_view>(*this, valid);
-  }
-
-  const auto& sign = ve.signature();
-
-  // missing language feature like python/js to assign multiple vars from object?
-  auto& map = cache_->map;
-  auto& slice = cache_->slice;
-  auto& cursor = cache_->cursor;
-
-  auto itr = map.find(sign);
-  if (itr != map.end()) {
-    // offset length
-    const auto& ol = itr->second;
-    valid = ol.first > 0;
-    if (!valid) {
-      return "";
-    }
-
-    return slice.read(ol.first, ol.second);
-  }
-
-  N_ENSURE_NOT_NULL(row_, "reference a row object before evaluation.");
-  const auto value = ve.eval<std::string_view>(*this, valid);
-  if (!valid) {
-    map[sign] = { 0, 0 };
-    return "";
-  }
-
-  const auto offset = cursor;
-  const auto size = value.size();
-  map[sign] = { offset, size };
-  cursor += slice.write(cursor, value.data(), value.size());
-
-  return slice.read(offset, size);
-}
-
 } // namespace eval
 } // namespace surface
 } // namespace nebula

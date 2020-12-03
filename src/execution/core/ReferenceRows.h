@@ -84,7 +84,7 @@ private:
     // ignore valid here - if system can't determine how to act on NULL value
     // we don't know how to make decision here too
     bool valid = true;
-    if (!ctx_->eval<bool>(filter_, valid) || !valid) {
+    if (!filter_.eval<bool>(*ctx_, valid) || !valid) {
       return size_;
     }
 

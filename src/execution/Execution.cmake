@@ -32,7 +32,8 @@ target_link_libraries(${NEBULA_EXEC}
     PUBLIC ${ROARING_LIBRARY}
     PUBLIC ${JSON_LIBRARY}
     PUBLIC ${OMM_LIBRARY}
-    PUBLIC ${Boost_regex_LIBRARY})
+    PUBLIC ${Boost_regex_LIBRARY}
+    PUBLIC ${PERF_LIBRARY})
 
 # build test binary
 add_executable(ExecTests

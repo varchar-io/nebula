@@ -187,7 +187,7 @@ TEST(UDFTest, TestPrefixContext) {
   for (auto i = 0; i < 1000; ++i) {
     bool valid = true;
     // auto result = prefix.eval(row, valid);
-    auto result = ctx.eval<bool>(prefix, valid);
+    auto result = prefix.eval(ctx, valid);
     EXPECT_EQ(valid, true);
     EXPECT_EQ(result, true);
   }
