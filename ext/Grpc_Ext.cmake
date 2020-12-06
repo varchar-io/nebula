@@ -121,7 +121,7 @@ SET(GRPC_CMAKE_ARGS
 ExternalProject_Add(grpc
   PREFIX grpc
   GIT_REPOSITORY https://github.com/grpc/grpc.git
-  GIT_TAG v1.20.0
+  GIT_TAG v1.24.3
   CMAKE_CACHE_ARGS ${GRPC_CMAKE_ARGS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""

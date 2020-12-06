@@ -17,6 +17,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 /**
  * Define access control data model.

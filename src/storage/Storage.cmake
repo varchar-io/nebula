@@ -57,7 +57,9 @@ target_link_libraries(StorageTests
     PRIVATE ${SNAPPY_LIBRARY}
     PRIVATE ${XXH_LIBRARY}
     PRIVATE ${AWS_LIBRARY}
-    PRIVATE ${KAFKA_LIBRARY})
+    PRIVATE ${KAFKA_LIBRARY}
+    PRIVATE ssh2
+    PRIVATE brotlidec)
 
 # discover all gtests in this module
 include(GoogleTest)

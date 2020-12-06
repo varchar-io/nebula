@@ -69,7 +69,7 @@ get_filename_component(nfbs_path "${nfbs}" PATH)
 set(NODE_GEN_DIR "${GEN_DIR}/node")
 file(MAKE_DIRECTORY ${NODE_GEN_DIR})
 add_custom_target(compile_fbs ALL 
-  COMMAND ${FLATBUFFERS_COMPILER} -b -o "${NODE_GEN_DIR}" --cpp --grpc "${nfbs}"
+  COMMAND ${FLATBUFFERS_COMPILER} -b -o "${NODE_GEN_DIR}" --cpp -j "${nfbs}"
 DEPENDS ${nfbs})
 
 # Include generated *.pb.h files and specify it as generated file
