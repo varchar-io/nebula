@@ -95,9 +95,10 @@ void BlockExecutor::compute() {
     // if not fullfil the condition
     // ignore valid here - if system can't determine how to act on NULL value
     // we don't know how to make decision here too
-    bool valid = true;
-    if (!scanAll && !filter.eval<bool>(*ctx, valid)) {
-      continue;
+    if (LIKELY(!scanAll)) {
+      if (!filter.eval<bool>(*ctx).value_or(false)) {
+        continue;
+      }
     }
 
     // flat compute every new value of each field and set to corresponding column in flat

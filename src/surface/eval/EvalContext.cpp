@@ -27,7 +27,7 @@ namespace surface {
 namespace eval {
 
 // reset to a new row
-void EvalContext::reset(const nebula::surface::RowData& row) {
+void EvalContext::reset(const nebula::surface::Accessor& row) {
   // std::addressof ?
   this->row_ = &row;
 

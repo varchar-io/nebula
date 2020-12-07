@@ -154,11 +154,10 @@ TEST(ExpressionsTest, TestExpressionEval) {
     idvalue.type(tbl->lookup());
 
     auto eval = idvalue.asEval();
-    nebula::surface::MockRowData mr;
+    nebula::surface::MockAccessor mr;
     nebula::surface::eval::EvalContext ctx{ false };
     ctx.reset(mr);
-    bool valid = true;
-    bool res = eval->eval<bool>(ctx, valid);
+    auto res = eval->eval<bool>(ctx);
     EXPECT_EQ(res, false);
   }
 
@@ -167,11 +166,10 @@ TEST(ExpressionsTest, TestExpressionEval) {
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
-    nebula::surface::MockRowData mr;
+    nebula::surface::MockAccessor mr;
     nebula::surface::eval::EvalContext ctx{ false };
     ctx.reset(mr);
-    bool valid = true;
-    bool res = eval->eval<bool>(ctx, valid);
+    auto res = eval->eval<bool>(ctx);
     EXPECT_EQ(res, false);
   }
 }
@@ -210,24 +208,18 @@ TEST(ExpressionsTest, TestArthmeticTypeCombination) {
 // NOTE: in the test app, the MockRow may be linked to another declaration
 // in TestApi.cpp or TestValueEvalTree.cpp, better to put this in different namespace
 // or abstract it in some common place for reuse.
-class MockRow2 : public nebula::surface::MockRowData {
+class MockRow2 : public nebula::surface::MockAccessor {
 public:
   MockRow2() = default;
 
-  virtual std::string_view readString(const std::string&) const override {
+  virtual std::optional<std::string_view> readString(const std::string&) const override {
     return "abcdefg";
   }
-  virtual std::string_view readString(size_t) const override {
-    return "abcdefg";
-  }
-  MOCK_CONST_METHOD1(isNull, bool(const std::string&));
 };
 
 TEST(ExpressionsTest, TestLikeAndPrefix) {
   // set up table for testing
   MockRow2 rowData;
-
-  EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
 
   auto ms = TableService::singleton();
   auto tbl = ms->query("nebula.test").table();
@@ -243,8 +235,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
-    bool valid = true;
-    bool res = eval->eval<bool>(ctx, valid);
+    auto res = eval->eval<bool>(ctx);
     EXPECT_EQ(res, true);
   }
 
@@ -253,8 +244,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
-    bool valid = true;
-    bool res = eval->eval<bool>(ctx, valid);
+    auto res = eval->eval<bool>(ctx);
     EXPECT_EQ(res, false);
   }
 
@@ -264,8 +254,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
-    bool valid = true;
-    bool res = eval->eval<bool>(ctx, valid);
+    auto res = eval->eval<bool>(ctx);
     EXPECT_EQ(res, true);
   }
 
@@ -274,22 +263,20 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
-    bool valid = true;
-    bool res = eval->eval<bool>(ctx, valid);
+    auto res = eval->eval<bool>(ctx);
     EXPECT_EQ(res, false);
   }
 }
 
 #undef VERIFY_ITEM_I
 
-class MockRow3 : public nebula::surface::MockRowData {
+class MockRow3 : public nebula::surface::MockAccessor {
 public:
   MockRow3() = default;
 
-  MOCK_CONST_METHOD1(readByte, int8_t(const std::string&));
-  MOCK_CONST_METHOD1(readInt, int32_t(const std::string&));
-  MOCK_CONST_METHOD1(readString, std::string_view(const std::string&));
-  MOCK_CONST_METHOD1(isNull, bool(const std::string&));
+  MOCK_CONST_METHOD1(readByte, std::optional<int8_t>(const std::string&));
+  MOCK_CONST_METHOD1(readInt, std::optional<int32_t>(const std::string&));
+  MOCK_CONST_METHOD1(readString, std::optional<std::string_view>(const std::string&));
 };
 
 // Test serde of expressions
@@ -298,7 +285,6 @@ TEST(ExpressionsTest, TestSerde) {
   auto tbl = ms->query("nebula.test").table();
   nebula::surface::eval::EvalContext ctx{ false };
   MockRow3 rowData;
-  EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
   EXPECT_CALL(rowData, readByte(testing::_)).WillRepeatedly(testing::Return(20));
   EXPECT_CALL(rowData, readInt(testing::_)).WillRepeatedly(testing::Return(32));
   EXPECT_CALL(rowData, readString(testing::_)).WillRepeatedly(testing::Return("string"));
@@ -319,14 +305,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), i1.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = i1.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<int>(ctx, valid), 1);
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<int>(ctx, valid), 1);
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<int>(ctx), 1);
+    EXPECT_EQ(v2->eval<int>(ctx), 1);
   }
 
   // constant expression serde - string
@@ -344,14 +327,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), s1.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = s1.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<std::string_view>(ctx, valid), "abc");
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<std::string_view>(ctx, valid), "abc");
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<std::string_view>(ctx), "abc");
+    EXPECT_EQ(v2->eval<std::string_view>(ctx), "abc");
   }
 
   // column expression serde - int col
@@ -370,14 +350,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), cid.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = cid.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<int>(ctx, valid), 32);
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<int>(ctx, valid), 32);
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<int>(ctx), 32);
+    EXPECT_EQ(v2->eval<int>(ctx), 32);
   }
   {
     auto cid = nebula::api::dsl::col("event").as("eid");
@@ -394,14 +371,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), cid.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = cid.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<std::string_view>(ctx, valid), "string");
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<std::string_view>(ctx, valid), "string");
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<std::string_view>(ctx), "string");
+    EXPECT_EQ(v2->eval<std::string_view>(ctx), "string");
   }
 
   // logical expression serde - int not equal
@@ -420,14 +394,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), cid.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = cid.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<bool>(ctx, valid), true);
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<bool>(ctx, valid), true);
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<bool>(ctx), true);
+    EXPECT_EQ(v2->eval<bool>(ctx), true);
   }
 
   // logical expression serde - strings equal
@@ -446,14 +417,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), cevent.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = cevent.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<bool>(ctx, valid), false);
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<bool>(ctx, valid), false);
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<bool>(ctx), false);
+    EXPECT_EQ(v2->eval<bool>(ctx), false);
   }
 
   // logical expression serde - double compare
@@ -472,14 +440,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), cw.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = cw.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<bool>(ctx, valid), false);
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<bool>(ctx, valid), false);
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<bool>(ctx), false);
+    EXPECT_EQ(v2->eval<bool>(ctx), false);
   }
 
   // arthmetic expresssions
@@ -498,14 +463,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), cv.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = cv.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<int>(ctx, valid), 300);
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<int>(ctx, valid), 300);
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<int>(ctx), 300);
+    EXPECT_EQ(v2->eval<int>(ctx), 300);
   }
 
   // expression with UDF like
@@ -524,14 +486,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), cl.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = cl.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<bool>(ctx, valid), true);
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<bool>(ctx, valid), true);
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<bool>(ctx), true);
+    EXPECT_EQ(v2->eval<bool>(ctx), true);
   }
 
   // expression with UDF like
@@ -551,14 +510,11 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(exp->typeInfo(), ci.typeInfo());
 
     // verify value evaluation
-    bool valid = true;
     auto v1 = ci.asEval();
     auto v2 = exp->asEval();
 
-    EXPECT_EQ(v1->eval<bool>(ctx, valid), true);
-    EXPECT_EQ(valid, true);
-    EXPECT_EQ(v2->eval<bool>(ctx, valid), true);
-    EXPECT_EQ(valid, true);
+    EXPECT_EQ(v1->eval<bool>(ctx), true);
+    EXPECT_EQ(v2->eval<bool>(ctx), true);
   }
 
   // expression with UDAF pct

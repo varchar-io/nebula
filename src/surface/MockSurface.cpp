@@ -185,5 +185,43 @@ std::unique_ptr<ListData> MockMapData::readValues() const {
   return std::make_unique<MockListData>(getItems());
 }
 
+///////////////////////////////////////////////////////////
+std::optional<bool> MockAccessor::readBool(const std::string&) const {
+  // half of trues
+  return rand_() < 0.5;
+}
+
+std::optional<int8_t> MockAccessor::readByte(const std::string&) const {
+  return std::numeric_limits<int8_t>::max() * rand_();
+}
+
+std::optional<int16_t> MockAccessor::readShort(const std::string&) const {
+  return std::numeric_limits<int16_t>::max() * rand_();
+}
+
+std::optional<int32_t> MockAccessor::readInt(const std::string&) const {
+  return std::numeric_limits<int32_t>::max() * rand_();
+}
+
+std::optional<int64_t> MockAccessor::readLong(const std::string&) const {
+  return std::numeric_limits<int64_t>::max() * rand_();
+}
+
+std::optional<float> MockAccessor::readFloat(const std::string&) const {
+  return rand_();
+}
+
+std::optional<double> MockAccessor::readDouble(const std::string&) const {
+  return rand_();
+}
+
+std::optional<int128_t> MockAccessor::readInt128(const std::string&) const {
+  return std::numeric_limits<int128_t>::max() * rand_();
+}
+
+std::optional<std::string_view> MockAccessor::readString(const std::string&) const {
+  return strings_.at(rand_() * strings_.size());
+}
+
 } // namespace surface
 } // namespace nebula

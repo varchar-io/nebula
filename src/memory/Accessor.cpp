@@ -43,17 +43,17 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
   return *this;
 }
 
-inline bool RowAccessor::isNull(const std::string& field) const {
-  return dnMap_.at(field)->isNull(current_);
-}
-
 #define READ_TYPE_BY_FIELD(TYPE, FUNC)                                                        \
-  TYPE RowAccessor::FUNC(const std::string& field) const {                                    \
+  std::optional<TYPE> RowAccessor::FUNC(const std::string& field) const {                     \
     TYPE v;                                                                                   \
     if (batch_.pod_ != nullptr && batch_.pod_->value(field, batch_.spaces_, bessValue_, v)) { \
       return v;                                                                               \
     }                                                                                         \
-    return dnMap_.at(field)->read<TYPE>(current_);                                            \
+    const auto& d = dnMap_.at(field);                                                         \
+    if (UNLIKELY(d->isNull(current_))) {                                                      \
+      return std::nullopt;                                                                    \
+    }                                                                                         \
+    return d->read<TYPE>(current_);                                                           \
   }
 
 READ_TYPE_BY_FIELD(bool, readBool)
@@ -68,24 +68,24 @@ READ_TYPE_BY_FIELD(std::string_view, readString)
 
 #undef READ_TYPE_BY_FIELD
 
-// compound types
-// TODO(cao) - return a unique ptr seems unncessary expensive to create list accessor object every time
-// we may want to maintain single instance and return a reference instead
-std::unique_ptr<ListData> RowAccessor::readList(const std::string& field) const {
-  // initilize a list data with child data node with
-  auto listNode = dnMap_.at(field);
+// // compound types
+// // TODO(cao) - return a unique ptr seems unncessary expensive to create list accessor object every time
+// // we may want to maintain single instance and return a reference instead
+// std::unique_ptr<ListData> RowAccessor::readList(const std::string& field) const {
+//   // initilize a list data with child data node with
+//   auto listNode = dnMap_.at(field);
 
-  // list node has only one child - can be saved if list accessor is created once
-  auto child = listNode->childAt<PDataNode>(0).value();
-  auto os = listNode->offsetSize(current_);
+//   // list node has only one child - can be saved if list accessor is created once
+//   auto child = listNode->childAt<PDataNode>(0).value();
+//   auto os = listNode->offsetSize(current_);
 
-  // calculate the offset in terms of number of items
-  return std::make_unique<ListAccessor>(os.first, os.second, child);
-}
+//   // calculate the offset in terms of number of items
+//   return std::make_unique<ListAccessor>(os.first, os.second, child);
+// }
 
-std::unique_ptr<MapData> RowAccessor::readMap(const std::string&) const {
-  return nullptr;
-}
+// std::unique_ptr<MapData> RowAccessor::readMap(const std::string&) const {
+//   return nullptr;
+// }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////// List Accessor //////////////////////////////////////////

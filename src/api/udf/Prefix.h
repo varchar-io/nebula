@@ -43,10 +43,11 @@ public:
     : UdfPrefixBase(
       name,
       std::move(expr),
-      [prefix, caseSensitive](const InputType& source, bool& valid) -> NativeType {
-        if (valid) {
+      [prefix, caseSensitive](const std::optional<InputType>& source) -> NativeType {
+        if (source) {
+          auto v = source.value();
           return nebula::common::Chars::prefix(
-            source.data(), source.size(), prefix.data(), prefix.size(), !caseSensitive);
+            v.data(), v.size(), prefix.data(), prefix.size(), !caseSensitive);
         }
 
         return false;

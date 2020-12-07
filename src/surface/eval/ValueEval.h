@@ -56,7 +56,7 @@ std::unique_ptr<ValueEval> constant(T v) {
     new TypeValueEval<ST>(
       sign,
       ExpressionType::CONSTANT,
-      [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&) -> ST { return v; },
+      [v](EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&) -> std::optional<ST> { return v; },
       uncertain));
 }
 
@@ -67,10 +67,10 @@ std::unique_ptr<ValueEval> column(const std::string& name) {
     new TypeValueEval<T>(
       fmt::format("F:{0}", name),
       ExpressionType::COLUMN,
-      [name](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid)
-        -> T {
+      [name](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&)
+        -> std::optional<T> {
         // dedicate the read function to context as it knows how to handle special cases
-        return ctx.read<T>(name, valid);
+        return ctx.read<T>(name);
       },
       uncertain));
 }
@@ -83,31 +83,29 @@ std::unique_ptr<ValueEval> custom(const std::string& name, const std::string& ex
     new TypeValueEval<T>(
       name,
       ExpressionType::SCRIPT,
-      [name, expr](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&, bool& valid)
-        -> T {
+      [name, expr](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>&)
+        -> std::optional<T> {
         // the first step is to evaluate the expression to ensure it works.
         // an example is like "var {name} = () => nebula.column('x') + 2;"
         // we don't need to evaluate this again and again - it should be cached
-        ctx.script().eval<bool>(expr, valid, true);
+        auto decl = ctx.script().eval<bool>(expr, true);
 
         // only continue if current expression evaluated correctly
         // next let's invote it ot get the value we want
-        if (valid) {
-          return ctx.script().eval<T>(fmt::format("{0}();", name), valid);
+        if (decl) {
+          return ctx.script().eval<T>(fmt::format("{0}();", name));
         }
 
         // return the default value of this type
-        return nebula::type::TypeDetect<T>::value;
+        return std::nullopt;
       },
       uncertain));
 }
 
-// TODO(cao): optimization - fold constant nodes, we don't need keep a constant node
-// WHEN arthmetic operation meets NULL (valid==false), return 0 and indicate valid as false
+// TODO(cao): optimization - fold constant nodes, we don't need keep a constant nodes
 #define ARTHMETIC_VE(NAME, SIGN)                                                                  \
   template <typename T, typename T1, typename T2>                                                 \
   std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
-    static constexpr T INVALID = 0;                                                               \
     const auto s1 = v1->signature();                                                              \
     const auto s2 = v2->signature();                                                              \
     std::vector<std::unique_ptr<ValueEval>> branch;                                               \
@@ -119,20 +117,18 @@ std::unique_ptr<ValueEval> custom(const std::string& name, const std::string& ex
       new TypeValueEval<T>(                                                                       \
         fmt::format("({0}{1}{2})", s1, #SIGN, s2),                                                \
         ExpressionType::ARTHMETIC,                                                                \
-        OPT_LAMBDA({                                                                              \
-          auto v1 = children.at(0)->eval<T1>(ctx, valid);                                         \
-          if (UNLIKELY(!valid)) {                                                                 \
-            return INVALID;                                                                       \
+        OPT_LAMBDA(T, {                                                                           \
+          auto v1 = children.at(0)->eval<T1>(ctx);                                                \
+          if (UNLIKELY(v1 == std::nullopt)) {                                                     \
+            return std::nullopt;                                                                  \
           }                                                                                       \
-          auto v2 = children.at(1)->eval<T2>(ctx, valid);                                         \
-          if (UNLIKELY(!valid)) {                                                                 \
-            return INVALID;                                                                       \
+          auto v2 = children.at(1)->eval<T2>(ctx);                                                \
+          if (UNLIKELY(v2 == std::nullopt)) {                                                     \
+            return std::nullopt;                                                                  \
           }                                                                                       \
-          return T(v1 SIGN v2);                                                                   \
+          return T(v1.value() SIGN v2.value());                                                   \
         }),                                                                                       \
-        uncertain,                                                                                \
-        {},                                                                                       \
-        std::move(branch)));                                                                      \
+        uncertain, {}, std::move(branch)));                                                       \
   }
 
 ARTHMETIC_VE(add, +)
@@ -166,7 +162,6 @@ BEB_LOGICAL(OR)
 #undef BEB_LOGICAL
 
 // TODO(cao) - merge with ARTHMETIC_VE since they are pretty much the same
-// WHEN logical operation meets NULL (valid==false), return false and indicate valid as false
 #define COMPARE_VE(NAME, SIGN, LOP)                                                               \
   template <typename T1, typename T2>                                                             \
   std::unique_ptr<ValueEval> NAME(std::unique_ptr<ValueEval> v1, std::unique_ptr<ValueEval> v2) { \
@@ -181,20 +176,18 @@ BEB_LOGICAL(OR)
       new TypeValueEval<bool>(                                                                    \
         fmt::format("({0}{1}{2})", s1, #SIGN, s2),                                                \
         ExpressionType::LOGICAL,                                                                  \
-        OPT_LAMBDA({                                                                              \
-          auto v1 = children.at(0)->eval<T1>(ctx, valid);                                         \
-          if (UNLIKELY(!valid)) {                                                                 \
-            return false;                                                                         \
+        OPT_LAMBDA(bool, {                                                                        \
+          auto v1 = children.at(0)->eval<T1>(ctx);                                                \
+          if (UNLIKELY(v1 == std::nullopt)) {                                                     \
+            return std::nullopt;                                                                  \
           }                                                                                       \
-          auto v2 = children.at(1)->eval<T2>(ctx, valid);                                         \
-          if (UNLIKELY(!valid)) {                                                                 \
-            return false;                                                                         \
+          auto v2 = children.at(1)->eval<T2>(ctx);                                                \
+          if (UNLIKELY(v2 == std::nullopt)) {                                                     \
+            return std::nullopt;                                                                  \
           }                                                                                       \
-          return v1 SIGN v2;                                                                      \
+          return v1.value() SIGN v2.value();                                                      \
         }),                                                                                       \
-        std::move(eb),                                                                            \
-        {},                                                                                       \
-        std::move(branch)));                                                                      \
+        std::move(eb), {}, std::move(branch)));                                                   \
   }
 
 COMPARE_VE(gt, >, LogicalOp::GT)

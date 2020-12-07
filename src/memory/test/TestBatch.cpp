@@ -127,17 +127,32 @@ TEST(BatchTest, TestBatchRead) {
   }
 
   // print single row as string.
-  auto line = [](const nebula::surface::RowData& r) {
-    std::string s;
-    if (!r.isNull("items")) {
-      const auto list = r.readList("items");
-      for (auto k = 0; k < list->getItems(); ++k) {
-        s += fmt::format("{0},", list->readString(k));
-      }
-    }
 
-    return fmt::format("({0}, {1}, [{2}], {3})",
-                       r.readInt("id"), r.readString("event"), s, r.readBool("flag"));
+  auto line = [](const nebula::surface::RowData& r) {
+    // std::string s;
+    // if (!r.isNull("items")) {
+    //   const auto list = r.readList("items");
+    //   for (auto k = 0; k < list->getItems(); ++k) {
+    //     s += fmt::format("{0},", list->readString(k));
+    //   }
+    // }
+
+    return fmt::format("({0}, {1}, {2})",
+                       r.readInt("id"), r.readString("event"), r.readBool("flag"));
+  };
+  auto line2 = [](const nebula::surface::Accessor& r) {
+    // std::string s;
+    // if (!r.isNull("items")) {
+    //   const auto list = r.readList("items");
+    //   for (auto k = 0; k < list->getItems(); ++k) {
+    //     s += fmt::format("{0},", list->readString(k));
+    //   }
+    // }
+
+    return fmt::format("({0}, {1}, {2})",
+                       r.readInt("id").value_or(0),
+                       r.readString("event").value_or(""),
+                       r.readBool("flag").value_or(false));
   };
 
   // do write
@@ -160,7 +175,7 @@ TEST(BatchTest, TestBatchRead) {
     for (auto i = 0; i < count; ++i) {
       const auto& r1 = rows[i];
       const auto& r2 = accessor->seek(i);
-      EXPECT_EQ(line(r1), line(r2));
+      EXPECT_EQ(line(r1), line2(r2));
       // EXPECT_EQ(r1.readInt128("i128"), r2.readInt128("i128"));
     }
 
@@ -278,9 +293,9 @@ TEST(BatchTest, TestDefaultValue) {
   auto accessor = batch.makeAccessor();
   for (auto i = 0; i < count; ++i) {
     const auto& row = accessor->seek(i);
-    EXPECT_FALSE(row.isNull("value"));
 
     auto b = row.readByte("value");
+    EXPECT_TRUE(b.has_value());
     int8_t expected = (int8_t)(i % 32);
 
     // even value will become default value
@@ -316,6 +331,15 @@ TEST(BatchTest, TestPartitionedBatch) {
     return fmt::format("({0}, {1}, {2}, {3}, {4})",
                        r.readString("d1"), r.readByte("d2"), r.readInt("d3"),
                        r.readByte("value"), r.readDouble("weight"));
+  };
+
+  auto line2 = [](const nebula::surface::Accessor& r) {
+    return fmt::format("({0}, {1}, {2}, {3}, {4})",
+                       r.readString("d1").value_or(""),
+                       r.readByte("d2").value_or(0),
+                       r.readInt("d3").value_or(0),
+                       r.readByte("value").value_or(0),
+                       r.readDouble("weight").value_or(0));
   };
 
   // distribute to all batches
@@ -358,7 +382,7 @@ TEST(BatchTest, TestPartitionedBatch) {
       auto accessor = batch->makeAccessor();
       for (size_t i = 0; i < rows; ++i) {
         const auto& r = accessor->seek(i);
-        results.emplace_back(line(r));
+        results.emplace_back(line2(r));
       }
     }
 

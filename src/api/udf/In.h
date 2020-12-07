@@ -46,8 +46,12 @@ public:
       name,
       expr->asEval(),
       // logic for "in []"
-      [values](const InputType& source, bool& valid) -> bool {
-        return valid && values->find(source) != values->end();
+      [values](const std::optional<InputType>& source) -> bool {
+        if (UNLIKELY(source == std::nullopt)) {
+          return false;
+        }
+
+        return values->find(source.value()) != values->end();
       },
       buildEvalBlock(expr, values, true)) {}
 
@@ -59,8 +63,12 @@ public:
       name,
       expr->asEval(),
       // logic for "not in []"
-      [values](const InputType& source, bool& valid) -> bool {
-        return valid && values->find(source) == values->end();
+      [values](const std::optional<InputType>& source) -> bool {
+        if (UNLIKELY(source == std::nullopt)) {
+          return false;
+        }
+
+        return values->find(source.value()) == values->end();
       },
       buildEvalBlock(expr, values, false)) {
     N_ENSURE(!in, "this constructor is designed for NOT IN clauase");

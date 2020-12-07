@@ -83,8 +83,7 @@ private:
     // if not fullfil the condition
     // ignore valid here - if system can't determine how to act on NULL value
     // we don't know how to make decision here too
-    bool valid = true;
-    if (!filter_.eval<bool>(*ctx_, valid) || !valid) {
+    if (!filter_.eval<bool>(*ctx_).value_or(false)) {
       return size_;
     }
 

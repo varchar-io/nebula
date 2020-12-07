@@ -53,15 +53,16 @@ public:
        const std::string& pattern,
        bool caseSensitive = true)
     : UdfLikeBase(
-        name,
-        std::move(expr),
-        [pattern, caseSensitive](const InputType& source, bool& valid) -> NativeType {
-          if (valid) {
-            return match(source.data(), source.size(), 0, pattern.data(), pattern.size(), 0, caseSensitive);
-          }
+      name,
+      std::move(expr),
+      [pattern, caseSensitive](const std::optional<InputType>& source) -> NativeType {
+        if (LIKELY(source != std::nullopt)) {
+          auto v = source.value();
+          return match(v.data(), v.size(), 0, pattern.data(), pattern.size(), 0, caseSensitive);
+        }
 
-          return false;
-        }) {}
+        return false;
+      }) {}
   virtual ~Like() = default;
 };
 
