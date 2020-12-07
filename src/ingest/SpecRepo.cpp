@@ -135,15 +135,15 @@ void genSpecs4Swap(const std::string& version,
 }
 
 // iterative replace pathTemplate with current level of pattern macro
-inline void genSpec(long start,
-                    nebula::meta::PatternMacro curr,
-                    nebula::meta::PatternMacro dest,
-                    std::time_t now,
-                    const std::string& pathTemplate,
-                    std::time_t cutOffTime,
-                    const std::string& version,
-                    const TableSpecPtr& table,
-                    std::vector<std::shared_ptr<IngestSpec>>& specs) {
+void SpecRepo::genPatternSpec(long start,
+                              nebula::meta::PatternMacro curr,
+                              nebula::meta::PatternMacro dest,
+                              std::time_t now,
+                              const std::string& pathTemplate,
+                              std::time_t cutOffTime,
+                              const std::string& version,
+                              const TableSpecPtr& table,
+                              std::vector<std::shared_ptr<IngestSpec>>& specs) {
 
   const auto curUnitInSeconds = nebula::meta::unitInSeconds.at(curr);
   const auto curPatternStr = nebula::meta::patternStr.at(curr);
@@ -154,9 +154,29 @@ inline void genSpec(long start,
   auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
 
   for (long i = start; i >= 0; i--) {
-    auto watermark = now - i * curUnitInSeconds;
-    auto path = fmt::format(
-      pathTemplate, fmt::arg(curPatternStr.c_str(), Evidence::fmt_ymd_dash(watermark)));
+    auto str = pathTemplate;
+    const auto watermark = now - i * curUnitInSeconds;
+    const auto pos = pathTemplate.find(curPatternStr);
+
+    std::string timeFormat;
+    switch (curr) {
+    case nebula::meta::PatternMacro::DATE:
+      timeFormat = Evidence::fmt_ymd_dash(watermark);
+      break;
+    case nebula::meta::PatternMacro::HOUR:
+      timeFormat = Evidence::fmt_hour(watermark);
+      break;
+    case nebula::meta::PatternMacro::MINUTE:
+      timeFormat = Evidence::fmt_minute(watermark);
+      break;
+    case nebula::meta::PatternMacro::SECOND:
+      timeFormat = Evidence::fmt_second(watermark);
+      break;
+    default:
+      LOG(ERROR) << "timestamp or invalid format not handled";
+    }
+
+    const auto path = str.replace(pos, curPatternStr.size(), timeFormat);
 
     // watermark is mono incremental when curr == dest, always smaller or equal when scan child marco
     if (watermark < cutOffTime) continue;
@@ -164,14 +184,14 @@ inline void genSpec(long start,
     if (curr == dest) {
       genSpecPerFile(table, version, fs->list(path), specs, watermark);
     } else {
-      genSpec(startChildPatternIndex, childMarco, dest, watermark, path, cutOffTime, version, table, specs);
+      genPatternSpec(startChildPatternIndex, childMarco, dest, watermark, path, cutOffTime, version, table, specs);
     }
   }
 }
 
-void genSpecs4Roll(const std::string& version,
-                   const TableSpecPtr& table,
-                   std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
+void SpecRepo::genSpecs4Roll(const std::string& version,
+                             const TableSpecPtr& table,
+                             std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   if (table->source == DataSource::S3) {
     // parse location to get protocol, domain/bucket, path
     auto sourceInfo = nebula::storage::parse(table->location);
@@ -191,15 +211,15 @@ void genSpecs4Roll(const std::string& version,
     long cutOffTime = now - table->max_hr * nebula::meta::unitInSeconds.at(nebula::meta::PatternMacro::HOUR);
 
     // TODO(chenqin): don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet.
-    genSpec(maxDays,
-            nebula::meta::PatternMacro::DATE,
-            pt,
-            now,
-            sourceInfo.path,
-            cutOffTime,
-            version,
-            table,
-            specs);
+    genPatternSpec(maxDays,
+                   nebula::meta::PatternMacro::DATE,
+                   pt,
+                   now,
+                   sourceInfo.path,
+                   cutOffTime,
+                   version,
+                   table,
+                   specs);
     return;
   }
   LOG(WARNING) << "only s3 supported for now";

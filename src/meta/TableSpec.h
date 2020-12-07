@@ -208,26 +208,30 @@ constexpr auto HOUR_SECONDS = HOUR_MINUTES * MINUTE_SECONDS;
 constexpr auto DAY_SECONDS = HOUR_SECONDS * DAY_HOURS;
 
 const nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternStr{
-  { nebula::meta::PatternMacro::DATE, "{date}" },
-  { nebula::meta::PatternMacro::HOUR, "{hour}" },
-  { nebula::meta::PatternMacro::MINUTE, "{minute}" },
-  { nebula::meta::PatternMacro::SECOND, "{second}" },
-  { nebula::meta::PatternMacro::TIMESTAMP, "{timestamp}" } };
+  { nebula::meta::PatternMacro::DATE, "/{date/}" },
+  { nebula::meta::PatternMacro::HOUR, "/{hour/}" },
+  { nebula::meta::PatternMacro::MINUTE, "/{minute/}" },
+  { nebula::meta::PatternMacro::SECOND, "/{second/}" },
+  { nebula::meta::PatternMacro::TIMESTAMP, "/{timestamp/}" }
+};
 
 const nebula::common::unordered_map<nebula::meta::PatternMacro, nebula::meta::PatternMacro> childPattern{
   { nebula::meta::PatternMacro::DATE, nebula::meta::PatternMacro::HOUR },
   { nebula::meta::PatternMacro::HOUR, nebula::meta::PatternMacro::MINUTE },
-  { nebula::meta::PatternMacro::MINUTE, nebula::meta::PatternMacro::SECOND } };
+  { nebula::meta::PatternMacro::MINUTE, nebula::meta::PatternMacro::SECOND }
+};
 
 const nebula::common::unordered_map<nebula::meta::PatternMacro, int> unitInSeconds{
   { nebula::meta::PatternMacro::DATE, DAY_SECONDS },
   { nebula::meta::PatternMacro::HOUR, HOUR_SECONDS },
-  { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS } };
+  { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS }
+};
 
 const nebula::common::unordered_map<nebula::meta::PatternMacro, int> childSize{
   { nebula::meta::PatternMacro::DATE, DAY_HOURS },
   { nebula::meta::PatternMacro::HOUR, HOUR_MINUTES },
-  { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS } };
+  { nebula::meta::PatternMacro::MINUTE, MINUTE_SECONDS }
+};
 
 // check if pattern string type
 inline nebula::meta::PatternMacro extractPatternMacro(std::string pattern) {
