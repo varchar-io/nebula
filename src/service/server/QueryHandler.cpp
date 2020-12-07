@@ -41,6 +41,7 @@ using nebula::api::dsl::max;
 using nebula::api::dsl::min;
 using nebula::api::dsl::sum;
 
+using nebula::api::dsl::between;
 using nebula::api::dsl::ColumnExpression;
 using nebula::api::dsl::ConstExpression;
 using nebula::api::dsl::Expression;
@@ -194,7 +195,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
   // set filter - has normal combined filter or not
   using LT = TypeTraits<Kind::BIGINT>::CppType;
-  auto timeFilter = (col(nebula::meta::Table::TIME_COLUMN) >= (LT)req.start()) && (col(nebula::meta::Table::TIME_COLUMN) <= (LT)req.end());
+  auto timeFilter = between(col(Table::TIME_COLUMN), (LT)req.start(), (LT)req.end());
   if (expr == nullptr) {
     q->where(timeFilter);
   } else {
@@ -204,11 +205,11 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
   // apply custom columns if any sent
   const auto ctc = [](CustomType ct) {
     switch (ct) {
-    case CustomType::INT: return nebula::type::Kind::INTEGER;
-    case CustomType::LONG: return nebula::type::Kind::BIGINT;
-    case CustomType::FLOAT: return nebula::type::Kind::REAL;
-    case CustomType::DOUBLE: return nebula::type::Kind::DOUBLE;
-    case CustomType::STRING: return nebula::type::Kind::VARCHAR;
+    case CustomType::INT: return Kind::INTEGER;
+    case CustomType::LONG: return Kind::BIGINT;
+    case CustomType::FLOAT: return Kind::REAL;
+    case CustomType::DOUBLE: return Kind::DOUBLE;
+    case CustomType::STRING: return Kind::VARCHAR;
     default: throw NException("Custom type not supported.");
     }
   };
@@ -225,11 +226,10 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
   // If this is a timeline query, we only build time as dimension ignoring any any pre-set dimensions
   const auto isTimeline = req.timeline();
-  const auto& timeColumn = Table::TIME_COLUMN;
 
   // handle query schema for timeline
   if (isTimeline) {
-    columns.push_back(timeColumn);
+    columns.push_back(Table::TIME_COLUMN);
 
     // we have minimum size of window as 1 second to be enforced
     // so if buckets is smaller than range (seconds), we use each range as
@@ -255,7 +255,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     } else {
       int64_t beginTime = (int64_t)req.start();
       // divided by window to get the bucket and times window to get a time point
-      auto expr = ((col(timeColumn) - beginTime) / window * window).as(Table::WINDOW_COLUMN);
+      auto expr = ((col(Table::TIME_COLUMN) - beginTime) / window * window).as(Table::WINDOW_COLUMN);
       windowExpr = std::make_shared<decltype(expr)>(expr);
     }
 
@@ -442,9 +442,9 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
 #define BUILD_IN_CLAUSE(KIND, UDF)                                                          \
   case Kind::KIND: {                                                                        \
     using ValueType = std::conditional<                                                     \
-      Kind::KIND == nebula::type::Kind::VARCHAR,                                            \
+      Kind::KIND == Kind::VARCHAR,                                                          \
       std::string,                                                                          \
-      typename nebula::type::TypeTraits<Kind::KIND>::CppType>::type;                        \
+      typename TypeTraits<Kind::KIND>::CppType>::type;                                      \
     if constexpr (Kind::KIND == Kind::INTEGER || Kind::KIND == Kind::BIGINT) {              \
       if (pred.zipcount() > 0) {                                                            \
         auto exp = UDF<decltype(columnExpression), ValueType>(columnExpression, zip(pred)); \
@@ -486,7 +486,7 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
 
 #define BUILD_CONST_CASE(KIND)                                                                   \
   case Kind::KIND: {                                                                             \
-    using T = nebula::type::TypeTraits<Kind::KIND>::CppType;                                     \
+    using T = TypeTraits<Kind::KIND>::CppType;                                                   \
     if constexpr (std::is_integral_v<T>) {                                                       \
       if (pred.n_value_size() > 0) {                                                             \
         constExpression = std::make_shared<ConstExpression<T>>(static_cast<T>(pred.n_value(0))); \

@@ -43,14 +43,14 @@ public:
     : UdfPrefixBase(
       name,
       std::move(expr),
-      [prefix, caseSensitive](const std::optional<InputType>& source) -> NativeType {
-        if (source) {
-          auto v = source.value();
-          return nebula::common::Chars::prefix(
-            v.data(), v.size(), prefix.data(), prefix.size(), !caseSensitive);
+      [prefix, caseSensitive](const std::optional<InputType>& source) -> std::optional<NativeType> {
+        if (UNLIKELY(source == std::nullopt)) {
+          return std::nullopt;
         }
 
-        return false;
+        auto v = source.value();
+        return nebula::common::Chars::prefix(
+          v.data(), v.size(), prefix.data(), prefix.size(), !caseSensitive);
       }) {}
   virtual ~Prefix() = default;
 };

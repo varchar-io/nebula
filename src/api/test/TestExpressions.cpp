@@ -38,7 +38,12 @@ namespace nebula {
 namespace api {
 namespace test {
 
+using nebula::api::dsl::between;
+using nebula::api::dsl::col;
+using nebula::api::dsl::Serde;
 using nebula::execution::meta::TableService;
+using nebula::surface::MockAccessor;
+using nebula::surface::eval::EvalContext;
 
 struct X {
   X(int id) : id_{ id } {}
@@ -108,8 +113,8 @@ TEST(ExpressionsTest, TestExpressionType) {
   LOG(INFO) << "PASS: constant expr";
 
   // column expression
-  auto cid = nebula::api::dsl::col("id");
-  auto cflag = nebula::api::dsl::col("flag");
+  auto cid = col("id");
+  auto cflag = col("flag");
   EXPECT_EQ(K(cid.type(tbl->lookup())), nebula::type::INTEGER);
   EXPECT_EQ(K(cflag.type(tbl->lookup())), nebula::type::BOOLEAN);
   LOG(INFO) << "PASS: column expr";
@@ -150,24 +155,24 @@ TEST(ExpressionsTest, TestExpressionEval) {
   auto ms = TableService::singleton();
   auto tbl = ms->query("nebula.test").table();
   {
-    auto idvalue = (nebula::api::dsl::col("id") * 0) != 0;
+    auto idvalue = (col("id") * 0) != 0;
     idvalue.type(tbl->lookup());
 
     auto eval = idvalue.asEval();
-    nebula::surface::MockAccessor mr;
-    nebula::surface::eval::EvalContext ctx{ false };
+    MockAccessor mr;
+    EvalContext ctx{ false };
     ctx.reset(mr);
     auto res = eval->eval<bool>(ctx);
     EXPECT_EQ(res, false);
   }
 
   {
-    auto eventValue = nebula::api::dsl::col("event") == "abc";
+    auto eventValue = col("event") == "abc";
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
-    nebula::surface::MockAccessor mr;
-    nebula::surface::eval::EvalContext ctx{ false };
+    MockAccessor mr;
+    EvalContext ctx{ false };
     ctx.reset(mr);
     auto res = eval->eval<bool>(ctx);
     EXPECT_EQ(res, false);
@@ -208,7 +213,7 @@ TEST(ExpressionsTest, TestArthmeticTypeCombination) {
 // NOTE: in the test app, the MockRow may be linked to another declaration
 // in TestApi.cpp or TestValueEvalTree.cpp, better to put this in different namespace
 // or abstract it in some common place for reuse.
-class MockRow2 : public nebula::surface::MockAccessor {
+class MockRow2 : public MockAccessor {
 public:
   MockRow2() = default;
 
@@ -227,11 +232,11 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
   // verify the mocked data has expected result
   EXPECT_EQ(rowData.readString("event"), "abcdefg");
 
-  nebula::surface::eval::EvalContext ctx{ false };
+  EvalContext ctx{ false };
   ctx.reset(rowData);
   // evaluate like
   {
-    auto eventValue = nebula::api::dsl::like(nebula::api::dsl::col("event"), "abc%");
+    auto eventValue = nebula::api::dsl::like(col("event"), "abc%");
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
@@ -240,7 +245,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
   }
 
   {
-    auto eventValue = nebula::api::dsl::like(nebula::api::dsl::col("event"), "bc%");
+    auto eventValue = nebula::api::dsl::like(col("event"), "bc%");
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
@@ -250,7 +255,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
   // evaluate prefix
   {
-    auto eventValue = nebula::api::dsl::starts(nebula::api::dsl::col("event"), "abc");
+    auto eventValue = nebula::api::dsl::starts(col("event"), "abc");
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
@@ -259,7 +264,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
   }
 
   {
-    auto eventValue = nebula::api::dsl::starts(nebula::api::dsl::col("event"), "bc");
+    auto eventValue = nebula::api::dsl::starts(col("event"), "bc");
     eventValue.type(tbl->lookup());
 
     auto eval = eventValue.asEval();
@@ -270,7 +275,7 @@ TEST(ExpressionsTest, TestLikeAndPrefix) {
 
 #undef VERIFY_ITEM_I
 
-class MockRow3 : public nebula::surface::MockAccessor {
+class MockRow3 : public MockAccessor {
 public:
   MockRow3() = default;
 
@@ -283,7 +288,7 @@ public:
 TEST(ExpressionsTest, TestSerde) {
   auto ms = TableService::singleton();
   auto tbl = ms->query("nebula.test").table();
-  nebula::surface::eval::EvalContext ctx{ false };
+  EvalContext ctx{ false };
   MockRow3 rowData;
   EXPECT_CALL(rowData, readByte(testing::_)).WillRepeatedly(testing::Return(20));
   EXPECT_CALL(rowData, readInt(testing::_)).WillRepeatedly(testing::Return(32));
@@ -293,8 +298,8 @@ TEST(ExpressionsTest, TestSerde) {
   // constant expression serde - int
   {
     nebula::api::dsl::ConstExpression<int> i1(1);
-    auto i1ser = nebula::api::dsl::Serde::serialize(i1);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto i1ser = Serde::serialize(i1);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(exp->alias(), i1.alias());
@@ -315,8 +320,8 @@ TEST(ExpressionsTest, TestSerde) {
   // constant expression serde - string
   {
     nebula::api::dsl::ConstExpression<std::string_view> s1("abc");
-    auto s1ser = nebula::api::dsl::Serde::serialize(s1);
-    auto exp = nebula::api::dsl::Serde::deserialize(s1ser);
+    auto s1ser = Serde::serialize(s1);
+    auto exp = Serde::deserialize(s1ser);
 
     // vreify alias
     EXPECT_EQ(exp->alias(), s1.alias());
@@ -336,9 +341,9 @@ TEST(ExpressionsTest, TestSerde) {
 
   // column expression serde - int col
   {
-    auto cid = nebula::api::dsl::col("id").as("cid");
-    auto i1ser = nebula::api::dsl::Serde::serialize(cid);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto cid = col("id").as("cid");
+    auto i1ser = Serde::serialize(cid);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(cid.alias(), "cid");
@@ -357,9 +362,9 @@ TEST(ExpressionsTest, TestSerde) {
     EXPECT_EQ(v2->eval<int>(ctx), 32);
   }
   {
-    auto cid = nebula::api::dsl::col("event").as("eid");
-    auto i1ser = nebula::api::dsl::Serde::serialize(cid);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto cid = col("event").as("eid");
+    auto i1ser = Serde::serialize(cid);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(cid.alias(), "eid");
@@ -380,9 +385,9 @@ TEST(ExpressionsTest, TestSerde) {
 
   // logical expression serde - int not equal
   {
-    auto cid = (nebula::api::dsl::col("id") * 0) != 1;
-    auto i1ser = nebula::api::dsl::Serde::serialize(cid);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto cid = (col("id") * 0) != 1;
+    auto i1ser = Serde::serialize(cid);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(cid.alias(), "id");
@@ -403,9 +408,9 @@ TEST(ExpressionsTest, TestSerde) {
 
   // logical expression serde - strings equal
   {
-    auto cevent = nebula::api::dsl::col("event") == "abc";
-    auto i1ser = nebula::api::dsl::Serde::serialize(cevent);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto cevent = col("event") == "abc";
+    auto i1ser = Serde::serialize(cevent);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(cevent.alias(), "event");
@@ -426,9 +431,9 @@ TEST(ExpressionsTest, TestSerde) {
 
   // logical expression serde - double compare
   {
-    auto cw = nebula::api::dsl::col("weight") > 1.5;
-    auto i1ser = nebula::api::dsl::Serde::serialize(cw);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto cw = col("weight") > 1.5;
+    auto i1ser = Serde::serialize(cw);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(cw.alias(), "weight");
@@ -449,9 +454,9 @@ TEST(ExpressionsTest, TestSerde) {
 
   // arthmetic expresssions
   {
-    auto cv = nebula::api::dsl::col("value") * 10 + 100;
-    auto i1ser = nebula::api::dsl::Serde::serialize(cv);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto cv = col("value") * 10 + 100;
+    auto i1ser = Serde::serialize(cv);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(cv.alias(), "value");
@@ -472,9 +477,9 @@ TEST(ExpressionsTest, TestSerde) {
 
   // expression with UDF like
   {
-    auto cl = nebula::api::dsl::like(nebula::api::dsl::col("event"), "str%").as("el");
-    auto i1ser = nebula::api::dsl::Serde::serialize(cl);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto cl = nebula::api::dsl::like(col("event"), "str%").as("el");
+    auto i1ser = Serde::serialize(cl);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(cl.alias(), "el");
@@ -496,9 +501,9 @@ TEST(ExpressionsTest, TestSerde) {
   // expression with UDF like
   {
     std::vector<std::string> values{ "str%", "string" };
-    auto ci = nebula::api::dsl::in(nebula::api::dsl::col("event"), std::move(values)).as("ei");
-    auto i1ser = nebula::api::dsl::Serde::serialize(ci);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto ci = nebula::api::dsl::in(col("event"), std::move(values)).as("ei");
+    auto i1ser = Serde::serialize(ci);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(ci.alias(), "ei");
@@ -520,9 +525,9 @@ TEST(ExpressionsTest, TestSerde) {
   // expression with UDAF pct
   {
     LOG(INFO) << "Starting to test UDAF PCT";
-    auto ci = nebula::api::dsl::pct(nebula::api::dsl::col("value"), 99).as("p99");
-    auto i1ser = nebula::api::dsl::Serde::serialize(ci);
-    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    auto ci = nebula::api::dsl::pct(col("value"), 99).as("p99");
+    auto i1ser = Serde::serialize(ci);
+    auto exp = Serde::deserialize(i1ser);
 
     // vreify alias
     EXPECT_EQ(ci.alias(), "p99");
@@ -545,6 +550,62 @@ TEST(ExpressionsTest, TestSerde) {
 
     auto pv = s1->finalize();
     EXPECT_NEAR(pv, 99, 1);
+  }
+}
+
+TEST(ExpressionsTest, TestBetweenExpression) {
+  auto ms = TableService::singleton();
+  auto tbl = ms->query("nebula.test").table();
+
+  // set up table for testing
+  MockRow3 rowData;
+  EvalContext ctx{ false };
+  ctx.reset(rowData);
+
+  // define expression
+  auto expr = between(col("id"), 3, 10);
+  expr.type(tbl->lookup());
+
+  // id will be valued as 5
+  {
+    EXPECT_CALL(rowData, readInt("id")).WillRepeatedly(testing::Return(5));
+    auto result = expr.asEval()->eval<bool>(ctx);
+    EXPECT_TRUE(result != std::nullopt);
+    EXPECT_EQ(result.value(), true);
+  }
+
+  // id will be valued as 2 out of range
+  {
+    EXPECT_CALL(rowData, readInt("id")).WillRepeatedly(testing::Return(2));
+    auto result = expr.asEval()->eval<bool>(ctx);
+    EXPECT_TRUE(result != std::nullopt);
+    EXPECT_EQ(result.value(), false);
+  }
+
+  // id will be valued as 11 out of range
+  {
+    EXPECT_CALL(rowData, readInt("id")).WillRepeatedly(testing::Return(11));
+    auto result = expr.asEval()->eval<bool>(ctx);
+    EXPECT_TRUE(result != std::nullopt);
+    EXPECT_EQ(result.value(), false);
+  }
+
+  // id will be valued as null
+  {
+    EXPECT_CALL(rowData, readInt("id")).WillRepeatedly(testing::Return(std::nullopt));
+    auto result = expr.asEval()->eval<bool>(ctx);
+    EXPECT_TRUE(result == std::nullopt);
+  }
+
+  // serialize this expression
+  {
+    EXPECT_CALL(rowData, readInt("id")).WillRepeatedly(testing::Return(3));
+    auto s = Serde::serialize(expr);
+    auto x = Serde::deserialize(s);
+    x->type(tbl->lookup());
+    auto result = x->asEval()->eval<bool>(ctx);
+    EXPECT_TRUE(result != std::nullopt);
+    EXPECT_TRUE(result.value());
   }
 }
 

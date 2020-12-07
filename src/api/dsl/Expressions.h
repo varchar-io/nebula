@@ -756,6 +756,47 @@ private:
   bool in_;
 };
 
+using BetweenBase = BoolUDF<nebula::surface::eval::UDFType::BETWEEN>;
+template <typename T>
+class BetweenExpression : public BetweenBase {
+public:
+  BetweenExpression(
+    std::shared_ptr<Expression> expr,
+    T min,
+    T max)
+    : BetweenBase(expr),
+      min_{ min },
+      max_{ max } {}
+
+public:
+  ALL_LOGICAL_OPS()
+  ALIAS()
+
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
+    return nebula::api::udf::UDFFactory::createUDF<
+      nebula::surface::eval::UDFType::BETWEEN, nebula::type::TypeDetect<T>::kind>(expr_, min_, max_);
+  }
+
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = BetweenBase::serialize();
+    data->type = ExpressionType::FUNCTION;
+    data->u_type = nebula::surface::eval::UDFType::BETWEEN;
+    data->inner = std::move(expr_->serialize());
+
+    // serialize the tuple
+    std::stringstream buffer;
+    msgpack::pack(buffer, std::tuple<std::string, std::string, std::string>{
+                            nebula::type::TypeDetect<T>::tid(), std::to_string(min_), std::to_string(max_) });
+    buffer.seekg(0);
+    data->custom = buffer.str();
+    return data;
+  }
+
+private:
+  T min_;
+  T max_;
+};
+
 #undef ARTHMETIC_OP_CONST
 #undef ARTHMETIC_OP_GENERIC
 #undef LOGICAL_OP_CONST

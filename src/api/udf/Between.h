@@ -18,78 +18,54 @@
 
 #include "surface/eval/UDF.h"
 
-/**
- * Define expressions used in the nebula DSL.
- */
 namespace nebula {
 namespace api {
 namespace udf {
 /**
- * This UDF provides logic operations to determine if a value is in given set.
+ * This UDF defines if value to check is in given range inclusive. [low, high]
+ * This UDF only works for number types.
  */
 template <nebula::type::Kind IK>
-class In : public nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK> {
+class Between : public nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK> {
   using UdfInBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK>;
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
   using EvalBlock = typename UdfInBase::EvalBlock;
-  using SetType = typename std::shared_ptr<nebula::common::unordered_set<InputType>>;
-  using ValueType = typename std::conditional<
-    IK == nebula::type::Kind::VARCHAR,
-    std::string,
-    typename nebula::type::TypeTraits<IK>::CppType>::type;
 
 public:
-  In(const std::string& name,
-     std::shared_ptr<nebula::api::dsl::Expression> expr,
-     SetType values)
+  Between(const std::string& name,
+          std::shared_ptr<nebula::api::dsl::Expression> expr,
+          InputType min,
+          InputType max)
     : UdfInBase(
       name,
       expr->asEval(),
       // logic for "in []"
-      [values](const std::optional<InputType>& source) -> std::optional<bool> {
+      [min, max](const std::optional<InputType>& source) -> std::optional<bool> {
         if (UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
 
-        return values->find(source.value()) != values->end();
+        auto v = source.value();
+        return v >= min && v <= max;
       },
-      buildEvalBlock(expr, values, true)) {}
+      buildEvalBlock(expr, min, max)) {}
 
-  In(const std::string& name,
-     std::shared_ptr<nebula::api::dsl::Expression> expr,
-     SetType values,
-     bool in)
-    : UdfInBase(
-      name,
-      expr->asEval(),
-      // logic for "not in []"
-      [values](const std::optional<InputType>& source) -> std::optional<bool> {
-        if (UNLIKELY(source == std::nullopt)) {
-          return std::nullopt;
-        }
-
-        return values->find(source.value()) == values->end();
-      },
-      buildEvalBlock(expr, values, false)) {
-    N_ENSURE(!in, "this constructor is designed for NOT IN clauase");
-  }
-
-  virtual ~In() = default;
+  virtual ~Between() = default;
 
 private:
   static EvalBlock buildEvalBlock(std::shared_ptr<nebula::api::dsl::Expression> expr,
-                                  SetType values,
-                                  bool in) {
+                                  InputType min,
+                                  InputType max) {
     // only handle case "column in []"
     auto ve = expr->asEval();
     if (ve->expressionType() == nebula::surface::eval::ExpressionType::COLUMN) {
       // column expr signature is composed by "F:{col}"
       // const expr signature is compsoed by "C:{col}"
       std::string colName(ve->signature().substr(2));
-      return [name = std::move(colName), values, in](const nebula::surface::eval::Block& b)
+      return [name = std::move(colName), min, max](const nebula::surface::eval::Block& b)
                -> nebula::surface::eval::BlockEval {
-        auto A = in ? nebula::surface::eval::BlockEval::ALL : nebula::surface::eval::BlockEval::NONE;
-        auto N = in ? nebula::surface::eval::BlockEval::NONE : nebula::surface::eval::BlockEval::ALL;
+        auto A = nebula::surface::eval::BlockEval::ALL;
+        auto N = nebula::surface::eval::BlockEval::NONE;
 
         // check partition values
         auto pv = b.partitionValues(name);
@@ -98,9 +74,8 @@ private:
         if (pv.size() > 0) {
           size_t covered = 0;
           for (auto v : pv) {
-            auto valueType = std::any_cast<ValueType>(v);
-            InputType ev(valueType);
-            if (values->find(ev) != values->end()) {
+            auto value = std::any_cast<InputType>(v);
+            if (value >= min && value <= max) {
               covered++;
             }
           }
@@ -116,28 +91,12 @@ private:
           }
         }
 
-        // check bloom filter
-        // if none of the values has possibility
-        bool possible = false;
-        for (const auto& v : *values) {
-          possible = possible || b.probably(name, v);
-          if (possible) {
-            break;
-          }
-        }
-
-        // if all false - no possiblity
-        if (!possible) {
-          return N;
-        }
-
 // check histogram  if the value range has no overlap with histogram [min, max]
 // we can skip the block
-#define DISPATCH_CASE(HT)                                                      \
-  const auto [min, max] = std::minmax_element(values->begin(), values->end()); \
-  auto histo = static_cast<const HT&>(b.histogram(name));                      \
-  if (histo.min() > *max || *min > histo.max()) {                              \
-    return N;                                                                  \
+#define DISPATCH_CASE(HT)                                 \
+  auto histo = static_cast<const HT&>(b.histogram(name)); \
+  if (histo.min() > max || min > histo.max()) {           \
+    return N;                                             \
   }
 
         // only enable for scalar types

@@ -17,6 +17,7 @@
 #pragma once
 
 #include "Avg.h"
+#include "Between.h"
 #include "Cardinality.h"
 #include "Count.h"
 #include "In.h"
@@ -95,6 +96,10 @@ public:
 
     if constexpr (UKIND == UDFKind::IN) {
       return std::make_unique<In<IK>>(name, expr, std::forward<Args>(args)...);
+    }
+
+    if constexpr (UKIND == UDFKind::BETWEEN) {
+      return std::make_unique<Between<IK>>(name, expr, std::forward<Args>(args)...);
     }
 
     throw NException(fmt::format("Unimplemented UDF {0}", name));

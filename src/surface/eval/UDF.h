@@ -52,10 +52,13 @@ class UDF : public BaseType {
 public:
   using NativeType = typename nebula::type::TypeTraits<NK>::CppType;
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
-  using Logic = std::function<NativeType(const std::optional<InputType>&)>;
+  using Logic = std::function<std::optional<NativeType>(const std::optional<InputType>&)>;
   using EvalBlock = std::function<BlockEval(const Block&)>;
 
-  UDF(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, Logic&& logic, EvalBlock&& eb = uncertain)
+  UDF(const std::string& name,
+      std::unique_ptr<nebula::surface::eval::ValueEval> expr,
+      Logic&& logic,
+      EvalBlock&& eb = uncertain)
     : BaseType(
       fmt::format("{0}({1})", name, expr->signature()),
       ExpressionType::FUNCTION,
@@ -121,6 +124,7 @@ enum class UDFType {
   LIKE,
   PREFIX,
   IN,
+  BETWEEN,
   // UDAF
   MAX,
   MIN,
@@ -203,6 +207,20 @@ UDF_TRAITS(PREFIX, nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR)
 // IN function looks for expected value in given list of values
 STATIC_TRAITS(IN, false)
 REPEAT_ALL_TYPES(UDF_TRAITS_INPUT1, IN, nebula::type::Kind::BOOLEAN)
+
+// define traits for UDF: between
+// BETWEEN function looks for if evaluated value is in a given range
+STATIC_TRAITS(BETWEEN, false)
+UDF_TRAITS(BETWEEN, nebula::type::Kind::BOOLEAN, nebula::type::Kind::TINYINT)
+UDF_TRAITS(BETWEEN, nebula::type::Kind::BOOLEAN, nebula::type::Kind::SMALLINT)
+UDF_TRAITS(BETWEEN, nebula::type::Kind::BOOLEAN, nebula::type::Kind::INTEGER)
+UDF_TRAITS(BETWEEN, nebula::type::Kind::BOOLEAN, nebula::type::Kind::BIGINT)
+UDF_TRAITS(BETWEEN, nebula::type::Kind::BOOLEAN, nebula::type::Kind::REAL)
+UDF_TRAITS(BETWEEN, nebula::type::Kind::BOOLEAN, nebula::type::Kind::DOUBLE)
+UDF_NOT_SUPPORT(BETWEEN, nebula::type::Kind::INVALID)
+UDF_NOT_SUPPORT(BETWEEN, nebula::type::Kind::BOOLEAN)
+UDF_NOT_SUPPORT(BETWEEN, nebula::type::Kind::VARCHAR)
+UDF_NOT_SUPPORT(BETWEEN, nebula::type::Kind::INT128)
 
 // define each UDAF type taits
 // define traits for UDAF: MAX

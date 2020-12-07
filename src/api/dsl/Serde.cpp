@@ -33,7 +33,9 @@ using nebula::surface::eval::UDFType;
 using nebula::type::TypeDetect;
 
 // helper method to add a json string field
-inline void addstring(rapidjson::Writer<rapidjson::StringBuffer>& json, const char* const key, const std::string& str) noexcept {
+inline void addstring(rapidjson::Writer<rapidjson::StringBuffer>& json,
+                      const char* const key,
+                      const std::string& str) noexcept {
   json.Key(key);
   // JSON string will remove the trailing 0s, to be preserved for serde purpose
   json.String(str.data(), str.size());
@@ -190,7 +192,10 @@ std::shared_ptr<Expression> s_expr(
     return as(alias, std::make_shared<LogicalExpression<LogicalOp::OP, Expression, Expression>>(left, right)); \
   }
 
-std::shared_ptr<Expression> l_expr(const std::string& alias, LogicalOp op, std::shared_ptr<Expression> left, std::shared_ptr<Expression> right) {
+std::shared_ptr<Expression> l_expr(const std::string& alias,
+                                   LogicalOp op,
+                                   std::shared_ptr<Expression> left,
+                                   std::shared_ptr<Expression> right) {
   switch (op) {
     LOGIC_FORM(EQ)
     LOGIC_FORM(NEQ)
@@ -212,7 +217,10 @@ std::shared_ptr<Expression> l_expr(const std::string& alias, LogicalOp op, std::
     return as(alias, std::make_shared<ArthmeticExpression<ArthmeticOp::OP, Expression, Expression>>(left, right)); \
   }
 
-std::shared_ptr<Expression> a_expr(const std::string& alias, ArthmeticOp op, std::shared_ptr<Expression> left, std::shared_ptr<Expression> right) {
+std::shared_ptr<Expression> a_expr(const std::string& alias,
+                                   ArthmeticOp op,
+                                   std::shared_ptr<Expression> left,
+                                   std::shared_ptr<Expression> right) {
   switch (op) {
     ARTH_FORM(ADD)
     ARTH_FORM(SUB)
@@ -226,7 +234,11 @@ std::shared_ptr<Expression> a_expr(const std::string& alias, ArthmeticOp op, std
 
 #undef ARTH_FORM
 
-std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::shared_ptr<Expression> inner, const std::string& custom, bool flag) {
+std::shared_ptr<Expression> u_expr(const std::string& alias,
+                                   UDFType ut,
+                                   std::shared_ptr<Expression> inner,
+                                   const std::string& custom,
+                                   bool flag) {
   // like, prefix
   switch (ut) {
   case UDFType::LIKE: {
@@ -290,6 +302,29 @@ std::shared_ptr<Expression> u_expr(const std::string& alias, UDFType ut, std::sh
     auto dst = deser.as<std::tuple<bool>>();
     auto est = std::get<0>(dst);
     return as(alias, std::make_shared<UDFExpression<UDFType::CARD, bool>>(inner, est));
+  }
+  case UDFType::BETWEEN: {
+    msgpack::object_handle oh = msgpack::unpack(custom.data(), custom.size());
+    auto deser = oh.get();
+    auto typeMinMax = deser.as<std::tuple<std::string, std::string, std::string>>();
+    auto tid = std::get<0>(typeMinMax);
+    auto min = std::get<1>(typeMinMax);
+    auto max = std::get<2>(typeMinMax);
+
+#define TYPED_EXPR(T)                                                                                      \
+  if (tid == TypeDetect<T>::tid()) {                                                                       \
+    return as(alias, std::make_shared<BetweenExpression<T>>(inner, folly::to<T>(min), folly::to<T>(max))); \
+  }
+
+    TYPED_EXPR(int8_t)
+    TYPED_EXPR(int16_t)
+    TYPED_EXPR(int32_t)
+    TYPED_EXPR(int64_t)
+    TYPED_EXPR(float)
+    TYPED_EXPR(double)
+
+    throw NException(fmt::format("Unsupported data type in between: {0}", tid));
+#undef TYPED_EXPR
   }
 
 #define COM_UDF(UT)                                                        \

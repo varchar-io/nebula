@@ -34,9 +34,9 @@ public:
     : UdfNotBase(
       name,
       std::move(expr),
-      [](const std::optional<NativeType>& origin) {
-        if (origin == std::nullopt) {
-          return true;
+      [](const std::optional<NativeType>& origin) -> std::optional<bool> {
+        if (UNLIKELY(origin == std::nullopt)) {
+          return std::nullopt;
         }
 
         // otherwise reverse

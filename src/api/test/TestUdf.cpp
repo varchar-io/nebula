@@ -20,6 +20,7 @@
 
 #include "api/dsl/Expressions.h"
 #include "api/udf/Avg.h"
+#include "api/udf/Between.h"
 #include "api/udf/Cardinality.h"
 #include "api/udf/Count.h"
 #include "api/udf/In.h"
@@ -183,6 +184,26 @@ TEST(UDFTest, TestPrefixContext) {
     auto result = prefix.eval(ctx);
     EXPECT_EQ(result, true);
   }
+}
+
+TEST(UDFTest, TestBetween) {
+  nebula::surface::MockAccessor row;
+  nebula::surface::eval::EvalContext ctx{ false };
+  ctx.reset(row);
+
+  auto count = 0;
+  for (auto i = 0; i < 20; ++i) {
+    auto c = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+    nebula::api::udf::Between<nebula::type::Kind::INTEGER> between("b", c, 3, 8);
+    auto x = between.eval(ctx);
+    EXPECT_TRUE(x != std::nullopt);
+    if (x.value()) {
+      count++;
+    }
+  }
+
+  // 6 items in range [3, 8]
+  EXPECT_EQ(count, 6);
 }
 
 TEST(UDFTest, TestIn) {
