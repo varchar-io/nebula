@@ -19,11 +19,7 @@
 #include <fstream>
 #include <unistd.h>
 
-// use file system in GNU system for now
-// #ifdef __GNUG__
-#ifndef __APPLE__
-#include <filesystem>
-#endif
+#include "common/Evidence.h"
 
 /**
  * A wrapper for interacting with AWS / S3
@@ -31,37 +27,57 @@
 namespace nebula {
 namespace storage {
 namespace local {
-std::vector<FileInfo> File::list(const std::string& dir) {
-  std::vector<FileInfo> files;
-  DIR* d = opendir(dir.c_str());
-  if (d) {
-    // read all entries
-    struct dirent* dp;
-    while ((dp = readdir(d))) {
-      // only need regular files - 8=REG 4=DIR
-      auto name = std::string(dp->d_name);
-      if (name == "." || name == "..") {
-        continue;
-      }
 
-      files.emplace_back(dp->d_type == 4,
-                         0,
-                         dp->d_reclen,
-                         name,
+namespace fs = std::filesystem;
+
+std::vector<FileInfo> File::list(const std::string& path) {
+  std::error_code ec;
+  if (fs::is_regular_file(path, ec)) {
+    return { info(path) };
+  }
+
+  if (ec) {
+    return {};
+  }
+
+  std::vector<FileInfo> files;
+  for (const auto& entry : fs::directory_iterator(path)) {
+    if (entry.is_regular_file()) {
+      files.emplace_back(false,
+                         nebula::common::Evidence::seconds(entry.last_write_time()),
+                         entry.file_size(),
+                         entry.path(),
                          "");
     }
-
-    closedir(d);
   }
+
+  // API from <unistd.h>
+  // DIR* d = opendir(dir.c_str());
+  // if (d) {
+  //   // read all entries
+  //   struct dirent* dp;
+  //   while ((dp = readdir(d))) {
+  //     // only need regular files - 8=REG 4=DIR
+  //     auto name = std::string(dp->d_name);
+  //     if (name == "." || name == "..") {
+  //       continue;
+  //     }
+
+  //     files.emplace_back(dp->d_type == 4,
+  //                        0,
+  //                        dp->d_reclen,
+  //                        name,
+  //                        "");
+  //   }
+
+  //   closedir(d);
+  // }
 
   // it may be empty
   return files;
 }
 
 FileInfo File::info(const std::string& file) {
-// #ifdef __GNUG__
-#ifndef __APPLE__
-  namespace fs = std::filesystem;
   auto s = fs::status(file);
   N_ENSURE(fs::exists(s), "file not exists");
 
@@ -73,9 +89,6 @@ FileInfo File::info(const std::string& file) {
     fs::file_size(file),
     file,
     "");
-#else
-  return FileInfo(false, 0, 0, file, "");
-#endif
 }
 
 size_t File::read(const std::string& file, char* buf, size_t size) {
@@ -105,9 +118,7 @@ bool File::sync(const std::string& from, const std::string& to, bool recursive) 
 
   // from and to are both local folder, we just copy all files over
   // support recursive by setting copy_options
-  // TODO(cao): it doesn't copy anything if options specified (e.g replace_existing)
-  std::filesystem::copy(from, to, std::filesystem::copy_options::overwrite_existing);
-  return true;
+  return copy(from, to);
 }
 
 void File::rm(const std::string& path) {

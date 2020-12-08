@@ -24,9 +24,7 @@ nodes:
 
 tables:
   nebula.test:
-    # max 10G RAM assigment
     max-mb: 10000
-    # max 10 days assignment
     max-hr: 240
     schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
     data: custom
@@ -41,28 +39,3 @@ tables:
       type: static
       # get it from linux by "date +%s"
       value: 1565994194
-  nebula.ephemeral:
-    # size and time may not be respected - ephemeral
-    max-mb: 10000
-    max-hr: 1
-    schema: "ROW<actor_id:string, pin_id:bigint, partner_id:bigint, ct:bigint, app:string, domain:string, url:string, image_signature:string, root_pin_id:bigint, is_video:boolean, board_id:bigint, publish_type:int, create_date_ts:bigint, country:string, metro:int, gender:tinyint, age:smallint, custom_tag:int>"
-    data: s3
-    loader: Api
-    # parameterized data source for on-demand loading, all parameters are formed by {}
-    # this example template has these parameters {date}, {ds}, {ct}, {pf}, {et}, {bucket}
-    source: s3://nebula/ephemeral/dt=%7Bdate%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-{%7Bbucket%7D}-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet
-    # this is a bucket table, so it will have a bucket macro to be fullfiled
-    # this table bucketed by partner_id into 10K buckets
-    bucket:
-      size: 10000
-      column: partner_id
-    backup: s3://nebula/n200/
-    format: parquet
-    columns:
-      app:
-        dict: true
-      country:
-        dict: true
-    time:
-      type: macro
-      pattern: date

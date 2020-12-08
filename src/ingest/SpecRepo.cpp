@@ -35,6 +35,7 @@ DEFINE_uint64(KAFKA_TIMEOUT_MS, 5000, "Timeout of each Kafka API call");
 namespace nebula {
 namespace ingest {
 
+using dsu = nebula::meta::DataSourceUtils;
 using nebula::common::Evidence;
 using nebula::common::unordered_map;
 using nebula::meta::ClusterInfo;
@@ -121,12 +122,12 @@ void genSpecPerFile(const TableSpecPtr& table,
 void genSpecs4Swap(const std::string& version,
                    const TableSpecPtr& table,
                    std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
-  if (table->source == DataSource::S3) {
+  if (dsu::isFileSystem(table->source)) {
     // parse location to get protocol, domain/bucket, path
     auto sourceInfo = nebula::storage::parse(table->location);
 
     // making a s3 fs with given host
-    auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
+    auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host);
 
     // list all objects/files from given path
     auto files = fs->list(sourceInfo.path);
@@ -140,12 +141,12 @@ void genSpecs4Swap(const std::string& version,
 void genSpecs4Roll(const std::string& version,
                    const TableSpecPtr& table,
                    std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
-  if (table->source == DataSource::S3) {
+  if (dsu::isFileSystem(table->source)) {
     // parse location to get protocol, domain/bucket, path
     auto sourceInfo = nebula::storage::parse(table->location);
 
     // making a s3 fs with given host
-    auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
+    auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host);
 
     // list all objects/files from given path
     // A roll spec will cover X days given table location of source data
@@ -224,7 +225,7 @@ void SpecRepo::process(
   // S3 has two mode:
   // 1. swap data when renewed or
   // 2. roll data clustered by time
-  if (table->source == DataSource::S3) {
+  if (dsu::isFileSystem(table->source)) {
     if (table->loader == "Swap") {
       genSpecs4Swap(version, table, specs);
       return;

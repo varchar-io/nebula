@@ -39,7 +39,7 @@ namespace surface {
 namespace eval {
 
 class ScriptContext final {
-  using RowGetter = std::function<const nebula::surface::RowData&()>;
+  using RowGetter = std::function<const nebula::surface::Accessor&()>;
   using ColTyper = std::function<nebula::type::Kind(const std::string&)>;
 
   static JSValue eval_buf(JSContext* ctx, const std::string& buf, const std::string& file, int eval_flags) noexcept {
@@ -93,45 +93,42 @@ class ScriptContext final {
     // getter_().read
     ScriptContext* script = (ScriptContext*)JS_GetContextOpaque(ctx);
     const auto& r = script->row();
-    if (r.isNull(col)) {
-      return JS_NULL;
-    }
 
     // read typed value based on the column type and set back to JS runtime
     auto kind = script->type(col);
     switch (kind) {
     case nebula::type::Kind::BOOLEAN: {
       auto value = r.readBool(col);
-      return JS_NewBool(ctx, value ? 1 : 0);
+      return JS_NewBool(ctx, value.value_or(false) ? 1 : 0);
     }
     case nebula::type::Kind::TINYINT: {
       auto value = r.readByte(col);
-      return JS_NewInt32(ctx, value);
+      return JS_NewInt32(ctx, value.value_or(0));
     }
     case nebula::type::Kind::SMALLINT: {
       auto value = r.readShort(col);
-      return JS_NewInt32(ctx, value);
+      return JS_NewInt32(ctx, value.value_or(0));
     }
     case nebula::type::Kind::INTEGER: {
       auto value = r.readInt(col);
-      return JS_NewInt32(ctx, value);
+      return JS_NewInt32(ctx, value.value_or(0));
     }
     case nebula::type::Kind::BIGINT: {
       auto value = r.readLong(col);
-      return JS_NewInt64(ctx, value);
+      return JS_NewInt64(ctx, value.value_or(0));
     }
     case nebula::type::Kind::REAL: {
       auto value = r.readFloat(col);
-      return JS_NewFloat64(ctx, value);
+      return JS_NewFloat64(ctx, value.value_or(0));
     }
     case nebula::type::Kind::DOUBLE: {
       auto value = r.readDouble(col);
-      return JS_NewFloat64(ctx, value);
+      return JS_NewFloat64(ctx, value.value_or(0));
     }
     case nebula::type::Kind::VARCHAR: {
       // TODO(cao): potential perf hit - we're using std::string copy here
       // to get a null-terminated c_str for JS_NewString API.
-      auto value = r.readString(col);
+      auto value = r.readString(col).value_or("");
       return JS_NewStringLen(ctx, value.data(), value.size());
     }
 
@@ -219,7 +216,7 @@ public:
   ScriptContext& operator=(ScriptContext&&) noexcept = delete; // move assignment
 
 public: // API
-  const inline nebula::surface::RowData& row() const {
+  const inline nebula::surface::Accessor& row() const {
     return getter_();
   }
 
@@ -228,13 +225,12 @@ public: // API
   }
 
   template <typename T>
-  T eval(const std::string& script, bool& valid, bool cache = false) noexcept {
+  std::optional<T> eval(const std::string& script, bool cache = false) noexcept {
     // if once is set, it means this script should be evaluated once
     // return instantly if this script evaluated before already
-    constexpr auto dv = nebula::type::TypeDetect<T>::value;
     if (cache && flags_.count(script) > 0) {
       // for this type of operation, we assume caller doesn't care what return value is
-      return dv;
+      return nebula::type::TypeDetect<T>::value;
     }
 
     JSValue val = eval_buf(ctx_, script);
@@ -243,17 +239,13 @@ public: // API
     nebula::common::Finally onExit([ctx = ctx_, &val]() { JS_FreeValue(ctx, val); });
 
     if (JS_IsException(val)) {
-      valid = false;
-      return dv;
+      return std::nullopt;
     }
 
     // record the evaluation if success
     if (cache) {
       flags_.emplace(script);
     }
-
-    // mark this evaluated a valid value
-    valid = true;
 
 #define CONVERT_TYPE(DT, M)              \
   if constexpr (std::is_same_v<T, DT>) { \
@@ -279,9 +271,8 @@ public: // API
 #undef CONVERT_TYPE
 
     // throw?
-    LOG(INFO) << "do not support this type, return a default value";
-    valid = false;
-    return dv;
+    LOG(INFO) << "js engine does not support this type, return empty.";
+    return std::nullopt;
   }
 
 private:

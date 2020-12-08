@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string_view>
 
 #include "common/Cursor.h"
@@ -163,6 +164,21 @@ public:
 
 private:
   IndexType items_;
+};
+
+// for low level data access - avoid row data interface for possible optimization
+class Accessor {
+public:
+  virtual ~Accessor() = default;
+  virtual std::optional<bool> readBool(const std::string&) const = 0;
+  virtual std::optional<int8_t> readByte(const std::string&) const = 0;
+  virtual std::optional<int16_t> readShort(const std::string&) const = 0;
+  virtual std::optional<int32_t> readInt(const std::string&) const = 0;
+  virtual std::optional<int64_t> readLong(const std::string&) const = 0;
+  virtual std::optional<float> readFloat(const std::string&) const = 0;
+  virtual std::optional<double> readDouble(const std::string&) const = 0;
+  virtual std::optional<int128_t> readInt128(const std::string&) const = 0;
+  virtual std::optional<std::string_view> readString(const std::string&) const = 0;
 };
 
 } // namespace surface

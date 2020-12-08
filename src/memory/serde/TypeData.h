@@ -18,6 +18,7 @@
 
 #include <cmath>
 #include <glog/logging.h>
+
 #include "common/BloomFilter.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
@@ -73,8 +74,8 @@ using StringData = TypeDataImpl<nebula::type::Kind::VARCHAR>;
 template <nebula::type::Kind KIND>
 class TypeDataImpl : public TypeData {
   using NType = typename nebula::type::TypeTraits<KIND>::CppType;
-  static constexpr auto Width = nebula::type::TypeTraits<KIND>::width;
   static constexpr auto Scalar = nebula::type::TypeBase::isScalar(KIND);
+  static constexpr auto Unit = Scalar ? nebula::type::TypeTraits<KIND>::width : 16;
 
 public:
   TypeDataImpl(const nebula::meta::Column&, size_t);
@@ -97,7 +98,7 @@ public:
   }
 
   NType read(IndexType index) const {
-    return slice_.template read<NType>(index * Width);
+    return slice_.template read<NType>(index * Unit);
   }
 
   inline std::string_view read(IndexType offset, IndexType size) {

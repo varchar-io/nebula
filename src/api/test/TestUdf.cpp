@@ -20,6 +20,7 @@
 
 #include "api/dsl/Expressions.h"
 #include "api/udf/Avg.h"
+#include "api/udf/Between.h"
 #include "api/udf/Cardinality.h"
 #include "api/udf/Count.h"
 #include "api/udf/In.h"
@@ -39,19 +40,17 @@ namespace test {
 using nebula::common::unordered_set;
 
 TEST(UDFTest, TestNot) {
-  nebula::surface::MockRowData row;
+  nebula::surface::MockAccessor row;
   nebula::surface::eval::EvalContext ctx{ false };
   ctx.reset(row);
 
   auto f = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(false);
   nebula::api::udf::Not n("n", f->asEval());
-  bool valid = true;
-  EXPECT_EQ(n.eval(ctx, valid), true);
+  EXPECT_EQ(n.eval(ctx), true);
 
   auto t = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(true);
   nebula::api::udf::Not y("n", t->asEval());
-  valid = true;
-  EXPECT_EQ(y.eval(ctx, valid), false);
+  EXPECT_EQ(y.eval(ctx), false);
 }
 
 TEST(UDFTest, TestLike) {
@@ -72,7 +71,7 @@ TEST(UDFTest, TestLike) {
     { "hi there", "%there", true },
     { "easy dessert pizza recipe", "%recipe%", true }
   };
-  nebula::surface::MockRowData row;
+  nebula::surface::MockAccessor row;
   nebula::surface::eval::EvalContext ctx{ false };
   ctx.reset(row);
 
@@ -83,8 +82,7 @@ TEST(UDFTest, TestLike) {
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
     nebula::api::udf::Like l("l", c->asEval(), p);
-    bool valid = true;
-    EXPECT_EQ(l.eval(ctx, valid), r);
+    EXPECT_EQ(l.eval(ctx), r);
   }
 }
 
@@ -106,7 +104,7 @@ TEST(UDFTest, TestILike) {
     { "hi there", "%thEre", true },
     { "easy dessert pizza recipe", "%rEcIpe%", true }
   };
-  nebula::surface::MockRowData row;
+  nebula::surface::MockAccessor row;
   nebula::surface::eval::EvalContext ctx{ false };
   ctx.reset(row);
 
@@ -117,8 +115,7 @@ TEST(UDFTest, TestILike) {
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
     nebula::api::udf::Like l("l", c->asEval(), p, false);
-    bool valid = true;
-    EXPECT_EQ(l.eval(ctx, valid), r);
+    EXPECT_EQ(l.eval(ctx), r);
   }
 }
 
@@ -133,7 +130,7 @@ TEST(UDFTest, TestPrefix) {
     { "hi there ", "i th", false },
     { "hi there", "hi there", true }
   };
-  nebula::surface::MockRowData row;
+  nebula::surface::MockAccessor row;
   nebula::surface::eval::EvalContext ctx{ false };
   ctx.reset(row);
 
@@ -144,8 +141,7 @@ TEST(UDFTest, TestPrefix) {
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
     nebula::api::udf::Prefix prefix("p", c->asEval(), p);
-    bool valid = true;
-    EXPECT_EQ(prefix.eval(ctx, valid), r);
+    EXPECT_EQ(prefix.eval(ctx), r);
   }
 }
 
@@ -157,7 +153,7 @@ TEST(UDFTest, TestIPrefix) {
     { "NebUla is awesome", "neBulA", true },
     { "Hi there", "hI tHere", true }
   };
-  nebula::surface::MockRowData row;
+  nebula::surface::MockAccessor row;
   nebula::surface::eval::EvalContext ctx{ false };
   ctx.reset(row);
 
@@ -168,8 +164,7 @@ TEST(UDFTest, TestIPrefix) {
     LOG(INFO) << "Match " << s << " with " << p << " is " << r;
     auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(s);
     nebula::api::udf::Prefix prefix("p", c->asEval(), p, false);
-    bool valid = true;
-    EXPECT_EQ(prefix.eval(ctx, valid), r);
+    EXPECT_EQ(prefix.eval(ctx), r);
   }
 }
 
@@ -178,19 +173,37 @@ TEST(UDFTest, TestPrefixContext) {
     { "abcdefg", "abc", true },
   };
 
-  nebula::surface::MockRowData row;
+  nebula::surface::MockAccessor row;
   nebula::surface::eval::EvalContext ctx{ false };
   ctx.reset(row);
 
   auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>("abcdfeg");
   nebula::api::udf::Prefix prefix("p", c->asEval(), "abc");
   for (auto i = 0; i < 1000; ++i) {
-    bool valid = true;
     // auto result = prefix.eval(row, valid);
-    auto result = ctx.eval<bool>(prefix, valid);
-    EXPECT_EQ(valid, true);
+    auto result = prefix.eval(ctx);
     EXPECT_EQ(result, true);
   }
+}
+
+TEST(UDFTest, TestBetween) {
+  nebula::surface::MockAccessor row;
+  nebula::surface::eval::EvalContext ctx{ false };
+  ctx.reset(row);
+
+  auto count = 0;
+  for (auto i = 0; i < 20; ++i) {
+    auto c = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+    nebula::api::udf::Between<nebula::type::Kind::INTEGER> between("b", c, 3, 8);
+    auto x = between.eval(ctx);
+    EXPECT_TRUE(x != std::nullopt);
+    if (x.value()) {
+      count++;
+    }
+  }
+
+  // 6 items in range [3, 8]
+  EXPECT_EQ(count, 6);
 }
 
 TEST(UDFTest, TestIn) {
@@ -206,7 +219,7 @@ TEST(UDFTest, TestIn) {
       { { "x", "y", "z" }, "z", false, false },
     };
 
-    nebula::surface::MockRowData row;
+    nebula::surface::MockAccessor row;
     nebula::surface::eval::EvalContext ctx{ false };
     ctx.reset(row);
 
@@ -220,12 +233,10 @@ TEST(UDFTest, TestIn) {
       auto c = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(t);
       if (f) {
         nebula::api::udf::In<nebula::type::Kind::VARCHAR> in("i", c, s);
-        bool valid = true;
-        EXPECT_EQ(in.eval(ctx, valid), r);
+        EXPECT_EQ(in.eval(ctx), r);
       } else {
         nebula::api::udf::In<nebula::type::Kind::VARCHAR> in("i", c, s, f);
-        bool valid = true;
-        EXPECT_EQ(in.eval(ctx, valid), r);
+        EXPECT_EQ(in.eval(ctx), r);
       }
     }
   }
@@ -242,7 +253,7 @@ TEST(UDFTest, TestIn) {
       { { 23, 34, 45, 56 }, 45, false, false },
     };
 
-    nebula::surface::MockRowData row;
+    nebula::surface::MockAccessor row;
     nebula::surface::eval::EvalContext ctx{ false };
     ctx.reset(row);
 
@@ -257,12 +268,10 @@ TEST(UDFTest, TestIn) {
       auto c = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(t);
       if (f) {
         nebula::api::udf::In<nebula::type::Kind::INTEGER> in("i", c, s);
-        bool valid = true;
-        EXPECT_EQ(in.eval(ctx, valid), r);
+        EXPECT_EQ(in.eval(ctx), r);
       } else {
         nebula::api::udf::In<nebula::type::Kind::INTEGER> in("i", c, s, f);
-        bool valid = true;
-        EXPECT_EQ(in.eval(ctx, valid), r);
+        EXPECT_EQ(in.eval(ctx), r);
       }
     }
   }
@@ -274,7 +283,6 @@ TEST(UDFTest, TestCount) {
 
   // simulate the run times 11 for c1 and 22 for c2
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid = false;
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
   CType cf("count", v9->asEval());
   auto count1 = cf.sketch();
@@ -282,17 +290,16 @@ TEST(UDFTest, TestCount) {
   for (auto i = 0; i < 11; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ci("count1", vi->asEval());
-    auto v = ci.eval(ctx, invalid);
+    auto v = ci.eval(ctx);
     EXPECT_EQ(v, 1);
-    EXPECT_FALSE(invalid);
-    count1->merge(v);
+    count1->merge(v.value());
   }
 
   auto count2 = cf.sketch();
   for (auto i = 0; i < 22; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ci("count2", vi->asEval());
-    count2->merge(ci.eval(ctx, invalid));
+    count2->merge(ci.eval(ctx).value());
   }
 
   // partial merge
@@ -307,7 +314,6 @@ TEST(UDFTest, TestSum) {
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int8_t>>(0);
   using CType = nebula::api::udf::Sum<nebula::type::Kind::TINYINT>;
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   CType sf("sum", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
@@ -317,7 +323,7 @@ TEST(UDFTest, TestSum) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int8_t>>(i);
     CType si("sum1", vi->asEval());
 
-    sum1->merge(si.eval(ctx, invalid));
+    sum1->merge(si.eval(ctx).value());
     expected += i;
   }
 
@@ -326,7 +332,7 @@ TEST(UDFTest, TestSum) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int8_t>>(i);
     CType si("sum2", vi->asEval());
 
-    sum2->merge(si.eval(ctx, invalid));
+    sum2->merge(si.eval(ctx).value());
     expected += i;
   }
 
@@ -351,7 +357,6 @@ TEST(UDFTest, TestSum128) {
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(12);
   using CType = nebula::api::udf::Sum<nebula::type::Kind::INT128>;
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   CType sf("sum", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
@@ -361,7 +366,7 @@ TEST(UDFTest, TestSum128) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(i);
     CType si("sum1", vi->asEval());
 
-    sum1->merge(si.eval(ctx, invalid));
+    sum1->merge(si.eval(ctx).value());
     expected += i;
   }
 
@@ -370,7 +375,7 @@ TEST(UDFTest, TestSum128) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(i);
     CType si("sum2", vi->asEval());
 
-    sum2->merge(si.eval(ctx, invalid));
+    sum2->merge(si.eval(ctx).value());
     expected += i;
   }
 
@@ -387,7 +392,6 @@ TEST(UDFTest, TestMin) {
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
   using CType = nebula::api::udf::Min<nebula::type::Kind::INTEGER>;
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   CType mf("min", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
@@ -397,7 +401,7 @@ TEST(UDFTest, TestMin) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType mi("min1", vi->asEval());
 
-    min1->merge(mi.eval(ctx, invalid));
+    min1->merge(mi.eval(ctx).value());
     expected = std::min(i, expected);
   }
 
@@ -406,7 +410,7 @@ TEST(UDFTest, TestMin) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType mi("min2", vi->asEval());
 
-    min2->merge(mi.eval(ctx, invalid));
+    min2->merge(mi.eval(ctx).value());
     expected = std::min(i, expected);
   }
 
@@ -423,7 +427,6 @@ TEST(UDFTest, TestMax) {
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
   using CType = nebula::api::udf::Max<nebula::type::Kind::INTEGER>;
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   CType mf("max", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
@@ -433,7 +436,7 @@ TEST(UDFTest, TestMax) {
     int32_t v = i * -1;
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(v);
     CType mi("max1", vi->asEval());
-    max1->merge(mi.eval(ctx, invalid));
+    max1->merge(mi.eval(ctx).value());
     expected = std::max(v, expected);
   }
 
@@ -442,7 +445,7 @@ TEST(UDFTest, TestMax) {
     int32_t v = i * -1;
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(v);
     CType mi("max1", vi->asEval());
-    max2->merge(mi.eval(ctx, invalid));
+    max2->merge(mi.eval(ctx).value());
     expected = std::max(v, expected);
   }
 
@@ -460,7 +463,6 @@ TEST(UDFTest, TestAvg) {
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
   using CType = nebula::api::udf::Avg<nebula::type::Kind::INTEGER>;
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   CType af("avg", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
@@ -471,7 +473,7 @@ TEST(UDFTest, TestAvg) {
   for (auto i = 0; i < 11; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ai("avg1", vi->asEval());
-    avg1->merge(ai.eval(ctx, invalid));
+    avg1->merge(ai.eval(ctx).value());
 
     sum += i;
     count += 1;
@@ -481,7 +483,7 @@ TEST(UDFTest, TestAvg) {
   for (auto i = 0; i < 22; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ai("avg2", vi->asEval());
-    avg2->merge(ai.eval(ctx, invalid));
+    avg2->merge(ai.eval(ctx).value());
 
     sum += i;
     count += 1;
@@ -500,7 +502,6 @@ TEST(UDFTest, TestAvgByte) {
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int8_t>>(0);
   using CType = nebula::api::udf::Avg<nebula::type::Kind::TINYINT>;
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   CType af("avg", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
@@ -509,9 +510,9 @@ TEST(UDFTest, TestAvgByte) {
 
   auto avg1 = af.sketch();
   for (auto i = 0; i < 127; ++i) {
-    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int8_t>>(i);
     CType ai("avg2", vi->asEval());
-    avg1->merge(ai.eval(ctx, invalid));
+    avg1->merge(ai.eval(ctx).value());
 
     sum += i;
     count += 1;
@@ -519,9 +520,9 @@ TEST(UDFTest, TestAvgByte) {
 
   auto avg2 = af.sketch();
   for (auto i = 0; i < 127; ++i) {
-    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int8_t>>(i);
     CType ai("avg2", vi->asEval());
-    avg2->merge(ai.eval(ctx, invalid));
+    avg2->merge(ai.eval(ctx).value());
 
     sum += i;
     count += 1;
@@ -539,7 +540,6 @@ TEST(UDFTest, TestAvgInt128) {
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(0);
   using CType = nebula::api::udf::Avg<nebula::type::Kind::INT128>;
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   CType af("avg", v9->asEval());
 
   // simulate the run times 11 for c1 and 22 for c2
@@ -550,7 +550,7 @@ TEST(UDFTest, TestAvgInt128) {
   for (auto i = 0; i < 127; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(i);
     CType ai("avg2", vi->asEval());
-    avg1->merge(ai.eval(ctx, invalid));
+    avg1->merge(ai.eval(ctx).value());
 
     sum += i;
     count += 1;
@@ -560,7 +560,7 @@ TEST(UDFTest, TestAvgInt128) {
   for (auto i = 0; i < 127; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int128_t>>(i);
     CType ai("avg2", vi->asEval());
-    avg2->merge(ai.eval(ctx, invalid));
+    avg2->merge(ai.eval(ctx).value());
 
     sum += i;
     count += 1;
@@ -579,7 +579,6 @@ TEST(UDFTest, TestPct) {
 
   // simulate the run times 11 for c1 and 22 for c2
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(0);
   double percentile = 99.0;
   CType tf("td1", v9->asEval(), percentile);
@@ -588,14 +587,14 @@ TEST(UDFTest, TestPct) {
   for (auto i = 0; i < 110; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ci("count1", vi->asEval(), percentile);
-    td1->merge(ci.eval(ctx, invalid));
+    td1->merge(ci.eval(ctx).value());
   }
 
   auto td2 = tf.sketch();
   for (auto i = 0; i < 220; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<int32_t>>(i);
     CType ci("count2", vi->asEval(), percentile);
-    td2->merge(ci.eval(ctx, invalid));
+    td2->merge(ci.eval(ctx).value());
   }
 
   // partial merge
@@ -621,7 +620,6 @@ TEST(UDFTest, TestTpm) {
 
   // simulate the run times 11 for c1 and 22 for c2
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   auto v1 = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>("");
   CType tpm("tmp1", v1->asEval());
 
@@ -629,14 +627,14 @@ TEST(UDFTest, TestTpm) {
   for (size_t i = 0, size = std::size(stacks); i < size; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(stacks[i]);
     CType ci("tmp", vi->asEval());
-    sketch->merge(ci.eval(ctx, invalid));
+    sketch->merge(ci.eval(ctx).value());
   }
 
   auto sketch2 = tpm.sketch();
   for (size_t i = 0, size = std::size(stacks); i < size; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(stacks[i]);
     CType ci("tmp2", vi->asEval());
-    sketch2->merge(ci.eval(ctx, invalid));
+    sketch2->merge(ci.eval(ctx).value());
   }
 
   // partial merge
@@ -739,7 +737,6 @@ TEST(UDFTest, TestCardinality) {
 
   // simulate the run times 11 for c1 and 22 for c2
   nebula::surface::eval::EvalContext ctx{ false };
-  bool invalid;
   auto v1 = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>("");
   CType card("tmp1", v1->asEval());
 
@@ -747,14 +744,14 @@ TEST(UDFTest, TestCardinality) {
   for (size_t i = 0, size = std::size(stacks); i < size; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(stacks[i]);
     CType ci("tmp", vi->asEval());
-    sketch->merge(ci.eval(ctx, invalid));
+    sketch->merge(ci.eval(ctx).value());
   }
 
   auto sketch2 = card.sketch();
   for (size_t i = 0, size = std::size(stacks); i < size; ++i) {
     auto vi = std::make_shared<nebula::api::dsl::ConstExpression<std::string_view>>(stacks[i]);
     CType ci("tmp2", vi->asEval());
-    sketch2->merge(ci.eval(ctx, invalid));
+    sketch2->merge(ci.eval(ctx).value());
   }
 
   // partial merge

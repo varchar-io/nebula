@@ -28,12 +28,11 @@ After you build nebula successfully, you can run this script to run all services
 ## Code Convention
 ### Style - use clang-format
 
-- VS Code is the default IDE which has extension for clang-format to format our code
-- install clang-format so that IDE can invoke the formatter automatically on saving.
-- https://packagecontrol.io/packages/Clang%20Format
-- On MacOS (npm install clang-format) and edit user-settings with below settings
-- "clang-format.executable": "/absolute-path-to/clang-format"
-- If you don't have npm on your mac, install node from here https://nodejs.org/en/download/
+- install clang-format (user dir): `npm install clang-format`
+- open preferences/settings `CMD+,`
+- enter value for "clang-format.executable": `~/node_modules/clang-format/bin/darwin_x64/clang-format`
+- check above path exists (it may change across versions depending on time run the installation)
+- my format key binding is `SHIFT+ALT+F` (check your own bindings)
 
 ### Basic Code Convention
 
@@ -71,17 +70,11 @@ After you build nebula successfully, you can run this script to run all services
        2.  ./configure
        3.  sudo make install
    3.  use it in the app
-       1.  make nebula with -DGPROF=1 using "gprof"
-       2.  OR make nebula with -DPPROF=1 using "gperftools"
-       3.  Run Node server separately from other images by removing "node" service from docker-compose.yaml
-           1.  LD_PRELOAD=/usr/local/lib/libprofiler.so CPUPROFILE=/tmp/prof_ns.out CPUPROFILE_FREQUENCY=400 ./NodeServer
-       4.  if using gperftools, run NodeServer like this "LD_PRELOAD=/usr/local/lib/libprofiler.so CPUPROFILE=/tmp/prof_ns5.out ./NodeServer"
-           1.  A bit more info on using gperftools: https://gperftools.github.io/gperftools/cpuprofile.html
-           2.  to see reports with graph, install grpahviz "sudo apt-get install graphviz gv"
-           3.  then we can do "pprof --gv <bin> x.out"
-           4.  We can also (more practical since difficult to config gv on linux) gen svg file and copy it to mac to open by browsers.
-               1.  such as "pprof --svg NodeServer /tmp/prof_ns.out > prof.svg"
-       5.  if using gprof, run NodeServer normally
+       1.  make nebula with -DPPROF=1 using "gperftools"
+       2.  run NodeServer `LD_PRELOAD=/usr/local/lib/libprofiler.so CPUPROFILE=/tmp/prof_ns.out ./NodeServer`
+           1.  can add cpu frequency to tune the freuqency to profile `CPUPROFILE_FREQUENCY=400`
+           2.  to see reports with graph, install grpahviz `sudo apt-get install graphviz gv`
+           3.  convert: `pprof --svg NodeServer /tmp/prof_ns.out > prof.svg`
    4.  To make perfiler to flush/write perf results out, we need the app to exit normally. Hence implemented a hook to shutdown first node.
        1.  http://dev-shawncao:8088/?api=nuclear
 

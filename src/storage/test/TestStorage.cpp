@@ -39,17 +39,32 @@ TEST(StorageTest, TestSystemApi) {
   std::ofstream(fmt::format("{0}/file1.txt", from)).put('a');
   std::filesystem::copy(from, to);
 
-  auto files = fs->list(to);
-  for (auto& f : files) {
-    LOG(INFO) << "File: " << f.name;
+  auto dest = fmt::format("{0}/file1.txt", to);
+
+  // test list api of a dir
+  {
+    auto files = fs->list(to);
+    EXPECT_EQ(files.size(), 1);
+    const auto& fi = files.at(0);
+    EXPECT_EQ(fi.domain, "");
+    EXPECT_EQ(fi.name, dest);
   }
 
-  EXPECT_TRUE(files.size() > 0);
+  // test list the file directly
+  {
+    auto files = fs->list(dest);
+    EXPECT_EQ(files.size(), 1);
+    const auto& fi = files.at(0);
+    EXPECT_EQ(fi.domain, "");
+    EXPECT_EQ(fi.name, dest);
+  }
 
   // 2. remove_all
-  std::filesystem::remove_all(to);
-  files = fs->list(to);
-  EXPECT_TRUE(files.size() == 0);
+  {
+    std::filesystem::remove_all(to);
+    auto files = fs->list(to);
+    EXPECT_TRUE(files.size() == 0);
+  }
 }
 
 TEST(StorageTest, TestLocalFiles) {
@@ -166,7 +181,7 @@ TEST(StorageTest, TestUriParse) {
     auto uriInfo = nebula::storage::parse("file:///var/log/log.txt");
     EXPECT_EQ(uriInfo.schema, "file");
     EXPECT_EQ(uriInfo.host, "");
-    EXPECT_EQ(uriInfo.path, "var/log/log.txt");
+    EXPECT_EQ(uriInfo.path, "/var/log/log.txt");
   }
   {
     // testing macro replacement using <date> not supported by uri parser
@@ -190,7 +205,15 @@ TEST(StorageTest, TestUriParse) {
     auto uriInfo = nebula::storage::parse("/etc/nebula/configs/cluster.yml");
     EXPECT_EQ(uriInfo.schema, "");
     EXPECT_EQ(uriInfo.host, "");
-    EXPECT_EQ(uriInfo.path, "etc/nebula/configs/cluster.yml");
+    EXPECT_EQ(uriInfo.path, "/etc/nebula/configs/cluster.yml");
+  }
+
+  {
+    // try to support normal file
+    auto uriInfo = nebula::storage::parse("etc/cluster.yml");
+    EXPECT_EQ(uriInfo.schema, "");
+    EXPECT_EQ(uriInfo.host, "");
+    EXPECT_EQ(uriInfo.path, "/etc/cluster.yml");
   }
 }
 

@@ -177,26 +177,21 @@ private:
 using BatchPtr = std::shared_ptr<Batch>;
 using EvaledBlock = std::pair<Batch*, nebula::surface::eval::BlockEval>;
 
-class RowAccessor : public nebula::surface::RowData {
+class RowAccessor : public nebula::surface::Accessor {
 public:
   RowAccessor(const Batch& batch) : batch_{ batch }, dnMap_{ batch_.fields_ } {}
   virtual ~RowAccessor() = default;
 
 public:
-  bool isNull(const std::string& field) const override;
-  bool readBool(const std::string& field) const override;
-  int8_t readByte(const std::string& field) const override;
-  int16_t readShort(const std::string& field) const override;
-  int32_t readInt(const std::string& field) const override;
-  int64_t readLong(const std::string& field) const override;
-  float readFloat(const std::string& field) const override;
-  double readDouble(const std::string& field) const override;
-  int128_t readInt128(const std::string& field) const override;
-  std::string_view readString(const std::string& field) const override;
-
-  // compound types
-  std::unique_ptr<nebula::surface::ListData> readList(const std::string& field) const override;
-  std::unique_ptr<nebula::surface::MapData> readMap(const std::string& field) const override;
+  std::optional<bool> readBool(const std::string& field) const override;
+  std::optional<int8_t> readByte(const std::string& field) const override;
+  std::optional<int16_t> readShort(const std::string& field) const override;
+  std::optional<int32_t> readInt(const std::string& field) const override;
+  std::optional<int64_t> readLong(const std::string& field) const override;
+  std::optional<float> readFloat(const std::string& field) const override;
+  std::optional<double> readDouble(const std::string& field) const override;
+  std::optional<int128_t> readInt128(const std::string& field) const override;
+  std::optional<std::string_view> readString(const std::string& field) const override;
 
 public:
   RowAccessor& seek(size_t);

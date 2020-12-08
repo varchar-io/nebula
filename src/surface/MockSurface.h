@@ -27,7 +27,7 @@ class MockData {
 public:
   MockData(size_t seed = 0)
     : rand_{ nebula::common::Evidence::rand(
-        seed == 0 ? nebula::common::Evidence::ticks() : seed) } {}
+      seed == 0 ? nebula::common::Evidence::ticks() : seed) } {}
   virtual ~MockData() = default;
 
 protected:
@@ -126,6 +126,31 @@ public:
   MockMapData(IndexType items, size_t seed = 0) : MapData(items), MockData(seed) {}
   std::unique_ptr<ListData> readKeys() const override;
   std::unique_ptr<ListData> readValues() const override;
+};
+
+// Supported compound types
+class MockAccessor : public Accessor, protected MockData {
+public:
+  MockAccessor(size_t seed = 0) : MockData(seed) {
+    strings_.reserve(32);
+    for (auto i = 0; i < 32; ++i) {
+      strings_.push_back(std::string(rand_() * 10, 'N'));
+    }
+  }
+
+public:
+  virtual std::optional<bool> readBool(const std::string& field) const override;
+  virtual std::optional<int8_t> readByte(const std::string& field) const override;
+  virtual std::optional<int16_t> readShort(const std::string& field) const override;
+  virtual std::optional<int32_t> readInt(const std::string& field) const override;
+  virtual std::optional<int64_t> readLong(const std::string& field) const override;
+  virtual std::optional<float> readFloat(const std::string& field) const override;
+  virtual std::optional<double> readDouble(const std::string& field) const override;
+  virtual std::optional<int128_t> readInt128(const std::string& field) const override;
+  virtual std::optional<std::string_view> readString(const std::string& field) const override;
+
+private:
+  std::vector<std::string> strings_;
 };
 
 } // namespace surface

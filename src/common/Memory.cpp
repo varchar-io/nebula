@@ -16,6 +16,7 @@
 
 #include "Memory.h"
 
+#include <algorithm>
 #include <gflags/gflags.h>
 #include <lz4.h>
 
@@ -192,13 +193,15 @@ std::string_view PagedSlice::read(size_t position, size_t size) const {
   }
 
   // if the requested data is still in write buffer
-  if (write_.include(position)) {
-    return std::string_view((char*)this->ptr_ + position - write_.offset, size);
+  if (UNLIKELY(this->ptr_ != nullptr)) {
+    if (write_.include(position)) {
+      return std::string_view((char*)this->ptr_ + position - write_.offset, size);
+    }
   }
 
   // because we make sure every single element is captured in single block
   // so we don't have single item across block
-  if (!read_.include(position)) {
+  if (UNLIKELY(!bufferPtr_ || !blocks_.at(bid_).range.include(position))) {
     uncompress(position);
   }
 
@@ -206,7 +209,7 @@ std::string_view PagedSlice::read(size_t position, size_t size) const {
   // note that, we're returning a string view on top of current buffer
   // which is possible to be swapped by next read
   // hence it requires client to consume it before next read, or corrupted data may happen
-  return std::string_view((char*)bufferPtr_ + position - read_.offset, size);
+  return std::string_view((char*)bufferPtr_ + position - blocks_.at(bid_).range.offset, size);
 }
 
 // ensure the buffer is big enough to hold single item
@@ -229,20 +232,15 @@ void PagedSlice::seal() {
   // if buffer is valid
   N_ENSURE(ownbuffer_, "buffer is owned");
 
-  // we are asking at least keep a word in the buffer
-  const auto validSize = write_.size;
-  auto wasted = size_ - validSize;
-  // wasted is more than valid or absolute value is more than 4KB
-  // let's reclaim it
-  if (wasted >= validSize || wasted >= 1024) {
-    // Do we need alignment here to improvement fragmentation?
-    auto buffer = pool_.allocate(validSize);
-    N_ENSURE_NOT_NULL(buffer, "buffer not null");
-    std::memcpy(buffer, ptr_, validSize);
-    pool_.free(static_cast<void*>(ptr_), size_);
-    ptr_ = static_cast<NByte*>(buffer);
-    size_ = validSize;
+  // compress current writer buffer
+  if (write_.size > 0) {
+    compress(write_.offset + write_.size);
   }
+
+  // free the writer buffer
+  // after seal, we can not write any more
+  pool_.free(static_cast<void*>(ptr_), size_);
+  ptr_ = nullptr;
 }
 
 // compress current buffer and link it to the chain
@@ -255,23 +253,17 @@ void PagedSlice::compress(size_t position) {
 
   // try to compress it
   auto slice = std::make_unique<OneSlice>(srcSize);
-  // if codec is not-compressed, we just put this slice in
-  if (type_ == folly::io::CodecType::NO_COMPRESSION) {
-    std::memcpy(slice->ptr(), ptr_, srcSize);
-    blocks_.emplace_front(write_, false, std::move(slice));
+  auto compressedSize = 0;
+  // support compress as LZ4 only for now
+  if (type_ == folly::io::CodecType::LZ4
+      && (compressedSize = LZ4_compress_default((char*)ptr_, (char*)slice->ptr(), srcSize, srcSize)) > 0) {
+    // copy into a smaller buffer
+    auto fit = std::make_unique<OneSlice>(compressedSize);
+    std::memcpy(fit->ptr(), slice->ptr(), compressedSize);
+    blocks_.emplace_back(write_, true, std::move(fit));
   } else {
-    auto compressedSize = LZ4_compress_default((char*)ptr_, (char*)slice->ptr(), srcSize, srcSize);
-
-    // not good to compress, keep it as raw
-    if (compressedSize == 0) {
-      std::memcpy(slice->ptr(), ptr_, srcSize);
-      blocks_.emplace_front(write_, false, std::move(slice));
-    } else {
-      // copy into a smaller buffer
-      auto fit = std::make_unique<OneSlice>(compressedSize);
-      std::memcpy(fit->ptr(), slice->ptr(), compressedSize);
-      blocks_.emplace_front(write_, true, std::move(fit));
-    }
+    std::memcpy(slice->ptr(), ptr_, srcSize);
+    blocks_.emplace_back(write_, false, std::move(slice));
   }
 
   // reset the buffer
@@ -286,36 +278,50 @@ void PagedSlice::uncompress(size_t position) const {
   // search the block that includes the position
   // assuming we don't have a lot of blocks to iterate,
   // otherwise this linear loop might require optimization for fast locating.
-  for (auto& block : blocks_) {
+  // LOG(INFO) << "search the block from " << blocks_.size() << " blocks for " << position;
+  // use binary search to locate the block
+  size_t low = 0;
+  size_t high = blocks_.size() - 1;
+  auto i = bid_;
+  auto pos = (int64_t)position;
+
+  while (low <= high) {
+    const auto& block = blocks_.at(i);
     if (block.range.include(position)) {
-      // TODO(cao) - I was looking for an interface to use existing buffer to hold the raw data
-      // auto raw = codec_->uncompress(, block.range.size);
-      auto compressedSize = block.data->size();
-
-      N_ENSURE(type_ == folly::io::CodecType::NO_COMPRESSION || type_ == folly::io::CodecType::LZ4,
-               "only supporting LZ4 or NONE for now");
-      if (block.compressed) {
-        // prepare the read buffer for this block
-        if (buffer_ == nullptr || buffer_->size() < block.range.size) {
-          auto buffer = std::make_unique<OneSlice>(block.range.size);
-          buffer.swap(const_cast<std::unique_ptr<OneSlice>&>(buffer_));
-        }
-
-        auto ret = (uint32_t)LZ4_decompress_safe((char*)block.data->ptr(), (char*)buffer_->ptr(), compressedSize, buffer_->size());
-        N_ENSURE_EQ(ret, block.range.size, "raw data size mismatches.");
-        *const_cast<NByte**>(&bufferPtr_) = buffer_->ptr();
-      } else {
-        *const_cast<NByte**>(&bufferPtr_) = block.data->ptr();
-      }
-
-      // TODO(cao) - sorry to use const_cast here as we want to keep read interfaces as const methods
-      *const_cast<CRange*>(&read_) = block.range;
-      return;
+      break;
     }
+
+    // search low band or high band
+    auto delta = pos - block.range.offset;
+    if (delta < 0) {
+      high = i - 1;
+    } else if (delta >= block.range.size) {
+      low = i + 1;
+    }
+
+    i = (high + low) / 2;
   }
 
-  throw NException(fmt::format("invalid position to uncompress: {0}", position));
-}
+  // TODO(cao) - sorry to use const_cast here as we want to keep read interfaces as const methods
+  N_ENSURE(high >= low, "position not found");
+  *const_cast<size_t*>(&bid_) = i;
+
+  const auto& block = blocks_.at(i);
+  if (UNLIKELY(block.compressed)) {
+    // prepare the read buffer for this block
+    if (buffer_ == nullptr || buffer_->size() < block.range.size) {
+      auto buffer = std::make_unique<OneSlice>(block.range.size);
+      buffer.swap(const_cast<std::unique_ptr<OneSlice>&>(buffer_));
+    }
+
+    auto ret = (uint32_t)LZ4_decompress_safe((char*)block.data->ptr(), (char*)buffer_->ptr(), block.data->size(), buffer_->size());
+    N_ENSURE_EQ(ret, block.range.size, "raw data size mismatches.");
+    *const_cast<NByte**>(&bufferPtr_) = buffer_->ptr();
+  } else {
+    *const_cast<NByte**>(&bufferPtr_) = block.data->ptr();
+  }
+
+} // namespace common
 
 } // namespace common
 } // namespace nebula

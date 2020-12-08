@@ -37,7 +37,7 @@ using nebula::type::TypeTraits;
 // if the column is partition column, we use partition values, otherwise use histogram
 #define MIN_MAX_COMPARE(KIND, HT, NONE_EXP, ALL_EXP)        \
   using ET = TypeTraits<Kind::KIND>::CppType;               \
-  auto value = c->eval<ET>(ctx, valid);                     \
+  auto value = c->eval<ET>(ctx);                            \
   auto min = std::numeric_limits<ET>::max();                \
   auto max = std::numeric_limits<ET>::min();                \
   auto values = b.partitionValues(name);                    \
@@ -74,7 +74,6 @@ EvalBlock buildEvalBlock<LogicalOp::GT>(const std::unique_ptr<ValueEval>& left,
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
       EvalContext ctx{ false };
-      bool valid;
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {
@@ -112,7 +111,6 @@ EvalBlock buildEvalBlock<LogicalOp::GE>(const std::unique_ptr<ValueEval>& left,
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
       EvalContext ctx{ false };
-      bool valid;
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {
@@ -150,7 +148,6 @@ EvalBlock buildEvalBlock<LogicalOp::LT>(const std::unique_ptr<ValueEval>& left,
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
       EvalContext ctx{ false };
-      bool valid;
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {
@@ -188,7 +185,6 @@ EvalBlock buildEvalBlock<LogicalOp::LE>(const std::unique_ptr<ValueEval>& left,
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
       EvalContext ctx{ false };
-      bool valid;
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {
@@ -233,7 +229,7 @@ EvalBlock buildEvalBlock<LogicalOp::LE>(const std::unique_ptr<ValueEval>& left,
   using CT = std::conditional_t<Kind::KIND == Kind::VARCHAR, std::string, ET>; \
   auto A = NOT ? BlockEval::NONE : BlockEval::ALL;                             \
   auto N = NOT ? BlockEval::ALL : BlockEval::NONE;                             \
-  auto value = c->eval<ET>(ctx, valid);                                        \
+  auto value = c->eval<ET>(ctx);                                               \
   auto values = b.partitionValues(name);                                       \
   if (values.size() > 0) {                                                     \
     for (auto v : values) {                                                    \
@@ -244,7 +240,7 @@ EvalBlock buildEvalBlock<LogicalOp::LE>(const std::unique_ptr<ValueEval>& left,
     }                                                                          \
     return N;                                                                  \
   }                                                                            \
-  if (!b.probably(name, value)) {                                              \
+  if (value != std::nullopt && !b.probably(name, value.value())) {             \
     return N;                                                                  \
   }
 
@@ -266,7 +262,6 @@ EvalBlock buildEvalBlock<LogicalOp::EQ>(const std::unique_ptr<ValueEval>& left,
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
       EvalContext ctx{ false };
-      bool valid;
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {
@@ -302,7 +297,6 @@ EvalBlock buildEvalBlock<LogicalOp::NEQ>(const std::unique_ptr<ValueEval>& left,
     std::string colName(left->signature().substr(2));
     return [name = std::move(colName), c = right.get()](const Block& b) -> BlockEval {
       EvalContext ctx{ false };
-      bool valid;
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {

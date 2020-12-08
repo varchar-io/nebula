@@ -180,12 +180,11 @@ TEST(ApiTest, TestSortingAndTop) {
   }
 }
 
-class MockRow : public nebula::surface::MockRowData {
+class MockRow : public nebula::surface::MockAccessor {
 public:
   MockRow() = default;
-  MOCK_CONST_METHOD1(readBool, bool(const std::string&));
-  MOCK_CONST_METHOD1(readInt, int32_t(const std::string&));
-  MOCK_CONST_METHOD1(isNull, bool(const std::string&));
+  MOCK_CONST_METHOD1(readBool, std::optional<bool>(const std::string&));
+  MOCK_CONST_METHOD1(readInt, std::optional<int32_t>(const std::string&));
 };
 
 TEST(ApiTest, TestExprValueEval) {
@@ -195,7 +194,6 @@ TEST(ApiTest, TestExprValueEval) {
 
   EXPECT_CALL(rowData, readBool("flag")).WillRepeatedly(testing::Return(true));
   EXPECT_CALL(rowData, readInt("id")).WillRepeatedly(testing::Return(320));
-  EXPECT_CALL(rowData, isNull(testing::_)).WillRepeatedly(testing::Return(false));
   EXPECT_CALL(mirror, readBool("flag")).WillRepeatedly(testing::Return(true));
   EXPECT_CALL(mirror, readInt("id")).WillRepeatedly(testing::Return(320));
 
@@ -204,7 +202,7 @@ TEST(ApiTest, TestExprValueEval) {
   auto expr2 = col("id") * 2 + 10 - (col("id") / 4);
   auto id1 = mirror.readInt("id");
   auto id2 = mirror.readInt("id");
-  auto expected2 = id1 * 2 + 10 - (id2 / 4);
+  auto expected2 = id1.value() * 2 + 10 - (id2.value() / 4);
 
   auto ms = TableService::singleton();
   auto tbl = ms->query("nebula.test").table();
@@ -215,10 +213,8 @@ TEST(ApiTest, TestExprValueEval) {
 
   EvalContext ctx{ false };
   ctx.reset(rowData);
-  bool valid = true;
-  auto x = v1->eval<bool>(ctx, valid);
-  valid = true;
-  auto y = v2->eval<int>(ctx, valid);
+  auto x = v1->eval<bool>(ctx);
+  auto y = v2->eval<int>(ctx);
   EXPECT_EQ(x, expected1);
   EXPECT_EQ(y, expected2);
 
@@ -232,9 +228,8 @@ TEST(ApiTest, TestExprValueEval) {
     EXPECT_EQ(colrefs.size(), 1);
     EXPECT_EQ(colrefs[0], "flag");
 
-    bool valid = true;
-    auto r = v3->eval<bool>(ctx, valid);
-    LOG(INFO) << " UDF eval result: " << r << " valid=" << valid;
+    auto r = v3->eval<bool>(ctx);
+    LOG(INFO) << " UDF eval result: " << r.value();
     bool exp3 = !(mirror.readBool("flag") == true);
     EXPECT_EQ(r, exp3);
   }
@@ -253,17 +248,16 @@ TEST(ApiTest, TestExprValueEval) {
     EXPECT_EQ(udaf_colrefs[0], "id");
 
     // call evaluate multiple times and see max value out of
-    bool valid = true;
     auto sketch = v4->sketch();
-    sketch->merge(v4->eval(ctx, valid));
+    sketch->merge(v4->eval(ctx).value());
     auto r1 = sketch->finalize();
-    sketch->merge(v4->eval(ctx, valid));
+    sketch->merge(v4->eval(ctx).value());
     auto r2 = sketch->finalize();
     EXPECT_GE(r2, r1);
-    sketch->merge(v4->eval(ctx, valid));
+    sketch->merge(v4->eval(ctx).value());
     auto r3 = sketch->finalize();
     EXPECT_GE(r3, r2);
-    sketch->merge(v4->eval(ctx, valid));
+    sketch->merge(v4->eval(ctx).value());
     auto r4 = sketch->finalize();
     EXPECT_GE(r4, r3);
     LOG(INFO) << " 4 values: " << r1 << ", " << r2 << ", " << r3 << ", " << r4;
@@ -284,26 +278,25 @@ TEST(ApiTest, TestExprValueEval) {
     EXPECT_EQ(udaf_colrefs[0], "id");
 
     // call evaluate multiple times and see max value out of
-    bool valid = true;
     auto sketch = v5->sketch();
     int64_t count = 0;
     int64_t sum = 0;
-    auto r1 = v5->eval(ctx, valid);
+    auto r1 = v5->eval(ctx).value();
     sketch->merge(r1);
     sum += r1;
     count++;
 
-    auto r2 = v5->eval(ctx, valid);
+    auto r2 = v5->eval(ctx).value();
     sketch->merge(r2);
     sum += r2;
     count++;
 
-    auto r3 = v5->eval(ctx, valid);
+    auto r3 = v5->eval(ctx).value();
     sketch->merge(r3);
     sum += r3;
     count++;
 
-    auto r4 = v5->eval(ctx, valid);
+    auto r4 = v5->eval(ctx).value();
     sketch->merge(r4);
     sum += r4;
     count++;

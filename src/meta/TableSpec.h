@@ -37,8 +37,30 @@ namespace meta {
 enum class DataSource {
   Custom,
   S3,
+  LOCAL,
   KAFKA,
   GSHEET
+};
+
+struct DataSourceUtils {
+  static bool isFileSystem(const DataSource& ds) {
+    return ds == DataSource::S3 || ds == DataSource::LOCAL;
+  }
+
+  static const std::string& getProtocol(const DataSource& ds) {
+    static const std::string NONE = "";
+    static const nebula::common::unordered_map<DataSource, std::string> SOURCE_PROTO = {
+      { DataSource::S3, "s3" },
+      { DataSource::LOCAL, "local" }
+    };
+
+    auto p = SOURCE_PROTO.find(ds);
+    if (p != SOURCE_PROTO.end()) {
+      return p->second;
+    }
+
+    return NONE;
+  }
 };
 
 // type of time source to fill time column
