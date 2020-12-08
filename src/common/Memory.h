@@ -107,11 +107,12 @@ class Slice {
 public:
   virtual ~Slice() {
     if (ownbuffer_) {
-      if (!!ptr_) {
+      if (ptr_ != nullptr) {
         pool_.free(static_cast<void*>(ptr_), size_);
-      } else {
-        LOG(ERROR) << "A slice should hold a valid pointer";
       }
+
+      // when a slice is sealed - we may release it and ptr_ is nullptr
+      // LOG(ERROR) << "A slice should hold a valid pointer";
     }
   }
 

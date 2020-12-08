@@ -20,38 +20,35 @@ namespace nebula {
 namespace execution {
 
 using nebula::execution::io::BatchBlock;
+using nebula::memory::BatchPtr;
+using BlockPtr = std::shared_ptr<BatchBlock>;
 using nebula::meta::BlockSignature;
 
+#define LOCK_DATA_ACCESS const std::lock_guard<std::mutex> lock(mdata_);
+
 // update block metrics to a list of variables
-inline void update(const BatchBlock& block, size_t& rows, size_t& bytes, std::pair<size_t, size_t>& window) {
-  const auto& state = block.state();
+inline void update(const BlockPtr block, size_t& rows, size_t& bytes, TableState::Window& window) {
+  const auto& state = block->state();
   rows += state.numRows;
   bytes += state.rawSize;
-  window.first = std::min(block.start(), window.first);
-  window.second = std::max(block.end(), window.second);
+  window.first = std::min(block->start(), window.first);
+  window.second = std::max(block->end(), window.second);
 }
 
-void TableState::merge(const TableState& state, bool metricsOnly) {
-  N_ENSURE(metricsOnly, "Only merge metrics only for now.");
-
-  blocks_ += state.numBlocks();
-  rows_ += state.numRows();
-  bytes_ += state.rawBytes();
-  window_.first = std::min(state.window_.first, window_.first);
-  window_.second = std::max(state.window_.second, window_.second);
-}
-
-void TableState::iterate(std::function<void(const BatchBlock&)> func) const {
+void TableState::iterate(std::function<void(const nebula::execution::io::BatchBlock& block)> func) const {
+  const std::lock_guard<std::mutex> lock(mdata_);
   for (auto& b : data_) {
     func(*b.second);
   }
 }
 
 bool TableState::add(std::shared_ptr<BatchBlock> block) {
+  LOCK_DATA_ACCESS
+
   const auto& spec = block->spec();
 
   // collect metrics
-  update(*block, rows_, bytes_, window_);
+  update(block, rows_, bytes_, window_);
   ++blocks_;
 
   // add this block to the repo
@@ -60,6 +57,8 @@ bool TableState::add(std::shared_ptr<BatchBlock> block) {
 }
 
 size_t TableState::remove(const std::string& spec) {
+  LOCK_DATA_ACCESS
+
   auto count = data_.erase(spec);
 
   // update the metrics
@@ -67,7 +66,7 @@ size_t TableState::remove(const std::string& spec) {
   size_t bytes = 0;
   std::pair<size_t, size_t> window{ std::numeric_limits<size_t>::max(), 0 };
   for (auto& b : data_) {
-    update(*b.second, rows, bytes, window);
+    update(b.second, rows, bytes, window);
   }
 
   blocks_ = data_.size();
@@ -78,8 +77,10 @@ size_t TableState::remove(const std::string& spec) {
   return count;
 }
 
-std::vector<nebula::memory::BatchPtr> TableState::query(const Window& window) const {
-  std::vector<nebula::memory::BatchPtr> batches;
+std::vector<BatchPtr> TableState::query(const Window& window) const {
+  LOCK_DATA_ACCESS
+
+  std::vector<BatchPtr> batches;
   batches.reserve(data_.size());
 
   for (auto& b : data_) {
@@ -90,6 +91,8 @@ std::vector<nebula::memory::BatchPtr> TableState::query(const Window& window) co
 
   return batches;
 }
+
+#undef LOCK_DATA_ACCESS
 
 } // namespace execution
 } // namespace nebula

@@ -85,10 +85,10 @@ public:
   size_t removeBySpec(const std::string&, const std::string&);
 
   // get table state for given table name
-  const TableState& state(const std::string& table) const {
+  const TableStateBase& state(const std::string& table) const {
     const auto& self = local();
     if (self.find(table) == self.end()) {
-      return TableState::empty();
+      return TableStateBase::empty();
     }
 
     return *self.at(table);
@@ -140,8 +140,8 @@ public:
     return false;
   }
 
-  TableState metrics(const std::string& table) const {
-    TableState metricsOnly{ table };
+  TableStateBase metrics(const std::string& table) const {
+    TableStateBase metricsOnly{ table };
     // aggregate all nodes for given table
     for (auto& ts : data_) {
       const auto& states = ts.second;

@@ -413,7 +413,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     // serialize the ingest task
     auto it = CreateIngestTask(mb,
                                mb.CreateString(table->name),
-                               table->max_hr,
+                               table->max_seconds,
                                mb.CreateString(table->loader),
                                (int8_t)table->source,
                                mb.CreateString(table->location),
@@ -551,7 +551,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     std::string bak = "";
     auto table = std::make_shared<TableSpec>(std::move(tbName),
                                              0,
-                                             it->max_hr(),
+                                             it->max_seconds(),
                                              it->schema()->str(),
                                              (DataSource)it->source(),
                                              it->loader()->str(),

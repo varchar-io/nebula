@@ -88,6 +88,13 @@ else()
       set(SYM "")
     endif()
 
+    # turn on GDB debug info if using gdb
+    if(GDB STREQUAL "1")
+      set(GDB "-g")
+    else()
+      set(GDB "")
+    endif()
+
     # build flag -DGPROF
     if (GPROF STREQUAL "1")
       # using gprof  
@@ -138,7 +145,7 @@ else()
     # On my daily dev machine, it gives me this value: skylake-avx512
     # In another machine, I found it as "haswell", and this may lead crash with `illegal instruction` failure.
     # So to make sure the published image works more broadly, we may want to remove this `-march=native`, or specify the target value
-    set(NCFLAGS_RELEASE "-Ofast ${NAT} ${SYM} ${LTO}")
+    set(NCFLAGS_RELEASE "-Ofast ${NAT} ${SYM} ${LTO} ${GDB}")
   endif()
 endif()
 

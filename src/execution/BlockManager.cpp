@@ -152,12 +152,12 @@ const FilteredBlocks BlockManager::query(const Table& table, const ExecutionPlan
 bool BlockManager::addBlock(TableStates& target, std::shared_ptr<io::BatchBlock> block) {
   const auto& table = block->table();
   auto ts = target.find(table);
-  TableState* ptr = nullptr;
+  std::shared_ptr<TableState> ptr = nullptr;
   if (ts == target.end()) {
-    ptr = new TableState(table);
-    target.emplace(table, std::shared_ptr<TableState>(ptr));
+    ptr = std::make_shared<TableState>(table);
+    target.emplace(table, ptr);
   } else {
-    ptr = ts->second.get();
+    ptr = ts->second;
   }
 
   // add this block into the table state object

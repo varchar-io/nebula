@@ -170,7 +170,8 @@ endforeach()
 # all resources are relative to nebula/src folder only
 set(NRES 
   configs/test.yml 
-  configs/cluster.yml)
+  configs/cluster.yml
+  configs/bench.yml)
 foreach(i ${NRES})
   configure_file(${NEBULA_SRC}/${i} ${GEN_DIR}/${i} COPYONLY)
 endforeach()

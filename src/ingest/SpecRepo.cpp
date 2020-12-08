@@ -49,9 +49,6 @@ using nebula::storage::FileInfo;
 using nebula::storage::kafka::KafkaSegment;
 using nebula::storage::kafka::KafkaTopic;
 
-constexpr auto HOUR_SECONDS = 3600;
-constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
-
 // specified batch size in table config - not kafka specific
 constexpr auto S_BATCH = "batch";
 // specified kafka partition /offset to consume - kafka specific
@@ -151,10 +148,10 @@ void genSpecs4Roll(const std::string& version,
     // list all objects/files from given path
     // A roll spec will cover X days given table location of source data
     const auto now = Evidence::now();
-    const auto max_days = table->max_hr / 24;
-    for (size_t i = 0; i <= max_days; ++i) {
+    const auto maxDays = table->max_seconds / Evidence::DAY_SECONDS;
+    for (size_t i = 0; i <= maxDays; ++i) {
       // we only provide single macro for now
-      auto timeValue = now - i * DAY_SECONDS;
+      auto timeValue = now - i * Evidence::DAY_SECONDS;
       auto path = fmt::format(
         sourceInfo.path, fmt::arg("date", Evidence::fmt_ymd_dash(timeValue)));
       auto files = fs->list(path);
@@ -205,7 +202,7 @@ void genKafkaSpec(const std::string& version,
   }
 
   // set start time
-  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * HOUR_SECONDS);
+  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_seconds);
   auto segments = topic.segmentsByTimestamp(startMs, batch);
   convert(segments);
 }

@@ -116,8 +116,8 @@ struct TableSpec {
   std::string name;
   // max size in MB resident in memory
   size_t max_mb;
-  // max time span in hour resident in memory
-  size_t max_hr;
+  // max time span in secods resident in memory
+  size_t max_seconds;
   // table schema
   std::string schema;
   // data source to load from
@@ -143,13 +143,13 @@ struct TableSpec {
   // settings spec just get list of key-values
   Settings settings;
 
-  TableSpec(std::string n, size_t mm, size_t mh, std::string s,
+  TableSpec(std::string n, size_t mm, size_t ms, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak,
             std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts,
             AccessSpec as, BucketInfo bi, Settings st)
     : name{ std::move(n) },
       max_mb{ mm },
-      max_hr{ mh },
+      max_seconds{ ms },
       schema{ std::move(s) },
       source{ ds },
       loader{ std::move(lo) },

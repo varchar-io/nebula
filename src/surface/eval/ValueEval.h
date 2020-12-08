@@ -91,8 +91,10 @@ std::unique_ptr<ValueEval> custom(const std::string& name, const std::string& ex
         auto decl = ctx.script().eval<bool>(expr, true);
 
         // only continue if current expression evaluated correctly
+        // expression evaluation will reutrn 0 and we don't check decl's value
+        // we are good as long as it's not nullopt
         // next let's invote it ot get the value we want
-        if (decl && decl.value()) {
+        if (decl) {
           return ctx.script().eval<T>(fmt::format("{0}();", name));
         }
 
