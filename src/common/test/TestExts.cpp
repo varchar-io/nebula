@@ -174,23 +174,23 @@ TEST(CuckooTest, TestCuckooFilter) {
 }
 
 // Testing yomm2 open multi-methods
-struct A {
-  virtual ~A() {}
+struct MMA {
+  virtual ~MMA() {}
 };
-struct B : A {};
-struct C : A {};
+struct MMB : MMA {};
+struct MMC : MMA {};
 
-register_class(A);
-register_class(B, A);
-register_class(C, A);
+register_class(MMA);
+register_class(MMB, MMA);
+register_class(MMC, MMA);
 
-declare_method(std::string, foobar, (yorel::yomm2::virtual_<A&>));
+declare_method(std::string, foobar, (yorel::yomm2::virtual_<MMA&>));
 
-define_method(std::string, foobar, (A&)) {
+define_method(std::string, foobar, (MMA&)) {
   return "foobar(A)";
 }
 
-define_method(std::string, foobar, (B&)) {
+define_method(std::string, foobar, (MMB&)) {
   return "foobar(B)";
 }
 
@@ -202,8 +202,8 @@ TEST(CommonTest, TestOmm) {
   yorel::yomm2::update_methods();
 
   // NOTE: multi-inheritence may not work as tested.
-  B b;
-  C c;
+  MMB b;
+  MMC c;
   LOG(INFO) << foobar(b);
   LOG(INFO) << foobar(c);
 }

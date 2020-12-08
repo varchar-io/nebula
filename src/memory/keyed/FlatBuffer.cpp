@@ -174,15 +174,9 @@ size_t FlatBuffer::widthInMain(Kind kind) noexcept {
 #undef SCALAR_WIDTH_DISTR
 }
 
-bool FlatBuffer::appendNull(bool isNull, nebula::type::Kind kind, Buffer& dest) {
+size_t FlatBuffer::appendNull(bool isNull, nebula::type::Kind kind, Buffer& dest, size_t offset) {
   int8_t byte = (isNull ? HIGH6_1 : 0) | kind;
-  N_ENSURE_EQ(((byte & HIGH6_1) != 0), isNull, "HIGH6 byte stores null");
-
-  size_t len = dest.slice.write<int8_t>(dest.offset, byte);
-  N_ENSURE_EQ(len, 1, "length to be one");
-
-  dest.offset += 1;
-  return isNull;
+  return dest.slice.write<int8_t>(offset, byte);
 }
 
 template <typename T>
@@ -218,7 +212,9 @@ size_t FlatBuffer::appendList(Kind itemKind, std::unique_ptr<ListData> list) {
   // add every single item here, the function is similar to add method
   // which iterates over columns instead
   for (auto i = 0; i < count; ++i) {
-    if (appendNull(list->isNull(i), itemKind, *list_)) {
+    auto nv = list->isNull(i);
+    list_->offset += appendNull(nv, itemKind, *list_, list_->offset);
+    if (nv) {
       // add null for this field
       continue;
     }
@@ -338,28 +334,30 @@ Sketcher FlatBuffer::genSketcher(size_t i) noexcept {
 // add a row into current batch
 // if cols is not empty, we only populate those fileds, otherwise, populate all
 size_t FlatBuffer::add(const nebula::surface::RowData& row) {
-  // record current state before adding a new row - used for rollback
-  last_ = std::make_tuple(main_->offset, data_->offset, list_->offset);
-
   // current row offset
   const auto rowOffset = main_->offset;
+  // begining position for this row
+  // [nulls] = number of columns (byte per column)
+  auto nullsbeginning = rowOffset;
+
+  // record current state before adding a new row - used for rollback
+  last_ = std::make_tuple(rowOffset, data_->offset, list_->offset);
 
   // in the main memory, we're push all nulls for first X bytes (x = numColumns)
   // This is designed for nulls fast load of memory locality
   // this is why we have two loops
   FlatColumnProps columnProps;
   columnProps.reserve(numColumns_);
-  std::vector<bool> nulls;
-  nulls.reserve(numColumns_);
-  for (size_t i = 0; i < numColumns_; ++i) {
-    auto nv = appendNull(row.isNull(i), cops_.at(i).kind, *main_);
-    nulls.push_back(nv);
-  }
+
+  // skip null section moving main offset for data
+  main_->offset += numColumns_;
 
   // write data of each column through its parser
   for (size_t i = 0; i < numColumns_; ++i) {
-    // push each column props
-    auto nv = nulls.at(i);
+    // get null value of this column
+    auto nv = row.isNull(i);
+    // backfill the null value
+    appendNull(nv, cops_.at(i).kind, *main_, nullsbeginning++);
     const auto& cop = cops_.at(i);
     auto ia = cop.isAggregate();
     auto sketch = ia ? row.getAggregator(i) : nullptr;

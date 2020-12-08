@@ -179,7 +179,7 @@ public:
   }
 
 private:
-  bool appendNull(bool, nebula::type::Kind, Buffer&);
+  size_t appendNull(bool, nebula::type::Kind, Buffer&, size_t offset);
 
   template <typename T>
   size_t append(T, Buffer&, size_t = 0);

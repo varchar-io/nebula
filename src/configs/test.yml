@@ -23,28 +23,19 @@ nodes:
       port: 9199
 
 tables:
-  nebula.bench:
+  nebula.test:
     max-mb: 10000
-    max-hr: 0
-    schema: "ROW<l_orderkey:bigint, l_partkey:bigint, l_suppkey:bigint, l_linenumber:int, l_quantity:int, l_extendedprice:float, l_discount:float, l_tax:float, l_returnflag:tinyint, l_linestatus:tinyint, l_shipdate:string, l_commitdate:string, l_receiptdate:string, l_shipinstruct:string, l_shipmode:string, l_comment:string>"
-    data: local
-    loader: Swap
-    source: /home/shawncao/nebula/build/lineitem.tbl.1
-    backup: s3://nebula/n109/
-    format: csv
-    columns:
-      l_shipinstruct:
-        dict: true
-      l_shipmode:
-        dict: true
-      l_commitdate:
-        dict: true
-      l_receiptdate:
-        dict: true
-    time:
-      type: column
-      column: l_shipdate
-      pattern: "%Y-%m-%d"
+    max-hr: 240
+    schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    data: custom
+    loader: NebulaTest
+    source: ""
+    backup: s3://nebula/n100/
+    format: none
     settings:
-      csv.delimiter: "|"
-      csv.header: false
+      key1: value1
+      key2: value2
+    time:
+      type: static
+      # get it from linux by "date +%s"
+      value: 1565994194

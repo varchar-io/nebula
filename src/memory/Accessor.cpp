@@ -32,28 +32,29 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
   // seek to row ID and return myself
   // TODO(cao) - a runtime ephemeral/transient state like this is bad for parallelism
   // we'd better to move it to API itself though it looks a bit more complex.
-  N_ENSURE(rowId < batch_.rows_, "row id out of bound");
   current_ = rowId;
 
   // populate all dimension values encoded in bess
-  if (batch_.pod_ != nullptr) {
+  if (UNLIKELY(batch_.pod_ != nullptr)) {
     bessValue_ = batch_.bess_.readBits(current_ * batch_.bessBits_, batch_.bessBits_);
   }
 
   return *this;
 }
 
-#define READ_TYPE_BY_FIELD(TYPE, FUNC)                                                        \
-  std::optional<TYPE> RowAccessor::FUNC(const std::string& field) const {                     \
-    TYPE v;                                                                                   \
-    if (batch_.pod_ != nullptr && batch_.pod_->value(field, batch_.spaces_, bessValue_, v)) { \
-      return v;                                                                               \
-    }                                                                                         \
-    const auto& d = dnMap_.at(field);                                                         \
-    if (UNLIKELY(d->isNull(current_))) {                                                      \
-      return std::nullopt;                                                                    \
-    }                                                                                         \
-    return d->read<TYPE>(current_);                                                           \
+#define READ_TYPE_BY_FIELD(TYPE, FUNC)                                    \
+  std::optional<TYPE> RowAccessor::FUNC(const std::string& field) const { \
+    if (UNLIKELY(batch_.pod_ != nullptr)) {                               \
+      TYPE v;                                                             \
+      if (batch_.pod_->value(field, batch_.spaces_, bessValue_, v)) {     \
+        return v;                                                         \
+      }                                                                   \
+    }                                                                     \
+    const auto& d = dnMap_.at(field);                                     \
+    if (UNLIKELY(d->isNull(current_))) {                                  \
+      return std::nullopt;                                                \
+    }                                                                     \
+    return d->read<TYPE>(current_);                                       \
   }
 
 READ_TYPE_BY_FIELD(bool, readBool)

@@ -92,7 +92,7 @@ std::unique_ptr<ValueEval> custom(const std::string& name, const std::string& ex
 
         // only continue if current expression evaluated correctly
         // next let's invote it ot get the value we want
-        if (decl) {
+        if (decl && decl.value()) {
           return ctx.script().eval<T>(fmt::format("{0}();", name));
         }
 

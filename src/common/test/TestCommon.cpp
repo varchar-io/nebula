@@ -797,23 +797,23 @@ TEST(CommonTest, TestWriteAlign) {
   EXPECT_EQ(v, v2);
 }
 
-struct B {
-  B() {
+struct SimpleB {
+  SimpleB() {
     LOG(INFO) << "CONSTRUCT B";
   }
-  virtual ~B() {
+  virtual ~SimpleB() {
     LOG(INFO) << "DESTRUCT B";
   }
 };
-struct S : public B {
-  S() {
+struct SimpleS : public SimpleB {
+  SimpleS() {
     LOG(INFO) << "CONSTRUCT S";
   }
-  ~S() = default;
+  ~SimpleS() = default;
 };
 
 TEST(CommonTest, TestConstructDestructOrder) {
-  auto s = std::make_unique<S>();
+  auto s = std::make_unique<SimpleS>();
   LOG(INFO) << (s != nullptr);
   s = nullptr;
   LOG(INFO) << "destructor already called";

@@ -1,0 +1,51 @@
+version: 1.0
+
+# server configs
+server:
+  # as node will treat server to run as a node
+  # if false, server will not load any data in itself.
+  # NOTE that, there are maybe missing functions to fully compatible for server as node.
+  # such as task execution may not be implemented.
+  anode: false
+  auth: false
+
+  meta:
+    db: native
+    store: s3://nebula/meta/
+
+  discovery:
+    method: config
+
+# will be provided by enviroment
+nodes:
+  - node:
+      host: localhost
+      port: 9199
+
+tables:
+  nebula.bench:
+    max-mb: 10000
+    max-hr: 0
+    schema: "ROW<l_orderkey:bigint, l_partkey:bigint, l_suppkey:bigint, l_linenumber:int, l_quantity:int, l_extendedprice:float, l_discount:float, l_tax:float, l_returnflag:tinyint, l_linestatus:tinyint, l_shipdate:string, l_commitdate:string, l_receiptdate:string, l_shipinstruct:string, l_shipmode:string, l_comment:string>"
+    data: local
+    loader: Swap
+    # TPC-H dataset - decompressed to local for benchmark test
+    source: /home/shawncao/nebula/build/lineitem.tbl.1
+    backup: s3://nebula/n109/
+    format: csv
+    columns:
+      l_shipinstruct:
+        dict: true
+      l_shipmode:
+        dict: true
+      l_commitdate:
+        dict: true
+      l_receiptdate:
+        dict: true
+    time:
+      type: column
+      column: l_shipdate
+      pattern: "%Y-%m-%d"
+    settings:
+      csv.delimiter: "|"
+      csv.header: false
