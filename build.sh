@@ -42,7 +42,7 @@ aptGetInstallPackages=(
 )
 
 # Install Prerequisites
-# install cmake and gcc-9
+# install cmake and gcc-10
 (
   cd $BUILD_DIR
   wget https://cmake.org/files/v3.18/cmake-3.18.1.tar.gz
@@ -53,8 +53,8 @@ aptGetInstallPackages=(
   sudo make install
 
   sudo apt-get update
-  sudo apt-get install -y gcc-9 g++-9
-  sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 800 --slave /usr/bin/g++ g++ /usr/bin/g++-9
+  sudo apt-get install -y gcc-10 g++-10
+  sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 900 --slave /usr/bin/g++ g++ /usr/bin/g++-10
 )
 
 # loop through aptGetInstallPackages to install

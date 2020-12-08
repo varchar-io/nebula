@@ -142,30 +142,7 @@ else()
   endif()
 endif()
 
-# by default using clang, turn this line on to use gcc
-# link g++-8 on linux to default g++ / gcc 
-# sudo apt-get update
-# sudo apt-get install gcc-9 g++-9
-# sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 800 --slave /usr/bin/g++ g++ /usr/bin/g++-9
-# install new version clang on ubuntu
-# # Install/configure the compiler to use for Envoy.
-# > sudo su
-# > wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
-# > apt-add-repository "deb https://apt.llvm.org/xenial/ llvm-toolchain-xenial-8 main" && \
-# > apt-get -q -y update && \
-# > apt-get -q -y --no-install-recommends install \
-# >   clang-8 \
-# >   clang-format-8 \
-# >   clang-tidy-8 \
-# >   lld-8 \
-# >   lldb-8 \
-# >   libc++-8-dev \
-# >   libc++abi-8-dev
-# (links)
-# update-alternatives --install /usr/bin/cc cc /usr/bin/clang-8 100
-# update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-8 100
-# update-alternatives --install /usr/bin/clang clang /usr/bin/clang-8 800 --slave /usr/bin/clang++ clang++ /usr/bin/clang++-8
-# test clang 8
+# by default using clang on mac and gcc on linux
 set(CMAKE_CXX_COMPILER ${NCXX})
 set(CMAKE_CC_COMPILER ${NCXX})
 set(CMAKE_C_COMPILER ${NCC})
