@@ -40,7 +40,7 @@ include_directories("${GEN_DIR}")
 # generate a node client for this service for js code
 SET(NODE_GEN "${GEN_DIR}/nodejs")
 file(MAKE_DIRECTORY ${NODE_GEN})
-add_custom_target(nebula_node_client ALL 
+add_custom_target(nebula_node_client ALL
   COMMAND ${PROTO_COMPILER}
     --grpc_out="${NODE_GEN}"
     --js_out=import_style=commonjs,binary:${NODE_GEN}
@@ -77,7 +77,7 @@ set(nodegrpc_srcs "${NODE_GEN_DIR}/node.grpc.fb.cc")
 set_property(SOURCE ${nodegrpc_srcs} PROPERTY GENERATED 1)
 
 # build everything else as library except executable of NebulaServer and NebulaClient
-add_library(${NEBULA_SERVICE} STATIC 
+add_library(${NEBULA_SERVICE} STATIC
     ${NEBULA_SRC}/service/base/NativeMetaDb.cpp
     ${NEBULA_SRC}/service/base/NebulaService.cpp
     ${NEBULA_SRC}/service/node/ConnectionPool.cpp
@@ -108,12 +108,12 @@ target_link_libraries(${NEBULA_SERVICE}
 add_dependencies(${NEBULA_SERVICE} compile_fbs)
 
 if(APPLE)
-    target_compile_options(${NEBULA_SERVICE} 
+    target_compile_options(${NEBULA_SERVICE}
       PRIVATE -Wno-error=unknown-warning-option
       PRIVATE -Wno-unused-parameter)
 else()
-    target_compile_options(${NEBULA_SERVICE} 
-      PRIVATE -Wno-error=unused-parameter 
+    target_compile_options(${NEBULA_SERVICE}
+      PRIVATE -Wno-error=unused-parameter
       PRIVATE -Wno-error=array-bounds)
 endif()
 
@@ -147,14 +147,14 @@ foreach(i RANGE ${list_max_index})
     PRIVATE libaddress_sorting
     PRIVATE ${OMM_LIBRARY}
     PRIVATE ${URIP_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}   
+    PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${CARES_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${XXH_LIBRARY}
     PRIVATE ${AWS_LIBRARY}
     PRIVATE ${PERF_LIBRARY})
-    
+
     # disalbe warning into errors for due to these generated files
     target_compile_options(${target} PRIVATE -Wno-error=unused-parameter)
 
@@ -168,8 +168,8 @@ endforeach()
 # configure_file is good as it is senstive on the input, when input changes, output will be updated
 # ensure all resources copied to build folder
 # all resources are relative to nebula/src folder only
-set(NRES 
-  configs/test.yml 
+set(NRES
+  configs/test.yml
   configs/cluster.yml)
 foreach(i ${NRES})
   configure_file(${NEBULA_SRC}/${i} ${GEN_DIR}/${i} COPYONLY)
@@ -223,11 +223,13 @@ endforeach()
 # we need to refresh web tier whenever protobuf definition changes between web an server.
 
 # build test binary
-add_executable(ServiceTests 
+add_executable(ServiceTests
   ${NEBULA_SRC}/service/test/TestQueryHandler.cpp
   ${NEBULA_SRC}/service/test/TestQueryService.cpp
-  ${NEBULA_SRC}/api/test/Test.cpp)
-target_link_libraries(ServiceTests 
+  ${NEBULA_SRC}/api/test/Test.cpp
+  ${NEBULA_SRC}/service/test/TestLoadHandler.cpp)
+
+target_link_libraries(ServiceTests
   PRIVATE ${GLOG_LIBRARY}
   PRIVATE ${NEBULA_SERVICE}
   PRIVATE ${GTEST_LIBRARY}

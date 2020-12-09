@@ -146,7 +146,7 @@ void SpecRepo::genPatternSpec(long start,
                               std::vector<std::shared_ptr<IngestSpec>>& specs) {
 
   const auto curUnitInSeconds = nebula::meta::unitInSeconds.at(curr);
-  const auto curPatternStr = nebula::meta::patternStr.at(curr);
+  const auto curPatternStr = nebula::meta::patternYMLStr.at(curr);
   const auto childMarco = nebula::meta::childPattern.at(curr);
   const auto startChildPatternIndex = nebula::meta::childSize.at(childMarco) - 1;
   const auto sourceInfo = nebula::storage::parse(table->location);

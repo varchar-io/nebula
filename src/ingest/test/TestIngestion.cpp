@@ -97,7 +97,7 @@ TEST(IngestTest, TestTableSpec) {
       EXPECT_EQ(marco, meta::PatternMacro::HOUR);
 
       const auto sourceInfo = nebula::storage::parse(itr->get()->location);
-      auto macroStr = meta::patternStr.at(marco);
+      auto macroStr = meta::patternYMLStr.at(marco);
 
       int pos = sourceInfo.path.find(macroStr);
       std::string pathTemplate = sourceInfo.path;
@@ -117,7 +117,7 @@ TEST(IngestTest, TestTableSpec) {
       EXPECT_EQ(marco, meta::PatternMacro::DATE);
 
       const auto sourceInfo = nebula::storage::parse(itr->get()->location);
-      auto macroStr = meta::patternStr.at(marco);
+      auto macroStr = meta::patternYMLStr.at(marco);
       const auto now = common::Evidence::now();
       // scan an hour ago
       long cutOffTime = now - nebula::meta::unitInSeconds.at(nebula::meta::PatternMacro::HOUR);

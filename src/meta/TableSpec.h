@@ -207,12 +207,20 @@ constexpr auto DAY_HOURS = 24;
 constexpr auto HOUR_SECONDS = HOUR_MINUTES * MINUTE_SECONDS;
 constexpr auto DAY_SECONDS = HOUR_SECONDS * DAY_HOURS;
 
-const nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternStr{
+const nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternYMLStr{
   { nebula::meta::PatternMacro::DATE, "/{date/}" },
   { nebula::meta::PatternMacro::HOUR, "/{hour/}" },
   { nebula::meta::PatternMacro::MINUTE, "/{minute/}" },
   { nebula::meta::PatternMacro::SECOND, "/{second/}" },
   { nebula::meta::PatternMacro::TIMESTAMP, "/{timestamp/}" }
+};
+
+const nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternJSONStr{
+  { nebula::meta::PatternMacro::DATE, "{date}" },
+  { nebula::meta::PatternMacro::HOUR, "{hour}" },
+  { nebula::meta::PatternMacro::MINUTE, "{minute}" },
+  { nebula::meta::PatternMacro::SECOND, "{second}" },
+  { nebula::meta::PatternMacro::TIMESTAMP, "{timestamp}" }
 };
 
 const nebula::common::unordered_map<nebula::meta::PatternMacro, nebula::meta::PatternMacro> childPattern{
@@ -235,11 +243,11 @@ const nebula::common::unordered_map<nebula::meta::PatternMacro, int> childSize{
 
 // check if pattern string type
 inline nebula::meta::PatternMacro extractPatternMacro(std::string pattern) {
-  const auto tsMacroFound = pattern.find(patternStr.at(PatternMacro::TIMESTAMP)) != std::string::npos;
-  const auto dateMacroFound = pattern.find(patternStr.at(PatternMacro::DATE)) != std::string::npos;
-  const auto hourMacroFound = pattern.find(patternStr.at(PatternMacro::HOUR)) != std::string::npos;
-  const auto minuteMacroFound = pattern.find(patternStr.at(PatternMacro::MINUTE)) != std::string::npos;
-  const auto secondMacroFound = pattern.find(patternStr.at(PatternMacro::SECOND)) != std::string::npos;
+  const auto tsMacroFound = pattern.find(patternYMLStr.at(PatternMacro::TIMESTAMP)) != std::string::npos;
+  const auto dateMacroFound = pattern.find(patternYMLStr.at(PatternMacro::DATE)) != std::string::npos;
+  const auto hourMacroFound = pattern.find(patternYMLStr.at(PatternMacro::HOUR)) != std::string::npos;
+  const auto minuteMacroFound = pattern.find(patternYMLStr.at(PatternMacro::MINUTE)) != std::string::npos;
+  const auto secondMacroFound = pattern.find(patternYMLStr.at(PatternMacro::SECOND)) != std::string::npos;
 
   if (secondMacroFound && minuteMacroFound && hourMacroFound && dateMacroFound) {
     return PatternMacro::SECOND;
