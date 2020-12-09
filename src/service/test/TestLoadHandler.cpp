@@ -39,7 +39,7 @@ using nebula::type::Schema;
 using nebula::type::TypeSerializer;
 
 TEST(ServiceTest, loadConfigured) {
-  const auto json = "{\"{date}\":[\"2020-01-01\"], \"{hour}\" : [\"01\", \"02\"]}";
+  const auto json = "{\"DATE\":[\"2020-01-01\"], \"HOUR\" : [\"01\", \"02\"]}";
   rapidjson::Document cd;
   if (cd.Parse(json).HasParseError()) {
     throw NException(fmt::format("Error parsing params-json: {0}", json));

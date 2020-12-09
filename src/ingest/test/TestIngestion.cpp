@@ -93,7 +93,7 @@ TEST(IngestTest, TestTableSpec) {
     const auto name = itr->get()->name;
     if (type == meta::TimeType::MACRO && name == "nebula.hourly") {
       meta::PatternMacro marco = meta::extractPatternMacro(itr->get()->timeSpec.pattern);
-      EXPECT_EQ(itr->get()->timeSpec.pattern, "/{date/} /{hour/}");
+      EXPECT_EQ(itr->get()->timeSpec.pattern, "DATE HOUR");
       EXPECT_EQ(marco, meta::PatternMacro::HOUR);
 
       const auto sourceInfo = nebula::storage::parse(itr->get()->location);
@@ -113,7 +113,7 @@ TEST(IngestTest, TestTableSpec) {
       sr.genPatternSpec(1, meta::PatternMacro::DATE, meta::PatternMacro::HOUR, now, sourceInfo.path, cutOffTime, "1.0", spec, ingestSpec);
     } else if (type == meta::TimeType::MACRO && name == "nebula.daily") {
       meta::PatternMacro marco = meta::extractPatternMacro(itr->get()->timeSpec.pattern);
-      EXPECT_EQ(itr->get()->timeSpec.pattern, "/{date/}");
+      EXPECT_EQ(itr->get()->timeSpec.pattern, "DATE");
       EXPECT_EQ(marco, meta::PatternMacro::DATE);
 
       const auto sourceInfo = nebula::storage::parse(itr->get()->location);

@@ -49,7 +49,7 @@ public:
   LoadResult loadDemand(const LoadRequest*, LoadError&, std::string&);
 
   // extract watermark from json setting
-  size_t extractWatermark(nebula::common::unordered_map<std::string_view, std::string_view> p);
+  size_t extractWatermark(const common::unordered_map<std::string_view, std::string_view>& p);
 };
 
 } // namespace server

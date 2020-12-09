@@ -54,11 +54,11 @@ using nebula::meta::TableSpecPtr;
 using nebula::service::base::GoogleSheet;
 using nebula::service::base::LoadSpec;
 
-size_t LoadHandler::extractWatermark(common::unordered_map<std::string_view, std::string_view> p) {
-  const auto datePattern = meta::patternJSONStr.at(meta::PatternMacro::DATE);
-  const auto hourPattern = meta::patternJSONStr.at(meta::PatternMacro::HOUR);
-  const auto minutePattern = meta::patternJSONStr.at(meta::PatternMacro::MINUTE);
-  const auto secondPattern = meta::patternJSONStr.at(meta::PatternMacro::SECOND);
+size_t LoadHandler::extractWatermark(const common::unordered_map<std::string_view, std::string_view>& p) {
+  const auto datePattern = meta::patternYMLStr.at(meta::PatternMacro::DATE);
+  const auto hourPattern = meta::patternYMLStr.at(meta::PatternMacro::HOUR);
+  const auto minutePattern = meta::patternYMLStr.at(meta::PatternMacro::MINUTE);
+  const auto secondPattern = meta::patternYMLStr.at(meta::PatternMacro::SECOND);
 
   const auto dd = p.find(datePattern);
   const auto dh = p.find(hourPattern);
