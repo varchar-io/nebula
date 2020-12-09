@@ -33,8 +33,6 @@
 #include "surface/eval/ValueEval.h"
 #include "type/Tree.h"
 
-#include <glog/logging.h>
-
 /**
  * Define expressions used in the nebula DSL.
  */
