@@ -35,6 +35,7 @@ namespace test {
 using nebula::execution::core::BlockExecutor;
 using nebula::memory::Batch;
 using nebula::memory::EvaledBlock;
+using nebula::surface::Accessor;
 using nebula::surface::MockRowData;
 using nebula::surface::RowData;
 using nebula::surface::eval::BlockEval;
@@ -50,6 +51,12 @@ static constexpr auto line = [](const RowData& r) {
                      r.isNull("id") ? 0 : r.readInt("id"),
                      r.isNull("event") ? "NULL" : r.readString("event"),
                      r.isNull("flag") ? true : r.readBool("flag"));
+};
+static constexpr auto line2 = [](const Accessor& r) {
+  return fmt::format("({0}, {1}, {2})",
+                     r.readInt("id").value_or(0),
+                     r.readString("event").value_or("NULL"),
+                     r.readBool("flag").value_or(true));
 };
 
 class TestUdaf : public UDAF<nebula::type::Kind::INTEGER> {
@@ -161,8 +168,8 @@ TEST(ExecutionTest, TestRowCursorSerde) {
     for (auto i = 0; i < size; ++i) {
       const auto& rb = accessor->seek(i);
       const auto& rf = fb->row(i);
-      EXPECT_EQ(line(rb), line(rf));
-      LOG(INFO) << "verify row: " << i << ", b=" << line(rb) << ",f=" << line(rf);
+      EXPECT_EQ(line2(rb), line(rf));
+      LOG(INFO) << "verify row: " << i << ", b=" << line2(rb) << ",f=" << line(rf);
     }
   }
 

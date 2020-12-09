@@ -380,6 +380,34 @@ inline bool f1ni(int i) {
   return i % 2 == 0;
 }
 
+TEST(CommonTest, TestOptionalBool) {
+  std::optional<int32_t> x = 0;
+  std::optional<int8_t> y = x;
+  EXPECT_TRUE(x);
+  EXPECT_TRUE(y);
+
+  auto f0 = []() -> std::optional<int8_t> {
+    return 0;
+  };
+  EXPECT_FALSE(!f0());
+
+  auto f1 = []() -> std::optional<bool> {
+    return std::nullopt;
+  };
+  EXPECT_EQ(f1(), std::nullopt);
+  EXPECT_FALSE(f1());
+
+  auto f2 = []() -> std::optional<bool> {
+    return false;
+  };
+  EXPECT_EQ(f2(), false);
+
+  auto f3 = []() -> std::optional<bool> {
+    return true;
+  };
+  EXPECT_EQ(f3(), true);
+}
+
 TEST(CommonTest, TestOptionalPerf) {
   // use -1 indicating null
   // auto f1n = [](int i) -> bool {
@@ -769,23 +797,23 @@ TEST(CommonTest, TestWriteAlign) {
   EXPECT_EQ(v, v2);
 }
 
-struct B {
-  B() {
+struct SimpleB {
+  SimpleB() {
     LOG(INFO) << "CONSTRUCT B";
   }
-  virtual ~B() {
+  virtual ~SimpleB() {
     LOG(INFO) << "DESTRUCT B";
   }
 };
-struct S : public B {
-  S() {
+struct SimpleS : public SimpleB {
+  SimpleS() {
     LOG(INFO) << "CONSTRUCT S";
   }
-  ~S() = default;
+  ~SimpleS() = default;
 };
 
 TEST(CommonTest, TestConstructDestructOrder) {
-  auto s = std::make_unique<S>();
+  auto s = std::make_unique<SimpleS>();
   LOG(INFO) << (s != nullptr);
   s = nullptr;
   LOG(INFO) << "destructor already called";

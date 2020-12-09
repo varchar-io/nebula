@@ -18,6 +18,8 @@
 
 #include <fmt/format.h>
 
+#include "Likely.h"
+
 namespace nebula {
 namespace common {
 
@@ -71,12 +73,14 @@ static constexpr cstr lslash(cstr str) {
 
 #define THROW_IF_NOT_EXP(EXP, MSG)                                       \
   ({                                                                     \
-    if (!(EXP)) {                                                        \
+    if (UNLIKELY(!(EXP))) {                                              \
       throw NException(fmt::format("[Violation: {0}]: {1}", #EXP, MSG)); \
     }                                                                    \
   })
 
 #define N_ENSURE(e, msg) THROW_IF_NOT_EXP(e, msg)
+
+#define N_ENSURE_NULL(p, m) THROW_IF_NOT_EXP(p == nullptr, m)
 
 #define N_ENSURE_NOT_NULL(p, m) THROW_IF_NOT_EXP(p != nullptr, m)
 

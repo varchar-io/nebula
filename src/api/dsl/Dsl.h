@@ -151,6 +151,11 @@ static InExpression<U> nin(const T& expr, nebula::common::Zip&& values) {
   return InExpression<U>(std::shared_ptr<Expression>(new T(expr)), std::move(values), false);
 }
 
+template <typename T, typename U>
+static BetweenExpression<U> between(const T& expr, const U&& min, const U&& max) {
+  return BetweenExpression<U>(std::shared_ptr<Expression>(new T(expr)), std::move(min), std::move(max));
+}
+
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>
 static ConstExpression<T> v(const T& value) {
   return ConstExpression<T>(value);

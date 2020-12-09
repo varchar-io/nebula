@@ -37,7 +37,7 @@
 // TODO(cao) - system wide enviroment configs should be moved to cluster config to provide
 // table-wise customization
 DEFINE_string(NTEST_LOADER, "NebulaTest", "define the loader name for loading nebula test data");
-DEFINE_uint64(NBLOCK_MAX_ROWS, 100000, "max rows per block");
+DEFINE_uint64(NBLOCK_MAX_ROWS, 1000000, "max rows per block");
 
 /**
  * We will sync etcd configs for cluster info into this memory object
@@ -46,6 +46,7 @@ DEFINE_uint64(NBLOCK_MAX_ROWS, 100000, "max rows per block");
 namespace nebula {
 namespace ingest {
 
+using dsu = nebula::meta::DataSourceUtils;
 using nebula::common::Evidence;
 using nebula::common::unordered_map;
 using nebula::execution::BlockManager;
@@ -142,18 +143,16 @@ bool IngestSpec::work() noexcept {
 }
 
 bool IngestSpec::load(BlockList& blocks) noexcept {
-  // TODO(cao) - columar format reader (parquet) should be able to
-  // access cloud storage directly to save networkbandwidth, but right now
-  // we only can download it to local temp file and read it
-  auto fs = nebula::storage::makeFS("s3", domain_);
+  // if domain is present - assume it's S3 file
+  auto fs = nebula::storage::makeFS(dsu::getProtocol(table_->source), domain_);
 
   // id is the file path, copy it from s3 to a local folder
   auto local = nebula::storage::makeFS("local");
   auto tmpFile = local->temp();
-  auto ret = fs->copy(path_, tmpFile);
 
   // there might be S3 error which returns tmpFile as empty
-  if (!ret) {
+  if (!fs->copy(path_, tmpFile)) {
+    LOG(WARNING) << "Failed to copy file to local: " << path_;
     return false;
   }
 
@@ -172,7 +171,9 @@ bool IngestSpec::load(BlockList& blocks) noexcept {
 }
 
 bool IngestSpec::loadSwap() noexcept {
-  if (table_->source == DataSource::S3) {
+  // LOCAL data source only supported in swap for local test scenarios on single node
+  // As it doesn't make sense for distributed system to share a local data source
+  if (dsu::isFileSystem(table_->source)) {
     // TODO(cao) - make a better size estimation to understand total blocks to have
     BlockList blocks;
 
@@ -203,7 +204,7 @@ bool IngestSpec::loadSwap() noexcept {
 }
 
 bool IngestSpec::loadRoll() noexcept {
-  if (table_->source == DataSource::S3) {
+  if (dsu::isFileSystem(table_->source)) {
     BlockList blocks;
 
     // load current
@@ -223,7 +224,7 @@ bool IngestSpec::loadRoll() noexcept {
 bool IngestSpec::loadApi() noexcept {
   BlockList blocks;
   auto result = false;
-  if (table_->source == DataSource::S3) {
+  if (dsu::isFileSystem(table_->source)) {
     // load current
     result = this->load(blocks);
   }

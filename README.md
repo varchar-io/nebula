@@ -1,40 +1,34 @@
-# Nebula
-A distributed cell-based data storage and compute engine
-Nebula is designed for high-performance tabular data serving gateway. It serves 3 main scenarios
-- Security, Privacy and Access Control
-- Extreme Fast Data Analytics
-- Tiered Storage Between Compute Cluster And Blob Storage For Best Efficiency
+# Nebula - Super Fast & Flexible OLAP
+A distributed block-based data storage and compute engine
+Nebula is designed as a high-performance columnar data storage and tabular OLAP engine.
+It can do more than
+- Extreme Fast Data Analytics Platform.
+- Column Level Access Control Storage System.
+- Distributed Cache Tier For Tabular Data.
 
-Details could be found in the [project site](https://nebula.bz).
-Design, Art & Techniques will be shared through posts in the page.
+Documents of design, internals and stories will be added to [project site](https://nebula.bz).
 
-### Click below screenshot to watch a quick intro video
+## Demo
+### 10 minutes video
 [![Click To Watch Nebula Demo Video](./test/nebula-rep.png)](https://youtu.be/ciYD73z6Eiw "Nebula Demo")
 
-An example generating bar from 100GB data
+### generating bar chart from 100GB data in 600ms
 ![Generate bar from 700M rows in 600ms](./test/nebula-rep2.png)
 
-Another example demonstrating how to use JS SDK to analyze real-time data fastly.
+### Write an instant javascript function in real-time query.
 ![Transform column, aggregate by it with filters](./test/nebula-ide.png)
-
 
 
 # Get Started
 ## Run It!
-Get **Nebula** run on your linux machine (Only Ubuntu Tested) in one minute through docker.
-Follow the `3 simple steps` to get a local run (Linux box),  or see more details documented here [test/README.md](./test/README.md)
+- clone the repo: `git clone https://github.com/varchar-io/nebula.git`
+- run run.sh in source root: `cd nebula && ./run.sh`
+- explore nebula UI in browser: `http://localhost:8088`
 
-0. Clone "Nebula" repo.
-> And assume you're in ~/nebula/test directory.
-1. Edit [test cluster config (./test/local-cluster.yml)](./test/local-cluster.yml) by replace `<hostname>` with your running hosts.
-> or run `sed -i "s/<hostname>/$HOSTNAME/g" local-cluster.yml` in Ubuntu (if you are using mac, run `sed -i -e 's/<hostname>/$HOSTNAME/g' local-cluster.yml`)
-1. Run Nebula (requires docker/docker-compose installeds)
-> ./local-run.sh  (may need `chmod +777 ./local-run.sh` before run)
-3. Check it out through Nebula UI at: http://&lt;hostname&gt;:8088
 
 ## Build Source
 Please refer [Developer Guide](./dev.md) for building nebula from source code.
-Feel free to submit PR to become a contributor.
+Welcome to become a contributor.
 
 # Use Cases
 ## Static Data Analytics
@@ -60,23 +54,17 @@ Below is an snippet code that generates a pie charts for your SQL-like query cod
 On the page top, the demo video shows how nebula client SDK is used and tables and charts are generated in milliseconds!
 
 ```javascript
-    // const values
-    const name = "test";
-    const schema = "ROW<a:int, b:string, c:bigint>";
-
     // define an customized column
-    const colx = () => nebula.column("a") % 3;
+    const colx = () => nebula.column("value") % 20;
     nebula.apply("colx", nebula.Type.INT, colx);
 
     // get a data set from data set stored in HTTPS or S3
-    const query = nebula.csv("https://varchar.io/test/data.csv")
-                     .source(name)
-                     .time("2020-06-22 15:00:00", "2020-06-25 15:00:00")
-                     .select("colx", count("id"))
-                     .where(and(gt("id", 5), eq("flag", true)))
-                     .sortby(nebula.Sort.DESC)
-                     .limit(100);
-
-    // render the data result with PIE chart
-    query.run();
+    nebula
+        .source("nebula.test")
+        .time("2020-08-16", "2020-08-26")
+        .select("colx", count("id"))
+        .where(and(gt("id", 5), eq("flag", true)))
+        .sortby(nebula.Sort.DESC)
+        .limit(10)
+        .run();
 ```

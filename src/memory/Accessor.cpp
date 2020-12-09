@@ -32,31 +32,29 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
   // seek to row ID and return myself
   // TODO(cao) - a runtime ephemeral/transient state like this is bad for parallelism
   // we'd better to move it to API itself though it looks a bit more complex.
-  N_ENSURE(rowId < batch_.rows_, "row id out of bound");
   current_ = rowId;
 
   // populate all dimension values encoded in bess
-  if (batch_.pod_ != nullptr) {
+  if (UNLIKELY(batch_.pod_ != nullptr)) {
     bessValue_ = batch_.bess_.readBits(current_ * batch_.bessBits_, batch_.bessBits_);
   }
 
   return *this;
 }
 
-bool RowAccessor::isNull(const std::string& field) const {
-  // check if field existing
-  const auto& itr = dnMap_.find(field);
-  N_ENSURE(itr != dnMap_.end(), fmt::format("field {0} not found!", field));
-  return itr->second->isNull(current_);
-}
-
-#define READ_TYPE_BY_FIELD(TYPE, FUNC)                                                        \
-  TYPE RowAccessor::FUNC(const std::string& field) const {                                    \
-    TYPE v;                                                                                   \
-    if (batch_.pod_ != nullptr && batch_.pod_->value(field, batch_.spaces_, bessValue_, v)) { \
-      return v;                                                                               \
-    }                                                                                         \
-    return dnMap_.at(field)->read<TYPE>(current_);                                            \
+#define READ_TYPE_BY_FIELD(TYPE, FUNC)                                    \
+  std::optional<TYPE> RowAccessor::FUNC(const std::string& field) const { \
+    if (UNLIKELY(batch_.pod_ != nullptr)) {                               \
+      TYPE v;                                                             \
+      if (batch_.pod_->value(field, batch_.spaces_, bessValue_, v)) {     \
+        return v;                                                         \
+      }                                                                   \
+    }                                                                     \
+    const auto& d = dnMap_.at(field);                                     \
+    if (UNLIKELY(d->isNull(current_))) {                                  \
+      return std::nullopt;                                                \
+    }                                                                     \
+    return d->read<TYPE>(current_);                                       \
   }
 
 READ_TYPE_BY_FIELD(bool, readBool)
@@ -71,24 +69,24 @@ READ_TYPE_BY_FIELD(std::string_view, readString)
 
 #undef READ_TYPE_BY_FIELD
 
-// compound types
-// TODO(cao) - return a unique ptr seems unncessary expensive to create list accessor object every time
-// we may want to maintain single instance and return a reference instead
-std::unique_ptr<ListData> RowAccessor::readList(const std::string& field) const {
-  // initilize a list data with child data node with
-  auto listNode = dnMap_.at(field);
+// // compound types
+// // TODO(cao) - return a unique ptr seems unncessary expensive to create list accessor object every time
+// // we may want to maintain single instance and return a reference instead
+// std::unique_ptr<ListData> RowAccessor::readList(const std::string& field) const {
+//   // initilize a list data with child data node with
+//   auto listNode = dnMap_.at(field);
 
-  // list node has only one child - can be saved if list accessor is created once
-  auto child = listNode->childAt<PDataNode>(0).value();
-  auto os = listNode->offsetSize(current_);
+//   // list node has only one child - can be saved if list accessor is created once
+//   auto child = listNode->childAt<PDataNode>(0).value();
+//   auto os = listNode->offsetSize(current_);
 
-  // calculate the offset in terms of number of items
-  return std::make_unique<ListAccessor>(os.first, os.second, child);
-}
+//   // calculate the offset in terms of number of items
+//   return std::make_unique<ListAccessor>(os.first, os.second, child);
+// }
 
-std::unique_ptr<MapData> RowAccessor::readMap(const std::string&) const {
-  return nullptr;
-}
+// std::unique_ptr<MapData> RowAccessor::readMap(const std::string&) const {
+//   return nullptr;
+// }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////// List Accessor //////////////////////////////////////////

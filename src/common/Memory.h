@@ -17,10 +17,10 @@
 #pragma once
 
 #include <folly/compression/Compression.h>
-#include <forward_list>
 #include <glog/logging.h>
 #include <iostream>
 #include <numeric>
+#include <vector>
 
 #include "Errors.h"
 #include "Hash.h"
@@ -342,7 +342,8 @@ public:
   PagedSlice(size_t size, folly::io::CodecType type = folly::io::CodecType::LZ4)
     : Slice{ size },
       write_{ 0, 0 },
-      read_{ 0, 0 },
+      bid_{ 0 },
+      bufferPtr_{ nullptr },
       type_{ type },
       codec_{ folly::io::getCodec(type) } {
   }
@@ -362,7 +363,7 @@ public:
   auto write(size_t position, const T& value) -> typename std::enable_if<std::is_scalar<T>::value, size_t>::type {
     constexpr size_t size = sizeof(T);
     // if current buffer can't fit the data, compress and flush the buffer
-    if (write_.size + size > size_) {
+    if (UNLIKELY(write_.size + size > size_)) {
       compress(position);
     }
 
@@ -388,18 +389,19 @@ public:
   // read a scalar type
   template <typename T>
   typename std::enable_if<std::is_scalar<T>::value, T>::type read(size_t position) const {
-    // if write buffer has the item
-    if (write_.include(position)) {
-      return *reinterpret_cast<T*>(this->ptr_ + position - write_.offset);
+    if (UNLIKELY(this->ptr_ != nullptr)) {
+      if (write_.include(position)) {
+        return *reinterpret_cast<T*>(this->ptr_ + position - write_.offset);
+      }
     }
 
     // check if position is in current range
-    if (!read_.include(position)) {
+    if (UNLIKELY(!bufferPtr_ || !blocks_.at(bid_).range.include(position))) {
       uncompress(position);
     }
 
     // buffer index = position - range.offset
-    return *reinterpret_cast<T*>(bufferPtr_ + position - read_.offset);
+    return *reinterpret_cast<T*>(bufferPtr_ + position - blocks_.at(bid_).range.offset);
   }
 
   // read a string
@@ -426,11 +428,10 @@ private:
 
   // compressed blocks, to reduce block locating time,
   // we should keep number of blocks as small as possible, ideal size <32
-  std::forward_list<CompressionBlock> blocks_;
+  std::vector<CompressionBlock> blocks_;
 
-  // TODO(cao) - we may introduce a reader to have these states rather than mix them here
-  // indicating what range of raw data current buffer holds the uncompressed data
-  CRange read_;
+  // indicating a current block index in blocks_
+  size_t bid_;
 
   // a buffer used for hold raw data of any uncompressed block
   std::unique_ptr<OneSlice> buffer_;

@@ -47,16 +47,25 @@ public: /** only static methods */
   static constexpr auto MICRO_BASE = 1000'000'000'000'000;
   static constexpr auto MILLI_BASE = 1000'000'000'000;
 
+  // micro-seconds
   inline static size_t ticks() {
     return std::chrono::system_clock::now().time_since_epoch().count();
+  }
+
+  template <typename T>
+  inline static size_t seconds(const std::chrono::time_point<T>& tp) {
+    return std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
+  }
+
+  template <typename T>
+  inline static size_t seconds(const std::chrono::duration<T>& dur) {
+    return std::chrono::duration_cast<std::chrono::seconds>(dur).count();
   }
 
   // TODO(cao): consider using int64_t rather than size_t
   // to support time before unix epoch (1970)
   inline static size_t unix_timestamp() {
-    return std::chrono::duration_cast<std::chrono::seconds>(
-             std::chrono::system_clock::now().time_since_epoch())
-      .count();
+    return seconds(std::chrono::system_clock::now());
   }
 
   // convert a serial number to unix timestamp (seconds)

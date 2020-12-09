@@ -16,9 +16,10 @@
 
 #pragma once
 
-#include <dirent.h>
+#include <filesystem>
 #include <string>
 #include <vector>
+
 #include "common/Errors.h"
 #include "storage/NFileSystem.h"
 
@@ -43,8 +44,10 @@ public:
   // return file info of given file path
   virtual FileInfo info(const std::string&) override;
 
-  virtual bool copy(const std::string&, const std::string&) override {
-    throw NException("Not implemented");
+  virtual inline bool copy(const std::string& from, const std::string& to) override {
+    // TODO(cao): it doesn't copy anything if options specified (e.g replace_existing)
+    std::filesystem::copy(from, to, std::filesystem::copy_options::overwrite_existing);
+    return true;
   }
 
   virtual std::string temp(bool = false) override;

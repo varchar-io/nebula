@@ -56,7 +56,11 @@ UriInfo parse(const std::string& strUri) {
     info.host = UF_STR(hostText);
   }
 
-  if (uri.pathHead) {
+  // TODO(cao) - doesn't seem system compatible? probably remove
+  // handle local path without starting '/'
+  if (info.schema.empty() && info.host.empty() && strUri.at(0) != '/') {
+    info.path = fmt::format("/{0}", strUri);
+  } else if (uri.pathHead) {
     const UriPathSegmentA* p = uri.pathHead;
     const char* start = p->text.first;
     const char* end = nullptr;
@@ -69,7 +73,12 @@ UriInfo parse(const std::string& strUri) {
       }
     }
 
-    // we know it's from the same string.
+    // if schema is empty, assume it's a local file.
+    // allow it to carry the char before it.
+    if (info.schema.empty() || info.host.empty()) {
+      start -= 1;
+    }
+
     info.path = std::string(start, end - start);
 
     // decode the data in place, and mark end position to be 0

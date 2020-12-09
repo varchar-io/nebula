@@ -82,9 +82,10 @@ TEST(SurfaceTest, TestScriptContext) {
   const auto seed = Evidence::unix_timestamp();
   nebula::surface::MockRowData mock1(seed);
   nebula::surface::MockRowData mock2(seed);
+  nebula::surface::MockAccessor mockA(seed);
   nebula::surface::eval::ScriptContext script(
-    [&mock1]() -> const nebula::surface::RowData& {
-      return mock1;
+    [&mockA]() -> const nebula::surface::Accessor& {
+      return mockA;
     },
     [](const std::string& col) -> auto {
       if (col == "c") {
@@ -101,18 +102,15 @@ TEST(SurfaceTest, TestScriptContext) {
   // int 32 value overflow:
   // C++: (1896463358 * 2 - 2147483648-2147483648)
   // JS: ??
-  bool valid;
-  script.eval<int32_t>("var x = () => nebula.column('c') - 100;", valid);
-  script.eval<bool>("var y = () => nebula.column('str').length;", valid);
+  script.eval<int32_t>("var x = () => nebula.column('c') - 100;");
+  script.eval<bool>("var y = () => nebula.column('str').length;");
   for (auto i = 0; i < 16; ++i) {
-    auto x = script.eval<int32_t>("x();", valid);
+    auto x = script.eval<int32_t>("x();");
     auto col_c = mock2.readInt("c");
-    EXPECT_TRUE(valid);
     EXPECT_EQ(x, col_c - 100);
 
-    auto y = script.eval<int32_t>("y();", valid);
+    auto y = script.eval<int32_t>("y();");
     auto col_str = mock2.readString("str");
-    EXPECT_TRUE(valid);
     EXPECT_EQ(y, col_str.size());
   }
 }

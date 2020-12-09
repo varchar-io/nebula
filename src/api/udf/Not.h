@@ -32,16 +32,16 @@ class Not : public UdfNotBase {
 public:
   Not(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : UdfNotBase(
-        name,
-        std::move(expr),
-        [](const NativeType& origin, bool& valid) {
-          if (!valid) {
-            return true;
-          }
+      name,
+      std::move(expr),
+      [](const std::optional<NativeType>& origin) -> std::optional<bool> {
+        if (UNLIKELY(origin == std::nullopt)) {
+          return std::nullopt;
+        }
 
-          // otherwise reverse
-          return !origin;
-        }) {}
+        // otherwise reverse
+        return !origin.value();
+      }) {}
   virtual ~Not() = default;
 };
 

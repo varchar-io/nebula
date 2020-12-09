@@ -28,12 +28,11 @@ bool ComputedRow::isNull(IndexType) const {
   return false;
 }
 
-// TODO(cao) - need to implement isNull (maybe cache to ensure evaluate once)
+// TODO(cao) - need to use the consistent interface of optional<T>
 // otherwise - this may return invalid values
-#define FORWARD_EVAL_FIELD(TYPE, NAME)               \
-  TYPE ComputedRow::NAME(IndexType index) const {    \
-    bool valid = true;                               \
-    return ctx_->eval<TYPE>(*fields_[index], valid); \
+#define FORWARD_EVAL_FIELD(TYPE, NAME)                                                        \
+  TYPE ComputedRow::NAME(IndexType index) const {                                             \
+    return fields_[index]->eval<TYPE>(*ctx_).value_or(nebula::type::TypeDetect<TYPE>::value); \
   }
 
 FORWARD_EVAL_FIELD(bool, readBool)

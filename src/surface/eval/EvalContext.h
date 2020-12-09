@@ -86,7 +86,7 @@ public:
   // 2. std::optinal<T> to return optional value.
   // 3. a flag to indicate the return value should not be used
   template <typename T>
-  inline T eval(EvalContext& ctx, bool& valid) const {
+  inline std::optional<T> eval(EvalContext& ctx) const {
     // TODO(cao) - there is a problem wasted me a WHOLE day to figure out the root cause.
     // So document here for further robust engineering work, the case is like this:
     // When it create ValueEval, it uses template to generate TypeValueEval<std::string> for VARCHAR type
@@ -98,7 +98,7 @@ public:
     // N_ENSURE_NOT_NULL(p, "type should match");
     auto p = static_cast<const TypeValueEval<T>*>(this);
     // N_ENSURE_NOT_NULL(p, "Type should match in value eval!");
-    return p->eval(ctx, valid);
+    return p->eval(ctx);
   }
 
   // stack value into object
@@ -149,10 +149,10 @@ protected:
 // customized functions defined by each individual typed value eval object
 #define EvalBlock std::function<BlockEval(const Block&)>
 #define SketchMaker std::function<std::shared_ptr<Aggregator<OutputTD::kind, InputTD::kind>>()>
-#define OPT std::function<EvalType(EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&, bool&)>
-#define OPT_LAMBDA(X)                                                                           \
-  ([](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>& children, bool& valid) { \
-    X                                                                                           \
+#define OPT std::function<std::optional<EvalType>(EvalContext&, const std::vector<std::unique_ptr<ValueEval>>&)>
+#define OPT_LAMBDA(T, X)                                                                               \
+  ([](EvalContext& ctx, const std::vector<std::unique_ptr<ValueEval>>& children) -> std::optional<T> { \
+    X                                                                                                  \
   })
 
 // TODO(cao): evaluate if we can template TypeValueEval with nebula::type::Kind
@@ -183,8 +183,8 @@ public:
 
   virtual ~TypeValueEval() = default;
 
-  inline EvalType eval(EvalContext& ctx, bool& valid) const {
-    return op_(ctx, this->children_, valid);
+  inline std::optional<EvalType> eval(EvalContext& ctx) const {
+    return op_(ctx, this->children_);
   }
 
   inline std::shared_ptr<Aggregator<OutputTD::kind, InputTD::kind>> sketch() const {
@@ -270,114 +270,65 @@ public:
     : EvalContext(cache, script, nullptr) {}
 
   // case to wrap a single row without cache, cheap to create an instance of eval context
-  EvalContext(std::unique_ptr<nebula::surface::RowData> data, std::shared_ptr<ScriptData> script = nullptr)
+  EvalContext(std::unique_ptr<nebula::surface::Accessor> data, std::shared_ptr<ScriptData> script = nullptr)
     : EvalContext(false, script, std::move(data)) {}
 
   virtual ~EvalContext() = default;
 
   // change reference to row data, clear all cache.
   // and start build cache based on evaluation signautre.
-  void reset(const nebula::surface::RowData&);
-
-  // evaluate a value eval object in current context and return value reference.
-  template <typename T>
-  T eval(const ValueEval& ve, bool& valid) {
-    if (LIKELY(!cache_)) {
-      return ve.eval<T>(*this, valid);
-    }
-
-    const auto& sign = ve.signature();
-
-    // if in evaluated list
-    auto& map = cache_->map;
-    auto& slice = cache_->slice;
-    auto& cursor = cache_->cursor;
-
-    auto itr = map.find(sign);
-    if (itr != map.end()) {
-      auto offset = itr->second.first;
-      valid = offset > 0;
-      if (!valid) {
-        return nebula::type::TypeDetect<T>::value;
-      }
-
-      return slice.read<T>(offset);
-    }
-
-    N_ENSURE_NOT_NULL(row_, "reference a row object before evaluation.");
-    const auto value = ve.eval<T>(*this, valid);
-    if (!valid) {
-      map[sign] = { 0, 0 };
-      return nebula::type::TypeDetect<T>::value;
-    }
-    const auto offset = cursor;
-    map[sign] = { offset, 0 };
-    cursor += slice.write<T>(cursor, value);
-
-    return slice.read<T>(offset);
-  }
-
-#define NULL_CHECK(R)                \
-  if (UNLIKELY(row_->isNull(col))) { \
-    valid = false;                   \
-    return R;                        \
-  }
+  void reset(const nebula::surface::Accessor&);
 
   template <typename T>
-  inline T read(const std::string& col, bool& valid) {
+  inline std::optional<T> read(const std::string& col) {
     // TODO(cao) - not ideal branching. we should be able to compile this before execution
     // fast lookup - best to turn all column's value materialization into a function pointer - type agnostic?
     // we exactly know what method to call for every single column
-    ValueEval* ve = nullptr;
-    if (scriptData_ && (ve = scriptData_->column(col)) != nullptr) {
-      return ve->eval<T>(*this, valid);
+
+    // perf: we pay this check for every read
+    if (UNLIKELY(scriptData_ != nullptr)) {
+      ValueEval* ve = scriptData_->column(col);
+      if (ve) {
+        return ve->eval<T>(*this);
+      }
     }
 
     // return *row_;
     // compile time branching based on template type T
     // I think it's better than using template specialization for this case
     if constexpr (std::is_same<T, bool>::value) {
-      NULL_CHECK(false)
       return row_->readBool(col);
     }
 
     if constexpr (std::is_same<T, int8_t>::value) {
-      NULL_CHECK(0)
       return row_->readByte(col);
     }
 
     if constexpr (std::is_same<T, int16_t>::value) {
-      NULL_CHECK(0)
       return row_->readShort(col);
     }
 
     if constexpr (std::is_same<T, int32_t>::value) {
-      NULL_CHECK(0)
       return row_->readInt(col);
     }
 
     if constexpr (std::is_same<T, int64_t>::value) {
-      NULL_CHECK(0)
       return row_->readLong(col);
     }
 
     if constexpr (std::is_same<T, float>::value) {
-      NULL_CHECK(0)
       return row_->readFloat(col);
     }
 
     if constexpr (std::is_same<T, double>::value) {
-      NULL_CHECK(0)
       return row_->readDouble(col);
     }
 
     if constexpr (std::is_same<T, int128_t>::value) {
-      NULL_CHECK(0)
       return row_->readInt128(col);
     }
 
     if constexpr (std::is_same<T, std::string_view>::value) {
-      NULL_CHECK("")
       return row_->readString(col);
     }
 
@@ -394,12 +345,12 @@ public:
 private:
   EvalContext(bool cache,
               std::shared_ptr<ScriptData> scriptData,
-              std::unique_ptr<nebula::surface::RowData> data)
+              std::unique_ptr<nebula::surface::Accessor> data)
     : cache_{ !cache ? nullptr : std::make_unique<EvalCache>(1024) },
       scriptData_{ scriptData },
       script_{ scriptData == nullptr ? nullptr :
                                        std::make_unique<ScriptContext>(
-                                         [this]() -> const nebula::surface::RowData& { return *row_; },
+                                         [this]() -> const nebula::surface::Accessor& { return *row_; },
                                          [this](const std::string& col) -> auto {
                                            return scriptData_->name2type->at(col);
                                          }) },
@@ -416,14 +367,11 @@ private:
   std::unique_ptr<ScriptContext> script_;
 
   // the context may own a row object directly
-  std::unique_ptr<nebula::surface::RowData> data_;
+  std::unique_ptr<nebula::surface::Accessor> data_;
 
   // row object pointer
-  const nebula::surface::RowData* row_;
+  const nebula::surface::Accessor* row_;
 };
-
-template <>
-std::string_view EvalContext::eval(const ValueEval& ve, bool& valid);
 
 } // namespace eval
 } // namespace surface
