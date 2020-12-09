@@ -133,7 +133,8 @@ enum class UDFType {
   SUM,
   PCT,
   TPM,
-  CARD
+  CARD,
+  HIST
 };
 
 // UDF traits tells us:
@@ -312,6 +313,20 @@ UDF_NOT_SUPPORT(TPM, nebula::type::Kind::INT128)
 // no matter what input type is, it always uses BIGINT as result indicating cardinality
 STATIC_TRAITS(CARD, true)
 REPEAT_ALL_TYPES(UDF_TRAITS_INPUT1, CARD, nebula::type::Kind::BIGINT)
+
+STATIC_TRAITS(HIST, true)
+UDF_TRAITS(HIST, nebula::type::Kind::VARCHAR, nebula::type::Kind::TINYINT)
+UDF_TRAITS(HIST, nebula::type::Kind::VARCHAR, nebula::type::Kind::SMALLINT)
+UDF_TRAITS(HIST, nebula::type::Kind::VARCHAR, nebula::type::Kind::INTEGER)
+UDF_TRAITS(HIST, nebula::type::Kind::VARCHAR, nebula::type::Kind::BIGINT)
+UDF_TRAITS(HIST, nebula::type::Kind::VARCHAR, nebula::type::Kind::REAL)
+UDF_TRAITS(HIST, nebula::type::Kind::VARCHAR, nebula::type::Kind::DOUBLE)
+
+// do not support digest on these types (folly histogram doesn't support those types)
+UDF_NOT_SUPPORT(HIST, nebula::type::Kind::INVALID)
+UDF_NOT_SUPPORT(HIST, nebula::type::Kind::BOOLEAN)
+UDF_NOT_SUPPORT(HIST, nebula::type::Kind::VARCHAR)
+UDF_NOT_SUPPORT(HIST, nebula::type::Kind::INT128)
 
 #undef UDF_SAME_AS_INPUT_ALL
 #undef UDF_SAME_AS_INPUT

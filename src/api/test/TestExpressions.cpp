@@ -551,6 +551,35 @@ TEST(ExpressionsTest, TestSerde) {
     auto pv = s1->finalize();
     EXPECT_NEAR(pv, 99, 1);
   }
+
+  // expression with UDAF hist
+  {
+    LOG(INFO) << "Starting to test UDAF HIST";
+    auto ci = nebula::api::dsl::hist(nebula::api::dsl::col("weight"), 30.0, 80.0).as("hist");
+    auto i1ser = nebula::api::dsl::Serde::serialize(ci);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    LOG(INFO) << "exp deserialized: " << exp;
+
+    // vreify alias
+    EXPECT_EQ(ci.alias(), "hist");
+    EXPECT_EQ(exp->alias(), "hist");
+
+    // verify kind
+    ci.type(tbl->lookup());
+    exp->type(tbl->lookup());
+    EXPECT_EQ(exp->typeInfo(), ci.typeInfo());
+
+    // verify value evaluation
+    auto v1 = ci.asEval();
+
+    using AggType = nebula::surface::eval::Aggregator<nebula::type::Kind::VARCHAR, nebula::type::Kind::DOUBLE>;
+    auto s1 = std::static_pointer_cast<AggType>(
+      v1->sketch<nebula::type::Kind::VARCHAR, nebula::type::Kind::DOUBLE>());
+    for (int i = 0; i <= 100; i += 10) {
+      s1->merge(i);
+    }
+    LOG(INFO) << "print result" << s1->finalize();
+  }
 }
 
 TEST(ExpressionsTest, TestBetweenExpression) {

@@ -29,6 +29,7 @@
 #include "api/udf/Pct.h"
 #include "api/udf/Prefix.h"
 #include "api/udf/Tpm.h"
+#include "api/udf/Histogram.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "surface/eval/ValueEval.h"
@@ -606,6 +607,43 @@ TEST(UDFTest, TestPct) {
   EXPECT_NEAR(td4, 217, 1);
   auto json = static_cast<CType::Aggregator*>(td1.get())->jsonfy();
   LOG(INFO) << "sketch in json: " << json;
+}
+
+TEST(UDFTest, TestHist) {
+  using CType = nebula::api::udf::Hist<nebula::type::Kind::DOUBLE>;
+
+  // simulate the run times 11 for c1 and 22 for c2
+  nebula::surface::eval::EvalContext ctx{ false };
+  auto v9 = std::make_shared<nebula::api::dsl::ConstExpression<double>>(0);
+  double max = 40.0;
+  double min = 30.0;
+  CType th("th1", v9->asEval(), min, max);
+
+  auto th1 = th.sketch();
+  for (auto i = 0; i < 110; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<double>>(i);
+    CType hist("hist1", vi->asEval(), min, max);
+    th1->merge(hist.eval(ctx).value());
+  }
+
+  auto th2 = th.sketch();
+  for (auto i = 110; i < 220; ++i) {
+    auto vi = std::make_shared<nebula::api::dsl::ConstExpression<double>>(i);
+    CType hist("hist2", vi->asEval(), min, max);
+    th2->merge(hist.eval(ctx).value());
+  }
+
+  // partial merge
+  th1->mix(*th2);
+
+  // we will ask itself for finalize
+  CType::NativeType tsvStr = th1->finalize();
+  
+  nebula::common::ExtendableSlice slice(1024);
+  EXPECT_EQ(th1->serialize(slice, 12), 187);
+  EXPECT_EQ(th1->load(slice, 12), 187);
+  CType::NativeType load = th1->finalize();
+  EXPECT_EQ(load, tsvStr);
 }
 
 TEST(UDFTest, TestTpm) {

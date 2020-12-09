@@ -101,7 +101,7 @@ static UDFExpression<nebula::surface::eval::UDFType::PCT, double> pct(const T& e
 }
 
 template <typename T>
-static UDFExpression<nebula::surface::eval::UDFType::TPM, size_t> tpm(const T& expr, size_t threshold = 1) {
+static UDFExpression<nebula::surface::eval::UDFType::TPM, size_t> tpm(const T& expr, int32_t threshold = 1) {
   return UDFExpression<nebula::surface::eval::UDFType::TPM, size_t>(std::shared_ptr<Expression>(new T(expr)), threshold);
 }
 
@@ -154,6 +154,11 @@ static InExpression<U> nin(const T& expr, nebula::common::Zip&& values) {
 template <typename T, typename U>
 static BetweenExpression<U> between(const T& expr, const U&& min, const U&& max) {
   return BetweenExpression<U>(std::shared_ptr<Expression>(new T(expr)), std::move(min), std::move(max));
+}
+
+template <typename T, typename U>
+static UDFExpression<nebula::surface::eval::UDFType::HIST, U, U> hist(const T& expr, U&& min, U&& max) {
+  return UDFExpression<nebula::surface::eval::UDFType::HIST, U, U>(std::shared_ptr<Expression>(new T(expr)), std::move(min), std::move(max));
 }
 
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>

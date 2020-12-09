@@ -99,6 +99,7 @@ std::string ser(const ExpressionData& data) {
     addstring(json, "custom", data.custom);
     json.Key("flag");
     json.Bool(data.flag);
+    addstring(json, "c_type", data.c_type);
     break;
   }
 
@@ -238,7 +239,8 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
                                    UDFType ut,
                                    std::shared_ptr<Expression> inner,
                                    const std::string& custom,
-                                   bool flag) {
+                                   bool flag,
+                                   const std::string& input_type) {
   // like, prefix
   switch (ut) {
   case UDFType::LIKE: {
@@ -326,6 +328,26 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
     throw NException(fmt::format("Unsupported data type in between: {0}", tid));
 #undef TYPED_EXPR
   }
+  case UDFType::HIST: {
+#define TYPE_UDF_INPUT(T)                                                                                  \
+  if (input_type == TypeDetect<T>::tid()) {                                                                \
+    auto dst = deser.as<std::tuple<T, T>>();                                                               \
+    auto min = std::get<0>(dst);                                                                           \
+    auto max = std::get<1>(dst);                                                                           \
+    return as(alias, std::make_shared<UDFExpression<UDFType::HIST, T, T>>(inner, min, max));               \
+  }
+    msgpack::object_handle oh = msgpack::unpack(custom.data(), custom.size());
+    auto deser = oh.get();
+    TYPE_UDF_INPUT(int8_t)
+    TYPE_UDF_INPUT(int16_t)
+    TYPE_UDF_INPUT(int32_t)
+    TYPE_UDF_INPUT(int64_t)
+    TYPE_UDF_INPUT(float)
+    TYPE_UDF_INPUT(double)
+
+    throw NException(fmt::format("Not recognized type for hist udf: {0}", input_type));
+#undef TYPE_UDF_INPUT
+  }
 
 #define COM_UDF(UT)                                                        \
   case UDFType::UT: {                                                      \
@@ -381,11 +403,12 @@ std::shared_ptr<Expression> Serde::deserialize(const std::string& data) {
   }
   case ExpressionType::FUNCTION: {
     const auto& c = document["custom"];
+    const auto& input_type = document["c_type"];
     return u_expr(alias,
                   static_cast<UDFType>(document["udf"].GetInt()),
                   deserialize(document["inner"].GetString()),
                   std::string(c.GetString(), c.GetStringLength()),
-                  document["flag"].GetBool());
+                  document["flag"].GetBool(), input_type.GetString());
   }
   default:
     throw NException("Not recognized expression!");
