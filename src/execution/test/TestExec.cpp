@@ -134,10 +134,10 @@ TEST(ExecutionTest, TestRowCursorSerde) {
   {
     nebula::meta::TestTable test;
     auto size = 10;
-    Batch batch(test, size);
+    auto batch = std::make_shared<Batch>(test, size);
     MockRowData row;
     for (auto i = 0; i < size; ++i) {
-      batch.add(row);
+      batch->add(row);
     }
 
     LOG(INFO) << "build up a block compute result";
@@ -155,7 +155,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       .aggregate(0, { false, false, false })
       .limit(size);
 
-    EvaledBlock eb{ &batch, BlockEval::PARTIAL };
+    EvaledBlock eb{ batch, BlockEval::PARTIAL };
     auto cursor = nebula::execution::core::compute(eb, plan);
     auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema, plan.fields());
 
@@ -164,7 +164,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
 
     // verify every row is the same
     LOG(INFO) << "verify every row is the same as batch";
-    auto accessor = batch.makeAccessor();
+    auto accessor = batch->makeAccessor();
     for (auto i = 0; i < size; ++i) {
       const auto& rb = accessor->seek(i);
       const auto& rf = fb->row(i);
@@ -177,12 +177,12 @@ TEST(ExecutionTest, TestRowCursorSerde) {
   {
     nebula::meta::TestTable test;
     auto size = 10;
-    Batch batch(test, size);
+    auto batch = std::make_shared<Batch>(test, size);
     MockRowData row;
     MockRowData sameRow;
     int idSum = 0;
     for (auto i = 0; i < size; ++i) {
-      batch.add(row);
+      batch->add(row);
       idSum += sameRow.readInt("id");
     }
 
@@ -200,7 +200,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       .keys({ 0 })
       .aggregate(1, { false, true });
 
-    EvaledBlock eb{ &batch, BlockEval::PARTIAL };
+    EvaledBlock eb{ batch, BlockEval::PARTIAL };
     auto cursor = nebula::execution::core::compute(eb, plan);
     auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema, plan.fields());
 
@@ -214,11 +214,11 @@ TEST(ExecutionTest, TestRowCursorSerde) {
 TEST(ExecutionTest, TestCustomColumn) {
   nebula::meta::TestTable test;
   auto size = 1;
-  Batch batch(test, size);
+  auto batch = std::make_shared<Batch>(test, size);
   MockRowData row;
   MockRowData sameRow;
   for (auto i = 0; i < size; ++i) {
-    batch.add(row);
+    batch->add(row);
   }
 
   LOG(INFO) << "build up a block compute result with custom column";
@@ -238,7 +238,7 @@ TEST(ExecutionTest, TestCustomColumn) {
     .compute(std::move(selects))
     .filter(constant<bool>(true));
 
-  EvaledBlock eb{ &batch, BlockEval::PARTIAL };
+  EvaledBlock eb{ batch, BlockEval::PARTIAL };
   auto cursor = nebula::execution::core::compute(eb, plan);
   while (cursor->hasNext()) {
     const auto& row = cursor->next();

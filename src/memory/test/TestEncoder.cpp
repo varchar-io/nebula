@@ -79,7 +79,7 @@ void testRle(int64_t* values, int size) {
   }
 
   encoder.flush();
-  LOG(INFO) << "slice capacity: " << slice.capacity();
+  LOG(INFO) << "slice capacity: " << slice.size();
 
   // decode it
   nebula::memory::encode::RleDecoder decoder(true, slice);

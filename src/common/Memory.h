@@ -131,8 +131,15 @@ public:
 protected:
   // A read-only slice!! wrapping an external buffer but not owning it
   Slice(const NByte* buffer, size_t size, bool own = false)
-    : pool_{ Pool::getDefault() }, size_{ size }, ptr_{ const_cast<NByte*>(buffer) }, ownbuffer_{ own } {}
-  Slice(size_t size) : pool_{ Pool::getDefault() }, size_{ size }, ptr_{ static_cast<NByte*>(pool_.allocate(size)) }, ownbuffer_{ true } {}
+    : pool_{ Pool::getDefault() },
+      size_{ size },
+      ptr_{ const_cast<NByte*>(buffer) },
+      ownbuffer_{ own } {}
+  Slice(size_t size)
+    : pool_{ Pool::getDefault() },
+      size_{ size },
+      ptr_{ static_cast<NByte*>(pool_.allocate(size)) },
+      ownbuffer_{ true } {}
   Slice(Slice&) = delete;
   Slice(Slice&&) = delete;
   Slice& operator=(Slice&) = delete;
@@ -158,13 +165,12 @@ public:
 };
 
 /**
- * A paged slice is a chain of slices with given sized slice of chunks.
- * A paged slice is a slice, and it can have more slices as extensions when necessary.
+ * An extendable slice is whole chunk to writing size by keep allocation.
  */
 class ExtendableSlice : public Slice {
 public:
-  ExtendableSlice(const NByte* buffer, size_t size) : Slice{ buffer, size }, slices_{ 1 }, numExtended_{ 0 } {}
-  ExtendableSlice(size_t size) : Slice{ size }, slices_{ 1 }, numExtended_{ 0 } {}
+  ExtendableSlice(const NByte* buffer, size_t size) : Slice{ buffer, size }, numExtended_{ 0 } {}
+  ExtendableSlice(size_t size) : Slice{ size }, numExtended_{ 0 } {}
   ~ExtendableSlice() = default;
 
   // append a bytes array of length bytes to position
@@ -180,7 +186,7 @@ public:
 
   // append a data object at position using sizeof to determine its size
   template <typename T>
-  auto write(size_t position, const T& value) -> typename std::enable_if<std::is_scalar<T>::value, size_t>::type {
+  inline auto write(size_t position, const T& value) -> typename std::enable_if<std::is_scalar<T>::value, size_t>::type {
     // write a scalar typed data in a given alignment space
     // auto size = std::max(sizeof(T), alignment);
     constexpr size_t size = sizeof(T);
@@ -188,7 +194,7 @@ public:
   }
 
   template <typename T>
-  size_t writeAlign(size_t position, const T& value, size_t alignment) {
+  inline size_t writeAlign(size_t position, const T& value, size_t alignment) {
     // write a scalar typed data in a given alignment space
     // auto size = std::max(sizeof(T), alignment);
     constexpr size_t size = sizeof(T);
@@ -199,16 +205,11 @@ public:
   // It declares the method is not mark as const if we change the signature as
   // auto read(size_t position) -> typename std::enable_if<std::is_scalar<T>::value, T&>::type const {
   template <typename T>
-  typename std::enable_if<std::is_scalar<T>::value, T>::type read(size_t position) const {
-    constexpr size_t size = sizeof(T);
-    N_ENSURE(position + size <= capacity(), "invalid position to read");
-
+  inline typename std::enable_if<std::is_scalar<T>::value, T>::type read(size_t position) const {
     return *reinterpret_cast<T*>(this->ptr_ + position);
   }
 
-  std::string_view read(size_t position, size_t length) const {
-    N_ENSURE(position + length <= capacity(), "invalid position read string");
-
+  inline std::string_view read(size_t position, size_t length) const {
     // build data using copy elision
     return std::string_view((char*)this->ptr_ + position, length);
   }
@@ -237,11 +238,6 @@ public:
     return compare(offset1, offset2, size);
   }
 
-  // capacity
-  inline size_t capacity() const {
-    return size_ * slices_;
-  }
-
   // copy current slice data into a given buffer
   size_t copy(NByte*, size_t, size_t) const;
 
@@ -250,11 +246,44 @@ public:
 
 private:
   // ensure capacity of memory allocation
-  void ensure(size_t);
+  template <bool CHECK = false>
+  inline void ensure(const size_t desired) {
+    static constexpr size_t errors[] = { 8, 16 };
+    if (UNLIKELY(desired >= size_)) {
+      // start with 2 times
+      auto fold = 2.0;
+      if (numExtended_ > 8) {
+        fold = 1.5;
+      } else if (numExtended_ > 16) {
+        fold = 1.2;
+      }
+
+      const auto numExtended = numExtended_;
+      size_t size = size_ == 0 ? std::max<size_t>(1024, desired) : (fold * size_);
+      while (size < desired) {
+        ++numExtended_;
+        size *= fold;
+
+        if constexpr (UNLIKELY(CHECK)) {
+          const auto count = numExtended_ - numExtended;
+          if (count >= errors[0]) {
+            LOG(WARNING) << "Slices increased too fast in single request";
+
+            // over error bound - fail it
+            if (UNLIKELY(count > errors[1])) {
+              LOG(FATAL) << "Too fast allocation from " << size_ << " towards " << size;
+            }
+          }
+        }
+      }
+
+      this->ptr_ = static_cast<NByte*>(this->pool_.extend(this->ptr_, size_, size));
+      std::swap(size, size_);
+    }
+  }
 
   template <typename T>
-  inline size_t
-    writeSize(size_t position, const T& value, size_t size) {
+  inline size_t writeSize(size_t position, const T& value, size_t size) {
     ensure(position + size);
 
     // a couple of options to copy the scalar type object into this memory address
@@ -266,8 +295,6 @@ private:
   }
 
 private:
-  size_t slices_;
-
   // recording total number of extension
   size_t numExtended_;
 };
@@ -336,6 +363,8 @@ struct CompressionBlock {
   std::unique_ptr<OneSlice> data;
 };
 
+// TODO(cao) - not thread-safe unless introducing thread-local state management
+// Or introduce special read interface to allow caller manager reading block state
 class PagedSlice : public Slice {
   static constexpr auto EMPTY_STRING = "";
 
@@ -382,11 +411,6 @@ public:
     });
   }
 
-  // capacity
-  inline size_t capacity() const {
-    return size();
-  }
-
   // read a scalar type
   template <typename T>
   typename std::enable_if<std::is_scalar<T>::value, T>::type read(size_t position) const {
@@ -431,6 +455,7 @@ private:
   // we should keep number of blocks as small as possible, ideal size <32
   std::vector<CompressionBlock> blocks_;
 
+  // TODO(cao) - not thread-safe as every thread can modify it
   // indicating a current block index in blocks_
   size_t bid_;
 

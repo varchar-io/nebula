@@ -40,8 +40,6 @@ class DictEncoder {
   // all items share the same hash value
   using HashItems = std::unordered_multimap<size_t, IndexType>;
 
-  using Range = nebula::common::CRange;
-
   // 6K page size per each dictinoary
   static constexpr auto INDICE_PAGE = 2048;
   static constexpr auto DICT_PAGE = 4096;
@@ -95,17 +93,17 @@ public:
     // release the assitant data structure
     hashItems_ = nullptr;
 
-    offsets_.seal();
-    dict_.seal();
+    offsets_.seal((items_ + 1) * IndexWidth);
+    dict_.seal(size_);
   }
 
 private:
   std::unique_ptr<HashItems> hashItems_;
 
   // every value has offset and length of the dict item
-  nebula::common::PagedSlice offsets_;
+  nebula::common::ExtendableSlice offsets_;
   // store all dictionary items in order
-  nebula::common::PagedSlice dict_;
+  nebula::common::ExtendableSlice dict_;
   // current size of the dictinaary slice
   int32_t items_;
   int32_t size_;
