@@ -81,10 +81,10 @@ TEST(MetaTest, TestClusterConfigLoad) {
   const auto& tables = clusterInfo.tables();
   nebula::meta::TableSpecPtr test = nullptr;
   nebula::meta::TableSpecPtr ephemeral = nullptr;
-  EXPECT_EQ(tables.size(), 2);
+  EXPECT_EQ(tables.size(), 3);
   for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
     LOG(INFO) << "TABLE: " << (*itr)->toString();
-    if ((*itr)->name == "nebula.ephemeral") {
+    if ((*itr)->name == "nebula.daily") {
       ephemeral = (*itr);
     }
     if ((*itr)->name == "nebula.test") {

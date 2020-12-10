@@ -474,6 +474,10 @@ TEST(CommonTest, TestNamedFormat) {
     auto str = fmt::format("Hello, {name}!", fmt::arg("notfit", "World"), fmt::arg("name", "Nebula"));
     EXPECT_EQ(str, "Hello, Nebula!");
   }
+  {
+    auto str = fmt::format("{{{0}}}", "NEBULA");
+    EXPECT_EQ(str, "{NEBULA}");
+  }
 }
 
 TEST(CommonTest, TestMultiFold) {

@@ -45,3 +45,6 @@ src/service/gen/*
 
 # all exclude all node_modules
 node_modules
+
+# clion ide
+cmake-build-debug

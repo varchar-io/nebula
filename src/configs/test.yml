@@ -40,7 +40,7 @@ tables:
       # get it from linux by "date +%s"
       value: 1565994194
 
-  nebula.ephemeral:
+  nebula.daily:
     # size and time may not be respected - ephemeral
     max-mb: 10000
     max-hr: 1
@@ -49,7 +49,7 @@ tables:
     loader: Api
     # parameterized data source for on-demand loading, all parameters are formed by {}
     # this example template has these parameters {date}, {ds}, {ct}, {pf}, {et}, {bucket}
-    source: s3://nebula/ephemeral/dt=%7Bdate%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-{%7Bbucket%7D}-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet
+    source: s3://nebula/ephemeral/dt=%7Bdate%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet
     # this is a bucket table, so it will have a bucket macro to be fullfiled
     # this table bucketed by partner_id into 10K buckets
     bucket:
@@ -66,54 +66,29 @@ tables:
       type: macro
       pattern: date
 
-  k.cdn_requests:
-    max-mb: 200000
-    max-hr: 0.1
-    # pick a broker from here cat /var/serverset/discovery.m10nkafka03.prod
-    schema: "ROW<timestamp:bigint, clientCountry:string, clientRegion:string, clientCity:string, clientIP:string, c2eIsTLS:bool, c2eTLSVersion:string, edgeProvider:string, edgeLocation:string, edgeName:string, edgeIP:string, edgeUsec:bigint, e2oDNSUsec:long, e2oRTTUsec:long, e2oIsTLS:bool, e2oHTTPReqLength:long, o2eHTTPRespLength:long, o2eHTTPRespStatus:short, e2cHTTPTTFBUsec:long, e2cHTTPRespLength:long>"
-    data: kafka
-    topic: cdn_requests
-    loader: realtime
-    source: metricskafka08101.ec2.pin220.com:9092,metricskafka08102.ec2.pin220.com:9092,metricskafka08103.ec2.pin220.com:9092
-    backup: s3://nebula/n118/
-    format: thrift
-    serde:
-      protocol: binary
-      cmap:
-        timestamp: 1
-        clientCountry: 2
-        clientRegion: 5
-        clientCity: 6
-        clientIP: 8
-        c2eIsTLS: 19
-        c2eTLSVersion: 20
-        edgeProvider: 9
-        edgeLocation: 10
-        edgeName: 11
-        edgeIP: 67
-        edgeUsec: 32
-        e2oDNSUsec: 35
-        e2oRTTUsec: 36
-        e2oIsTLS: 39
-        e2oHTTPReqLength: 45
-        o2eHTTPRespLength: 46
-        o2eHTTPRespStatus: 47
-        e2cHTTPTTFBUsec: 65
-        e2cHTTPRespLength: 54
+  nebula.hourly:
+    # size and time may not be respected - ephemeral
+    max-mb: 10000
+    max-hr: 1
+    schema: "ROW<actor_id:string, pin_id:bigint, partner_id:bigint, ct:bigint, app:string, domain:string, url:string, image_signature:string, root_pin_id:bigint, is_video:boolean, board_id:bigint, publish_type:int, create_date_ts:bigint, country:string, metro:int, gender:tinyint, age:smallint, custom_tag:int>"
+    data: s3
+    loader: Api
+    # parameterized data source for on-demand loading, all parameters are formed by {}
+    # this example template has these parameters {date}, {ds}, {ct}, {pf}, {et}, {bucket}
+    source: s3://nebula/ephemeral/dt=%7Bdate%7D/hr=%7Bhour%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet
+    # this is a bucket table, so it will have a bucket macro to be fullfiled
+    # this table bucketed by partner_id into 10K buckets
+    bucket:
+      size: 10000
+      column: partner_id
+    backup: s3://nebula/n200/
+    format: parquet
     columns:
-      clientCountry:
+      app:
         dict: true
-      clientRegion:
-        dict: true
-      clientCity:
-        dict: true
-      c2eTLSVersion:
-        dict: true
-      edgeProvider:
+      country:
         dict: true
     time:
-      type: column
-      column: timestamp
-      pattern: UNIXTIME
-    settings:
-      batch: 200000
+      type: macro
+      # support granularity between DATE to DATE HOUR MINUTE SECOND
+      pattern: date hour

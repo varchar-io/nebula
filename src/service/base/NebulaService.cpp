@@ -429,7 +429,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
                                mb.CreateString(spec->domain()),
                                spec->size(),
                                (int8_t)spec->state(),
-                               spec->macroDate());
+                               spec->watermark());
 
     // create task spec
     auto ts = CreateTaskSpec(mb, type, sync, it);

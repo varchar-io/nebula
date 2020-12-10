@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+#include <common/Evidence.h>
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <storage/NFS.h>
 
 #include "ingest/IngestSpec.h"
 #include "ingest/SpecRepo.h"
@@ -69,6 +71,60 @@ TEST(IngestTest, TestSpecGeneration) {
     LOG(INFO) << fmt::format("ID={0}, Spec={1}", itr->first, itr->second->toString());
   }
 #endif
+}
+
+TEST(IngestTest, TestTableSpec) {
+  nebula::ingest::SpecRepo sr;
+
+  // load cluster info from sample config
+  auto& ci = nebula::meta::ClusterInfo::singleton();
+  ci.load("configs/test.yml", [](const nebula::meta::MetaConf&) {
+    return std::make_unique<nebula::meta::VoidDb>();
+  });
+
+  sr.refresh(ci);
+
+  // test macro parser
+  const auto& specs = ci.tables();
+  for (auto spec : specs) {
+    const auto type = spec->timeSpec.type;
+    const auto name = spec->name;
+    if (type == meta::TimeType::MACRO && name == "nebula.hourly") {
+      meta::PatternMacro marco = meta::extractPatternMacro(spec->timeSpec.pattern);
+      EXPECT_EQ(spec->timeSpec.pattern, "date hour");
+      EXPECT_EQ(marco, meta::PatternMacro::HOUR);
+
+      const auto sourceInfo = nebula::storage::parse(spec->location);
+      auto macroStr = meta::patternYMLStr.at(marco);
+
+      int pos = sourceInfo.path.find(macroStr);
+      std::string pathTemplate = sourceInfo.path;
+      pathTemplate.replace(pos, macroStr.size(), "2020-01-01");
+      EXPECT_EQ(pathTemplate.substr(pos, strlen("2020-01-01")), "2020-01-01");
+      const auto now = common::Evidence::now();
+
+      // scan an hour ago
+      long cutOffTime = now - nebula::meta::unitInSeconds.at(nebula::meta::PatternMacro::HOUR);
+      auto ingestSpec = std::vector<std::shared_ptr<IngestSpec>>();
+
+      sr.genPatternSpec(1, meta::PatternMacro::DATE, meta::PatternMacro::HOUR, now,
+                        sourceInfo.path, cutOffTime, "1.0", spec, ingestSpec);
+    } else if (type == meta::TimeType::MACRO && name == "nebula.daily") {
+      meta::PatternMacro marco = meta::extractPatternMacro(spec->timeSpec.pattern);
+      EXPECT_EQ(spec->timeSpec.pattern, "date");
+      EXPECT_EQ(marco, meta::PatternMacro::DATE);
+
+      const auto sourceInfo = nebula::storage::parse(spec->location);
+      auto macroStr = meta::patternYMLStr.at(marco);
+      const auto now = common::Evidence::now();
+      // scan an hour ago
+      long cutOffTime = now - nebula::meta::unitInSeconds.at(nebula::meta::PatternMacro::HOUR);
+      auto ingestSpec = std::vector<std::shared_ptr<IngestSpec>>();
+      // TODO (chenqin): mock s3 filesystem list
+      sr.genPatternSpec(1, meta::PatternMacro::DATE, meta::PatternMacro::DATE, now,
+                        sourceInfo.path, cutOffTime, "1.0", spec, ingestSpec);
+    }
+  }
 }
 } // namespace test
 } // namespace ingest
