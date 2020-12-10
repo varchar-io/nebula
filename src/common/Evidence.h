@@ -202,6 +202,17 @@ public: /** only static methods */
     return format(time, "%m-%d-%Y", gmt);
   }
 
+  inline static std::string fmt_hour(const std::time_t& time, bool gmt = true) {
+    return format(time, "%H", gmt);
+  }
+
+  inline static std::string fmt_minute(const std::time_t& time, bool gmt = true) {
+    return format(time, "%M", gmt);
+  }
+  
+  inline static std::string fmt_second(const std::time_t& time, bool gmt = true) {
+    return format(time, "%S", gmt);
+  }
   // rand in a range [min, max] inclusively
   template <typename T = int>
   inline static auto rand(size_t min, size_t max, size_t seed = unix_timestamp())

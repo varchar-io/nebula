@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <meta/TableSpec.h>
 #include "IngestSpec.h"
 #include "common/Hash.h"
 #include "meta/ClusterInfo.h"
@@ -60,12 +61,27 @@ public:
   // assign the spec for given node
   bool confirm(const std::string& spec, const nebula::meta::NNode& node) noexcept;
 
+  // parse pattern string and generate ingest spec
+  void genPatternSpec(long start,
+                      nebula::meta::PatternMacro curr,
+                      nebula::meta::PatternMacro dest,
+                      std::time_t now,
+                      const std::string& pathTemplate,
+                      std::time_t cutOffTime,
+                      const std::string& version,
+                      const meta::TableSpecPtr& table,
+                      std::vector<std::shared_ptr<IngestSpec>>& specs);
+
 private:
   // process a table spec and generate all specs into the given specs container
   void process(const std::string&, const nebula::meta::TableSpecPtr&, std::vector<SpecPtr>&) noexcept;
 
   // update the snapshot of new spec list into spec repo
   void update(const std::vector<SpecPtr>&) noexcept;
+
+  void genSpecs4Roll(const std::string& version,
+                     const meta::TableSpecPtr& table,
+                     std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept;
 
 private:
   nebula::common::unordered_map<std::string, SpecPtr> specs_;

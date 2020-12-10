@@ -54,6 +54,34 @@ using nebula::meta::TableSpecPtr;
 using nebula::service::base::GoogleSheet;
 using nebula::service::base::LoadSpec;
 
+size_t LoadHandler::extractWatermark(const common::unordered_map<std::string_view, std::string_view>& p) {
+  const auto datePattern = meta::patternYMLStr.at(meta::PatternMacro::DATE);
+  const auto hourPattern = meta::patternYMLStr.at(meta::PatternMacro::HOUR);
+  const auto minutePattern = meta::patternYMLStr.at(meta::PatternMacro::MINUTE);
+  const auto secondPattern = meta::patternYMLStr.at(meta::PatternMacro::SECOND);
+
+  const auto dd = p.find(datePattern);
+  const auto dh = p.find(hourPattern);
+  const auto dm = p.find(minutePattern);
+  const auto ds = p.find(secondPattern);
+
+  auto watermark = 0;
+  if (dd != p.end()) {
+    watermark = Evidence::time(p.at(datePattern), "%Y-%m-%d");
+  }
+  if (dh != p.end()) {
+    watermark += std::stol(std::string(p.at(hourPattern)), nullptr, 10) * meta::HOUR_SECONDS;
+  }
+  if (dm != p.end()) {
+    watermark += std::stol(std::string(p.at(minutePattern)), nullptr, 10) * meta::MINUTE_SECONDS;
+  }
+  if (ds != p.end()) {
+    watermark += std::stol(std::string(p.at(secondPattern)), nullptr, 10);
+  }
+
+  return watermark;
+}
+
 LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, std::string& name) {
   // get request content
   const auto& table = req->table();
@@ -115,25 +143,18 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
   // convert this into a param list
   N_ENSURE(cd.IsObject(), "expect params-json as an object.");
   ParamList params(cd);
-
-  // reserved macro "date" is used to recognize current date value for any placeholder.
-  static constexpr auto DATE = "date";
+  auto p = params.next();
   static constexpr auto BUCKET = "bucket";
 
   auto sourceInfo = nebula::storage::parse(tmp->location);
   // for every single combination, we will use it to format template source to get a new spec source
   LoadResult specs;
-  auto p = params.next();
   auto& nodeSet = ci.nodes();
   std::vector<NNode> nodes(nodeSet.begin(), nodeSet.end());
   size_t assignId = 0;
   while (p.size() > 0) {
     // get date info if provided by parameters
-    auto d = p.find(DATE);
-    auto dateMs = 0;
-    if (d != p.end()) {
-      dateMs = Evidence::time(p.at(DATE), "%Y-%m-%d");
-    }
+    auto watermark = extractWatermark(p);
 
     // if bucket is required, bucket column value must be provided
     // but if bucket parameter is provided directly, we don't need to compute
@@ -153,7 +174,7 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
     auto path = nebula::common::format(sourceInfo.path, p);
     LOG(INFO) << "Generate a spec path: " << path;
     // build ingestion spec from this location
-    auto spec = std::make_shared<IngestSpec>(tbSpec, "0", path, sourceInfo.host, 0, SpecState::NEW, dateMs);
+    auto spec = std::make_shared<IngestSpec>(tbSpec, "0", path, sourceInfo.host, 0, SpecState::NEW, watermark);
 
     // round robin assign the spec to each node
     spec->setAffinity(nodes.at(assignId));

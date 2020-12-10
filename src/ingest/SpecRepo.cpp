@@ -49,9 +49,6 @@ using nebula::storage::FileInfo;
 using nebula::storage::kafka::KafkaSegment;
 using nebula::storage::kafka::KafkaTopic;
 
-constexpr auto HOUR_SECONDS = 3600;
-constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
-
 // specified batch size in table config - not kafka specific
 constexpr auto S_BATCH = "batch";
 // specified kafka partition /offset to consume - kafka specific
@@ -77,7 +74,7 @@ void SpecRepo::refresh(const ClusterInfo& ci) noexcept {
   update(specs);
 }
 
-std::string buildIndentityByTime(const TimeSpec& time) {
+std::string buildIdentityByTime(const TimeSpec& time) {
   switch (time.type) {
   case TimeType::STATIC: {
     // the static time stamp value is its identity
@@ -95,7 +92,7 @@ void genSpecPerFile(const TableSpecPtr& table,
                     const std::string& version,
                     const std::vector<FileInfo>& files,
                     std::vector<std::shared_ptr<IngestSpec>>& specs,
-                    size_t macroDate) noexcept {
+                    size_t watermark) noexcept {
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
     if (!itr->isDir) {
       // we do not generate empty files
@@ -107,7 +104,7 @@ void genSpecPerFile(const TableSpecPtr& table,
       // generate a ingest spec from given file info
       // use name as its identifier
       auto spec = std::make_shared<IngestSpec>(
-        table, version, itr->name, itr->domain, itr->size, SpecState::NEW, macroDate);
+        table, version, itr->name, itr->domain, itr->size, SpecState::NEW, watermark);
 
       // push to the repo
       specs.push_back(spec);
@@ -138,32 +135,98 @@ void genSpecs4Swap(const std::string& version,
   LOG(WARNING) << "only s3 supported for now";
 }
 
-void genSpecs4Roll(const std::string& version,
-                   const TableSpecPtr& table,
-                   std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
-  if (dsu::isFileSystem(table->source)) {
+// iterative replace pathTemplate with current level of pattern macro
+void SpecRepo::genPatternSpec(long start,
+                              nebula::meta::PatternMacro curr,
+                              nebula::meta::PatternMacro dest,
+                              std::time_t now,
+                              const std::string& pathTemplate,
+                              std::time_t cutOffTime,
+                              const std::string& version,
+                              const TableSpecPtr& table,
+                              std::vector<std::shared_ptr<IngestSpec>>& specs) {
+
+  const auto curUnitInSeconds = nebula::meta::unitInSeconds.at(curr);
+  const auto curPatternStr = nebula::meta::patternYMLStr.at(curr);
+  const auto childMarco = nebula::meta::childPattern.at(curr);
+  const auto startChildPatternIndex = nebula::meta::childSize.at(childMarco) - 1;
+  const auto sourceInfo = nebula::storage::parse(table->location);
+
+  auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
+
+  for (long i = start; i >= 0; i--) {
+    auto str = pathTemplate;
+    const auto watermark = now - i * curUnitInSeconds;
+    const auto patternWithBracket = std::string("{") + curPatternStr + std::string("}");
+    const auto pos = pathTemplate.find(patternWithBracket);
+
+    // check declared macro used
+    CHECK(pos != std::string::npos);
+
+    std::string timeFormat;
+    switch (curr) {
+    case nebula::meta::PatternMacro::DATE:
+      timeFormat = Evidence::fmt_ymd_dash(watermark);
+      break;
+    case nebula::meta::PatternMacro::HOUR:
+      timeFormat = Evidence::fmt_hour(watermark);
+      break;
+    case nebula::meta::PatternMacro::MINUTE:
+      timeFormat = Evidence::fmt_minute(watermark);
+      break;
+    case nebula::meta::PatternMacro::SECOND:
+      timeFormat = Evidence::fmt_second(watermark);
+      break;
+    default:
+      LOG(ERROR) << "timestamp or invalid format not handled";
+    }
+
+    const auto path = str.replace(pos, patternWithBracket.size(), timeFormat);
+
+    // watermark is mono incremental when curr == dest, always smaller or equal when scan child marco
+    if (watermark < cutOffTime) continue;
+
+    if (curr == dest) {
+      genSpecPerFile(table, version, fs->list(path), specs, watermark);
+    } else {
+      genPatternSpec(startChildPatternIndex, childMarco, dest, watermark, path, cutOffTime, version, table, specs);
+    }
+  }
+}
+
+void SpecRepo::genSpecs4Roll(const std::string& version,
+                             const TableSpecPtr& table,
+                             std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
+  if (table->source == DataSource::S3) {
     // parse location to get protocol, domain/bucket, path
     auto sourceInfo = nebula::storage::parse(table->location);
 
     // making a s3 fs with given host
     auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host);
 
+    // exact macro pattern type
+    auto pt = nebula::meta::extractPatternMacro(table->timeSpec.pattern);
+
     // list all objects/files from given path
     // A roll spec will cover X days given table location of source data
     const auto now = Evidence::now();
-    const auto max_days = table->max_hr / 24;
-    for (size_t i = 0; i <= max_days; ++i) {
-      // we only provide single macro for now
-      auto timeValue = now - i * DAY_SECONDS;
-      auto path = fmt::format(
-        sourceInfo.path, fmt::arg("date", Evidence::fmt_ymd_dash(timeValue)));
-      auto files = fs->list(path);
-      genSpecPerFile(table, version, files, specs, timeValue);
-    }
+    const auto maxDays = table->max_hr / 24 + 1;
 
+    // earliest time in second to process in ascending order
+    long cutOffTime = now - table->max_hr * nebula::meta::unitInSeconds.at(nebula::meta::PatternMacro::HOUR);
+
+    // TODO(chenqin): don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet.
+    genPatternSpec(maxDays,
+                   nebula::meta::PatternMacro::DATE,
+                   pt,
+                   now,
+                   sourceInfo.path,
+                   cutOffTime,
+                   version,
+                   table,
+                   specs);
     return;
   }
-
   LOG(WARNING) << "only s3 supported for now";
 }
 
@@ -205,7 +268,7 @@ void genKafkaSpec(const std::string& version,
   }
 
   // set start time
-  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * HOUR_SECONDS);
+  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * nebula::meta::HOUR_SECONDS);
   auto segments = topic.segmentsByTimestamp(startMs, batch);
   convert(segments);
 }
@@ -218,7 +281,7 @@ void SpecRepo::process(
   if (table->loader == "NebulaTest") {
     // single spec for nebula test loader
     specs.push_back(std::make_shared<IngestSpec>(
-      table, version, buildIndentityByTime(table->timeSpec), table->name, 0, SpecState::NEW, 0));
+      table, version, buildIdentityByTime(table->timeSpec), table->name, 0, SpecState::NEW, 0));
     return;
   }
 

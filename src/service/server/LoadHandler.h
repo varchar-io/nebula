@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "ingest/IngestSpec.h"
+#include "common/Params.h"
 #include "nebula.pb.h"
 
 /**
@@ -46,6 +47,9 @@ public:
 
   // load a google sheet spec
   LoadResult loadDemand(const LoadRequest*, LoadError&, std::string&);
+
+  // extract watermark from json setting
+  size_t extractWatermark(const common::unordered_map<std::string_view, std::string_view>& p);
 };
 
 } // namespace server

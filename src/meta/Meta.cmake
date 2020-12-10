@@ -2,7 +2,7 @@ set(NEBULA_META NMeta)
 
 # build nebula.api library
 # target_include_directories(${NEBULA_META} INTERFACE src/meta)
-add_library(${NEBULA_META} STATIC 
+add_library(${NEBULA_META} STATIC
     ${NEBULA_SRC}/meta/ClusterInfo.cpp
     ${NEBULA_SRC}/meta/NodeManager.cpp
     ${NEBULA_SRC}/meta/Table.cpp
@@ -34,12 +34,13 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 # build test binary
 add_executable(MetaTests
     ${NEBULA_SRC}/meta/test/TestMeta.cpp
-    ${NEBULA_SRC}/meta/test/TestPartition.cpp)
+    ${NEBULA_SRC}/meta/test/TestPartition.cpp
+    ${NEBULA_SRC}/meta/test/TestTableSpec.cpp)
 
-target_link_libraries(MetaTests 
+target_link_libraries(MetaTests
     PRIVATE ${NEBULA_META}
-    PRIVATE ${GTEST_LIBRARY} 
-    PRIVATE ${GTEST_MAIN_LIBRARY} 
+    PRIVATE ${GTEST_LIBRARY}
+    PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${FOLLY_LIBRARY})
