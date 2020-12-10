@@ -157,27 +157,31 @@ void SpecRepo::genPatternSpec(long start,
   for (long i = start; i >= 0; i--) {
     auto str = pathTemplate;
     const auto watermark = now - i * curUnitInSeconds;
-    const auto pos = pathTemplate.find(curPatternStr);
+    const auto patternWithBracket = std::string("{") + curPatternStr + std::string("}");
+    const auto pos = pathTemplate.find(patternWithBracket);
+
+    // check declared macro used
+    CHECK(pos != std::string::npos);
 
     std::string timeFormat;
     switch (curr) {
-      case nebula::meta::PatternMacro::DATE:
-        timeFormat = Evidence::fmt_ymd_dash(watermark);
-        break;
-      case nebula::meta::PatternMacro::HOUR:
-        timeFormat = Evidence::fmt_hour(watermark);
-        break;
-      case nebula::meta::PatternMacro::MINUTE:
-        timeFormat = Evidence::fmt_minute(watermark);
-        break;
-      case nebula::meta::PatternMacro::SECOND:
-        timeFormat = Evidence::fmt_second(watermark);
-        break;
-      default:
-        LOG(ERROR) << "timestamp or invalid format not handled";
+    case nebula::meta::PatternMacro::DATE:
+      timeFormat = Evidence::fmt_ymd_dash(watermark);
+      break;
+    case nebula::meta::PatternMacro::HOUR:
+      timeFormat = Evidence::fmt_hour(watermark);
+      break;
+    case nebula::meta::PatternMacro::MINUTE:
+      timeFormat = Evidence::fmt_minute(watermark);
+      break;
+    case nebula::meta::PatternMacro::SECOND:
+      timeFormat = Evidence::fmt_second(watermark);
+      break;
+    default:
+      LOG(ERROR) << "timestamp or invalid format not handled";
     }
 
-    const auto path = str.replace(pos, curPatternStr.size(), timeFormat);
+    const auto path = str.replace(pos, patternWithBracket.size(), timeFormat);
 
     // watermark is mono incremental when curr == dest, always smaller or equal when scan child marco
     if (watermark < cutOffTime) continue;
