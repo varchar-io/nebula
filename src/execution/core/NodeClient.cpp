@@ -28,11 +28,11 @@ using nebula::common::Cursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 
-folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
+folly::Future<RowCursorPtr> NodeClient::execute(const PlanPtr plan) {
   auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
 
   // start to full fill the future
-  pool_.add([&plan, &pool = pool_, p]() {
+  pool_.add([plan, &pool = pool_, p]() {
     NodeExecutor nodeExec(BlockManager::init(), true);
     p->setValue(nodeExec.execute(pool, plan));
   });

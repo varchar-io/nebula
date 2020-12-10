@@ -27,7 +27,8 @@ namespace node {
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::execution::BlockManager;
-using nebula::execution::ExecutionPlan;
+using nebula::execution::PhaseType;
+using nebula::execution::PlanPtr;
 using nebula::execution::TableStates;
 using nebula::execution::io::BatchBlock;
 using nebula::meta::BlockSignature;
@@ -85,25 +86,25 @@ void NodeClient::echos(const std::string& name, size_t count) {
   }
 }
 
-folly::Future<RowCursorPtr> NodeClient::execute(const ExecutionPlan& plan) {
+folly::Future<RowCursorPtr> NodeClient::execute(const PlanPtr plan) {
   auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
   auto addr = node_.toString();
 
   // pass values since we reutrn the whole lambda - don't reference temporary things
   // such as local stack allocated variables, including "this" the client itself.
-  pool_.add([p, addr, q = query_, &plan]() {
+  pool_.add([p, addr, q = query_, plan]() {
     // a response message placeholder
     flatbuffers::grpc::Message<BatchRows> qr;
 
-    const Fields& f = plan.fetch<nebula::execution::PhaseType::PARTIAL>().fields();
-    auto qp = QuerySerde::serialize(*q, plan.id(), plan.getWindow());
+    const Fields& f = plan->fetch<PhaseType::PARTIAL>().fields();
+    auto qp = QuerySerde::serialize(*q, plan->id(), plan->getWindow());
     grpc::ClientContext context;
     auto channel = ConnectionPool::init()->connection(addr);
     N_ENSURE(channel != nullptr, "requires a valid channel");
     auto stub = nebula::service::NodeServer::NewStub(channel);
     auto status = stub->Query(&context, qp, &qr);
     if (status.ok()) {
-      auto& stats = plan.ctx().stats();
+      auto& stats = plan->ctx().stats();
       auto fb = BatchSerde::deserialize(&qr, f, stats);
       stats.rowsRet += fb->size();
       VLOG(1) << "Received batch as number of rows: " << fb->size();

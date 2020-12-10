@@ -38,7 +38,7 @@ public:
     : blockManager_{ blockManager }, local_{ local } {}
 
 public:
-  nebula::surface::RowCursorPtr execute(folly::ThreadPoolExecutor&, const ExecutionPlan&);
+  nebula::surface::RowCursorPtr execute(folly::ThreadPoolExecutor&, const PlanPtr);
 
 private:
   const std::shared_ptr<BlockManager> blockManager_;

@@ -22,7 +22,6 @@
 #include "Query.h"
 #include "common/Cursor.h"
 #include "common/Zip.h"
-#include "execution/ExecutionPlan.h"
 #include "execution/meta/TableService.h"
 #include "meta/Table.h"
 #include "surface/DataSurface.h"

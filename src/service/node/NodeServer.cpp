@@ -122,12 +122,12 @@ grpc::Status NodeServerImpl::Query(
 
     // execute this plan and get results
     NodeExecutor executor(BlockManager::init());
-    auto cursor = executor.execute(threadPool_, *plan);
+    auto cursor = executor.execute(threadPool_, plan);
     const auto& phase = plan->fetch<PhaseType::PARTIAL>();
     const auto& buffer = nebula::execution::serde::asBuffer(*cursor, phase.outputSchema(), phase.fields());
 
     // serialize row cursor back
-    *batch = BatchSerde::serialize(*buffer, *plan);
+    *batch = BatchSerde::serialize(*buffer, plan);
   } catch (const std::exception& exp) {
     return grpc::Status(grpc::StatusCode::INTERNAL, exp.what());
   }

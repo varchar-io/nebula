@@ -31,6 +31,7 @@ using nebula::execution::Error;
 using nebula::execution::ExecutionPlan;
 using nebula::execution::FinalPhase;
 using nebula::execution::NodePhase;
+using nebula::execution::PlanPtr;
 using nebula::execution::QueryContext;
 using nebula::meta::AccessType;
 using nebula::meta::ActionType;
@@ -72,7 +73,7 @@ std::vector<std::shared_ptr<Expression>> Query::preprocess(
 }
 
 // execute current query to get result list
-std::unique_ptr<ExecutionPlan> Query::compile(std::unique_ptr<QueryContext> qc) {
+PlanPtr Query::compile(std::unique_ptr<QueryContext> qc) {
   // compile the query into an execution plan
   // a valid query (single data source query - no join support at the moment) should be
   // 1. aggregation query, should have more than 1 UDAF in selects
@@ -86,7 +87,7 @@ std::unique_ptr<ExecutionPlan> Query::compile(std::unique_ptr<QueryContext> qc) 
   // hence we are extending type method to return mutltiple types for forming schemas for different compute phases
 #define END_ERROR(ERR) \
   qc->setError(ERR);   \
-  return std::make_unique<ExecutionPlan>(std::move(qc), nullptr, std::vector<NNode>{}, nullptr);
+  return std::make_shared<ExecutionPlan>(std::move(qc), nullptr, std::vector<NNode>{}, nullptr);
 
   // table level access check
   if (!qc->isAuth() && qc->requireAuth()) {
@@ -353,7 +354,7 @@ std::unique_ptr<ExecutionPlan> Query::compile(std::unique_ptr<QueryContext> qc) 
   LOG(INFO) << "Nodes to execute the query: " << nodeList.size();
 
   // make an execution plan from a few phases
-  return std::make_unique<ExecutionPlan>(
+  return std::make_shared<ExecutionPlan>(
     std::move(qc),
     std::move(server),
     std::move(nodeList),

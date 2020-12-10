@@ -42,7 +42,7 @@ public:
     const QueryRequest&,
     nebula::service::base::ErrorCode& err) const noexcept;
 
-  std::unique_ptr<nebula::execution::ExecutionPlan> compile(
+  nebula::execution::PlanPtr compile(
     const std::shared_ptr<nebula::api::dsl::Query>,
     const nebula::execution::QueryWindow&,
     std::unique_ptr<nebula::execution::QueryContext>,
@@ -50,7 +50,7 @@ public:
 
   nebula::surface::RowCursorPtr query(
     folly::ThreadPoolExecutor&,
-    const nebula::execution::ExecutionPlan&,
+    const nebula::execution::PlanPtr,
     const std::shared_ptr<nebula::execution::core::NodeConnector> connector,
     nebula::service::base::ErrorCode&) const noexcept;
 

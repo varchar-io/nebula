@@ -139,9 +139,12 @@ public:
  */
 class QuerySerde {
 public:
-  static flatbuffers::grpc::Message<QueryPlan> serialize(const nebula::api::dsl::Query&, const std::string&, const nebula::execution::QueryWindow&);
-  static nebula::api::dsl::Query deserialize(const std::shared_ptr<nebula::meta::MetaService>, const flatbuffers::grpc::Message<QueryPlan>*);
-  static std::unique_ptr<nebula::execution::ExecutionPlan> from(nebula::api::dsl::Query&, size_t, size_t);
+  static flatbuffers::grpc::Message<QueryPlan> serialize(const nebula::api::dsl::Query&,
+                                                         const std::string&,
+                                                         const nebula::execution::QueryWindow&);
+  static nebula::api::dsl::Query deserialize(const std::shared_ptr<nebula::meta::MetaService>,
+                                             const flatbuffers::grpc::Message<QueryPlan>*);
+  static nebula::execution::PlanPtr from(nebula::api::dsl::Query&, size_t, size_t);
 };
 
 /**
@@ -149,11 +152,11 @@ public:
  */
 class BatchSerde {
 public:
-  static flatbuffers::grpc::Message<BatchRows> serialize(const nebula::memory::keyed::FlatBuffer&, const nebula::execution::ExecutionPlan&);
-  static nebula::surface::RowCursorPtr deserialize(
-    const flatbuffers::grpc::Message<BatchRows>*,
-    const nebula::surface::eval::Fields&,
-    nebula::execution::QueryStats&);
+  static flatbuffers::grpc::Message<BatchRows> serialize(const nebula::memory::keyed::FlatBuffer&,
+                                                         const nebula::execution::PlanPtr);
+  static nebula::surface::RowCursorPtr deserialize(const flatbuffers::grpc::Message<BatchRows>*,
+                                                   const nebula::surface::eval::Fields&,
+                                                   nebula::execution::QueryStats&);
 };
 
 /**

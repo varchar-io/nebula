@@ -57,7 +57,7 @@ using nebula::api::dsl::table;
 using nebula::common::Zip;
 using nebula::common::ZipFormat;
 using nebula::execution::Error;
-using nebula::execution::ExecutionPlan;
+using nebula::execution::PlanPtr;
 using nebula::execution::QueryContext;
 using nebula::execution::QueryWindow;
 using nebula::execution::core::NodeConnector;
@@ -75,7 +75,7 @@ using nebula::type::Schema;
 using nebula::type::TypeNode;
 using nebula::type::TypeTraits;
 
-std::unique_ptr<ExecutionPlan> QueryHandler::compile(
+PlanPtr QueryHandler::compile(
   const std::shared_ptr<Query> query,
   const QueryWindow& window,
   std::unique_ptr<QueryContext> context,
@@ -88,7 +88,7 @@ std::unique_ptr<ExecutionPlan> QueryHandler::compile(
   }
 
   // 2. build query out of the request
-  std::unique_ptr<ExecutionPlan> plan = nullptr;
+  PlanPtr plan = nullptr;
   auto error = Error::NONE;
 
   // even though compile is marked as "noexcept", there are still possible failure
@@ -130,7 +130,7 @@ std::unique_ptr<ExecutionPlan> QueryHandler::compile(
 
 RowCursorPtr QueryHandler::query(
   folly::ThreadPoolExecutor& pool,
-  const ExecutionPlan& plan,
+  const PlanPtr plan,
   const std::shared_ptr<NodeConnector> connector,
   ErrorCode& err) const noexcept {
   // execute the query plan

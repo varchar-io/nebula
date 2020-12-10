@@ -58,7 +58,7 @@ public:
   void echos(const std::string&, size_t);
 
   // execute a plan on remote node
-  virtual folly::Future<nebula::surface::RowCursorPtr> execute(const nebula::execution::ExecutionPlan& plan) override;
+  virtual folly::Future<nebula::surface::RowCursorPtr> execute(const nebula::execution::PlanPtr plan) override;
 
   // pull node state
   virtual void update() override;

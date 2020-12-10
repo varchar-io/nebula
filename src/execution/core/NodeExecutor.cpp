@@ -73,8 +73,8 @@ folly::Future<RowCursorPtr> dist(
  * This will fanout to multiple blocks in a executor pool before return.
  * So the interfaces will be changed as async interfaces using future and promise.
  */
-RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const ExecutionPlan& plan) {
-  const BlockPhase& blockPhase = plan.fetch<PhaseType::COMPUTE>();
+RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const PlanPtr plan) {
+  const BlockPhase& blockPhase = plan->fetch<PhaseType::COMPUTE>();
   // query total number of blocks to  executor on and
   // launch block executor on each in parallel
   // TODO(cao): this table service instance potentially can be carried by a query context on each node
@@ -83,7 +83,7 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
 
   LOG(INFO) << "Processing total blocks: " << blocks.size();
   std::vector<folly::Future<RowCursorPtr>> results;
-  auto& stats = plan.ctx().stats();
+  auto& stats = plan->ctx().stats();
   results.reserve(blocks.size());
   std::transform(blocks.begin(), blocks.end(), std::back_inserter(results),
                  [&blockPhase, &pool, &stats](const auto& block) {
@@ -104,7 +104,7 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const Execut
   // depends on the query plan, if there is no aggregation
   // the results set from different block exeuction can be simply composite together
   // but the query needs to aggregate on keys, then we have to merge the results based on partial aggregatin plan
-  const NodePhase& phase = plan.fetch<PhaseType::PARTIAL>();
+  const NodePhase& phase = plan->fetch<PhaseType::PARTIAL>();
   auto merged = merge(pool, phase.outputSchema(), phase.fields(), phase.hasAggregation(), x);
 
   // if scale is 0 or this query has no limit on it

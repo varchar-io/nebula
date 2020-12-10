@@ -121,6 +121,10 @@ private:
   QueryWindow window_;
 };
 
+// execution plan will be shared across multi-threads.
+// keep it simple and read-only
+using PlanPtr = std::shared_ptr<ExecutionPlan>;
+
 // base execution phase definition - templated lambda - looking for C++ 20?
 static constexpr auto indent4 = "    ";
 static constexpr auto bliteral = [](bool lv) { return lv ? "YES" : "NO"; };

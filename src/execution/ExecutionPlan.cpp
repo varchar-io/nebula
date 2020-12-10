@@ -15,8 +15,10 @@
  */
 
 #include "ExecutionPlan.h"
+
 #include <fmt/format.h>
 #include <glog/logging.h>
+
 #include "common/Likely.h"
 #include "type/Serde.h"
 

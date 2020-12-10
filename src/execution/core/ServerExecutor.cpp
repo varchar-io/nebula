@@ -44,10 +44,10 @@ static const auto RPC_TIMEOUT = std::chrono::milliseconds(FLAGS_RPC_TIMEOUT);
 
 RowCursorPtr ServerExecutor::execute(
   folly::ThreadPoolExecutor& pool,
-  const ExecutionPlan& plan,
+  const PlanPtr plan,
   const std::shared_ptr<NodeConnector> connector) {
   std::vector<folly::Future<RowCursorPtr>> results;
-  for (const NNode& node : plan.getNodes()) {
+  for (const NNode& node : plan->getNodes()) {
     auto c = connector->makeClient(node, pool);
     auto f = c->execute(plan)
                // set time out handling
@@ -63,7 +63,7 @@ RowCursorPtr ServerExecutor::execute(
   auto x = folly::collectAll(results).get();
 
   // only one result - don't need any aggregation or composite
-  const auto& phase = plan.fetch<PhaseType::GLOBAL>();
+  const auto& phase = plan->fetch<PhaseType::GLOBAL>();
   const auto& fieldMap = phase.fieldMap();
   if (x.size() == 1) {
     const auto& op = x.at(0);
@@ -79,7 +79,7 @@ RowCursorPtr ServerExecutor::execute(
 
   // result holds the final total rows in the query before applying limit
   auto resultSize = result->size();
-  auto& stats = plan.ctx().stats();
+  auto& stats = plan->ctx().stats();
   stats.rowsRet = resultSize;
 
   // apply sorting and limit if available
