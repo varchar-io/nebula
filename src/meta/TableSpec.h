@@ -257,11 +257,15 @@ const nebula::common::unordered_map<nebula::meta::PatternMacro, int> childSize{
 
 // check if pattern string type
 inline nebula::meta::PatternMacro extractPatternMacro(const std::string& pattern) {
-  const auto tsMacroFound = pattern.find(patternYMLStr.at(PatternMacro::TIMESTAMP)) != std::string::npos;
-  const auto dateMacroFound = pattern.find(patternYMLStr.at(PatternMacro::DATE)) != std::string::npos;
-  const auto hourMacroFound = pattern.find(patternYMLStr.at(PatternMacro::HOUR)) != std::string::npos;
-  const auto minuteMacroFound = pattern.find(patternYMLStr.at(PatternMacro::MINUTE)) != std::string::npos;
-  const auto secondMacroFound = pattern.find(patternYMLStr.at(PatternMacro::SECOND)) != std::string::npos;
+  // lowercase pattern string match
+  std::string lpattern;
+  transform(pattern.begin(), pattern.end(), std::back_inserter(lpattern), tolower);
+
+  const auto tsMacroFound = lpattern.find(patternYMLStr.at(PatternMacro::TIMESTAMP)) != std::string::npos;
+  const auto dateMacroFound = lpattern.find(patternYMLStr.at(PatternMacro::DATE)) != std::string::npos;
+  const auto hourMacroFound = lpattern.find(patternYMLStr.at(PatternMacro::HOUR)) != std::string::npos;
+  const auto minuteMacroFound = lpattern.find(patternYMLStr.at(PatternMacro::MINUTE)) != std::string::npos;
+  const auto secondMacroFound = lpattern.find(patternYMLStr.at(PatternMacro::SECOND)) != std::string::npos;
 
   if (secondMacroFound && minuteMacroFound && hourMacroFound && dateMacroFound) {
     return PatternMacro::SECOND;

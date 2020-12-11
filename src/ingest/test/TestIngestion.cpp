@@ -91,7 +91,7 @@ TEST(IngestTest, TestTableSpec) {
     const auto name = spec->name;
     if (type == meta::TimeType::MACRO && name == "nebula.hourly") {
       meta::PatternMacro marco = meta::extractPatternMacro(spec->timeSpec.pattern);
-      EXPECT_EQ(spec->timeSpec.pattern, "date hour");
+      EXPECT_EQ(spec->timeSpec.pattern, "date HOUR");
       EXPECT_EQ(marco, meta::PatternMacro::HOUR);
 
       const auto sourceInfo = nebula::storage::parse(spec->location);

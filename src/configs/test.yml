@@ -91,4 +91,4 @@ tables:
     time:
       type: macro
       # support granularity between DATE to DATE HOUR MINUTE SECOND
-      pattern: date hour
+      pattern: date HOUR

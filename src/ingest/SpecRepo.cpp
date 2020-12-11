@@ -158,8 +158,18 @@ void SpecRepo::genPatternSpec(long start,
   for (long i = start; i >= 0; i--) {
     auto str = pathTemplate;
     const auto watermark = now - i * curUnitInSeconds;
+
     const auto patternWithBracket = fmt::format("{{{0}}}", curPatternStr);
-    const auto pos = pathTemplate.find(patternWithBracket);
+    const auto opos = pathTemplate.find(patternWithBracket);
+
+    // uppercase pattern string
+    std::string upperCurPatternStr;
+    transform(curPatternStr.begin(), curPatternStr.end(), std::back_inserter(upperCurPatternStr), toupper);
+    const auto upperPatternWithBracket = fmt::format("{{{0}}}", upperCurPatternStr);
+    const auto upos = pathTemplate.find(upperPatternWithBracket);
+
+    // check original case and upper cased macro in pathTemplate
+    const auto pos = opos != std::string::npos ? opos : upos;
 
     // check declared macro used
     N_ENSURE(pos != std::string::npos, "pattern not found");
@@ -205,7 +215,6 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
     // making a s3 fs with given host
     auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host);
 
-    // exact macro pattern type
     auto pt = nebula::meta::extractPatternMacro(table->timeSpec.pattern);
 
     // list all objects/files from given path
@@ -215,6 +224,7 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
 
     // earliest time in second to process in ascending order
     long cutOffTime = now - table->max_seconds;
+
     // TODO(chenqin): don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet.
     genPatternSpec(maxDays,
                    nebula::meta::PatternMacro::DATE,
