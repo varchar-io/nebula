@@ -215,7 +215,6 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
 
     // earliest time in second to process in ascending order
     long cutOffTime = now - table->max_seconds;
-
     // TODO(chenqin): don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet.
     genPatternSpec(maxDays,
                    nebula::meta::PatternMacro::DATE,
