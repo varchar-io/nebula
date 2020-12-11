@@ -43,10 +43,9 @@ public:
     : server_{ server } {}
 
   // execute the query plan to get a data set
-  nebula::surface::RowCursorPtr execute(
-    folly::ThreadPoolExecutor&,
-    const ExecutionPlan&,
-    const std::shared_ptr<NodeConnector> = inproc());
+  nebula::surface::RowCursorPtr execute(folly::ThreadPoolExecutor&,
+                                        const PlanPtr,
+                                        const std::shared_ptr<NodeConnector> = inproc());
 
 private:
   const std::string server_;

@@ -17,12 +17,9 @@
 #include "Memory.h"
 
 #include <algorithm>
-#include <gflags/gflags.h>
 #include <lz4.h>
 
 #include "Bits.h"
-
-DEFINE_bool(ALLOC_CHECK, false, "check allocation and fail it grows too much");
 
 namespace nebula {
 namespace common {
@@ -32,55 +29,14 @@ Pool& Pool::getDefault() {
   return pool;
 }
 
-// not-threadsafe
-void ExtendableSlice::ensure(size_t size) {
-  // increase 10 slices requests, logging warning, increase over 30 slices requests, logging error.
-  static constexpr size_t errors[] = { 50, 100 };
-  if (UNLIKELY(size >= capacity())) {
-    // TODO(cao): a bit prediction here, is this effective?
-    // OR we just need real paged slices without continous memory chunk
-    if (numExtended_ > 4) {
-      // give 2 times of what asked
-      size *= 2;
-    } else if (numExtended_ > 8) {
-      size *= 4;
-    } else if (numExtended_ > 16) {
-      size *= 8;
-    }
-
-    auto slices = slices_;
-    while (slices * size_ <= size) {
-      ++slices;
-
-      if (FLAGS_ALLOC_CHECK) {
-        auto detects = slices - slices_;
-        if (detects >= errors[0]) {
-          LOG(WARNING) << "Slices increased too fast in single request";
-
-          // over error bound - fail it
-          if (UNLIKELY(detects > errors[1])) {
-            LOG(FATAL) << fmt::format(
-              "Slices grows too fast: page size ({0}) too small or allocation leak towards {1}", size_, size);
-          }
-        }
-      }
-    }
-
-    N_ENSURE_GT(slices, slices_, "required slices should be more than existing capacity");
-    ++numExtended_;
-    this->ptr_ = static_cast<NByte*>(this->pool_.extend(this->ptr_, capacity(), slices * size_));
-    std::swap(slices, slices_);
-  }
-}
-
 // append a bytes array of length bytes to position
 size_t ExtendableSlice::write(size_t position, const NByte* data, size_t length) {
   if (UNLIKELY(length == 0)) {
     return 0;
   }
 
-  size_t cursor = position + length;
-  ensure(cursor);
+  // ensure capacity
+  ensure(position + length);
 
   // copy data into given place
   std::memcpy(this->ptr_ + position, data, length);
@@ -88,7 +44,7 @@ size_t ExtendableSlice::write(size_t position, const NByte* data, size_t length)
 }
 
 size_t ExtendableSlice::copy(NByte* buffer, size_t offset, size_t length) const {
-  N_ENSURE(length <= capacity(), "requested data is too much.");
+  N_ENSURE(length <= size(), "requested data is too much.");
 
   // copy over
   std::memcpy(buffer + offset, this->ptr_, length);
@@ -96,17 +52,18 @@ size_t ExtendableSlice::copy(NByte* buffer, size_t offset, size_t length) const 
   return length;
 }
 
-void ExtendableSlice::seal(size_t max) {
+void ExtendableSlice::seal(size_t usage) {
+  static constexpr auto MAX_WASTE = 4096;
   if (ownbuffer_) {
-    auto wasted = capacity() - max;
-    if (wasted >= max || wasted >= 1024) {
+    auto wasted = size() - usage;
+    if (wasted >= usage || wasted >= MAX_WASTE) {
       // Do we need alignment here to improvement fragmentation?
-      auto buffer = pool_.allocate(max);
-      N_ENSURE_NOT_NULL(buffer, "buffer not null");
-      std::memcpy(buffer, ptr_, max);
+      auto buffer = pool_.allocate(usage);
+      N_ENSURE_NOT_NULL(buffer, "buffer is null - allocation failed.");
+      std::memcpy(buffer, ptr_, usage);
       pool_.free(static_cast<void*>(ptr_), size_);
       ptr_ = static_cast<NByte*>(buffer);
-      size_ = max;
+      size_ = usage;
     }
   }
 }

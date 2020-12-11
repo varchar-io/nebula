@@ -14,32 +14,19 @@
  * limitations under the License.
  */
 
-#include <fmt/format.h>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "execution/core/NodeConnector.h"
-#include "service/base/NebulaService.h"
+#include <rapidjson/document.h>
+
 #include "service/server/LoadHandler.h"
-#include "type/Serde.h"
 
 namespace nebula {
 namespace service {
 namespace test {
 
-using namespace nebula::api::dsl;
-using nebula::common::Cursor;
-using nebula::common::Evidence;
-using nebula::execution::BlockManager;
-using nebula::execution::core::NodeConnector;
-using nebula::service::base::ErrorCode;
-using nebula::service::base::ServiceProperties;
 using nebula::service::server::LoadHandler;
-using nebula::surface::RowData;
-using nebula::type::Schema;
-using nebula::type::TypeSerializer;
 
 TEST(ServiceTest, loadConfigured) {
-  const auto json = "{\"DATE\":[\"2020-01-01\"], \"HOUR\" : [\"01\", \"02\"]}";
+  const auto json = "{\"date\":[\"2020-01-01\"], \"hour\" : [\"01\", \"02\"]}";
   rapidjson::Document cd;
   if (cd.Parse(json).HasParseError()) {
     throw NException(fmt::format("Error parsing params-json: {0}", json));

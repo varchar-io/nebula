@@ -36,7 +36,7 @@ public:
     : node_{ node }, pool_{ pool } {}
   virtual ~NodeClient() = default;
 
-  virtual folly::Future<nebula::surface::RowCursorPtr> execute(const ExecutionPlan& plan);
+  virtual folly::Future<nebula::surface::RowCursorPtr> execute(const PlanPtr plan);
 
   // state is used to pull state of a node - do nothing for inproc node client
   virtual void update() {}

@@ -26,7 +26,6 @@
 #include "common/Evidence.h"
 #include "common/Int128.h"
 #include "execution/BlockManager.h"
-#include "execution/ExecutionPlan.h"
 #include "ingest/BlockExpire.h"
 #include "memory/keyed/FlatRowCursor.h"
 #include "meta/ClusterInfo.h"
@@ -53,7 +52,7 @@ using nebula::common::TaskState;
 using nebula::common::TaskType;
 using nebula::common::unordered_map;
 using nebula::common::unordered_set;
-using nebula::execution::ExecutionPlan;
+using nebula::execution::PlanPtr;
 using nebula::execution::QueryContext;
 using nebula::execution::QueryStats;
 using nebula::execution::QueryWindow;
@@ -285,7 +284,7 @@ nebula::api::dsl::Query QuerySerde::deserialize(
   return q;
 }
 
-std::unique_ptr<ExecutionPlan> QuerySerde::from(Query& q, size_t start, size_t end) {
+PlanPtr QuerySerde::from(Query& q, size_t start, size_t end) {
   // TODO(cao): serialize query context to nodes and mark compile method as const
   auto plan = q.compile(QueryContext::def());
 
@@ -296,8 +295,7 @@ std::unique_ptr<ExecutionPlan> QuerySerde::from(Query& q, size_t start, size_t e
   return plan;
 }
 
-flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(
-  const FlatBuffer& fb, const ExecutionPlan& plan) {
+flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(const FlatBuffer& fb, const PlanPtr plan) {
   flatbuffers::grpc::MessageBuilder mb;
   auto schema = mb.CreateString(nebula::type::TypeSerializer::to(fb.schema()));
   int8_t* buffer;
@@ -305,7 +303,7 @@ flatbuffers::grpc::Message<BatchRows> BatchSerde::serialize(
   auto bytes = mb.CreateUninitializedVector<int8_t>(size, &buffer);
   fb.serialize(buffer);
 
-  auto& stats = plan.ctx().stats();
+  auto& stats = plan->ctx().stats();
   auto batch = CreateBatchRows(
     mb,
     schema,
@@ -413,7 +411,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     // serialize the ingest task
     auto it = CreateIngestTask(mb,
                                mb.CreateString(table->name),
-                               table->max_hr,
+                               table->max_seconds,
                                mb.CreateString(table->loader),
                                (int8_t)table->source,
                                mb.CreateString(table->location),
@@ -551,7 +549,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     std::string bak = "";
     auto table = std::make_shared<TableSpec>(std::move(tbName),
                                              0,
-                                             it->max_hr(),
+                                             it->max_seconds(),
                                              it->schema()->str(),
                                              (DataSource)it->source(),
                                              it->loader()->str(),

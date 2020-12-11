@@ -159,7 +159,7 @@ TEST(CommonTest, TestNewDeleteOps) {
 
 TEST(CommonTest, TestSliceAndExtendableSlice) {
   nebula::common::ExtendableSlice slice(1024);
-  EXPECT_EQ(slice.capacity(), 1024);
+  EXPECT_EQ(slice.size(), 1024);
 
   size_t cursor = 0;
   // write all differnt types of data and check their size
@@ -205,7 +205,7 @@ TEST(CommonTest, TestSliceAndExtendableSlice) {
   // write to position overflow sinle slice - paged slice will auto grow
   slice.write(1050, 1.0);
   EXPECT_EQ(slice.read<double>(1050), 1.0);
-  EXPECT_EQ(slice.capacity(), 2048);
+  EXPECT_EQ(slice.size(), 2048);
 }
 
 TEST(CommonTest, TestSliceWrite) {
@@ -473,6 +473,10 @@ TEST(CommonTest, TestNamedFormat) {
   {
     auto str = fmt::format("Hello, {name}!", fmt::arg("notfit", "World"), fmt::arg("name", "Nebula"));
     EXPECT_EQ(str, "Hello, Nebula!");
+  }
+  {
+    auto str = fmt::format("{{{0}}}", "NEBULA");
+    EXPECT_EQ(str, "{NEBULA}");
   }
 }
 
@@ -1049,14 +1053,14 @@ TEST(CommonTest, TestBitsRW) {
   }
 
   // verify slice has no growth
-  EXPECT_EQ(slice.capacity(), BYTES);
+  EXPECT_EQ(slice.size(), BYTES);
 
   // write one more value, slice will double its capacity
   values.push_back(MAX);
   values.push_back(MAX);
   slice.writeBits((LIMIT - 2) * BITS, BITS, MAX);
   slice.writeBits((LIMIT - 1) * BITS, BITS, MAX);
-  EXPECT_EQ(slice.capacity(), BYTES * 2);
+  EXPECT_EQ(slice.size(), BYTES * 2);
 
   // verify reading back all values match
   auto size = values.size();

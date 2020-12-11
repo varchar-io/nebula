@@ -22,6 +22,7 @@ add_executable(CommonTests
     ${NEBULA_SRC}/common/test/TestJs.cpp
     ${NEBULA_SRC}/common/test/TestMetaDB.cpp
     ${NEBULA_SRC}/common/test/TestSimd.cpp
+    ${NEBULA_SRC}/common/test/TestSlice.cpp
     ${NEBULA_SRC}/common/test/TestStatsAlgo.cpp)
 
 target_link_libraries(CommonTests 

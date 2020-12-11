@@ -106,7 +106,7 @@ public:
   }
 
   inline size_t capacity() const override {
-    return slice_.capacity();
+    return slice_.size();
   }
 
   inline bool hasBloomFilter() const {
@@ -120,12 +120,12 @@ public:
   }
 
   inline virtual void seal() override {
-    slice_.seal();
+    slice_.seal(size_);
   }
 
 private:
   // memory chunk managed by paged slice
-  nebula::common::PagedSlice slice_;
+  nebula::common::ExtendableSlice slice_;
   std::unique_ptr<nebula::common::BloomFilter<NType>> bf_;
 
   // default value of this data node

@@ -30,7 +30,6 @@
 #include "common/Folly.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
-#include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/meta/TableService.h"
 #include "meta/NBlock.h"
@@ -120,7 +119,7 @@ TEST(ApiTest, TestQueryStructure) {
 
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -162,7 +161,7 @@ TEST(ApiTest, TestSortingAndTop) {
 
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";

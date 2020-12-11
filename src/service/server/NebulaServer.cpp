@@ -321,7 +321,7 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
 
   // create a remote connector and execute the query plan
   auto connector = std::make_shared<RemoteNodeConnector>(query);
-  RowCursorPtr result = handler_.query(threadPool_, *plan, connector, error);
+  RowCursorPtr result = handler_.query(threadPool_, plan, connector, error);
   auto durationMs = tick.elapsedMs();
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, durationMs);

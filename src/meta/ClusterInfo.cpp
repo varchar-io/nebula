@@ -79,6 +79,7 @@ struct convert<nebula::meta::ServerOptions> {
 namespace nebula {
 namespace meta {
 
+using nebula::common::Evidence;
 using nebula::common::unordered_map;
 using nebula::type::TypeSerializer;
 
@@ -355,10 +356,11 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
       name = td["topic"].as<std::string>();
     }
 
+    // max-hr could be fractional value to help us get granularity to seconds
     tableSet.emplace(std::make_shared<TableSpec>(
       name,
       td["max-mb"].as<size_t>(),
-      td["max-hr"].as<size_t>(),
+      (td["max-hr"].as<double>() * Evidence::HOUR_SECONDS),
       td["schema"].as<std::string>(),
       ds,
       td["loader"].as<std::string>(),

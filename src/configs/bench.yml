@@ -30,7 +30,7 @@ tables:
     data: local
     loader: Swap
     # TPC-H dataset - decompressed to local for benchmark test
-    source: /home/shawncao/nebula/build/lineitem.tbl.1
+    source: /home/shawncao/lineitem.tbl.1
     backup: s3://nebula/n109/
     format: csv
     columns:

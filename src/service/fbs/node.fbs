@@ -114,8 +114,8 @@ table IngestTask {
   // ref: TableSpec.name
   name: string;
 
-  // ref: TableSpec.max_hr
-  max_hr: uint64;
+  // ref: TableSpec.max_seconds
+  max_seconds: uint64;
 
   // ref: TableSpec.loader 
   loader: string;

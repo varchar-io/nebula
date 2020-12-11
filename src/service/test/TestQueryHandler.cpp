@@ -102,7 +102,7 @@ TEST(ServiceTest, TestQueryTimeline) {
   // No error in exeucting the query
   auto connector = std::make_shared<NodeConnector>();
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = handler.query(pool, *plan, connector, err);
+  auto result = handler.query(pool, plan, connector, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
@@ -154,7 +154,7 @@ TEST(ServiceTest, TestStringFilters) {
   // No error in exeucting the query
   auto connector = std::make_shared<NodeConnector>();
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = handler.query(pool, *plan, connector, err);
+  auto result = handler.query(pool, plan, connector, err);
 
   // No error in exeucting the query
   EXPECT_EQ(err, ErrorCode::NONE);
@@ -211,7 +211,7 @@ TEST(ServiceTest, TestQuerySamples) {
   // No error in exeucting the query
   auto connector = std::make_shared<NodeConnector>();
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = handler.query(pool, *plan, connector, err);
+  auto result = handler.query(pool, plan, connector, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
   LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
@@ -285,7 +285,7 @@ TEST(ServiceTest, TestQuerySerde) {
 
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result1 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan1);
+  auto result1 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan1);
   auto str1 = ServiceProperties::jsonify(result1, plan1->getOutputSchema());
 
   // serialize this query
@@ -297,7 +297,7 @@ TEST(ServiceTest, TestQuerySerde) {
   LOG(INFO) << "Query serde time (ms): " << tick.elapsedMs();
 
   // pass the query plan to a server to execute - usually it is itself
-  auto result2 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan2);
+  auto result2 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan2);
   auto str2 = ServiceProperties::jsonify(result2, plan2->getOutputSchema());
 
   // check these two plans are the same
@@ -340,14 +340,14 @@ TEST(ServiceTest, TestDataSerde) {
   // get result with default in proc connector
   nebula::common::Evidence::Duration tick;
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result1 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan1);
+  auto result1 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan1);
   LOG(INFO) << "Query time with in-proc connector (ms): " << tick.elapsedMs();
   auto str1 = ServiceProperties::jsonify(result1, plan1->getOutputSchema());
 
   // get result with cross-boundary connector
   // auto connector = std::make_shared<RemoteNodeConnector>();
   // tick.reset();
-  // auto result2 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(*plan1, connector);
+  // auto result2 = ServerExecutor(nebula::meta::NNode::local().toString()).execute(plan1, connector);
   // LOG(INFO) << "Query time with remote connector (ms): " << tick.elapsedMs();
   // auto str2 = ServiceProperties::jsonify(result2, plan1->getOutputSchema());
 

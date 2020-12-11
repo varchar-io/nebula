@@ -168,9 +168,10 @@ endforeach()
 # configure_file is good as it is senstive on the input, when input changes, output will be updated
 # ensure all resources copied to build folder
 # all resources are relative to nebula/src folder only
-set(NRES
-  configs/test.yml
-  configs/cluster.yml)
+set(NRES 
+  configs/test.yml 
+  configs/cluster.yml
+  configs/bench.yml)
 foreach(i ${NRES})
   configure_file(${NEBULA_SRC}/${i} ${GEN_DIR}/${i} COPYONLY)
 endforeach()

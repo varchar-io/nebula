@@ -132,8 +132,8 @@ struct TableSpec {
   std::string name;
   // max size in MB resident in memory
   size_t max_mb;
-  // max time span in hour resident in memory
-  size_t max_hr;
+  // max time span in secods resident in memory
+  size_t max_seconds;
   // table schema
   std::string schema;
   // data source to load from
@@ -159,13 +159,13 @@ struct TableSpec {
   // settings spec just get list of key-values
   Settings settings;
 
-  TableSpec(std::string n, size_t mm, size_t mh, std::string s,
+  TableSpec(std::string n, size_t mm, size_t ms, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak,
             std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts,
             AccessSpec as, BucketInfo bi, Settings st)
     : name{ std::move(n) },
       max_mb{ mm },
-      max_hr{ mh },
+      max_seconds{ ms },
       schema{ std::move(s) },
       source{ ds },
       loader{ std::move(lo) },
@@ -230,11 +230,11 @@ constexpr auto HOUR_SECONDS = HOUR_MINUTES * MINUTE_SECONDS;
 constexpr auto DAY_SECONDS = HOUR_SECONDS * DAY_HOURS;
 
 const nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternYMLStr{
-  { nebula::meta::PatternMacro::DATE, "DATE" },
-  { nebula::meta::PatternMacro::HOUR, "HOUR" },
-  { nebula::meta::PatternMacro::MINUTE, "MINUTE" },
-  { nebula::meta::PatternMacro::SECOND, "SECOND" },
-  { nebula::meta::PatternMacro::TIMESTAMP, "TIMESTAMP" }
+  { nebula::meta::PatternMacro::DATE, "date" },
+  { nebula::meta::PatternMacro::HOUR, "hour" },
+  { nebula::meta::PatternMacro::MINUTE, "minute" },
+  { nebula::meta::PatternMacro::SECOND, "second" },
+  { nebula::meta::PatternMacro::TIMESTAMP, "timestamp" }
 };
 
 const nebula::common::unordered_map<nebula::meta::PatternMacro, nebula::meta::PatternMacro> childPattern{
@@ -256,7 +256,7 @@ const nebula::common::unordered_map<nebula::meta::PatternMacro, int> childSize{
 };
 
 // check if pattern string type
-inline nebula::meta::PatternMacro extractPatternMacro(std::string pattern) {
+inline nebula::meta::PatternMacro extractPatternMacro(const std::string& pattern) {
   const auto tsMacroFound = pattern.find(patternYMLStr.at(PatternMacro::TIMESTAMP)) != std::string::npos;
   const auto dateMacroFound = pattern.find(patternYMLStr.at(PatternMacro::DATE)) != std::string::npos;
   const auto hourMacroFound = pattern.find(patternYMLStr.at(PatternMacro::HOUR)) != std::string::npos;

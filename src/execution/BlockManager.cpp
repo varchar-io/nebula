@@ -27,13 +27,14 @@ namespace execution {
 
 using nebula::execution::io::BatchBlock;
 using nebula::execution::io::BlockList;
-using nebula::memory::Batch;
+using nebula::memory::BatchPtr;
 using nebula::meta::BlockSignature;
 using nebula::meta::BlockState;
 using nebula::meta::NBlock;
 using nebula::meta::NNode;
 using nebula::meta::Table;
 using nebula::surface::eval::BlockEval;
+using nebula::surface::eval::ValueEval;
 using nebula::type::Kind;
 using nebula::type::Schema;
 using nebula::type::TypeNode;
@@ -68,8 +69,8 @@ const std::vector<NNode> BlockManager::query(const std::string& table) {
 
 static constexpr auto BATCH_SIZE = 100;
 folly::Future<FilteredBlocks> batch(folly::ThreadPoolExecutor& pool,
-                                    const nebula::surface::eval::ValueEval& filter,
-                                    std::array<Batch*, BATCH_SIZE> input,
+                                    const ValueEval& filter,
+                                    std::array<BatchPtr, BATCH_SIZE> input,
                                     size_t size) {
   auto p = std::make_shared<folly::Promise<FilteredBlocks>>();
   pool.addWithPriority(
@@ -92,17 +93,17 @@ folly::Future<FilteredBlocks> batch(folly::ThreadPoolExecutor& pool,
   return p->getFuture();
 }
 
-const FilteredBlocks BlockManager::query(const Table& table, const ExecutionPlan& plan, folly::ThreadPoolExecutor& pool) {
+const FilteredBlocks BlockManager::query(const Table& table, const PlanPtr plan, folly::ThreadPoolExecutor& pool) {
   // 1. a table and a predicate should determined by meta service how many blocks we should query
   // 2. determine how many blocks are not in memory yet, if they are not, load them in
   // 3. fan out the query plan to execute on each block in parallel (not this function but the caller)
   auto total = 0;
-  const auto& window = plan.getWindow();
+  const auto& window = plan->getWindow();
 
   // check if there are some predicates we can evaluate here
-  const auto& filter = plan.fetch<PhaseType::COMPUTE>().filter();
+  const auto& filter = plan->fetch<PhaseType::COMPUTE>().filter();
 
-  std::array<Batch*, BATCH_SIZE> list;
+  std::array<BatchPtr, BATCH_SIZE> list;
   std::vector<folly::Future<FilteredBlocks>> futures;
   futures.reserve(1024);
 
@@ -115,7 +116,7 @@ const FilteredBlocks BlockManager::query(const Table& table, const ExecutionPlan
   auto index = 0;
   for (auto& b : ts->second->query(window)) {
     ++total;
-    list[index++] = b.get();
+    list[index++] = b;
 
     if (index == BATCH_SIZE) {
       futures.push_back(batch(pool, filter, list, index));
@@ -152,12 +153,12 @@ const FilteredBlocks BlockManager::query(const Table& table, const ExecutionPlan
 bool BlockManager::addBlock(TableStates& target, std::shared_ptr<io::BatchBlock> block) {
   const auto& table = block->table();
   auto ts = target.find(table);
-  TableState* ptr = nullptr;
+  std::shared_ptr<TableState> ptr = nullptr;
   if (ts == target.end()) {
-    ptr = new TableState(table);
-    target.emplace(table, std::shared_ptr<TableState>(ptr));
+    ptr = std::make_shared<TableState>(table);
+    target.emplace(table, ptr);
   } else {
-    ptr = ts->second.get();
+    ptr = ts->second;
   }
 
   // add this block into the table state object

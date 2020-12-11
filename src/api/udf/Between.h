@@ -27,16 +27,16 @@ namespace udf {
  */
 template <nebula::type::Kind IK>
 class Between : public nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK> {
-  using UdfInBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK>;
+  using UdfBetweenBase = nebula::surface::eval::UDF<nebula::type::Kind::BOOLEAN, IK>;
   using InputType = typename nebula::type::TypeTraits<IK>::CppType;
-  using EvalBlock = typename UdfInBase::EvalBlock;
+  using EvalBlock = typename UdfBetweenBase::EvalBlock;
 
 public:
   Between(const std::string& name,
           std::shared_ptr<nebula::api::dsl::Expression> expr,
           InputType min,
           InputType max)
-    : UdfInBase(
+    : UdfBetweenBase(
       name,
       expr->asEval(),
       // logic for "in []"

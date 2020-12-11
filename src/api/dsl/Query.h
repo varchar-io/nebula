@@ -137,7 +137,7 @@ public:
 
 public:
   // compile the query into an execution plan
-  std::unique_ptr<nebula::execution::ExecutionPlan> compile(std::unique_ptr<nebula::execution::QueryContext>);
+  nebula::execution::PlanPtr compile(std::unique_ptr<nebula::execution::QueryContext>);
 
 public:
   // table identifier

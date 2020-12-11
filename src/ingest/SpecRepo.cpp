@@ -40,6 +40,7 @@ using nebula::common::Evidence;
 using nebula::common::unordered_map;
 using nebula::meta::ClusterInfo;
 using nebula::meta::DataSource;
+using nebula::meta::DataSourceUtils;
 using nebula::meta::NNode;
 using nebula::meta::NNodeSet;
 using nebula::meta::TableSpecPtr;
@@ -152,16 +153,16 @@ void SpecRepo::genPatternSpec(long start,
   const auto startChildPatternIndex = nebula::meta::childSize.at(childMarco) - 1;
   const auto sourceInfo = nebula::storage::parse(table->location);
 
-  auto fs = nebula::storage::makeFS("s3", sourceInfo.host);
+  auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host);
 
   for (long i = start; i >= 0; i--) {
     auto str = pathTemplate;
     const auto watermark = now - i * curUnitInSeconds;
-    const auto patternWithBracket = std::string("{") + curPatternStr + std::string("}");
+    const auto patternWithBracket = fmt::format("{{{0}}}", curPatternStr);
     const auto pos = pathTemplate.find(patternWithBracket);
 
     // check declared macro used
-    CHECK(pos != std::string::npos);
+    N_ENSURE(pos != std::string::npos, "pattern not found");
 
     std::string timeFormat;
     switch (curr) {
@@ -197,7 +198,7 @@ void SpecRepo::genPatternSpec(long start,
 void SpecRepo::genSpecs4Roll(const std::string& version,
                              const TableSpecPtr& table,
                              std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
-  if (table->source == DataSource::S3) {
+  if (dsu::isFileSystem(table->source)) {
     // parse location to get protocol, domain/bucket, path
     auto sourceInfo = nebula::storage::parse(table->location);
 
@@ -210,11 +211,10 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
     // list all objects/files from given path
     // A roll spec will cover X days given table location of source data
     const auto now = Evidence::now();
-    const auto maxDays = table->max_hr / 24 + 1;
+    const auto maxDays = table->max_seconds / Evidence::DAY_SECONDS + 1;
 
     // earliest time in second to process in ascending order
-    long cutOffTime = now - table->max_hr * nebula::meta::unitInSeconds.at(nebula::meta::PatternMacro::HOUR);
-
+    long cutOffTime = now - table->max_seconds;
     // TODO(chenqin): don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet.
     genPatternSpec(maxDays,
                    nebula::meta::PatternMacro::DATE,
@@ -227,7 +227,9 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
                    specs);
     return;
   }
-  LOG(WARNING) << "only s3 supported for now";
+
+  LOG(WARNING) << "file system not supported for now: "
+               << DataSourceUtils::getProtocol(table->source);
 }
 
 void genKafkaSpec(const std::string& version,
@@ -268,7 +270,7 @@ void genKafkaSpec(const std::string& version,
   }
 
   // set start time
-  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_hr * nebula::meta::HOUR_SECONDS);
+  const auto startMs = 1000 * (Evidence::unix_timestamp() - table->max_seconds);
   auto segments = topic.segmentsByTimestamp(startMs, batch);
   convert(segments);
 }

@@ -15,6 +15,8 @@
  */
 
 #pragma once
+
+#include <mutex>
 #include <unordered_map>
 
 #include "common/Hash.h"
@@ -27,17 +29,17 @@
 // It also provides management of real-data
 namespace nebula {
 namespace execution {
-class TableState {
-  using Window = std::pair<size_t, size_t>;
 
+class TableStateBase {
 public:
-  TableState(const std::string& table)
+  using Window = std::pair<size_t, size_t>;
+  TableStateBase(const std::string& table)
     : table_{ table },
       blocks_{ 0 },
       rows_{ 0 },
       bytes_{ 0 },
       window_{ std::numeric_limits<size_t>::max(), 0 } {}
-  ~TableState() = default;
+  virtual ~TableStateBase() = default;
 
 public:
   inline size_t numBlocks() const {
@@ -56,6 +58,41 @@ public:
     return window_;
   }
 
+  // merge metrics only from other table state object
+  void merge(const TableStateBase& state, bool metricsOnly = true) {
+    N_ENSURE(metricsOnly, "Only merge metrics only for now.");
+
+    blocks_ += state.numBlocks();
+    rows_ += state.numRows();
+    bytes_ += state.rawBytes();
+    window_.first = std::min(state.window_.first, window_.first);
+    window_.second = std::max(state.window_.second, window_.second);
+  }
+
+  static const TableStateBase& empty() {
+    static const TableStateBase EMPTY{ "EMPTY" };
+    return EMPTY;
+  }
+
+protected:
+  // table name
+  std::string table_;
+
+  // num blocks
+  size_t blocks_;
+  // num rows
+  size_t rows_;
+  // total raw bytes of data in store
+  size_t bytes_;
+  // time window covers blocks
+  Window window_;
+};
+
+// Table State with solid data in it
+class TableState : public TableStateBase {
+public:
+  TableState(const std::string& table) : TableStateBase(table) {}
+  virtual ~TableState() = default;
   inline bool hasSpec(const std::string& spec) const {
     return data_.find(spec) != data_.end();
   }
@@ -63,6 +100,7 @@ public:
   nebula::common::unordered_set<std::pair<std::string, std::string>> expired(
     std::function<bool(bool, const std::string&, const std::string&, const nebula::meta::NNode&)> eval) const {
     nebula::common::unordered_set<std::pair<std::string, std::string>> specs;
+    const std::lock_guard<std::mutex> lock(mdata_);
     for (auto& b : data_) {
       auto& sign = b.second->signature();
       // assign existing spec, expire it if not assigned
@@ -72,11 +110,6 @@ public:
     }
 
     return specs;
-  }
-
-  static const TableState& empty() {
-    static const TableState EMPTY{ "EMPTY" };
-    return EMPTY;
   }
 
 public:
@@ -89,25 +122,14 @@ public:
   // get all data batch pointers by given window
   std::vector<nebula::memory::BatchPtr> query(const Window&) const;
 
-  // merge metrics only from other table state object
-  void merge(const TableState&, bool metricsOnly = true);
-
   // iterate every single block to feed the given lambda
   void iterate(std::function<void(const nebula::execution::io::BatchBlock&)>) const;
 
 private:
-  // table name
-  std::string table_;
   // spec signature -> multi blocks
   std::unordered_multimap<std::string, std::shared_ptr<nebula::execution::io::BatchBlock>> data_;
-  // num blocks
-  size_t blocks_;
-  // num rows
-  size_t rows_;
-  // total raw bytes of data in store
-  size_t bytes_;
-  // time window covers blocks
-  Window window_;
+  mutable std::mutex mdata_;
 };
+
 } // namespace execution
 } // namespace nebula

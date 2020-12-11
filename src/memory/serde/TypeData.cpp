@@ -23,8 +23,8 @@ namespace memory {
 namespace serde {
 
 using nebula::meta::Column;
-static constexpr auto CT_NONE = folly::io::CodecType::NO_COMPRESSION;
-static constexpr auto CT_LZ4 = folly::io::CodecType::LZ4;
+// static constexpr auto CT_NONE = folly::io::CodecType::NO_COMPRESSION;
+// static constexpr auto CT_LZ4 = folly::io::CodecType::LZ4;
 
 // convert string to void* with nullptr
 void* void_any(const std::string&) {
@@ -32,18 +32,18 @@ void* void_any(const std::string&) {
 }
 
 // we allocate slice as `unit * batch_size / 16` to control maximum 8 slics for stream
-#define TYPE_DATA_CONSTR(TYPE, CONV)                                           \
-  template <>                                                                  \
-  TYPE::TypeDataImpl(const Column& column, size_t batchSize)                   \
-    : slice_{ Unit * batchSize / 16, column.withCompress ? CT_LZ4 : CT_NONE }, \
-      bf_{ nullptr } {                                                         \
-    if (column.withBloomFilter && Scalar) {                                    \
-      bf_ = std::make_unique<nebula::common::BloomFilter<NType>>(batchSize);   \
-    }                                                                          \
-                                                                               \
-    if (column.defaultValue.size() > 0) {                                      \
-      default_ = CONV(column.defaultValue);                                    \
-    }                                                                          \
+#define TYPE_DATA_CONSTR(TYPE, CONV)                                         \
+  template <>                                                                \
+  TYPE::TypeDataImpl(const Column& column, size_t batchSize)                 \
+    : slice_{ Unit * batchSize / 4 },                                        \
+      bf_{ nullptr } {                                                       \
+    if (column.withBloomFilter && Scalar) {                                  \
+      bf_ = std::make_unique<nebula::common::BloomFilter<NType>>(batchSize); \
+    }                                                                        \
+                                                                             \
+    if (column.defaultValue.size() > 0) {                                    \
+      default_ = CONV(column.defaultValue);                                  \
+    }                                                                        \
   }
 
 TYPE_DATA_CONSTR(BoolData, folly::to<NType>)

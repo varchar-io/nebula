@@ -28,25 +28,25 @@ namespace test {
  * Test extract pattern marco from table spec configuration
  */
 TEST(MetaTest, TestExtractPatternMacro) {
-  EXPECT_EQ(nebula::meta::extractPatternMacro("DATE"), nebula::meta::PatternMacro::DATE);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("date"), nebula::meta::PatternMacro::DATE);
 
-  EXPECT_EQ(nebula::meta::extractPatternMacro("DATE HOUR"), nebula::meta::PatternMacro::HOUR);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("date hour"), nebula::meta::PatternMacro::HOUR);
 
-  EXPECT_EQ(nebula::meta::extractPatternMacro("HOUR DATE"), nebula::meta::PatternMacro::HOUR);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("hour date"), nebula::meta::PatternMacro::HOUR);
 
-  EXPECT_EQ(nebula::meta::extractPatternMacro("DATE HOURMINUTE"), nebula::meta::PatternMacro::MINUTE);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("date hourminute"), nebula::meta::PatternMacro::MINUTE);
 
-  EXPECT_EQ(nebula::meta::extractPatternMacro("DATE HOUR #MINUTE-SECOND"), nebula::meta::PatternMacro::SECOND);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("date hour #minute-second"), nebula::meta::PatternMacro::SECOND);
 
-  EXPECT_EQ(nebula::meta::extractPatternMacro("TIMESTAMP"), nebula::meta::PatternMacro::TIMESTAMP);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("timestamp"), nebula::meta::PatternMacro::TIMESTAMP);
   // has to be ts along
-  EXPECT_EQ(nebula::meta::extractPatternMacro("TIMESTAMP SECOND"), nebula::meta::PatternMacro::INVALID);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("timestamp second"), nebula::meta::PatternMacro::INVALID);
 
   EXPECT_EQ(nebula::meta::extractPatternMacro("dATE"), nebula::meta::PatternMacro::INVALID);
   // has to be date/hour/minute/second
-  EXPECT_EQ(nebula::meta::extractPatternMacro("SECOND"), nebula::meta::PatternMacro::INVALID);
-  EXPECT_EQ(nebula::meta::extractPatternMacro("HOUR"), nebula::meta::PatternMacro::INVALID);
-  EXPECT_EQ(nebula::meta::extractPatternMacro("MINUTE"), nebula::meta::PatternMacro::INVALID);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("second"), nebula::meta::PatternMacro::INVALID);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("hour"), nebula::meta::PatternMacro::INVALID);
+  EXPECT_EQ(nebula::meta::extractPatternMacro("minute"), nebula::meta::PatternMacro::INVALID);
 
   LOG(INFO) << "ExtractPatternMacro extract macro from pattern string";
 }

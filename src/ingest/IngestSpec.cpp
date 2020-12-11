@@ -97,9 +97,9 @@ void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
   auto bm = BlockManager::init();
 
   // set up a start and end time for the data set in memory
-  // (NOTE) table->max_hr is not serialized, it will be 0
+  // (NOTE) table->max_seconds is not serialized, it will be 0
   auto start = table->timeSpec.unixTimeValue;
-  auto end = start + Evidence::HOUR_SECONDS * table->max_hr;
+  auto end = start + table->max_seconds;
 
   // let's plan these many data std::thread::hardware_concurrency()
   TestTable testTable;

@@ -39,6 +39,7 @@ tables:
       type: static
       # get it from linux by "date +%s"
       value: 1565994194
+
   nebula.daily:
     # size and time may not be respected - ephemeral
     max-mb: 10000
@@ -48,7 +49,7 @@ tables:
     loader: Api
     # parameterized data source for on-demand loading, all parameters are formed by {}
     # this example template has these parameters {date}, {ds}, {ct}, {pf}, {et}, {bucket}
-    source: s3://nebula/ephemeral/dt=DATE/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet
+    source: s3://nebula/ephemeral/dt=%7Bdate%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet
     # this is a bucket table, so it will have a bucket macro to be fullfiled
     # this table bucketed by partner_id into 10K buckets
     bucket:
@@ -63,7 +64,8 @@ tables:
         dict: true
     time:
       type: macro
-      pattern: DATE
+      pattern: date
+
   nebula.hourly:
     # size and time may not be respected - ephemeral
     max-mb: 10000
@@ -73,7 +75,7 @@ tables:
     loader: Api
     # parameterized data source for on-demand loading, all parameters are formed by {}
     # this example template has these parameters {date}, {ds}, {ct}, {pf}, {et}, {bucket}
-    source: s3://nebula/ephemeral/dt=%7BDATE%7D/hr=%7BHOUR%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet
+    source: s3://nebula/ephemeral/dt=%7Bdate%7D/hr=%7Bhour%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet
     # this is a bucket table, so it will have a bucket macro to be fullfiled
     # this table bucketed by partner_id into 10K buckets
     bucket:
@@ -89,4 +91,4 @@ tables:
     time:
       type: macro
       # support granularity between DATE to DATE HOUR MINUTE SECOND
-      pattern: DATE HOUR
+      pattern: date hour

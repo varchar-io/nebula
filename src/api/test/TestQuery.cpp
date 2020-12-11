@@ -29,7 +29,6 @@
 #include "common/Folly.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
-#include "execution/ExecutionPlan.h"
 #include "execution/core/ServerExecutor.h"
 #include "execution/meta/TableService.h"
 #include "meta/NBlock.h"
@@ -78,7 +77,7 @@ TEST(ApiTest, TestMultipleBlocks) {
   nebula::common::Evidence::Duration tick;
   folly::CPUThreadPoolExecutor pool{ 8 };
   // pass the query plan to a server to execute - usually it is itself
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // query should have results
   EXPECT_GT(result->size(), 0);
@@ -122,7 +121,7 @@ TEST(ApiTest, TestStringEqEmpty) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // query should have results
   EXPECT_EQ(result->size(), 1);
@@ -166,7 +165,7 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // query should have results
   EXPECT_EQ(result->size(), 1);
@@ -199,7 +198,7 @@ TEST(ApiTest, TestBlockSkipByPartitionColumn) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // query should have results
   EXPECT_EQ(result->size(), 1);
@@ -236,7 +235,7 @@ TEST(ApiTest, TestAvgAggregation) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // query should have results
   EXPECT_EQ(result->size(), 10);
@@ -252,7 +251,7 @@ TEST(ApiTest, TestAvgAggregation) {
                              row.readByte("avg"),
                              row.readDouble("davg"),
                              row.readLong("sum"),
-                             row.readLong("sint128"),
+                             row.readInt128("sint128"),
                              row.readLong("count"));
   }
 }
@@ -286,7 +285,7 @@ TEST(ApiTest, TestPercentile) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -329,7 +328,7 @@ TEST(ApiTest, TestTreePathMerge) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -370,7 +369,7 @@ TEST(ApiTest, TestCardinality) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -412,7 +411,7 @@ TEST(ApiTest, TestScript) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -456,7 +455,7 @@ TEST(ApiTest, TestScriptSamples) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -503,7 +502,7 @@ TEST(ApiTest, TestScriptAggregate) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -548,7 +547,7 @@ TEST(ApiTest, TestScriptRegisterColumn) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";
@@ -589,7 +588,7 @@ TEST(ApiTest, TestAccessControl) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // query should have results
   EXPECT_EQ(result->size(), 10);

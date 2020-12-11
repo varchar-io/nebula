@@ -26,7 +26,6 @@
 #include "common/Errors.h"
 #include "common/Likely.h"
 #include "common/Memory.h"
-#include "execution/ExecutionPlan.h"
 #include "execution/meta/TableService.h"
 #include "meta/TestTable.h"
 #include "surface/DataSurface.h"

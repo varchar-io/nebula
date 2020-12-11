@@ -122,10 +122,10 @@ Recommend building a version of cmake from source (take 3.18.1 as example):
 6. sudo make install
 7. (Optional) sudo ln -s /usr/local/bin/cmake /usr/bin/cmake
 
-### Install GCC-9
+### Install GCC-10
 1. sudo apt-get update
-2. sudo apt-get install -y gcc-9 g++-9
-3. sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 800 --slave /usr/bin/g++ g++ /usr/bin/g++-9
+2. sudo apt-get install -y gcc-10 g++-10
+3. sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 900 --slave /usr/bin/g++ g++ /usr/bin/g++-10
 4. (Optional) check version: `gcc -v`
 
 
