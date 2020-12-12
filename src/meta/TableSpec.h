@@ -282,7 +282,7 @@ inline nebula::meta::PatternMacro extractPatternMacro(const std::string& pattern
     return PatternMacro::MINUTELY;
   } else if (hourMacroFound) {
     return PatternMacro::HOURLY;
-  } else if (dateMacroFound && !minuteMacroFound && !secondMacroFound) {
+  } else if (dateMacroFound) {
     return PatternMacro::DAILY;
   }
 
