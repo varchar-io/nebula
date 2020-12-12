@@ -28,7 +28,7 @@ server:
   discovery:
     method: service
 
-# will be provided by enviroment
+# will be provided by environment
 nodes:
   - node:
       host: localhost
