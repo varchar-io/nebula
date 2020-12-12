@@ -148,7 +148,7 @@ void SpecRepo::genPatternSpec(long start,
                               std::vector<std::shared_ptr<IngestSpec>>& specs) {
 
   const auto curUnitInSeconds = nebula::meta::unitInSeconds.at(curr);
-  const auto curPatternStr = nebula::meta::patternYMLStr.at(curr);
+  const auto curMacroStr = nebula::meta::patternMacroStr.at(curr);
   const auto childMarco = nebula::meta::childPattern.at(curr);
   const auto startChildPatternIndex = nebula::meta::childSize.at(childMarco) - 1;
   const auto sourceInfo = nebula::storage::parse(table->location);
@@ -159,14 +159,13 @@ void SpecRepo::genPatternSpec(long start,
     auto str = pathTemplate;
     const auto watermark = now - i * curUnitInSeconds;
 
-    const auto patternWithBracket = fmt::format("{{{0}}}", curPatternStr);
-    const auto opos = pathTemplate.find(patternWithBracket);
+    const auto macroWithBracket = fmt::format("{{{0}}}", curMacroStr);
+    const auto opos = pathTemplate.find(macroWithBracket);
 
     // uppercase pattern string
     std::string upperCurPatternStr;
-    transform(curPatternStr.begin(), curPatternStr.end(), std::back_inserter(upperCurPatternStr), toupper);
-    const auto upperPatternWithBracket = fmt::format("{{{0}}}", upperCurPatternStr);
-    const auto upos = pathTemplate.find(upperPatternWithBracket);
+    transform(macroWithBracket.begin(), macroWithBracket.end(), std::back_inserter(upperCurPatternStr), toupper);
+    const auto upos = pathTemplate.find(macroWithBracket);
 
     // check original case and upper cased macro in pathTemplate
     const auto pos = opos != std::string::npos ? opos : upos;
@@ -176,23 +175,23 @@ void SpecRepo::genPatternSpec(long start,
 
     std::string timeFormat;
     switch (curr) {
-    case nebula::meta::PatternMacro::DATE:
+    case nebula::meta::PatternMacro::DAILY:
       timeFormat = Evidence::fmt_ymd_dash(watermark);
       break;
-    case nebula::meta::PatternMacro::HOUR:
+    case nebula::meta::PatternMacro::HOURLY:
       timeFormat = Evidence::fmt_hour(watermark);
       break;
-    case nebula::meta::PatternMacro::MINUTE:
+    case nebula::meta::PatternMacro::MINUTELY:
       timeFormat = Evidence::fmt_minute(watermark);
       break;
-    case nebula::meta::PatternMacro::SECOND:
+    case nebula::meta::PatternMacro::SECONDLY:
       timeFormat = Evidence::fmt_second(watermark);
       break;
     default:
       LOG(ERROR) << "timestamp or invalid format not handled";
     }
 
-    const auto path = str.replace(pos, patternWithBracket.size(), timeFormat);
+    const auto path = str.replace(pos, macroWithBracket.size(), timeFormat);
 
     // watermark is mono incremental when curr == dest, always smaller or equal when scan child marco
     if (watermark < cutOffTime) continue;
@@ -220,14 +219,14 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
     // list all objects/files from given path
     // A roll spec will cover X days given table location of source data
     const auto now = Evidence::now();
-    const auto maxDays = table->max_seconds / Evidence::DAY_SECONDS + 1;
+    const auto maxDays = table->max_seconds / Evidence::DAY_SECONDS;
 
     // earliest time in second to process in ascending order
     long cutOffTime = now - table->max_seconds;
 
     // TODO(chenqin): don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet.
     genPatternSpec(maxDays,
-                   nebula::meta::PatternMacro::DATE,
+                   nebula::meta::PatternMacro::DAILY,
                    pt,
                    now,
                    sourceInfo.path,

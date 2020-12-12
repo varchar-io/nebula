@@ -64,12 +64,12 @@ tables:
         dict: true
     time:
       type: macro
-      pattern: date
+      pattern: daily
 
   nebula.hourly:
     # size and time may not be respected - ephemeral
     max-mb: 10000
-    max-hr: 1
+    max-hr: 4
     schema: "ROW<actor_id:string, pin_id:bigint, partner_id:bigint, ct:bigint, app:string, domain:string, url:string, image_signature:string, root_pin_id:bigint, is_video:boolean, board_id:bigint, publish_type:int, create_date_ts:bigint, country:string, metro:int, gender:tinyint, age:smallint, custom_tag:int>"
     data: s3
     loader: Api
@@ -90,5 +90,5 @@ tables:
         dict: true
     time:
       type: macro
-      # support granularity between DATE to DATE HOUR MINUTE SECOND
-      pattern: date HOUR
+      # support granularity between DAILY, HOURLY, MINUTELY, SECONDLY
+      pattern: HOURLY
