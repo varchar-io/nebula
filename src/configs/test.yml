@@ -27,6 +27,15 @@ tables:
     max-mb: 10000
     max-hr: 240
     schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    transformer:
+      schema: "ROW<id:int, event:string, item:string, flag:bool, value:tinyint, ts:long>"
+      udfs:
+        id: TO_INT
+        items: EXPLODE
+        ts: UNIX_TIMESTAMP
+      downsample:
+        id: 0.1
+        event: [ "a" ]
     data: custom
     loader: NebulaTest
     source: ""
