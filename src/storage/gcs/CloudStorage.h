@@ -18,7 +18,6 @@
 
 #include <mutex>
 
-#include "common/Errors.h"
 #include "google/cloud/storage/client.h"
 #include "storage/NFileSystem.h"
 
@@ -30,8 +29,9 @@ namespace storage {
 namespace gcs {
 class CloudStorage : public NFileSystem {
 public:
-  CloudStorage(google::cloud::storage::Client* gcs_client, 
-               const std::string& bucket) : bucket_{ bucket } {}
+  CloudStorage(google::cloud::storage::Client* gcs_client,
+               const std::string& bucket) : gcs_client_(gcs_client),
+    bucket_(bucket) {}
   virtual ~CloudStorage() = default;
 
 public:
@@ -39,18 +39,15 @@ public:
   // if obj is true, it will return all objects (max 1K) under given prefix at any level
   // otherwise it will only return sub-prefixes one level down under current prefix
   virtual std::vector<FileInfo> list(const std::string&) override;
+
   void read(const std::string&, const std::string&);
   // read a file/object at given offset and length into buffer address provided
-  virtual size_t read(const std::string&, const size_t, const size_t, char*) override {
-    throw NException("Not implemented");
-  }
+  virtual size_t read(const std::string&, const size_t, const size_t, char*) override;
 
   // read a file/object fully into a memory buffer
   virtual size_t read(const std::string&, char*, size_t) override;
 
-  virtual FileInfo info(const std::string&) override {
-    throw NException("Not implemented");
-  }
+  virtual FileInfo info(const std::string&) override;
 
   // download a prefix to a local tmp file
   virtual bool copy(const std::string&, const std::string&) override;
@@ -64,17 +61,17 @@ public:
   virtual bool sync(const std::string&, const std::string&, bool recursive = false) override;
 
   // remove a s3 file or s3 prefix
-  virtual void rm(const std::string&) override {
-    throw NException("Not implemented");
-  }
+  virtual void rm(const std::string&) override;
 
 private:
-  void download(const std::string&, const std::string&);
-  void upload(const std::string&, const std::string&);
+  void downloadFile(const std::string&, const std::string&);
+  void uploadFile(const std::string&, const std::string&);
 
 private:
   google::cloud::storage::Client* gcs_client_;
   std::string bucket_;
+
+  std::mutex local_file_mutex_;
 };
 } // namespace gcs
 } // namespace storage
