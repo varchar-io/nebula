@@ -19,8 +19,9 @@ Download the data and use this spec to load it into Nebula test cluster with 3 E
 ## Ingest spec
 ```
   nebula.bench:
-    max-mb: 10000
-    max-hr: 0
+    retention:
+      max-mb: 10000
+      max-hr: 0
     schema: "ROW<l_orderkey:bigint, l_partkey:bigint, l_suppkey:bigint, l_linenumber:int, l_quantity:int, l_extendedprice:float, l_discount:float, l_tax:float, l_returnflag:string, l_linestatus:string, l_shipdate:string, l_commitdate:string, l_receiptdate:string, l_shipinstruct:string, l_shipmode:string, l_comment:string>"
     data: s3
     loader: Swap

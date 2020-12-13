@@ -36,10 +36,11 @@ nodes:
 
 tables:
   nebula.test:
-    # max 10G RAM assigment
-    max-mb: 10000
-    # max 10 days assignment
-    max-hr: 240
+    retention:
+      # max 10G RAM assigment
+      max-mb: 10000
+      # max 10 days assignment
+      max-hr: 240
     schema: "ROW<id:int, event:string, tag:string, items:list<string>, flag:bool, value:tinyint>"
     data: custom
     loader: NebulaTest
@@ -65,8 +66,9 @@ tables:
       # get it from linux by "date +%s"
       value: 1565994194
   # user.features:
-  #   max-mb: 10000
-  #   max-hr: 0
+  #   retention:
+  #     max-mb: 10000
+  #     max-hr: 0
   #   # TODO(cao): failing to ingest list type column from parquet - need investigate and fix
   #   # categories:list<bigint>, interests:list<bigint>
   #   schema: "ROW<id:bigint, country:string, metro:int, gender:tinyint, age:smallint>"
@@ -86,8 +88,9 @@ tables:
   # one example message looks like:
   # {"service":"test", "host":"dev-shawncao", "tag":"dev", "lang":"java", "stack":"a\nb\nc"}
   # k.pinterest-code:
-  #   max-mb: 200000
-  #   max-hr: 48
+  #   retention:
+  #     max-mb: 200000
+  #     max-hr: 48
   #   schema: "ROW<service:string, host:string, tag:string, lang:string, stack:string>"
   #   data: kafka
   #   topic: <topic>
@@ -111,8 +114,9 @@ tables:
   #     batch: 500
   # # basic S3 file in csv format
   # seattle.calls:
-  #   max-mb: 40000
-  #   max-hr: 0
+  #   retention:
+  #     max-mb: 40000
+  #     max-hr: 0
   #   schema: "ROW<cad:long, clearence:string, type:string, priority:int, init_type:string, final_type:string, queue_time:string, arrive_time:string, precinct:string, sector:string, beat:string>"
   #   data: s3
   #   loader: Swap
@@ -131,8 +135,9 @@ tables:
   #     csv.header: true
   # # basic example to consume parquet file from S3
   # <table name>:
-  #   max-mb: 10000
-  #   max-hr: 0
+  #   retention:
+  #     max-mb: 10000
+  #     max-hr: 0
   #   schema: "ROW<annotation:string, language:string>"
   #   data: s3
   #   loader: Swap
@@ -150,8 +155,9 @@ tables:
   # # all kafka table name will start with "k." followed by topic name
   # # to indicating its a kafka data source
   # k.<topic>:
-  #   max-mb: 200000
-  #   max-hr: 12
+  #   retention:
+  #     max-mb: 200000
+  #     max-hr: 12
   #   # all kafka schema will have column name postfixed by field ID
   #   # TODO(cao): in the future, we can have separate thrift schema
   #   schema: "ROW<userId:long, magicType:short, statusCode:byte, objectCount:int>"
@@ -185,8 +191,9 @@ tables:
   # # basic kafka stream in json format
   # # another kafka real time example in json format
   # k.reporting:
-  #   max-mb: 200000
-  #   max-hr: 1
+  #   retention:
+  #     max-mb: 200000
+  #     max-hr: 1
   #   schema: "ROW<time:long, ct:int, actor_id:string, pid:long, app:byte, eventtype:string, owner:long, root_id:long, crated:long, version:short, slot:int>"
   #   data: kafka
   #   topic: <topic>

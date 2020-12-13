@@ -58,12 +58,13 @@ Another exmaple showing you can place the same "access" config under table rathe
 
 ```yaml
     nebula-test:
+      retention:
         max-mb: 10000
         max-hr: 240
-        access:
-          read:
-            groups: ["nebula-super"]
-            action: deny
+      access:
+        read:
+          groups: ["nebula-super"]
+          action: deny
 ```
 This rule tells Nebula to deny any user queries if it is not in security group "nebula-super".
 

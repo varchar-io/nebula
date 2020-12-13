@@ -256,14 +256,11 @@ unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
   return props;
 }
 
-KafkaSerde asSerde(const YAML::Node& node) {
+KafkaSerde asSerde(const YAML::Node& node, const double retention) {
   KafkaSerde serde;
   if (node) {
     serde.protocol = node["protocol"].as<std::string>();
-    auto retention = node["retention"];
-    if (retention) {
-      serde.retention = retention.as<uint64_t>();
-    }
+    serde.retention = (uint64_t) retention;
 
     auto size = node["size"];
     if (size) {
@@ -356,18 +353,21 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
       name = td["topic"].as<std::string>();
     }
 
+    // hour table level retention.max-hr as single way to ingest and evict data
+    const auto retentionSeconds = (td["retention"]["max-hr"].as<double>() * Evidence::HOUR_SECONDS);
+
     // max-hr could be fractional value to help us get granularity to seconds
     tableSet.emplace(std::make_shared<TableSpec>(
       name,
-      td["max-mb"].as<size_t>(),
-      (td["max-hr"].as<double>() * Evidence::HOUR_SECONDS),
+      td["retention"]["max-mb"].as<size_t>(),
+      retentionSeconds,
       td["schema"].as<std::string>(),
       ds,
       td["loader"].as<std::string>(),
       td["source"].as<std::string>(),
       td["backup"].as<std::string>(),
       td["format"].as<std::string>(),
-      asSerde(td["serde"]),
+      asSerde(td["serde"], retentionSeconds),
       asColumnProps(td["columns"]),
       asTimeSpec(td["time"]),
       asAccessRules(td["access"]),
