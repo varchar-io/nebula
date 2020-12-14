@@ -408,7 +408,8 @@ std::shared_ptr<Expression> Serde::deserialize(const std::string& data) {
                   static_cast<UDFType>(document["udf"].GetInt()),
                   deserialize(document["inner"].GetString()),
                   std::string(c.GetString(), c.GetStringLength()),
-                  document["flag"].GetBool(), input_type.GetString());
+                  document["flag"].GetBool(),
+                  input_type.GetString());
   }
   default:
     throw NException("Not recognized expression!");

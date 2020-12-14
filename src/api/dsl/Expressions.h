@@ -476,11 +476,9 @@ private:
 // So here - we will implement this first. When necessary, we may want to introduce different expresssion type.
 // TODO(cao) - need rework this since we need to come up with a framework
 // to allow customized UDAFs to be plugged in
-struct void_type { using type = uint64_t; };
 template <nebula::surface::eval::UDFType UT, typename... T>
 class UDFExpression : public Expression {
   using Tuple = typename std::tuple<T...>;
-  using FirstType = typename std::conditional<(0 < sizeof...(T)), std::tuple_element<0, Tuple>, void_type>::type::type;
   static constexpr size_t TupleSize = std::tuple_size<typename std::remove_reference<Tuple>::type>::value;
 
 public:
@@ -558,7 +556,6 @@ public:
     msgpack::pack(buffer, args_);
     buffer.seekg(0);
     data->custom = buffer.str();
-    data->c_type = nebula::type::TypeDetect<FirstType>::tid();
     return data;
   }
 
@@ -798,6 +795,28 @@ public:
 private:
   T min_;
   T max_;
+};
+
+template <typename T>
+class HistExpression : public UDFExpression<nebula::surface::eval::UDFType::HIST, T, T> {
+public:
+    HistExpression(
+      std::shared_ptr<Expression> inner,
+      T min,
+      T max)
+    : UDFExpression<nebula::surface::eval::UDFType::HIST, T, T>(inner, min, max) {}
+
+public:
+  decltype(auto) as(const std::string& alias) {
+    UDFExpression<nebula::surface::eval::UDFType::HIST, T, T>::alias_ = alias;
+    return *this;
+  }
+
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = UDFExpression<nebula::surface::eval::UDFType::HIST, T, T>::serialize();
+    data->c_type = nebula::type::TypeDetect<T>::tid();
+    return data;
+  }
 };
 
 #undef ARTHMETIC_OP_CONST

@@ -575,10 +575,14 @@ TEST(ExpressionsTest, TestSerde) {
     using AggType = nebula::surface::eval::Aggregator<nebula::type::Kind::VARCHAR, nebula::type::Kind::DOUBLE>;
     auto s1 = std::static_pointer_cast<AggType>(
       v1->sketch<nebula::type::Kind::VARCHAR, nebula::type::Kind::DOUBLE>());
-    for (int i = 0; i <= 100; i += 10) {
+    for (int i = 0; i <= 100; i += 20) {
       s1->merge(i);
     }
-    LOG(INFO) << "print result" << s1->finalize();
+    auto expectedJson = "{\"0\":[\"2.22507e-308\",\"30\",\"2\",\"20\"],\"5\":[\"40\",\"42.5\",\"1\",\"40\"],\"13\":[\"60\",\"62.5\",\"1\",\"60\"],\"21\":[\"80\",\"1.79769e+308\",\"2\",\"180\"]}";
+    std::ostringstream finalizedStr;
+    LOG(INFO) << "final string in test: " << s1->finalize();
+    finalizedStr << s1->finalize();
+    EXPECT_EQ(finalizedStr.str(), expectedJson);
   }
 }
 

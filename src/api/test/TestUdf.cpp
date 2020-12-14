@@ -637,13 +637,12 @@ TEST(UDFTest, TestHist) {
   th1->mix(*th2);
 
   // we will ask itself for finalize
-  CType::NativeType tsvStr = th1->finalize();
-  
+  auto jsonStr = (std::string)(th1->finalize());
   nebula::common::ExtendableSlice slice(1024);
-  EXPECT_EQ(th1->serialize(slice, 12), 187);
-  EXPECT_EQ(th1->load(slice, 12), 187);
+  EXPECT_EQ(th1->serialize(slice, 12), 362);
+  EXPECT_EQ(th1->load(slice, 12), 362);
   CType::NativeType load = th1->finalize();
-  EXPECT_EQ(load, tsvStr);
+  EXPECT_EQ(load, jsonStr);
 }
 
 TEST(UDFTest, TestTpm) {

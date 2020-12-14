@@ -17,7 +17,7 @@
 #pragma once
 
 #include <atomic>
-#include <glog/logging.h>
+#include <fmt/format.h>
 #include <folly/stats/Histogram.h>
 
 #include "surface/eval/UDF.h"
@@ -62,41 +62,35 @@ public:
     }
 
     inline virtual NativeType finalize() override {
-      std::ostringstream tsv;
-      histogram_.toTSV(tsv);
-      return static_cast<NativeType>(tsv.str());
+      json_ = jsonfy();
+      return json_;
     }
 
     // serialize into a buffer
     inline virtual size_t serialize(nebula::common::ExtendableSlice& slice, size_t offset) override {
-      std::ostringstream tsv;
-      histogram_.toTSV(tsv);
-      auto tsvStr = tsv.str();
-      auto bin = slice.write(offset, tsvStr.size());
-      auto size = slice.write(offset + bin, tsvStr.c_str(), tsvStr.size());
+      auto jsonStr = jsonfy();
+      auto bin = slice.write(offset, jsonStr.size());
+      auto size = slice.write(offset + bin, jsonStr.c_str(), jsonStr.size());
       return bin + size;
     }
 
     inline virtual size_t load(nebula::common::ExtendableSlice& slice, size_t offset) override {
       auto size = slice.read<size_t>(offset);
-      auto tsvStr = std::string(slice.read(offset + SIZE_SIZE, size));
+      auto jsonStr = std::string(slice.read(offset + SIZE_SIZE, size));
       histogram_ = folly::Histogram<InputType>(bucketSize_, min_, max_);
-      // reconstruct histgoram, split by '/n' to get buckets,
-      // then split by '/t' to get min, max, count and sum values
-      auto bucketStrs = split(tsvStr, "\n");
-      for (auto bucketStr : bucketStrs) {
-        if (bucketStr.empty()) {
-          continue;
-        }
-        auto bucketVal = split(bucketStr, "\t");
+      rapidjson::Document document;
+      if (document.Parse(jsonStr.c_str()).HasParseError()) {
+        throw NException(fmt::format("Error parsing histogram json: {0}", jsonStr));
+      }
+      for (rapidjson::Value::ConstMemberIterator itr = document.MemberBegin(); itr != document.MemberEnd(); ++itr) {
         int64_t idx = 0;
         uint64_t bucketCount = 0;
         InputType bucketSum = 0;
-        for (auto bv : bucketVal) {
+        for (auto& v : itr->value.GetArray()) {
           if (idx == 2) {
-            bucketCount = std::stoi(bv);
+            bucketCount = std::stoi(v.GetString());
           } else if (idx == 3) {
-            bucketSum = static_cast<InputType>(std::stod(bv));
+            bucketSum = static_cast<InputType>(std::stod(v.GetString()));
           }
           idx++;
         }
@@ -116,21 +110,39 @@ public:
     size_t bucketNum_;
     InputType bucketSize_;
     folly::Histogram<InputType> histogram_;
+    std::string json_;
 
-    // Helper method used to re-construct histogram
-    std::vector<std::string> split(std::string s, std::string delimiter) {
-      size_t pos_start = 0, pos_end, delim_len = delimiter.length();
-      std::string token;
-      std::vector<std::string> res;
-
-      while ((pos_end = s.find(delimiter, pos_start)) != std::string::npos) {
-        token = s.substr(pos_start, pos_end - pos_start);
-        pos_start = pos_end + delim_len;
-        res.push_back(token);
+    std::string jsonfy() const noexcept {
+      // Save histogram in below json format:
+      // {"bucketIndex": ["minVal", "maxVal", "count", "sum"]}
+      rapidjson::StringBuffer buffer;
+      buffer.Clear();
+      rapidjson::Writer<rapidjson::StringBuffer> json(buffer);
+      json.StartObject();
+      for (size_t i = 0; i < histogram_.getNumBuckets(); ++i) {
+        if (histogram_.getBucketByIndex(i).count == 0) {
+          continue;
+        }
+        const auto& bucket = histogram_.getBucketByIndex(i);
+        auto index = std::to_string(i);
+        json.Key(index.data(), index.size());
+        json.StartArray();
+        std::ostringstream bucketMin;
+        bucketMin << histogram_.getBucketMin(i);
+        json.String(bucketMin.str().data(), bucketMin.str().size());
+        std::ostringstream bucketMax;
+        bucketMax << histogram_.getBucketMax(i);
+        json.String(bucketMax.str().data(), bucketMax.str().size());
+        std::ostringstream bucketCount;
+        bucketCount << bucket.count;
+        json.String(bucketCount.str().data(), bucketCount.str().size());
+        std::ostringstream bucketSum;
+        bucketSum << bucket.sum;
+        json.String(bucketSum.str().data(), bucketSum.str().size());
+        json.EndArray();
       }
-
-      res.push_back(s.substr(pos_start));
-      return res;
+      json.EndObject();
+      return buffer.GetString();
     }
   };
 public:
