@@ -16,7 +16,7 @@ server:
   discovery:
     method: config
 
-# will be provided by enviroment
+# will be provided by environment
 nodes:
   - node:
       host: localhost
@@ -24,8 +24,9 @@ nodes:
 
 tables:
   nebula.test:
-    max-mb: 10000
-    max-hr: 240
+    retention:
+      max-mb: 10000
+      max-hr: 240
     schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
     data: custom
     loader: NebulaTest
@@ -42,8 +43,9 @@ tables:
 
   nebula.daily:
     # size and time may not be respected - ephemeral
-    max-mb: 10000
-    max-hr: 1
+    retention:
+      max-mb: 10000
+      max-hr: 1
     schema: "ROW<actor_id:string, pin_id:bigint, partner_id:bigint, ct:bigint, app:string, domain:string, url:string, image_signature:string, root_pin_id:bigint, is_video:boolean, board_id:bigint, publish_type:int, create_date_ts:bigint, country:string, metro:int, gender:tinyint, age:smallint, custom_tag:int>"
     data: s3
     loader: Api
@@ -68,8 +70,9 @@ tables:
 
   nebula.hourly:
     # size and time may not be respected - ephemeral
-    max-mb: 10000
-    max-hr: 4
+    retention:
+      max-mb: 10000
+      max-hr: 4
     schema: "ROW<actor_id:string, pin_id:bigint, partner_id:bigint, ct:bigint, app:string, domain:string, url:string, image_signature:string, root_pin_id:bigint, is_video:boolean, board_id:bigint, publish_type:int, create_date_ts:bigint, country:string, metro:int, gender:tinyint, age:smallint, custom_tag:int>"
     data: s3
     loader: Api

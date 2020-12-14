@@ -260,11 +260,12 @@ KafkaSerde asSerde(const YAML::Node& node) {
   KafkaSerde serde;
   if (node) {
     serde.protocol = node["protocol"].as<std::string>();
-    auto retention = node["retention"];
+
+    // kafka topic retention time
+    auto retention = node["topic-retention"];
     if (retention) {
       serde.retention = retention.as<uint64_t>();
     }
-
     auto size = node["size"];
     if (size) {
       serde.size = size.as<uint64_t>();
@@ -356,11 +357,14 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
       name = td["topic"].as<std::string>();
     }
 
+    // hour table level retention.max-hr as single way to ingest and evict data
+    const auto retention = td["retention"];
+
     // max-hr could be fractional value to help us get granularity to seconds
     tableSet.emplace(std::make_shared<TableSpec>(
       name,
-      td["max-mb"].as<size_t>(),
-      (td["max-hr"].as<double>() * Evidence::HOUR_SECONDS),
+      retention["max-mb"].as<size_t>(),
+      retention["max-hr"].as<double>() * Evidence::HOUR_SECONDS,
       td["schema"].as<std::string>(),
       ds,
       td["loader"].as<std::string>(),
