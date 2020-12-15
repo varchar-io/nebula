@@ -1,12 +1,15 @@
-# Nebula - Super Fast & Flexible OLAP
+# Nebula - fast, secure, simple, scalable
+
+[![](./src/service/http/nebula/nebula.png)](https://shawncao.medium.com/introduce-nebula-62d6e17dfaeb)
 A distributed block-based data storage and compute engine
 Nebula is designed as a high-performance columnar data storage and tabular OLAP engine.
-It can do more than
+
+It can do much more than these:
 - Extreme Fast Data Analytics Platform.
 - Column Level Access Control Storage System.
 - Distributed Cache Tier For Tabular Data.
 
-Documents of design, internals and stories will be added to [project site](https://nebula.bz).
+Documents of design, internals and stories will be shared at [project site](https://nebula.bz).
 
 ## Demo
 ### 10 minutes video
