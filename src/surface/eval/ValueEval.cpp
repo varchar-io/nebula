@@ -35,32 +35,32 @@ using nebula::type::TypeTraits;
 // condition "column > C", if max(column) <= C, no records match
 // condition "column > C", if min(column) > C, all records match
 // if the column is partition column, we use partition values, otherwise use histogram
-#define MIN_MAX_COMPARE(KIND, HT, NONE_EXP, ALL_EXP)        \
-  using ET = TypeTraits<Kind::KIND>::CppType;               \
-  auto value = c->eval<ET>(ctx);                            \
-  auto min = std::numeric_limits<ET>::max();                \
-  auto max = std::numeric_limits<ET>::min();                \
-  auto values = b.partitionValues(name);                    \
-  if (values.size() > 0) {                                  \
-    for (auto v : values) {                                 \
-      auto ev = std::any_cast<ET>(v);                       \
-      if (ev < min) {                                       \
-        min = ev;                                           \
-      }                                                     \
-      if (ev > max) {                                       \
-        max = ev;                                           \
-      }                                                     \
-    }                                                       \
-  } else {                                                  \
-    auto histo = static_cast<const HT&>(b.histogram(name)); \
-    min = histo.min();                                      \
-    max = histo.max();                                      \
-  }                                                         \
-  if (NONE_EXP) {                                           \
-    return BlockEval::NONE;                                 \
-  }                                                         \
-  if (ALL_EXP) {                                            \
-    return BlockEval::ALL;                                  \
+#define MIN_MAX_COMPARE(KIND, HT, NONE_EXP, ALL_EXP)               \
+  using ET = TypeTraits<Kind::KIND>::CppType;                      \
+  auto value = c->eval<ET>(ctx);                                   \
+  auto min = std::numeric_limits<ET>::max();                       \
+  auto max = std::numeric_limits<ET>::min();                       \
+  auto values = b.partitionValues(name);                           \
+  if (values.size() > 0) {                                         \
+    for (auto v : values) {                                        \
+      auto ev = std::any_cast<ET>(v);                              \
+      if (ev < min) {                                              \
+        min = ev;                                                  \
+      }                                                            \
+      if (ev > max) {                                              \
+        max = ev;                                                  \
+      }                                                            \
+    }                                                              \
+  } else {                                                         \
+    auto histo = std::dynamic_pointer_cast<HT>(b.histogram(name)); \
+    min = histo->min();                                            \
+    max = histo->max();                                            \
+  }                                                                \
+  if (NONE_EXP) {                                                  \
+    return BlockEval::NONE;                                        \
+  }                                                                \
+  if (ALL_EXP) {                                                   \
+    return BlockEval::ALL;                                         \
   }
 
 // Optimization for case of "column > C"
@@ -216,12 +216,12 @@ EvalBlock buildEvalBlock<LogicalOp::LE>(const std::unique_ptr<ValueEval>& left,
 // condition "column > C", if max(column) <= C, no records match
 // condition "column > C", if min(column) > C, all records match
 // if the column is partition column, we use partition values, otherwise use histogram
-#define CHECK_HIST(HT)                                    \
-  auto histo = static_cast<const HT&>(b.histogram(name)); \
-  auto min = histo.min();                                 \
-  auto max = histo.max();                                 \
-  if (min > value || max < value) {                       \
-    return N;                                             \
+#define CHECK_HIST(HT)                                           \
+  auto histo = std::dynamic_pointer_cast<HT>(b.histogram(name)); \
+  auto min = histo->min();                                       \
+  auto max = histo->max();                                       \
+  if (min > value || max < value) {                              \
+    return N;                                                    \
   }
 
 #define EQUAL_COMPARE(KIND, NOT)                                               \

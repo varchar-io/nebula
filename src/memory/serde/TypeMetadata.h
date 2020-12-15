@@ -187,8 +187,8 @@ public:
     return *static_cast<T*>(histo_.get());
   }
 
-  const nebula::surface::eval::Histogram& histogram() const {
-    return *histo_;
+  const std::shared_ptr<nebula::surface::eval::Histogram> histogram() const {
+    return histo_;
   }
 
 private:
@@ -224,7 +224,7 @@ private:
   // a histogram object storing concrete typed histogram
   // to avoid runtime casting, we use 3 different pointers internally pointing to the same object
   // they don't maintain referneces.
-  std::unique_ptr<nebula::surface::eval::Histogram> histo_;
+  std::shared_ptr<nebula::surface::eval::Histogram> histo_;
   nebula::surface::eval::BoolHistogram* bh_;
   nebula::surface::eval::IntHistogram* ih_;
   nebula::surface::eval::RealHistogram* rh_;

@@ -29,11 +29,11 @@ using nebula::execution::io::BatchBlock;
 using nebula::execution::io::BlockList;
 using nebula::memory::BatchPtr;
 using nebula::meta::BlockSignature;
-using nebula::meta::BlockState;
 using nebula::meta::NBlock;
 using nebula::meta::NNode;
 using nebula::meta::Table;
 using nebula::surface::eval::BlockEval;
+using nebula::surface::eval::Histogram;
 using nebula::surface::eval::ValueEval;
 using nebula::type::Kind;
 using nebula::type::Schema;
@@ -54,6 +54,7 @@ std::shared_ptr<BlockManager> BlockManager::init() {
 
 // query all nodes that hold data for given table
 const std::vector<NNode> BlockManager::query(const std::string& table) {
+  std::lock_guard<std::mutex> lock(dmux_);
   std::vector<NNode> nodes;
 
   // go through all nodes's block set
@@ -166,6 +167,7 @@ bool BlockManager::addBlock(TableStates& target, std::shared_ptr<io::BatchBlock>
 }
 
 bool BlockManager::add(std::shared_ptr<io::BatchBlock> block) {
+  std::lock_guard<std::mutex> lock(dmux_);
   const auto& node = block->residence();
 
   // remote blocks will not have data pointer
@@ -208,6 +210,29 @@ size_t BlockManager::removeBySpec(const std::string& table, const std::string& s
   blocks_ -= count;
 
   return count;
+}
+
+std::shared_ptr<Histogram> BlockManager::hist(const std::string& table, size_t col) const {
+  std::lock_guard<std::mutex> lock(dmux_);
+
+  // go through all nodes's block set
+  // TODO: wrong - first block histogram will be polllueted
+  std::shared_ptr<Histogram> hist = nullptr;
+  for (auto n = data_.begin(); n != data_.end(); ++n) {
+    const auto& states = n->second;
+    auto state = states.find(table);
+    if (state != states.end()) {
+      auto inst = state->second->hists().at(col);
+      if (hist == nullptr) {
+        // make a copy
+        hist = nebula::surface::eval::from(inst->toString());
+      } else {
+        hist->merge(*inst);
+      }
+    }
+  }
+
+  return hist;
 }
 
 } // namespace execution

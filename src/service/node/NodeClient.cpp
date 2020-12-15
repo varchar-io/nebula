@@ -15,6 +15,7 @@
  */
 
 #include "NodeClient.h"
+
 #include "execution/BlockManager.h"
 
 /**
@@ -39,6 +40,7 @@ using nebula::service::base::TaskSerde;
 using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::eval::Fields;
+using nebula::surface::eval::HistVector;
 
 void NodeClient::echo(const std::string& name) {
   // build request message through fb builder
@@ -142,10 +144,17 @@ void NodeClient::update() {
     TableStates states;
     for (size_t i = 0; i < size; ++i) {
       const DataBlock* db = blocks->Get(i);
+      // convert serialized histograms
+      auto hists = db->hists();
+      HistVector histograms;
+      histograms.reserve(hists->size());
+      std::transform(hists->begin(), hists->end(),
+                     std::back_inserter(histograms),
+                     [](auto h) { return nebula::surface::eval::from(h->str()); });
       auto block = std::make_shared<BatchBlock>(
-        BlockSignature{ db->tbl()->str(), db->id(), db->ts(), db->te(), db->spec()->str() },
+        BlockSignature{ db->table()->str(), db->id(), db->time_start(), db->time_end(), db->spec()->str() },
         node_,
-        BlockState{ db->rows(), db->rsize() });
+        BlockState{ db->rows(), db->raw_size(), std::move(histograms) });
 
       // add this block in the new states
       BlockManager::addBlock(states, block);

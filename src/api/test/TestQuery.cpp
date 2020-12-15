@@ -410,7 +410,7 @@ TEST(ApiTest, TestHistogram) {
   nebula::common::Evidence::Duration tick;
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
-  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, plan);
 
   // print out result;
   LOG(INFO) << "----------------------------------------------------------------";

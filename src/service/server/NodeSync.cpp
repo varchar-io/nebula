@@ -42,7 +42,6 @@ using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
 using nebula::execution::BlockManager;
-using nebula::execution::TableStates;
 using nebula::execution::meta::TableService;
 using nebula::ingest::BlockExpire;
 using nebula::ingest::SpecRepo;

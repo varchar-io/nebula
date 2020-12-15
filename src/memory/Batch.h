@@ -49,6 +49,9 @@ public: // read row from and write row to
   std::unique_ptr<RowAccessor> makeAccessor() const;
 
 public: /* implement interface of Block.h */
+  inline nebula::type::Schema schema() const override {
+    return schema_;
+  }
   // get total rows in the batch
   inline size_t getRows() const override {
     return rows_;
@@ -58,7 +61,7 @@ public: /* implement interface of Block.h */
     return schema_->find(col);
   }
 
-  const nebula::surface::eval::Histogram& histogram(const std::string& col) const override {
+  std::shared_ptr<nebula::surface::eval::Histogram> histogram(const std::string& col) const override {
     return fields_.at(col)->histogram();
   }
 

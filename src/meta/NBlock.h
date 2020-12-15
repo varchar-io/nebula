@@ -21,6 +21,7 @@
 #include "NNode.h"
 #include "Table.h"
 #include "common/Likely.h"
+#include "surface/eval/Histogram.h"
 
 /**
  * Define nebula cell - a data block or segment metadaeta that loaded in memory.
@@ -31,6 +32,10 @@ namespace meta {
 struct BlockState {
   size_t numRows;
   size_t rawSize;
+
+  // serialized histograms of each column
+  // (assuming all blocks share the same schama, otherwise we may need mapping)
+  nebula::surface::eval::HistVector histograms;
 };
 
 struct BlockSignature {
@@ -147,7 +152,10 @@ public:
   }
 
 private:
-  NBlock(const BlockSignature& sign, const NNode& node, std::shared_ptr<T> data, const BlockState& state)
+  NBlock(const BlockSignature& sign,
+         const NNode& node,
+         std::shared_ptr<T> data,
+         const BlockState& state)
     : sign_{ sign }, data_{ data }, residence_{ std::move(node) }, state_{ state } {
     hash_ = hash(*this);
   }

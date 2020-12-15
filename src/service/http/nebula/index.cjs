@@ -1396,7 +1396,7 @@ proto.nebula.service.TableList.prototype.clearTableList = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.nebula.service.TableStateResponse.repeatedFields_ = [6,7];
+proto.nebula.service.TableStateResponse.repeatedFields_ = [6,7,8];
 
 
 
@@ -1435,7 +1435,8 @@ proto.nebula.service.TableStateResponse.toObject = function(includeInstance, msg
     mintime: jspb.Message.getFieldWithDefault(msg, 4, 0),
     maxtime: jspb.Message.getFieldWithDefault(msg, 5, 0),
     dimensionList: (f = jspb.Message.getRepeatedField(msg, 6)) == null ? undefined : f,
-    metricList: (f = jspb.Message.getRepeatedField(msg, 7)) == null ? undefined : f
+    metricList: (f = jspb.Message.getRepeatedField(msg, 7)) == null ? undefined : f,
+    histsList: (f = jspb.Message.getRepeatedField(msg, 8)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -1499,6 +1500,10 @@ proto.nebula.service.TableStateResponse.deserializeBinaryFromReader = function(m
     case 7:
       var value = /** @type {string} */ (reader.readString());
       msg.addMetric(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addHists(value);
       break;
     default:
       reader.skipField();
@@ -1575,6 +1580,13 @@ proto.nebula.service.TableStateResponse.serializeBinaryToWriter = function(messa
   if (f.length > 0) {
     writer.writeRepeatedString(
       7,
+      f
+    );
+  }
+  f = message.getHistsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      8,
       f
     );
   }
@@ -1742,6 +1754,43 @@ proto.nebula.service.TableStateResponse.prototype.addMetric = function(value, op
  */
 proto.nebula.service.TableStateResponse.prototype.clearMetricList = function() {
   return this.setMetricList([]);
+};
+
+
+/**
+ * repeated string hists = 8;
+ * @return {!Array<string>}
+ */
+proto.nebula.service.TableStateResponse.prototype.getHistsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 8));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.nebula.service.TableStateResponse} returns this
+ */
+proto.nebula.service.TableStateResponse.prototype.setHistsList = function(value) {
+  return jspb.Message.setField(this, 8, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.nebula.service.TableStateResponse} returns this
+ */
+proto.nebula.service.TableStateResponse.prototype.addHists = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 8, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.nebula.service.TableStateResponse} returns this
+ */
+proto.nebula.service.TableStateResponse.prototype.clearHistsList = function() {
+  return this.setHistsList([]);
 };
 
 
@@ -5361,8 +5410,8 @@ class handler_Handler {
     // static error message - do not use lambda since some runtime does not support it
     static error(msg) {
         return JSON.stringify({
-            "error": msg,
-            "duration": 0
+            error: msg,
+            duration: 0
         });
     };
 

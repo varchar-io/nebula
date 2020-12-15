@@ -53,15 +53,19 @@ table BatchRows {
 
 // an endpoint to report all blocks along with statistics
 table DataBlock {
-  tbl: string;
+  table: string;
   id: uint64;
-  ts: uint64;
-  te: uint64;
+  time_start: uint64;
+  time_end: uint64;
   spec: string;
   storage: string;
 
   rows: uint64;
-  rsize: uint64;
+  raw_size: uint64;
+
+  // histogram for each column
+  // JSON serde
+  hists: [string];
 }
 
 table NodeStateRequest {
