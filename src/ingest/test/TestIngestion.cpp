@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <storage/NFS.h>
+#include <pg_query/pg_query.h>
 
 #include "ingest/IngestSpec.h"
 #include "ingest/SpecRepo.h"
@@ -71,6 +72,16 @@ TEST(IngestTest, TestSpecGeneration) {
     LOG(INFO) << fmt::format("ID={0}, Spec={1}", itr->first, itr->second->toString());
   }
 #endif
+}
+
+TEST(IngestTest, TestParser) {
+  PgQueryParseResult result;
+
+  result = pg_query_parse("SELECT 1");
+
+  printf("%s\n", result.parse_tree);
+
+  pg_query_free_parse_result(result);
 }
 
 TEST(IngestTest, TestTableSpec) {

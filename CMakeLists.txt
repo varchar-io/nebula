@@ -193,6 +193,8 @@ find_package(Boost 1.65 MODULE
     thread
   REQUIRED)
 
+include(ext/libpg_query_Ext.cmake)
+
 # add dependency of compression
 include(ext/Compression_Ext.cmake)
 
