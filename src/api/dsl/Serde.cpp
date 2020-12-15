@@ -403,13 +403,13 @@ std::shared_ptr<Expression> Serde::deserialize(const std::string& data) {
   }
   case ExpressionType::FUNCTION: {
     const auto& c = document["custom"];
-    const auto& input_type = document["c_type"];
+    const auto& inputType = document["c_type"];
     return u_expr(alias,
                   static_cast<UDFType>(document["udf"].GetInt()),
                   deserialize(document["inner"].GetString()),
                   std::string(c.GetString(), c.GetStringLength()),
                   document["flag"].GetBool(),
-                  input_type.GetString());
+                  inputType.GetString());
   }
   default:
     throw NException("Not recognized expression!");

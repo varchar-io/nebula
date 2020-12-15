@@ -26,6 +26,8 @@ namespace nebula {
 namespace api {
 namespace udf {
 
+using nebula::type::TypeDetect;
+
 template <nebula::type::Kind IK,
           typename Traits = nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::HIST, IK>,
           typename BaseType = nebula::surface::eval::UDAF<Traits::Type, IK>>
@@ -70,7 +72,7 @@ public:
     inline virtual size_t serialize(nebula::common::ExtendableSlice& slice, size_t offset) override {
       auto jsonStr = jsonfy();
       auto bin = slice.write(offset, jsonStr.size());
-      auto size = slice.write(offset + bin, jsonStr.c_str(), jsonStr.size());
+      auto size = slice.write(offset + bin, jsonStr.data(), jsonStr.size());
       return bin + size;
     }
 
@@ -82,19 +84,21 @@ public:
       if (document.Parse(jsonStr.c_str()).HasParseError()) {
         throw NException(fmt::format("Error parsing histogram json: {0}", jsonStr));
       }
-      for (rapidjson::Value::ConstMemberIterator itr = document.MemberBegin(); itr != document.MemberEnd(); ++itr) {
+      for (auto& bucket : document["b"].GetArray()) {
         int64_t idx = 0;
         uint64_t bucketCount = 0;
         InputType bucketSum = 0;
-        for (auto& v : itr->value.GetArray()) {
+        for (auto& v : bucket.GetArray()) {
           if (idx == 2) {
-            bucketCount = std::stoi(v.GetString());
+            bucketCount = v.GetInt64();
           } else if (idx == 3) {
-            bucketSum = static_cast<InputType>(std::stod(v.GetString()));
+            bucketSum = v.GetDouble();
           }
           idx++;
         }
-        histogram_.addRepeatedValue(bucketSum / bucketCount, bucketCount);
+        if (bucketCount != 0) {
+          histogram_.addRepeatedValue(bucketSum / bucketCount, bucketCount);
+        }
       }
 
       return size + SIZE_SIZE;
@@ -112,38 +116,40 @@ public:
     folly::Histogram<InputType> histogram_;
     std::string json_;
 
+#define SAVE_VALUE(value) \
+  if (TypeDetect<InputType>::tid() == TypeDetect<int8_t>::tid() ||        \
+      TypeDetect<InputType>::tid() == TypeDetect<int16_t>::tid() ||       \
+      TypeDetect<InputType>::tid() == TypeDetect<int32_t>::tid() ||       \
+      TypeDetect<InputType>::tid() == TypeDetect<int64_t>::tid()) {       \
+        json.Int64(value);                             \
+      }                                                \
+  else if (TypeDetect<InputType>::tid() == TypeDetect<float>::tid() ||    \
+      TypeDetect<InputType>::tid() == TypeDetect<double>::tid()) {        \
+        json.Double(value);                            \
+      }
     std::string jsonfy() const noexcept {
       // Save histogram in below json format:
-      // {"bucketIndex": ["minVal", "maxVal", "count", "sum"]}
+      // {"b": [[minVal1, maxVal1, count1, sum1],[minVal2, maxVal2, count2, sum2]...]}
+      // The size of the json array is the total number of buckets in histogram
       rapidjson::StringBuffer buffer;
-      buffer.Clear();
       rapidjson::Writer<rapidjson::StringBuffer> json(buffer);
       json.StartObject();
+      json.Key("b");
+      json.StartArray();
       for (size_t i = 0; i < histogram_.getNumBuckets(); ++i) {
-        if (histogram_.getBucketByIndex(i).count == 0) {
-          continue;
-        }
         const auto& bucket = histogram_.getBucketByIndex(i);
-        auto index = std::to_string(i);
-        json.Key(index.data(), index.size());
         json.StartArray();
-        std::ostringstream bucketMin;
-        bucketMin << histogram_.getBucketMin(i);
-        json.String(bucketMin.str().data(), bucketMin.str().size());
-        std::ostringstream bucketMax;
-        bucketMax << histogram_.getBucketMax(i);
-        json.String(bucketMax.str().data(), bucketMax.str().size());
-        std::ostringstream bucketCount;
-        bucketCount << bucket.count;
-        json.String(bucketCount.str().data(), bucketCount.str().size());
-        std::ostringstream bucketSum;
-        bucketSum << bucket.sum;
-        json.String(bucketSum.str().data(), bucketSum.str().size());
+        SAVE_VALUE(histogram_.getBucketMin(i));
+        SAVE_VALUE(histogram_.getBucketMax(i));
+        json.Int64(bucket.count);
+        json.Double(bucket.sum);
         json.EndArray();
       }
+      json.EndArray();
       json.EndObject();
       return buffer.GetString();
     }
+#undef SAVE_VALUE
   };
 public:
   Hist(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, InputType min, InputType max)
