@@ -77,12 +77,8 @@ TEST(IngestTest, TestSpecGeneration) {
 TEST(IngestTest, TestTransformerAddColumn) {
   //schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
   auto transformer = pg_query_parse("SELECT id, event, items, flag, value, to_unixtime(now) from nebula.test");
-
-  printf("%s\n", transformer.parse_tree);
-
+  LOG(INFO)<< transformer.parse_tree;
   pg_query_free_parse_result(transformer);
-
-
 }
 
 TEST(IngestTest, TestTableSpec) {
