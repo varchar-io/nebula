@@ -19,7 +19,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <storage/NFS.h>
-#include <pg_query/pg_query.h>
+#include <pg_query.h>
 
 #include "ingest/IngestSpec.h"
 #include "ingest/SpecRepo.h"
@@ -30,7 +30,6 @@
 namespace nebula {
 namespace ingest {
 namespace test {
-
 TEST(IngestTest, TestIngestSpec) {
   nebula::meta::TimeSpec ts;
   nebula::meta::AccessSpec as;

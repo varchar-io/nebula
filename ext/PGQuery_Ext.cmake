@@ -1,9 +1,9 @@
 
 #set(LIBPG_QUERY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/libpg_query)
-
 include(ExternalProject)
 ExternalProject_Add(pg_query
         GIT_REPOSITORY https://github.com/chenqin/libpg_query.git
+        GIT_TAG 10-latest
         PREFIX pg_query
         BUILD_IN_SOURCE 1
         CONFIGURE_COMMAND ""
