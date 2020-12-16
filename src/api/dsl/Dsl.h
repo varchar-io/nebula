@@ -155,6 +155,11 @@ static BetweenExpression<U> between(const T& expr, const U&& min, const U&& max)
   return BetweenExpression<U>(std::shared_ptr<Expression>(new T(expr)), std::move(min), std::move(max));
 }
 
+template <typename T, typename U>
+static HistExpression<U> hist(const T& expr, U&& min, U&& max) {
+  return HistExpression<U>(std::shared_ptr<Expression>(new T(expr)), std::move(min), std::move(max));
+}
+
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>
 static ConstExpression<T> v(const T& value) {
   return ConstExpression<T>(value);

@@ -383,6 +383,47 @@ TEST(ApiTest, TestCardinality) {
   }
 }
 
+TEST(ApiTest, TestHistogram) {
+  auto data = genData();
+
+  // query this table
+  auto ms = TableService::singleton();
+  auto tableName = std::get<0>(data);
+  auto start = std::get<1>(data);
+  auto end = std::get<2>(data);
+  auto query = table(tableName, ms)
+                 .where(col("_time_") > start && col("_time_") < end)
+                 .select(
+                   col("event"),
+                   hist(col("value"), 20, 120).as("hist"))
+                 .groupby({ 1 })
+                 .sortby({ 2 }, SortType::DESC)
+                 .limit(10);
+
+  // compile the query into an execution plan
+  auto plan = query.compile(QueryContext::def());
+  plan->setWindow({ start, end });
+
+  // print out the plan through logging
+  plan->display();
+
+  nebula::common::Evidence::Duration tick;
+  // pass the query plan to a server to execute - usually it is itself
+  folly::CPUThreadPoolExecutor pool{ 8 };
+  auto result = ServerExecutor(nebula::meta::NNode::local().toString()).execute(pool, *plan);
+
+  // print out result;
+  LOG(INFO) << "----------------------------------------------------------------";
+  LOG(INFO) << "Get Results With Rows: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << fmt::format("col: {0:20} | {1:12}", "event", "hist");
+  while (result->hasNext()) {
+    const auto& row = result->next();
+    LOG(INFO) << fmt::format("row: {0:20} | {1:12}",
+                             row.readString("event"),
+                             row.readString("hist"));
+  }
+}
+
 TEST(ApiTest, TestScript) {
   auto data = genData();
 

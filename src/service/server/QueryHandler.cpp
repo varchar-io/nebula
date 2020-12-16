@@ -330,6 +330,7 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
     return std::make_shared<decltype(exp)>(exp);                                             \
   }
 
+// TODO(shuo): get min/max for each column and pass in to hist udaf
   switch (metric.method()) {
     BUILD_METRIC_CASE(MAX, max)
     BUILD_METRIC_CASE(MIN, min)

@@ -550,6 +550,39 @@ TEST(ExpressionsTest, TestSerde) {
     auto pv = s1->finalize();
     EXPECT_NEAR(pv, 99, 1);
   }
+
+  // expression with UDAF hist
+  {
+    LOG(INFO) << "Starting to test UDAF HIST";
+    auto ci = nebula::api::dsl::hist(nebula::api::dsl::col("weight"), 30.0, 80.0).as("hist");
+    auto i1ser = nebula::api::dsl::Serde::serialize(ci);
+    auto exp = nebula::api::dsl::Serde::deserialize(i1ser);
+    LOG(INFO) << "exp deserialized: " << exp;
+
+    // vreify alias
+    EXPECT_EQ(ci.alias(), "hist");
+    EXPECT_EQ(exp->alias(), "hist");
+
+    // verify kind
+    ci.type(tbl->lookup());
+    exp->type(tbl->lookup());
+    EXPECT_EQ(exp->typeInfo(), ci.typeInfo());
+
+    // verify value evaluation
+    auto v1 = ci.asEval();
+
+    using AggType = nebula::surface::eval::Aggregator<nebula::type::Kind::VARCHAR, nebula::type::Kind::DOUBLE>;
+    auto s1 = std::static_pointer_cast<AggType>(
+      v1->sketch<nebula::type::Kind::VARCHAR, nebula::type::Kind::DOUBLE>());
+    for (int i = 0; i <= 100; i += 20) {
+      s1->merge(i);
+    }
+    auto expectedJson = "{\"b\":[[2.2250738585072014e-308,30.0,2,20.0],[30.0,32.5,0,0.0],[32.5,35.0,0,0.0],[35.0,37.5,0,0.0],[37.5,40.0,0,0.0],[40.0,42.5,1,40.0],[42.5,45.0,0,0.0],[45.0,47.5,0,0.0],[47.5,50.0,0,0.0],[50.0,52.5,0,0.0],[52.5,55.0,0,0.0],[55.0,57.5,0,0.0],[57.5,60.0,0,0.0],[60.0,62.5,1,60.0],[62.5,65.0,0,0.0],[65.0,67.5,0,0.0],[67.5,70.0,0,0.0],[70.0,72.5,0,0.0],[72.5,75.0,0,0.0],[75.0,77.5,0,0.0],[77.5,80.0,0,0.0],[80.0,1.7976931348623157e308,2,180.0]]}";
+    std::ostringstream finalizedStr;
+    LOG(INFO) << "final string in test: " << s1->finalize();
+    finalizedStr << s1->finalize();
+    EXPECT_EQ(finalizedStr.str(), expectedJson);
+  }
 }
 
 TEST(ExpressionsTest, TestBetweenExpression) {

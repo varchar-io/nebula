@@ -797,6 +797,28 @@ private:
   T max_;
 };
 
+template <typename T>
+class HistExpression : public UDFExpression<nebula::surface::eval::UDFType::HIST, T, T> {
+public:
+    HistExpression(
+      std::shared_ptr<Expression> inner,
+      T min,
+      T max)
+    : UDFExpression<nebula::surface::eval::UDFType::HIST, T, T>(inner, min, max) {}
+
+public:
+  decltype(auto) as(const std::string& alias) {
+    UDFExpression<nebula::surface::eval::UDFType::HIST, T, T>::alias_ = alias;
+    return *this;
+  }
+
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = UDFExpression<nebula::surface::eval::UDFType::HIST, T, T>::serialize();
+    data->c_type = nebula::type::TypeDetect<T>::tid();
+    return data;
+  }
+};
+
 #undef ARTHMETIC_OP_CONST
 #undef ARTHMETIC_OP_GENERIC
 #undef LOGICAL_OP_CONST

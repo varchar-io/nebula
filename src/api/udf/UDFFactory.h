@@ -29,6 +29,7 @@
 #include "Prefix.h"
 #include "Sum.h"
 #include "Tpm.h"
+#include "Histogram.h"
 #include "api/dsl/Base.h"
 #include "surface/eval/UDF.h"
 #include "type/Type.h"
@@ -100,6 +101,10 @@ public:
 
     if constexpr (UKIND == UDFKind::BETWEEN) {
       return std::make_unique<Between<IK>>(name, expr, std::forward<Args>(args)...);
+    }
+
+    if constexpr (UKIND == UDFKind::HIST) {
+      return std::make_unique<Hist<IK>>(name, expr->asEval(), std::forward<Args>(args)...);
     }
 
     throw NException(fmt::format("Unimplemented UDF {0}", name));

@@ -456,6 +456,7 @@ DEFINE_TYPE_DETECT(char*, VARCHAR, StringType, std::string_view, "")
 DEFINE_TYPE_DETECT(std::string_view, VARCHAR, StringType, std::string_view, "")
 DEFINE_TYPE_DETECT(std::string, VARCHAR, StringType, std::string_view, "")
 DEFINE_TYPE_DETECT(void*, INVALID, StructType, void*, nullptr)
+DEFINE_TYPE_DETECT(uint64_t, INVALID, Int128Type, uint64_t, 0)
 
 #undef DEFINE_TYPE_DETECT
 
