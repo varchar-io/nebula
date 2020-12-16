@@ -117,16 +117,11 @@ public:
     std::string json_;
 
 #define SAVE_VALUE(value) \
-  if (TypeDetect<InputType>::tid() == TypeDetect<int8_t>::tid() ||        \
-      TypeDetect<InputType>::tid() == TypeDetect<int16_t>::tid() ||       \
-      TypeDetect<InputType>::tid() == TypeDetect<int32_t>::tid() ||       \
-      TypeDetect<InputType>::tid() == TypeDetect<int64_t>::tid()) {       \
-        json.Int64(value);                             \
-      }                                                \
-  else if (TypeDetect<InputType>::tid() == TypeDetect<float>::tid() ||    \
-      TypeDetect<InputType>::tid() == TypeDetect<double>::tid()) {        \
-        json.Double(value);                            \
-      }
+  if constexpr (std::is_floating_point_v<InputType>) {    \
+    json.Double(value);                                        \
+  } else {                                                     \
+    json.Int64(value);                                         \
+  }
     std::string jsonfy() const noexcept {
       // Save histogram in below json format:
       // {"b": [[minVal1, maxVal1, count1, sum1],[minVal2, maxVal2, count2, sum2]...]}

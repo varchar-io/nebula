@@ -240,7 +240,7 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
                                    std::shared_ptr<Expression> inner,
                                    const std::string& custom,
                                    bool flag,
-                                   const std::string& input_type) {
+                                   const std::string& inputType) {
   // like, prefix
   switch (ut) {
   case UDFType::LIKE: {
@@ -330,7 +330,7 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
   }
   case UDFType::HIST: {
 #define TYPE_UDF_INPUT(T)                                                                                  \
-  if (input_type == TypeDetect<T>::tid()) {                                                                \
+  if (inputType == TypeDetect<T>::tid()) {                                                                \
     auto dst = deser.as<std::tuple<T, T>>();                                                               \
     auto min = std::get<0>(dst);                                                                           \
     auto max = std::get<1>(dst);                                                                           \
@@ -345,7 +345,7 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
     TYPE_UDF_INPUT(float)
     TYPE_UDF_INPUT(double)
 
-    throw NException(fmt::format("Not recognized type for hist udf: {0}", input_type));
+    throw NException(fmt::format("Not recognized type for hist udf: {0}", inputType));
 #undef TYPE_UDF_INPUT
   }
 
