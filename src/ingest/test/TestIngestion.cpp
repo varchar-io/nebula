@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <storage/NFS.h>
+#include <pg_query.h>
 
 #include "ingest/IngestSpec.h"
 #include "ingest/SpecRepo.h"
@@ -29,7 +30,6 @@
 namespace nebula {
 namespace ingest {
 namespace test {
-
 TEST(IngestTest, TestIngestSpec) {
   nebula::meta::TimeSpec ts;
   nebula::meta::AccessSpec as;
@@ -71,6 +71,13 @@ TEST(IngestTest, TestSpecGeneration) {
     LOG(INFO) << fmt::format("ID={0}, Spec={1}", itr->first, itr->second->toString());
   }
 #endif
+}
+
+TEST(IngestTest, TestTransformerAddColumn) {
+  //schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+  auto transformer = pg_query_parse("SELECT id, event, items, flag, value, to_unixtime(now) from nebula.test");
+  LOG(INFO)<< transformer.parse_tree;
+  pg_query_free_parse_result(transformer);
 }
 
 TEST(IngestTest, TestTableSpec) {

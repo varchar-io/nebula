@@ -41,7 +41,8 @@ target_link_libraries(IngestTests
     PRIVATE ${THRIFT_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${SNAPPY_LIBRARY}
-    PRIVATE ${XXH_LIBRARY})
+    PRIVATE ${XXH_LIBRARY}
+    PRIVATE ${LIBPG_QUERY_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)
