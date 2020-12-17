@@ -18,8 +18,9 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <storage/NFS.h>
 #include <pg_query.h>
+#include <rapidjson/document.h>
+#include <storage/NFS.h>
 
 #include "ingest/IngestSpec.h"
 #include "ingest/SpecRepo.h"
@@ -75,9 +76,77 @@ TEST(IngestTest, TestSpecGeneration) {
 
 TEST(IngestTest, TestTransformerAddColumn) {
   //schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
-  auto transformer = pg_query_parse("SELECT id, event, items, flag, value, to_unixtime(now) from nebula.test");
-  LOG(INFO)<< transformer.parse_tree;
-  pg_query_free_parse_result(transformer);
+  auto postgresSQL = pg_query_parse("SELECT id, event, items, flag, value, to_unixtime(a) from nebula.test");
+
+  rapidjson::Document doc;
+  if (doc.Parse(postgresSQL.parse_tree).HasParseError()) {
+    LOG(ERROR) << postgresSQL.parse_tree;
+  }
+  LOG(ERROR) << postgresSQL.parse_tree;
+  pg_query_free_parse_result(postgresSQL);
+
+  // prototype parse postgresSQL and extract field and UDFs applied to each fields in order
+  std::vector<std::pair<std::string, std::string>> ingest_fields;
+
+  for (auto& statements : doc.GetArray()) {
+    auto root = statements.GetObject();
+    bool isSelect = root.FindMember("RawStmt")->value.GetObject().FindMember("stmt")->value.GetObject().FindMember("SelectStmt") != root.FindMember("RawStmt")->value.GetObject().FindMember("stmt")->value.GetObject().MemberEnd();
+    assert(isSelect);
+
+    auto columns = root.FindMember("RawStmt")->value.GetObject().FindMember("stmt")->value.GetObject().FindMember("SelectStmt")->value.GetObject().FindMember("targetList")->value.GetArray();
+
+    for (auto& c : columns) {
+      auto in = c.GetObject();
+      bool isFunc = in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject().FindMember("FuncCall") != in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject().MemberEnd();
+      bool isColumn = in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject().FindMember("ColumnRef") != in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject().MemberEnd();
+      assert(isFunc || isColumn);
+
+      if (isColumn) {
+        auto fields = in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject().FindMember("ColumnRef")->value.FindMember("fields")->value.GetArray();
+        for (auto& f : fields) {
+          auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
+          std::pair<std::string, std::string> col("", fieldName);
+          ingest_fields.push_back(col);
+        }
+      } else if (isFunc) {
+        auto funcs = in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject().FindMember("FuncCall")->value.FindMember("funcname")->value.GetArray();
+        auto args = in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject().FindMember("FuncCall")->value.FindMember("args")->value.GetArray();
+        rapidjson::Value ::ConstValueIterator funcitr = funcs.Begin();
+        rapidjson::Value ::ConstValueIterator argitr = args.Begin();
+        while (funcitr != funcs.End()) {
+          auto funcName = funcitr->GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
+
+          std::string argument_list = "";
+          // function without arguments
+          if (argitr != args.End()) {
+            bool isMulitValue = argitr->GetObject().FindMember("A_Expr") != argitr->GetObject().MemberEnd();
+            // TODO(chenqin): only support MYUDF(field) should support UDF involving multi fields e.g MYUDF(id + flag),
+            assert(!isMulitValue) auto fields = argitr->GetObject().FindMember("ColumnRef")->value.FindMember("fields")->value.GetArray();
+
+            for (auto& f : fields) {
+              auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
+              argument_list.append(fieldName);
+            }
+            argitr++;
+          }
+          std::pair<std::string, std::string> col(funcName, argument_list);
+          ingest_fields.push_back(col);
+          funcitr++;
+        }
+      }
+    }
+  }
+  auto item = ingest_fields.at(0);
+  EXPECT_EQ(item.first, "");
+  EXPECT_EQ(item.second, "id");
+
+  item = ingest_fields.at(1);
+  EXPECT_EQ(item.first, "");
+  EXPECT_EQ(item.second, "event");
+
+  item = ingest_fields.at(5);
+  EXPECT_EQ(item.first, "to_unixtime");
+  EXPECT_EQ(item.second, "a");
 }
 
 TEST(IngestTest, TestTableSpec) {
