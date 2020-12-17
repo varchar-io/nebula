@@ -232,6 +232,7 @@ TEST(IngestTest, TestCreateView) {
     "     max_hr=1.3 and\n"
     "     topic='mytopic' and\n"
     "     source='s3://nebula/ephemeral/dt={date}/downstream={ds}/contenttype={ct}/pinformat={pf}/eventtype={et}/part-r-{bucket}-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet' and\n"
+    "     schema='<Row:dict:string,host:string,tag:string,lang:double,stack:string>' and\n"
     "     loader='roll' and\n"
     "     time.type='provided' and\n"
     "     batch=500 and\n"
