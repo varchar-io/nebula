@@ -16,6 +16,8 @@
 
 #include <fmt/format.h>
 #include <folly/Conv.h>
+#include <pg_query.h>
+#include <rapidjson/document.h>
 
 #include "SpecRepo.h"
 #include "common/Evidence.h"
@@ -283,6 +285,13 @@ void genKafkaSpec(const std::string& version,
   auto segments = topic.segmentsByTimestamp(startMs, batch);
   convert(segments);
 }
+bool replace(std::string& str, const std::string& from, const std::string& to) {
+  size_t start_pos = str.find(from);
+  if (start_pos == std::string::npos)
+    return false;
+  str.replace(start_pos, from.length(), to);
+  return true;
+}
 
 void SpecRepo::process(
   const std::string& version,
@@ -293,6 +302,293 @@ void SpecRepo::process(
     // single spec for nebula test loader
     specs.push_back(std::make_shared<IngestSpec>(
       table, version, buildIdentityByTime(table->timeSpec), table->name, 0, SpecState::NEW, 0));
+    return;
+  }
+  std::vector<std::string> locations;
+  std::vector<std::string> paths;
+  locations.push_back(table->location);
+
+  //hack, if table has sql statement, switch to sql parser
+  // return a table spec for ingestion, as well as UDF and columns apply during ingestion
+  const auto sqlprocessor = [&](const TableSpecPtr& table, const rapidjson::Document& doc, std::vector<std::pair<std::string, std::string>>& ingest_fields) {
+    for (auto& statements : doc.GetArray()) {
+      auto root = statements.GetObject();
+      auto head = root.FindMember("RawStmt")->value.GetObject().FindMember("stmt")->value.GetObject();
+      bool isView = head.FindMember("ViewStmt") != head.MemberEnd();
+      bool isSelect = head.FindMember("SelectStmt") != head.MemberEnd();
+      assert(isSelect || isView);
+
+      // extract view namespace and name
+      if (isView) {
+        auto RangeVar = head.FindMember("ViewStmt")->value.GetObject().FindMember("view")->value.GetObject().FindMember("RangeVar")->value.GetObject();
+        auto ns = RangeVar.FindMember("schemaname")->value.GetString();
+        auto db = RangeVar.FindMember("relname")->value.GetString();
+        // LOG(INFO) << "view name " << ns << "." << db;
+        // assign name
+        table->name = std::string(ns).append(db);
+      }
+
+      // extract columns and UDFs
+      // for view statement, we need to ViewStmt/query/SelectStmt
+      auto selectStmt = isView ? head.FindMember("ViewStmt")->value.GetObject().FindMember("query")->value.GetObject().FindMember("SelectStmt")->value.GetObject() : head.FindMember("SelectStmt")->value.GetObject();
+      auto columns = selectStmt.FindMember("targetList")->value.GetArray();
+
+      for (auto& c : columns) {
+        auto in = c.GetObject();
+        auto val = in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject();
+        bool isFunc = val.FindMember("FuncCall") != val.MemberEnd();
+        bool isColumn = val.FindMember("ColumnRef") != val.MemberEnd();
+        assert(isFunc || isColumn);
+
+        if (isColumn) {
+          auto fields = val.FindMember("ColumnRef")->value.FindMember("fields")->value.GetArray();
+          for (auto& f : fields) {
+            auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
+            std::pair<std::string, std::string> col("", fieldName);
+            ingest_fields.push_back(col);
+          }
+        } else if (isFunc) {
+          auto funcs = val.FindMember("FuncCall")->value.FindMember("funcname")->value.GetArray();
+          auto args = val.FindMember("FuncCall")->value.FindMember("args")->value.GetArray();
+          rapidjson::Value ::ConstValueIterator funcitr = funcs.Begin();
+          rapidjson::Value ::ConstValueIterator argitr = args.Begin();
+          while (funcitr != funcs.End()) {
+            auto funcName = funcitr->GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
+
+            std::string argument_list = "";
+            // function without arguments
+            if (argitr != args.End()) {
+              bool isMulitValue = argitr->GetObject().FindMember("A_Expr") != argitr->GetObject().MemberEnd();
+              // TODO(chenqin): only support MYUDF(field) should support UDF involving multi fields e.g MYUDF(id + flag),
+              assert(!isMulitValue);
+              auto fields = argitr->GetObject().FindMember("ColumnRef")->value.FindMember("fields")->value.GetArray();
+
+              for (auto& f : fields) {
+                auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
+                argument_list.append(fieldName);
+              }
+              argitr++;
+            }
+            std::pair<std::string, std::string> col(funcName, argument_list);
+            ingest_fields.push_back(col);
+            funcitr++;
+          }
+        }
+      }
+
+      auto fromTables = selectStmt.FindMember("fromClause")->value.GetArray();
+      for (auto& t : fromTables) {
+        auto name = t.GetObject().FindMember("RangeVar")->value.GetObject().FindMember("relname")->value.GetString();
+        // LOG(INFO) << "from table" << name;
+        // hard code for now
+        if (std::string(name).find("kafka") != std::string::npos) {
+          table->source = DataSource::KAFKA;
+        }
+      }
+
+      auto whereClauses = selectStmt.FindMember("whereClause")->value.GetObject();
+      bool boolExpr = whereClauses.FindMember("BoolExpr") != whereClauses.MemberEnd();
+      // only support boolexp for now
+      assert(boolExpr);
+
+      auto arguments = whereClauses.FindMember("BoolExpr")->value.GetObject().FindMember("args")->value.GetArray();
+      for (auto& arg : arguments) {
+        std::string config_name, config_ref, config_val;
+        int iconfig_val;
+        float fconfig_val;
+
+        bool isAExpr = arg.GetObject().FindMember("A_Expr") != arg.GetObject().MemberEnd();
+        assert(isAExpr);
+
+        auto aExpr = arg.GetObject().FindMember("A_Expr")->value.GetObject();
+        auto names = aExpr.FindMember("name")->value.GetArray();
+
+        for (auto& nm : names) {
+          auto exp = nm.FindMember("String")->value.FindMember("str")->value.GetString();
+          //LOG(INFO) << "exp : " << exp;
+          config_ref.append(exp);
+        }
+
+        auto lexpr = aExpr.FindMember("lexpr")->value.GetObject();
+        auto columnRef = lexpr.FindMember("ColumnRef")->value.GetObject();
+        auto fields = columnRef.FindMember("fields")->value.GetArray();
+        for (auto& f : fields) {
+          auto exp = f.FindMember("String")->value.FindMember("str")->value.GetString();
+          //LOG(INFO) << "lexpr : " << exp;
+          config_name.append(exp);
+        }
+
+        //LOG(INFO) << "lexpr : " << config_name;
+        const bool isFormat = config_name.find("format") != std::string::npos;
+        const bool isLoader = config_name.find("loader") != std::string::npos;
+        const bool isMaxMB = config_name.find("max_mb") != std::string::npos;
+        const bool isMaxHR = config_name.find("max_hr") != std::string::npos;
+        //const bool isTopic = config_name.find("topic") != std::string::npos;
+        const bool isSource = config_name.find("source") != std::string::npos;
+        const bool isSchema = config_name.find("schema") != std::string::npos;
+        const bool isTimestamp = config_name.find("timestamp") != std::string::npos;
+        const bool isBatch = config_name.find("batch") != std::string::npos;
+        const bool isTopicRetention = config_name.find("topic_retention") != std::string::npos;
+        const bool isProtocol = config_name.find("protocol") != std::string::npos;
+        const bool isTimePartition = config_name.find("time_partition") != std::string::npos;
+
+        const bool isMacro = config_name.find("macro") != std::string::npos;
+
+        bool arrRExpr = aExpr.FindMember("rexpr")->value.IsArray();
+        if (arrRExpr) {
+          auto rexprs = aExpr.FindMember("rexpr")->value.GetArray();
+          for (auto& expr : rexprs) {
+            bool aConst = expr.FindMember("A_Const") != expr.MemberEnd();
+            if (aConst) {
+              auto val = expr.FindMember("A_Const")->value.GetObject().FindMember("val")->value.GetObject();
+              bool isFloat = val.FindMember("Float") != val.MemberEnd();
+              bool isString = val.FindMember("String") != val.MemberEnd();
+              bool isInteger = val.FindMember("Integer") != val.MemberEnd();
+              assert(isFloat || isString || isInteger);
+              if (isInteger) {
+                auto ival = val.FindMember("Integer")->value.FindMember("ival")->value.GetInt();
+                // LOG(INFO) << "rexpr : " << ival;
+                iconfig_val = ival;
+              } else {
+                auto constval = val.FindMember(isFloat ? "Float" : "String")->value.FindMember("str")->value.GetString();
+                //LOG(INFO) << "rexpr : " << constval;
+                config_val = constval;
+                if (isFloat) {
+                  fconfig_val = std::stof(constval);
+                }
+              }
+              // recursive replace location macro and call process
+              if (isMacro) {
+                // do str matching requires convert to string
+                const auto macro = "%7B" + config_name.substr(5) + "%7D";
+                for (auto& loc : locations) {
+                  if (loc.find(macro) != std::string::npos) {
+                    std::string path = loc;
+                    std::string macroValue = isInteger ? std::to_string(iconfig_val) : config_val;
+                    replace(path, macro, macroValue);
+                    assert(table->loader != "ddl");
+                    LOG(INFO) << "location : " << path;
+                    paths.push_back(path);
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          auto rexpr = aExpr.FindMember("rexpr")->value.GetObject();
+          // hack, copy code from above
+          bool aConst = rexpr.FindMember("A_Const") != rexpr.MemberEnd();
+          if (aConst) {
+            auto val = rexpr.FindMember("A_Const")->value.GetObject().FindMember("val")->value.GetObject();
+            bool isFloat = val.FindMember("Float") != val.MemberEnd();
+            bool isString = val.FindMember("String") != val.MemberEnd();
+            bool isInteger = val.FindMember("Integer") != val.MemberEnd();
+            assert(isFloat || isString || isInteger);
+            if (isInteger) {
+              auto ival = val.FindMember("Integer")->value.FindMember("ival")->value.GetInt();
+              // LOG(INFO) << "rexpr : " << ival;
+              iconfig_val = ival;
+            } else {
+              auto constval = val.FindMember(isFloat ? "Float" : "String")->value.FindMember("str")->value.GetString();
+              //LOG(INFO) << "rexpr : " << constval;
+              config_val = constval;
+              if (isFloat) {
+                fconfig_val = std::stof(constval);
+              }
+            }
+          }
+        }
+        if (isSource) {
+          // hard code
+          table->source = DataSource::KAFKA;
+        }
+        if (isFormat) {
+          table->format = config_val;
+        }
+        if (isLoader) {
+          table->loader = config_val;
+        }
+        if (isMaxMB) {
+          table->max_mb = iconfig_val;
+        }
+        if (isMaxHR) {
+          table->max_seconds = fconfig_val * 3600;
+        }
+        if (isSchema) {
+          table->schema = config_val;
+        }
+        if (isTimestamp) {
+          //hardcode
+          table->timeSpec.type = TimeType::MACRO;
+        }
+        if (isBatch) {
+          auto setting = table->settings;
+          std::ostringstream ss;
+          ss << iconfig_val;
+          std::string s(ss.str());
+          setting.insert({ "batch", s });
+        }
+        if (isProtocol) {
+          table->serde.protocol = config_val;
+        }
+
+        if (isTopicRetention) {
+          table->serde.retention = iconfig_val;
+        }
+
+        if (isTimePartition) {
+          table->timeSpec.pattern = config_val;
+        }
+
+        if (isMacro) {
+          locations = paths;
+        }
+      }
+    }
+  };
+
+  if (table->loader == "ddl") {
+    // TODO: not using yaml
+    const auto createView =
+      "Create view K.pinterest_code (\n"
+      "   service, \n"
+      "   host, \n"
+      "   tag, \n"
+      "   lang, \n"
+      "   stack\n"
+      ") as select dict(service), dict(host), dict(tag), dict(lang), stack\n"
+      "     from kafka where \n"
+      "     format='json' and \n"
+      "     max_mb='400' and\n"
+      "     max_hr=1.3 and\n"
+      "     topic='mytopic' and\n"
+      "     source='s3://nebula/ephemeral/dt={date}/downstream={ds}/contenttype={ct}/pinformat={pf}/eventtype={et}/part-r-{bucket}-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet' and\n"
+      "     schema='<Row:dict:string,host:string,tag:string,lang:double,stack:string>' and\n"
+      "     loader='Roll' and\n"
+      "     timestamp='provided' and\n"
+      "     batch=500 and\n"
+      "     topic_retention='90000' and\n"
+      "     protocol='binary' and"
+      "     time_partition='DAILY' and"
+      "     macro.et in (1,2,3) and\n"
+      "     macro.pf in (0,6,7)";
+    //schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    auto postgresSQL = pg_query_parse(createView);
+
+    rapidjson::Document doc;
+    if (doc.Parse(postgresSQL.parse_tree).HasParseError()) {
+      LOG(ERROR) << postgresSQL.parse_tree;
+    }
+    LOG(ERROR) << postgresSQL.parse_tree;
+    pg_query_free_parse_result(postgresSQL);
+
+    std::vector<std::pair<std::string, std::string>> ingest_fields;
+    sqlprocessor(table, doc, ingest_fields);
+    // permute macro replaced locations
+    for (auto& p : locations) {
+      table->location = p;
+      process(version, table, specs);
+    }
     return;
   }
 

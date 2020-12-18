@@ -31,6 +31,7 @@
 namespace nebula {
 namespace ingest {
 namespace test {
+
 TEST(IngestTest, TestIngestSpec) {
   nebula::meta::TimeSpec ts;
   nebula::meta::AccessSpec as;
@@ -215,41 +216,6 @@ inline nebula::meta::TableSpecPtr process(const rapidjson::Document& doc, std::v
   }
   //convert to table spec here
   return nebula::meta::TableSpecPtr();
-}
-
-TEST(IngestTest, TestCreateView) {
-  const auto createView =
-    "Create view K.pinterest_code (\n"
-    "   service, \n"
-    "   host, \n"
-    "   tag, \n"
-    "   lang, \n"
-    "   stack\n"
-    ") as select dict(service), dict(host), dict(tag), dict(lang), stack\n"
-    "     from kafka where \n"
-    "     format='json' and \n"
-    "     max_mb='400mb' and\n"
-    "     max_hr=1.3 and\n"
-    "     topic='mytopic' and\n"
-    "     source='s3://nebula/ephemeral/dt={date}/downstream={ds}/contenttype={ct}/pinformat={pf}/eventtype={et}/part-r-{bucket}-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet' and\n"
-    "     schema='<Row:dict:string,host:string,tag:string,lang:double,stack:string>' and\n"
-    "     loader='roll' and\n"
-    "     time.type='provided' and\n"
-    "     batch=500 and\n"
-    "     topic_retention='90000' and\n"
-    "     protocol='binary' and"
-    "     marco.partition='daily' and"
-    "     macro.bucket in (1,2,3)";
-  auto postgresSQL = pg_query_parse(createView);
-
-  rapidjson::Document doc;
-  if (doc.Parse(postgresSQL.parse_tree).HasParseError()) {
-    LOG(ERROR) << postgresSQL.parse_tree;
-  }
-  LOG(ERROR) << postgresSQL.parse_tree;
-  pg_query_free_parse_result(postgresSQL);
-  std::vector<std::pair<std::string, std::string>> ingest_fields;
-  process(doc, ingest_fields);
 }
 
 TEST(IngestTest, TestTransformerAddColumn) {
