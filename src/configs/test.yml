@@ -109,19 +109,7 @@ tables:
     # parameterized data source for on-demand loading, all parameters are formed by {}
     # this example template has these parameters {date}, {ds}, {ct}, {pf}, {et}, {bucket}
     format: |
-          "Create view K.pinterest_code as select dict(service), dict(host), dict(tag), dict(lang), stack from kafka where format='json' and
-           max_mb='400mb' and
-           max_hr=1.3 and
-           topic='mytopic' and
-           source='s3://nebula/ephemeral' and
-           schema=\'<Row:dict:string,host:string,tag:string,lang:double,stack:string>' and
-           loader=\'roll\' and
-           timestamp=\'provided\' and
-           batch=500 and
-           topic_retention=\'90000\' and
-           protocol=\'binary\' and
-           marco.partition=\'daily\' and
-           macro.bucket in (1,2,3)"
+          fixme
     time:
       type: macro
       # support granularity between DAILY, HOURLY, MINUTELY, SECONDLY
