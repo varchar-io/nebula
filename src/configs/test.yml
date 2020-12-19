@@ -106,10 +106,20 @@ tables:
     loader: ddl
     source: s3://nebula/ephemeral/dt=%7Bdate%7D/hr=%7Bhour%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet
     backup: s3://nebula/n200/
-    # parameterized data source for on-demand loading, all parameters are formed by {}
-    # this example template has these parameters {date}, {ds}, {ct}, {pf}, {et}, {bucket}
+    # load via ddl, create view as select
     format: |
-          fixme
+      create view nebula.ddl as
+      select
+        dict(actor_id),
+        bloom_filter(pin_id)
+      from s3
+      where
+        source='s3://nebula/ephemeral/dt=%7Bdate%7D/hr=%7Bhour%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet' and
+        schema='ROW<actor_id:string, pin_id:bigint, partner_id:bigint>' and
+        time_partition='HOURLY' and
+        loader='Roll' and
+        macro.et in (1,2,3) and
+        macro.pf in (0,6,7)
     time:
       type: macro
       # support granularity between DAILY, HOURLY, MINUTELY, SECONDLY

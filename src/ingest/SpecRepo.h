@@ -76,6 +76,9 @@ private:
   // process a table spec and generate all specs into the given specs container
   void process(const std::string&, const nebula::meta::TableSpecPtr&, std::vector<SpecPtr>&) noexcept;
 
+  // process table spec with ddl statement and generate all specs into the given specs container
+  void process(const std::string&, const meta::TableSpecPtr&, std::vector<SpecPtr>&, const rapidjson::Document&);
+
   // update the snapshot of new spec list into spec repo
   void update(const std::vector<SpecPtr>&) noexcept;
 
