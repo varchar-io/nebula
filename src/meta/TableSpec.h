@@ -158,11 +158,13 @@ struct TableSpec {
   BucketInfo bucketInfo;
   // settings spec just get list of key-values
   Settings settings;
+  // DDL used to declare table ingestion
+  std::string ddl;
 
   TableSpec(std::string n, size_t mm, size_t ms, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak,
             std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts,
-            AccessSpec as, BucketInfo bi, Settings st)
+            AccessSpec as, BucketInfo bi, Settings st, std::string ddl)
     : name{ std::move(n) },
       max_mb{ mm },
       max_seconds{ ms },
@@ -177,7 +179,8 @@ struct TableSpec {
       timeSpec{ std::move(ts) },
       accessSpec{ std::move(as) },
       bucketInfo{ std::move(bi) },
-      settings{ std::move(st) } {}
+      settings{ std::move(st) },
+      ddl { std::move(ddl)}{}
 
   inline std::string toString() const {
     // table name @ location - format: time
@@ -198,7 +201,7 @@ struct TableSpec {
     }
 
     // build up a new table from this spec
-    return std::make_shared<Table>(name, schemaPtr, columnProps, accessSpec);
+    return std::make_shared<Table>(name, schemaPtr, columnProps, accessSpec, ddl);
   }
 };
 

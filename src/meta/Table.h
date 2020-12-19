@@ -121,9 +121,9 @@ using TypeLookup = std::function<nebula::type::Kind(const std::string&)>;
 
 class Table {
 public:
-  Table(const std::string& name) : Table(name, nullptr, ColumnProps(), {}) {}
-  Table(const std::string& name, Schema schema, ColumnProps columns, AccessSpec rules)
-    : name_{ name }, schema_{ schema }, columns_{ std::move(columns) }, rules_{ std::move(rules) } {
+  Table(const std::string& name) : Table(name, nullptr, ColumnProps(), {}, nullptr) {}
+  Table(const std::string& name, Schema schema, ColumnProps columns, AccessSpec rules, const std::string& ddl)
+    : name_{ name }, schema_{ schema }, columns_{ std::move(columns) }, rules_{ std::move(rules) }, ddl_{std::move(ddl)} {
     // TODO(cao) - load table properties from meta data service
     loadTable();
 
@@ -177,6 +177,10 @@ public:
     return name_;
   }
 
+  inline const  std::string& ddl() const {
+    return ddl_;
+  }
+
   // retrieve all column meta data by its name
   virtual const Column& column(const std::string& col) const noexcept {
     auto column = columns_.find(col);
@@ -213,12 +217,11 @@ protected:
   Schema schema_;
   TypeLookup lookup_;
   ColumnProps columns_;
-
   // access rules, can be empty
   std::vector<AccessRule> rules_;
-
   // pod info if there are partition columns
   std::shared_ptr<nebula::meta::Pod> pod_;
+  std::string ddl_;
 
 private:
   void loadTable();

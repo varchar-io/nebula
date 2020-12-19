@@ -306,17 +306,16 @@ void SpecRepo::process(
   }
 
   //hack, if table has sql statement, switch to sql parser
-  // return a table spec for ingestion
-  if (table->loader == "ddl") {
-    auto postgresSQL = pg_query_parse(table->format.c_str());
+  if (!table->ddl.empty()) {
+    auto postgresSQL = pg_query_parse(table->ddl.c_str());
     rapidjson::Document doc;
-    if (doc.Parse(postgresSQL.parse_tree).HasParseError()) {
+    if (doc.Parse(postgresSQL.parse_tree).HasParseError() || doc.GetArray().Empty()) {
       LOG(ERROR) << postgresSQL.parse_tree << "ddl has syntax error use this https://rextester.com/l/postgresql_online_compiler";
       return;
     }
+    LOG(INFO) << postgresSQL.parse_tree;
     pg_query_free_parse_result(postgresSQL);
     process(version, table, specs, doc);
-    return;
   }
 
   // S3 has two mode:
@@ -426,9 +425,25 @@ void SpecRepo::process(const std::string& version,
     for (auto& t : fromTables) {
       auto name = t.GetObject().FindMember("RangeVar")->value.GetObject().FindMember("relname")->value.GetString();
       // LOG(INFO) << "from table" << name;
-      // hard code for now
-      if (std::string(name).find("kafka") != std::string::npos) {
+      bool isCustom = std::string(name).find("custom") != std::string::npos;
+      bool isLocal = std::string(name).find("local") != std::string::npos;
+      bool isS3 = std::string(name).find("s3") != std::string::npos;
+      bool isKafka = std::string(name).find("kafka") != std::string::npos;
+      bool isGsheet = std::string(name).find("gsheet") != std::string::npos;
+      if (isCustom) {
+        table->source = DataSource::Custom;
+      }
+      if (isLocal) {
+        table->source = DataSource::LOCAL;
+      }
+      if (isS3) {
+        table->source = DataSource::S3;
+      }
+      if (isKafka) {
         table->source = DataSource::KAFKA;
+      }
+      if (isGsheet) {
+        table->source = DataSource::GSHEET;
       }
     }
 
@@ -466,7 +481,7 @@ void SpecRepo::process(const std::string& version,
       const bool isLoader = config_name.find("loader") != std::string::npos;
       const bool isMaxMB = config_name.find("max_mb") != std::string::npos;
       const bool isMaxHR = config_name.find("max_hr") != std::string::npos;
-      //const bool isTopic = config_name.find("topic") != std::string::npos;
+      const bool isTopic = config_name.find("topic") != std::string::npos;
       const bool isSource = config_name.find("source") != std::string::npos;
       const bool isSchema = config_name.find("schema") != std::string::npos;
       const bool isTimestamp = config_name.find("timestamp") != std::string::npos;
@@ -480,6 +495,7 @@ void SpecRepo::process(const std::string& version,
       bool arrRExpr = aExpr.FindMember("rexpr")->value.IsArray();
       if (arrRExpr) {
         auto rexprs = aExpr.FindMember("rexpr")->value.GetArray();
+        // handle collection xx in (aa, bb)
         for (auto& expr : rexprs) {
           bool aConst = expr.FindMember("A_Const") != expr.MemberEnd();
           if (aConst) {
@@ -502,13 +518,12 @@ void SpecRepo::process(const std::string& version,
             if (isMacro) {
               // do str matching requires convert to string
               const auto macro = "%7B" + config_name.substr(6) + "%7D";
-              for (auto& loc : locations) {
-                if (loc.find(macro) != std::string::npos) {
-                  std::string path = loc;
+              for (auto s : locations) {
+                if (s.find(macro) != std::string::npos) {
+                  std::string path(s);
                   std::string macroValue = isInteger ? std::to_string(iconfig_val) : config_val;
                   replace(path, macro, macroValue);
-                  assert(table->loader != "ddl");
-                  LOG(INFO) << "location : " << path;
+                  LOG(INFO) << "replacing macro " << macro << " with: " << path;
                   paths.push_back(path);
                 }
               }
@@ -539,14 +554,13 @@ void SpecRepo::process(const std::string& version,
           }
         }
       }
-      if (isSource) {
-        // hard code
-        // table->source = DataSource::KAFKA;
-        LOG(INFO) << "source" << config_val;
-        // hack, add source
-        //table->location = config_val;
-        //process(version, table, specs, doc);
-        //return;
+
+      if (isTopic) {
+        table->name = config_val;
+      }
+
+      if (isSource && table->location.empty()) {
+        table->location = config_val;
       }
       if (isFormat) {
         table->format = config_val;
@@ -588,12 +602,21 @@ void SpecRepo::process(const std::string& version,
 
       if (isMacro) {
         locations = paths;
+        paths.clear();
       }
     }
   }
 
+  // if s3 location empty, need extra loop get table->location assigned before process
+  if (table->location.empty() && table->source == DataSource::S3) {
+    process(version, table, specs);
+    return;
+  }
+
   // permute macro replaced locations
   for (auto& p : locations) {
+    // reset field fallback to normal table parsing
+    table->ddl = "";
     table->location = p;
     process(version, table, specs);
   }

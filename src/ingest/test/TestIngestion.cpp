@@ -43,7 +43,7 @@ TEST(IngestTest, TestIngestSpec) {
     "test", 1000, 10, "s3", nebula::meta::DataSource::S3,
     "swap", "s3://test", "s3://bak", "csv",
     std::move(sd), std::move(cp), std::move(ts),
-    std::move(as), std::move(bi), std::move(settings));
+    std::move(as), std::move(bi), std::move(settings), nullptr);
   nebula::ingest::IngestSpec spec(table, "1.0", "nebula/v1.x", "nebula", 10, SpecState::NEW, 0);
   LOG(INFO) << "SPEC: " << spec.toString();
   EXPECT_EQ(spec.id(), "test@nebula/v1.x@10");
@@ -75,174 +75,37 @@ TEST(IngestTest, TestSpecGeneration) {
 #endif
 }
 
-// return a table spec for ingestion, as well as UDF and columns apply during ingestion
-inline nebula::meta::TableSpecPtr process(const rapidjson::Document& doc, std::vector<std::pair<std::string, std::string>>& ingest_fields) {
+TEST(IngestTest, TestDDL) {
+  nebula::ingest::SpecRepo sr;
 
-  for (auto& statements : doc.GetArray()) {
-    auto root = statements.GetObject();
-    auto head = root.FindMember("RawStmt")->value.GetObject().FindMember("stmt")->value.GetObject();
-    bool isView = head.FindMember("ViewStmt") != head.MemberEnd();
-    bool isSelect = head.FindMember("SelectStmt") != head.MemberEnd();
-    assert(isSelect || isView);
+  // load cluster info from sample config
+  auto& ci = nebula::meta::ClusterInfo::singleton();
+  ci.load("configs/test.yml", [](const nebula::meta::MetaConf&) {
+    return std::make_unique<nebula::meta::VoidDb>();
+  });
 
-    // extract view namespace and name
-    if (isView) {
-      auto RangeVar = head.FindMember("ViewStmt")->value.GetObject().FindMember("view")->value.GetObject().FindMember("RangeVar")->value.GetObject();
-      auto ns = RangeVar.FindMember("schemaname")->value.GetString();
-      auto db = RangeVar.FindMember("relname")->value.GetString();
-      LOG(INFO) << "view name " << ns << "." << db;
-    }
+  sr.refresh(ci);
+  std::vector<std::shared_ptr<IngestSpec>> specs;
+  const auto& tableSpecs = ci.tables();
 
-    // extract columns and UDFs
-    // for view statement, we need to ViewStmt/query/SelectStmt
-    auto selectStmt = isView ? head.FindMember("ViewStmt")->value.GetObject().FindMember("query")->value.GetObject().FindMember("SelectStmt")->value.GetObject() : head.FindMember("SelectStmt")->value.GetObject();
-    auto columns = selectStmt.FindMember("targetList")->value.GetArray();
+  // generate a version all spec to be made during this batch: {config version}_{current unix timestamp}
+  const auto version = fmt::format("{0}.{1}", ci.version(), common::Evidence::unix_timestamp());
 
-    for (auto& c : columns) {
-      auto in = c.GetObject();
-      auto val = in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject();
-      bool isFunc = val.FindMember("FuncCall") != val.MemberEnd();
-      bool isColumn = val.FindMember("ColumnRef") != val.MemberEnd();
-      assert(isFunc || isColumn);
-
-      if (isColumn) {
-        auto fields = val.FindMember("ColumnRef")->value.FindMember("fields")->value.GetArray();
-        for (auto& f : fields) {
-          auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
-          std::pair<std::string, std::string> col("", fieldName);
-          ingest_fields.push_back(col);
-        }
-      } else if (isFunc) {
-        auto funcs = val.FindMember("FuncCall")->value.FindMember("funcname")->value.GetArray();
-        auto args = val.FindMember("FuncCall")->value.FindMember("args")->value.GetArray();
-        rapidjson::Value ::ConstValueIterator funcitr = funcs.Begin();
-        rapidjson::Value ::ConstValueIterator argitr = args.Begin();
-        while (funcitr != funcs.End()) {
-          auto funcName = funcitr->GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
-
-          std::string argument_list = "";
-          // function without arguments
-          if (argitr != args.End()) {
-            bool isMulitValue = argitr->GetObject().FindMember("A_Expr") != argitr->GetObject().MemberEnd();
-            // TODO(chenqin): only support MYUDF(field) should support UDF involving multi fields e.g MYUDF(id + flag),
-            assert(!isMulitValue);
-            auto fields = argitr->GetObject().FindMember("ColumnRef")->value.FindMember("fields")->value.GetArray();
-
-            for (auto& f : fields) {
-              auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
-              argument_list.append(fieldName);
-            }
-            argitr++;
-          }
-          std::pair<std::string, std::string> col(funcName, argument_list);
-          ingest_fields.push_back(col);
-          funcitr++;
-        }
+  for (auto itr = tableSpecs.cbegin(); itr != tableSpecs.cend(); ++itr) {
+    //hack, if table has sql statement, switch to sql parser
+    if (!itr->get()->ddl.empty()) {
+      auto postgresSQL = pg_query_parse(itr->get()->ddl.c_str());
+      rapidjson::Document doc;
+      if (doc.Parse(postgresSQL.parse_tree).HasParseError() || doc.GetArray().Empty()) {
+        LOG(ERROR) << postgresSQL.parse_tree << "ddl has syntax error use this https://rextester.com/l/postgresql_online_compiler";
+        return;
       }
-    }
-
-    auto fromTables = selectStmt.FindMember("fromClause")->value.GetArray();
-    for (auto& t : fromTables) {
-      auto name = t.GetObject().FindMember("RangeVar")->value.GetObject().FindMember("relname")->value.GetString();
-      LOG(INFO) << "from table" << name;
-      std::pair<std::string, std::string> col("_from", name);
-      ingest_fields.push_back(col);
-    }
-
-    auto whereClauses = selectStmt.FindMember("whereClause")->value.GetObject();
-    bool boolExpr = whereClauses.FindMember("BoolExpr") != whereClauses.MemberEnd();
-    // only support boolexp for now
-    assert(boolExpr);
-
-    auto arguments = whereClauses.FindMember("BoolExpr")->value.GetObject().FindMember("args")->value.GetArray();
-    for (auto& arg : arguments) {
-      bool isAExpr = arg.GetObject().FindMember("A_Expr") != arg.GetObject().MemberEnd();
-      assert(isAExpr);
-      auto aExpr = arg.GetObject().FindMember("A_Expr")->value.GetObject();
-
-      auto names = aExpr.FindMember("name")->value.GetArray();
-      for (auto& nm : names) {
-        auto exp = nm.FindMember("String")->value.FindMember("str")->value.GetString();
-        LOG(INFO) << "exp : " << exp;
-      }
-
-      auto lexpr = aExpr.FindMember("lexpr")->value.GetObject();
-      auto columnRef = lexpr.FindMember("ColumnRef")->value.GetObject();
-      auto fields = columnRef.FindMember("fields")->value.GetArray();
-      for (auto& f : fields) {
-        auto exp = f.FindMember("String")->value.FindMember("str")->value.GetString();
-        LOG(INFO) << "lexpr : " << exp;
-      }
-      bool arrRExpr = aExpr.FindMember("rexpr")->value.IsArray();
-      if (arrRExpr) {
-        auto rexprs = aExpr.FindMember("rexpr")->value.GetArray();
-        for (auto& expr : rexprs) {
-          bool aConst = expr.FindMember("A_Const") != expr.MemberEnd();
-          if (aConst) {
-            auto val = expr.FindMember("A_Const")->value.GetObject().FindMember("val")->value.GetObject();
-            bool isFloat = val.FindMember("Float") != val.MemberEnd();
-            bool isString = val.FindMember("String") != val.MemberEnd();
-            bool isInteger = val.FindMember("Integer") != val.MemberEnd();
-            assert(isFloat || isString || isInteger);
-            if (isInteger) {
-              auto ival = val.FindMember("Integer")->value.FindMember("ival")->value.GetInt();
-              LOG(INFO) << "rexpr : " << ival;
-            } else {
-              auto constval = val.FindMember(isFloat ? "Float" : "String")->value.FindMember("str")->value.GetString();
-              LOG(INFO) << "rexpr : " << constval;
-            }
-          }
-        }
-      } else {
-        auto rexpr = aExpr.FindMember("rexpr")->value.GetObject();
-        // hack, copy code from above
-        bool aConst = rexpr.FindMember("A_Const") != rexpr.MemberEnd();
-        if (aConst) {
-          auto val = rexpr.FindMember("A_Const")->value.GetObject().FindMember("val")->value.GetObject();
-          bool isFloat = val.FindMember("Float") != val.MemberEnd();
-          bool isString = val.FindMember("String") != val.MemberEnd();
-          bool isInteger = val.FindMember("Integer") != val.MemberEnd();
-          assert(isFloat || isString || isInteger);
-          if (isInteger) {
-            auto ival = val.FindMember("Integer")->value.FindMember("ival")->value.GetInt();
-            LOG(INFO) << "rexpr : " << ival;
-          } else {
-            auto constval = val.FindMember(isFloat ? "Float" : "String")->value.FindMember("str")->value.GetString();
-            LOG(INFO) << "rexpr : " << constval;
-          }
-        }
-      }
+      LOG(INFO) << postgresSQL.parse_tree;
+      pg_query_free_parse_result(postgresSQL);
+      sr.process(version, *itr, specs, doc);
     }
   }
-  //convert to table spec here
-  return nebula::meta::TableSpecPtr();
-}
-
-TEST(IngestTest, TestTransformerAddColumn) {
-  //schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
-  auto postgresSQL = pg_query_parse("SELECT id, event, items, flag, value, to_unixtime(a) from nebula.test");
-
-  rapidjson::Document doc;
-  if (doc.Parse(postgresSQL.parse_tree).HasParseError()) {
-    LOG(ERROR) << postgresSQL.parse_tree;
-  }
-  LOG(ERROR) << postgresSQL.parse_tree;
-  pg_query_free_parse_result(postgresSQL);
-
-  std::vector<std::pair<std::string, std::string>> ingest_fields;
-  process(doc, ingest_fields);
-
-  auto item = ingest_fields.at(0);
-  EXPECT_EQ(item.first, "");
-  EXPECT_EQ(item.second, "id");
-
-  item = ingest_fields.at(1);
-  EXPECT_EQ(item.first, "");
-  EXPECT_EQ(item.second, "event");
-
-  item = ingest_fields.at(5);
-  EXPECT_EQ(item.first, "to_unixtime");
-  EXPECT_EQ(item.second, "a");
+  // TODO(cheqin): right now s3 list err will stop test return correct spec number, should mock
 }
 
 TEST(IngestTest, TestTableSpec) {

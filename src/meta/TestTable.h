@@ -63,7 +63,7 @@ public:
                       nebula::type::TypeSerializer::from(
                         "ROW<_time_: bigint, id:int, event:string, tag:string, items:list<string>, flag:bool, value:tinyint, weight:double, stamp:int128, stack:string>"),
                       CP(),
-                      {}) {
+                      {}, nullptr) {
     // make a test value eval list for testing
     fields_.reserve(10);
     fields_.emplace_back(nebula::surface::eval::constant(1));
@@ -105,7 +105,8 @@ public:
     nebula::type::TypeSerializer::from(
       "ROW<_time_: bigint, d1:string, d2:tinyint, d3:int, value:tinyint, weight:double>"),
     CP(),
-    {}) {
+    {},
+    nullptr) {
     // make a test value eval list for testing
     fields_.reserve(6);
     fields_.emplace_back(nebula::surface::eval::constant(1));

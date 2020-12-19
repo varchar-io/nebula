@@ -344,9 +344,38 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
   TableSpecSet tableSet;
   for (YAML::const_iterator it = tables.begin(); it != tables.end(); ++it) {
     std::string name = it->first.as<std::string>();
-
     // table definition
     const auto& td = it->second;
+
+    std::string ddl;
+
+    if (td["ddl"]) {
+      ddl = td["ddl"].as<std::string>();
+      LOG(INFO) << "using nebula ddl to declare table ingestion" << ddl;
+      KafkaSerde serdeplaceholder;
+      ColumnProps propsplacehodler;
+      // max-hr could be fractional value to help us get granularity to seconds
+      TableSpec t(
+        std::string(),
+        -1,
+        -1,
+        std::string(),
+        DataSource::Custom,
+        std::string(),
+        std::string(),
+        std::string(),
+        std::string(),
+        serdeplaceholder,
+        propsplacehodler,
+        { TimeType::PROVIDED, 0, "", "" },
+        {},
+        BucketInfo::empty(),
+        {},
+        ddl);
+      tableSet.emplace(std::make_shared<TableSpec>(t));
+      continue;
+    }
+
     auto ds = asDataSource(td["data"].as<std::string>());
 
     // TODO(cao): sorry but we have a hard rule here,
@@ -376,7 +405,8 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
       asTimeSpec(td["time"]),
       asAccessRules(td["access"]),
       asBucketInfo(td["bucket"]),
-      asSettings(td["settings"])));
+      asSettings(td["settings"]),
+      ddl));
   }
 
   // swap with new table set
