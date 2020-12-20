@@ -73,7 +73,7 @@ void SpecRepo::refresh(const ClusterInfo& ci) noexcept {
     process(version, *itr, specs);
   }
 
-  // process all specs to mark their status
+  // interpret all specs to mark their status
   update(specs);
 }
 
@@ -223,7 +223,7 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
     const auto now = Evidence::now();
     const auto maxDays = table->max_seconds / Evidence::DAY_SECONDS;
 
-    // earliest time in second to process in ascending order
+    // earliest time in second to interpret in ascending order
     long cutOffTime = now - table->max_seconds;
 
     // TODO(chenqin): don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet.
@@ -314,7 +314,7 @@ void SpecRepo::process(
     }
     LOG(INFO) << postgresSQL.parse_tree;
     pg_query_free_parse_result(postgresSQL);
-    process(version, table, specs, doc);
+    interpret(version, table, specs, doc);
   }
 
   // S3 has two mode:
@@ -346,14 +346,77 @@ void SpecRepo::process(
                               table->loader, table->toString());
 }
 
-void SpecRepo::process(const std::string& version,
-                       const TableSpecPtr& table,
-                       std::vector<std::shared_ptr<IngestSpec>>& specs,
-                       const rapidjson::Document& doc) {
+// supported property name after where clause
+inline void assign(const TableSpecPtr& table, const std::string& config_name, const std::string config_val, const int iconfig_val, const float fconfig_val) {
+  const bool isFormat = config_name.find("format") != std::string::npos;
+  const bool isLoader = config_name.find("loader") != std::string::npos;
+  const bool isMaxMB = config_name.find("max_mb") != std::string::npos;
+  const bool isMaxHR = config_name.find("max_hr") != std::string::npos;
+  const bool isTopic = config_name.find("topic") != std::string::npos;
+  const bool isSource = config_name.find("source") != std::string::npos;
+  // we might consider support create table to better support schema typing system
+  // but it seems overkill at this time point.
+  const bool isSchema = config_name.find("schema") != std::string::npos;
+  const bool isTimestamp = config_name.find("timestamp") != std::string::npos;
+  const bool isBatch = config_name.find("batch") != std::string::npos;
+  const bool isTopicRetention = config_name.find("topic_retention") != std::string::npos;
+  const bool isProtocol = config_name.find("protocol") != std::string::npos;
+  const bool isTimePartition = config_name.find("time_partition") != std::string::npos;
 
+  if (isTopic) {
+    table->name = config_val;
+  }
+
+  if (isSource && table->location.empty()) {
+    table->location = config_val;
+  }
+  if (isFormat) {
+    table->format = config_val;
+  }
+  if (isLoader) {
+    table->loader = config_val;
+  }
+  if (isMaxMB) {
+    table->max_mb = iconfig_val;
+  }
+  if (isMaxHR) {
+    table->max_seconds = fconfig_val * 3600;
+  }
+  if (isSchema) {
+    table->schema = config_val;
+  }
+  if (isTimestamp) {
+    //hardcode
+    table->timeSpec.type = TimeType::MACRO;
+  }
+  if (isBatch) {
+    auto setting = table->settings;
+    std::ostringstream ss;
+    ss << iconfig_val;
+    std::string s(ss.str());
+    setting.insert({ "batch", s });
+  }
+  if (isProtocol) {
+    table->serde.protocol = config_val;
+  }
+
+  if (isTopicRetention) {
+    table->serde.retention = iconfig_val;
+  }
+
+  if (isTimePartition) {
+    table->timeSpec.pattern = config_val;
+  }
+}
+
+void SpecRepo::interpret(const std::string& version,
+                         const TableSpecPtr& table,
+                         std::vector<std::shared_ptr<IngestSpec>>& specs,
+                         const rapidjson::Document& doc) {
+  // we only need one pass to get udfs
   table->udfs.clear();
-  auto& ingestionUDFs = table->udfs;
 
+  // track permutation of locations by replace macro(s) in table location
   std::vector<std::string> locations;
   std::vector<std::string> paths;
   locations.push_back(table->location);
@@ -395,7 +458,7 @@ void SpecRepo::process(const std::string& version,
         for (auto& f : fields) {
           auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
           std::pair<std::string, std::string> col("", fieldName);
-          ingestionUDFs.push_back(col);
+          table->udfs.push_back(col);
         }
       } else if (isFuncCall) {
         auto funcs = val.FindMember("FuncCall")->value.FindMember("funcname")->value.GetArray();
@@ -420,7 +483,7 @@ void SpecRepo::process(const std::string& version,
             argitr++;
           }
           std::pair<std::string, std::string> col(funcName, argument_list);
-          ingestionUDFs.push_back(col);
+          table->udfs.push_back(col);
           funcitr++;
         }
       } else if (isTypeCast) {
@@ -428,7 +491,7 @@ void SpecRepo::process(const std::string& version,
         auto typeNameField = val.FindMember("TypeCast")->value.FindMember("typeName")->value.FindMember("TypeName")->value.FindMember("names")->value.GetArray();
 
         std::string typeName; //full name of type cast to e.g pg_catalog.int8
-        for(const auto& na : typeNameField) {
+        for (const auto& na : typeNameField) {
           auto name = na.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
           typeName.append(typeName.empty() ? name : "." + std::string(name));
         }
@@ -436,7 +499,7 @@ void SpecRepo::process(const std::string& version,
         for (auto& f : args) {
           auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
           std::pair<std::string, std::string> col("cast " + typeName + " as " + alias, fieldName);
-          ingestionUDFs.push_back(col);
+          table->udfs.push_back(col);
         }
       }
     }
@@ -444,27 +507,7 @@ void SpecRepo::process(const std::string& version,
     auto fromTables = selectStmt.FindMember("fromClause")->value.GetArray();
     for (auto& t : fromTables) {
       auto name = t.GetObject().FindMember("RangeVar")->value.GetObject().FindMember("relname")->value.GetString();
-      // LOG(INFO) << "from table" << name;
-      bool isCustom = std::string(name).find("custom") != std::string::npos;
-      bool isLocal = std::string(name).find("local") != std::string::npos;
-      bool isS3 = std::string(name).find("s3") != std::string::npos;
-      bool isKafka = std::string(name).find("kafka") != std::string::npos;
-      bool isGsheet = std::string(name).find("gsheet") != std::string::npos;
-      if (isCustom) {
-        table->source = DataSource::Custom;
-      }
-      if (isLocal) {
-        table->source = DataSource::LOCAL;
-      }
-      if (isS3) {
-        table->source = DataSource::S3;
-      }
-      if (isKafka) {
-        table->source = DataSource::KAFKA;
-      }
-      if (isGsheet) {
-        table->source = DataSource::GSHEET;
-      }
+      table->source = DataSourceUtils::getSourceByName(name);
     }
 
     auto whereClauses = selectStmt.FindMember("whereClause")->value.GetObject();
@@ -474,9 +517,10 @@ void SpecRepo::process(const std::string& version,
 
     auto arguments = whereClauses.FindMember("BoolExpr")->value.GetObject().FindMember("args")->value.GetArray();
     for (auto& arg : arguments) {
-      std::string config_name, config_ref, config_val;
-      int iconfig_val;   // Integer config_val
-      float fconfig_val; // Float config_val
+      std::string config_name, config_ref;
+      std::string config_val; // String config_val
+      int iconfig_val;        // Integer config_val
+      float fconfig_val;      // Float config_val
 
       bool isAExpr = arg.GetObject().FindMember("A_Expr") != arg.GetObject().MemberEnd();
       assert(isAExpr);
@@ -496,19 +540,6 @@ void SpecRepo::process(const std::string& version,
         auto exp = f.FindMember("String")->value.FindMember("str")->value.GetString();
         config_name.append(config_name.empty() ? exp : "." + std::string(exp));
       }
-
-      const bool isFormat = config_name.find("format") != std::string::npos;
-      const bool isLoader = config_name.find("loader") != std::string::npos;
-      const bool isMaxMB = config_name.find("max_mb") != std::string::npos;
-      const bool isMaxHR = config_name.find("max_hr") != std::string::npos;
-      const bool isTopic = config_name.find("topic") != std::string::npos;
-      const bool isSource = config_name.find("source") != std::string::npos;
-      const bool isSchema = config_name.find("schema") != std::string::npos;
-      const bool isTimestamp = config_name.find("timestamp") != std::string::npos;
-      const bool isBatch = config_name.find("batch") != std::string::npos;
-      const bool isTopicRetention = config_name.find("topic_retention") != std::string::npos;
-      const bool isProtocol = config_name.find("protocol") != std::string::npos;
-      const bool isTimePartition = config_name.find("time_partition") != std::string::npos;
 
       const bool isMacro = config_name.find("macro.") != std::string::npos;
 
@@ -534,7 +565,7 @@ void SpecRepo::process(const std::string& version,
                 fconfig_val = std::stof(constval);
               }
             }
-            // recursive replace location macro and call process
+            // recursive replace location macro and call interpret
             if (isMacro) {
               // do str matching requires convert to string
               const auto macro = "%7B" + config_name.substr(6) + "%7D";
@@ -574,52 +605,7 @@ void SpecRepo::process(const std::string& version,
           }
         }
       }
-
-      if (isTopic) {
-        table->name = config_val;
-      }
-
-      if (isSource && table->location.empty()) {
-        table->location = config_val;
-      }
-      if (isFormat) {
-        table->format = config_val;
-      }
-      if (isLoader) {
-        table->loader = config_val;
-      }
-      if (isMaxMB) {
-        table->max_mb = iconfig_val;
-      }
-      if (isMaxHR) {
-        table->max_seconds = fconfig_val * 3600;
-      }
-      if (isSchema) {
-        table->schema = config_val;
-      }
-      if (isTimestamp) {
-        //hardcode
-        table->timeSpec.type = TimeType::MACRO;
-      }
-      if (isBatch) {
-        auto setting = table->settings;
-        std::ostringstream ss;
-        ss << iconfig_val;
-        std::string s(ss.str());
-        setting.insert({ "batch", s });
-      }
-      if (isProtocol) {
-        table->serde.protocol = config_val;
-      }
-
-      if (isTopicRetention) {
-        table->serde.retention = iconfig_val;
-      }
-
-      if (isTimePartition) {
-        table->timeSpec.pattern = config_val;
-      }
-
+      ::nebula::ingest::assign(table, config_name, config_val, iconfig_val, fconfig_val);
       if (isMacro) {
         locations = paths;
         paths.clear();
@@ -627,7 +613,7 @@ void SpecRepo::process(const std::string& version,
     }
   }
 
-  // if s3 location empty, need extra loop get table->location assigned before process
+  // if s3 location empty, need extra loop get table->location assigned before interpret
   if (table->location.empty() && table->source == DataSource::S3) {
     process(version, table, specs);
     return;

@@ -103,7 +103,7 @@ TEST(IngestTest, TestDDL) {
       }
       LOG(INFO) << postgresSQL.parse_tree;
       pg_query_free_parse_result(postgresSQL);
-      sr.process(version, *itr, specs, doc);
+      sr.interpret(version, *itr, specs, doc);
 
       std::pair<std::string, std::string> actor_id_first;
       actor_id_first.first = "";

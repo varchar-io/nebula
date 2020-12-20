@@ -43,6 +43,31 @@ enum class DataSource {
 };
 
 struct DataSourceUtils {
+
+  static DataSource getSourceByName(const std::string& name) {
+    // LOG(INFO) << "from table" << name;
+    bool isCustom = name.find("custom") != std::string::npos;
+    bool isLocal = name.find("local") != std::string::npos;
+    bool isS3 = name.find("s3") != std::string::npos;
+    bool isKafka = name.find("kafka") != std::string::npos;
+    bool isGsheet = name.find("gsheet") != std::string::npos;
+
+    if (isLocal) {
+      return DataSource::LOCAL;
+    }
+    if (isS3) {
+      return DataSource::S3;
+    }
+    if (isKafka) {
+      return DataSource::KAFKA;
+    }
+    if (isGsheet) {
+      return DataSource::GSHEET;
+    }
+    assert(isCustom);
+    return DataSource::Custom;
+  }
+
   static bool isFileSystem(const DataSource& ds) {
     return ds == DataSource::S3 || ds == DataSource::LOCAL;
   }
