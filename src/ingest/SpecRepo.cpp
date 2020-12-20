@@ -314,7 +314,17 @@ void SpecRepo::process(
     }
     LOG(INFO) << postgresSQL.parse_tree;
     pg_query_free_parse_result(postgresSQL);
-    interpret(version, table, specs, doc);
+    std::vector<std::string> paths;
+    interpret(version, table, paths, doc);
+    for (const auto& path : paths) {
+      table->location = path;
+      table->ddl.clear();
+      process(version, table, specs);
+    }
+    // process table->location unset nebula tables
+    if (!paths.empty()) {
+      return;
+    }
   }
 
   // S3 has two mode:
@@ -411,14 +421,13 @@ inline void assign(const TableSpecPtr& table, const std::string& config_name, co
 
 void SpecRepo::interpret(const std::string& version,
                          const TableSpecPtr& table,
-                         std::vector<std::shared_ptr<IngestSpec>>& specs,
+                         std::vector<std::string>& paths,
                          const rapidjson::Document& doc) {
   // we only need one pass to get udfs
   table->udfs.clear();
 
   // track permutation of locations by replace macro(s) in table location
   std::vector<std::string> locations;
-  std::vector<std::string> paths;
   locations.push_back(table->location);
 
   for (auto& statements : doc.GetArray()) {
@@ -615,17 +624,10 @@ void SpecRepo::interpret(const std::string& version,
 
   // if s3 location empty, need extra loop get table->location assigned before interpret
   if (table->location.empty() && table->source == DataSource::S3) {
-    process(version, table, specs);
+    interpret(version, table, locations, doc);
     return;
   }
-
-  // permute macro replaced locations
-  for (auto& p : locations) {
-    // reset field fallback to normal table parsing
-    table->ddl = "";
-    table->location = p;
-    process(version, table, specs);
-  }
+  paths = std::move(locations);
 }
 
 void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {

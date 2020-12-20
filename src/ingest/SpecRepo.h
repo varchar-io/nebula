@@ -61,8 +61,8 @@ public:
   // assign the spec for given node
   bool confirm(const std::string& spec, const nebula::meta::NNode& node) noexcept;
 
-  // interpret ddl statement and assign to tablespec
-  void interpret(const std::string&, const meta::TableSpecPtr&, std::vector<SpecPtr>&, const rapidjson::Document&);
+  // interpret nebula DDL (postgresSQL) and build table spec
+  void interpret(const std::string&, const meta::TableSpecPtr&, std::vector<std::string>&, const rapidjson::Document&);
 
   // parse pattern string and generate ingest spec
   void genPatternSpec(long start,

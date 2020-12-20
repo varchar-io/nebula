@@ -103,7 +103,12 @@ TEST(IngestTest, TestDDL) {
       }
       LOG(INFO) << postgresSQL.parse_tree;
       pg_query_free_parse_result(postgresSQL);
-      sr.interpret(version, *itr, specs, doc);
+      std::vector<std::string> locations;
+      sr.interpret(version, *itr, locations, doc);
+
+      EXPECT_EQ(locations.size(), 2);
+      EXPECT_EQ(locations.at(0), "s3://nebula/ephemeral/dt=%7Bdate%7D/hr=%7Bhour%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=6/eventtype=1/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet");
+      EXPECT_EQ(locations.at(1), "s3://nebula/ephemeral/dt=%7Bdate%7D/hr=%7Bhour%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=7/eventtype=1/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet");
 
       std::pair<std::string, std::string> actor_id_first;
       actor_id_first.first = "";
