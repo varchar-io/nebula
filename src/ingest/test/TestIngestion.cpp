@@ -39,11 +39,12 @@ TEST(IngestTest, TestIngestSpec) {
   nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
   nebula::meta::KafkaSerde sd;
   std::unordered_map<std::string, std::string> settings;
+  meta::IngestionUDFs udfs;
   auto table = std::make_shared<nebula::meta::TableSpec>(
     "test", 1000, 10, "s3", nebula::meta::DataSource::S3,
     "swap", "s3://test", "s3://bak", "csv",
     std::move(sd), std::move(cp), std::move(ts),
-    std::move(as), std::move(bi), std::move(settings), nullptr);
+    std::move(as), std::move(bi), std::move(settings), "", udfs);
   nebula::ingest::IngestSpec spec(table, "1.0", "nebula/v1.x", "nebula", 10, SpecState::NEW, 0);
   LOG(INFO) << "SPEC: " << spec.toString();
   EXPECT_EQ(spec.id(), "test@nebula/v1.x@10");
@@ -103,6 +104,23 @@ TEST(IngestTest, TestDDL) {
       LOG(INFO) << postgresSQL.parse_tree;
       pg_query_free_parse_result(postgresSQL);
       sr.process(version, *itr, specs, doc);
+
+      std::pair<std::string, std::string> actor_id_first;
+      actor_id_first.first = "";
+      actor_id_first.second = "actor_id";
+
+      std::pair<std::string, std::string> dictionary_pin_id;
+      dictionary_pin_id.first = "dict";
+      dictionary_pin_id.second = "pin_id";
+
+      std::pair<std::string, std::string> cast_time_timestamp;
+      cast_time_timestamp.first = "cast pg_catalog.int8 as timestamp";
+      cast_time_timestamp.second = "_time";
+
+      EXPECT_EQ(itr->get()->udfs.size(), 3);
+      EXPECT_EQ(itr->get()->udfs.at(0), actor_id_first);
+      EXPECT_EQ(itr->get()->udfs.at(1), dictionary_pin_id);
+      EXPECT_EQ(itr->get()->udfs.at(2), cast_time_timestamp);
     }
   }
   // TODO(cheqin): right now s3 list err will stop test return correct spec number, should mock

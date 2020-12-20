@@ -304,7 +304,6 @@ void SpecRepo::process(
       table, version, buildIdentityByTime(table->timeSpec), table->name, 0, SpecState::NEW, 0));
     return;
   }
-
   //hack, if table has sql statement, switch to sql parser
   if (!table->ddl.empty()) {
     auto postgresSQL = pg_query_parse(table->ddl.c_str());
@@ -351,7 +350,10 @@ void SpecRepo::process(const std::string& version,
                        const TableSpecPtr& table,
                        std::vector<std::shared_ptr<IngestSpec>>& specs,
                        const rapidjson::Document& doc) {
-  std::vector<std::pair<std::string, std::string>> ingest_fields;
+
+  table->udfs.clear();
+  auto& ingestionUDFs = table->udfs;
+
   std::vector<std::string> locations;
   std::vector<std::string> paths;
   locations.push_back(table->location);
@@ -380,19 +382,22 @@ void SpecRepo::process(const std::string& version,
 
     for (auto& c : columns) {
       auto in = c.GetObject();
+      bool hasAlias = in.FindMember("ResTarget")->value.GetObject().FindMember("name") != in.FindMember("ResTarget")->value.GetObject().MemberEnd();
       auto val = in.FindMember("ResTarget")->value.GetObject().FindMember("val")->value.GetObject();
-      bool isFunc = val.FindMember("FuncCall") != val.MemberEnd();
+      bool isFuncCall = val.FindMember("FuncCall") != val.MemberEnd();
+      bool isTypeCast = val.FindMember("TypeCast") != val.MemberEnd();
       bool isColumn = val.FindMember("ColumnRef") != val.MemberEnd();
-      assert(isFunc || isColumn);
+      assert(isFuncCall || isColumn || isTypeCast);
+      std::string alias = hasAlias ? in.FindMember("ResTarget")->value.GetObject().FindMember("name")->value.GetString() : "";
 
       if (isColumn) {
         auto fields = val.FindMember("ColumnRef")->value.FindMember("fields")->value.GetArray();
         for (auto& f : fields) {
           auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
           std::pair<std::string, std::string> col("", fieldName);
-          ingest_fields.push_back(col);
+          ingestionUDFs.push_back(col);
         }
-      } else if (isFunc) {
+      } else if (isFuncCall) {
         auto funcs = val.FindMember("FuncCall")->value.FindMember("funcname")->value.GetArray();
         auto args = val.FindMember("FuncCall")->value.FindMember("args")->value.GetArray();
         rapidjson::Value ::ConstValueIterator funcitr = funcs.Begin();
@@ -415,8 +420,23 @@ void SpecRepo::process(const std::string& version,
             argitr++;
           }
           std::pair<std::string, std::string> col(funcName, argument_list);
-          ingest_fields.push_back(col);
+          ingestionUDFs.push_back(col);
           funcitr++;
+        }
+      } else if (isTypeCast) {
+        auto args = val.FindMember("TypeCast")->value.FindMember("arg")->value.FindMember("ColumnRef")->value.FindMember("fields")->value.GetArray();
+        auto typeNameField = val.FindMember("TypeCast")->value.FindMember("typeName")->value.FindMember("TypeName")->value.FindMember("names")->value.GetArray();
+
+        std::string typeName; //full name of type cast to e.g pg_catalog.int8
+        for(const auto& na : typeNameField) {
+          auto name = na.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
+          typeName.append(typeName.empty() ? name : "." + std::string(name));
+        }
+
+        for (auto& f : args) {
+          auto fieldName = f.GetObject().FindMember("String")->value.GetObject().FindMember("str")->value.GetString();
+          std::pair<std::string, std::string> col("cast " + typeName + " as " + alias, fieldName);
+          ingestionUDFs.push_back(col);
         }
       }
     }

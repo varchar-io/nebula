@@ -126,6 +126,7 @@ struct KafkaSerde {
 // TODO(cao): use nebula::common::unordered_map if it supports msgpack serde
 // key-value settings in both string types
 using Settings = std::unordered_map<std::string, std::string>;
+using IngestionUDFs = std::vector<std::pair<std::string, std::string>>;
 
 struct TableSpec {
   // table name
@@ -161,10 +162,12 @@ struct TableSpec {
   // DDL used to declare table ingestion
   std::string ddl;
 
+  IngestionUDFs udfs;
+
   TableSpec(std::string n, size_t mm, size_t ms, std::string s,
             DataSource ds, std::string lo, std::string loc, std::string bak,
             std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts,
-            AccessSpec as, BucketInfo bi, Settings st, std::string ddl)
+            AccessSpec as, BucketInfo bi, Settings st, std::string ddl, IngestionUDFs udfs)
     : name{ std::move(n) },
       max_mb{ mm },
       max_seconds{ ms },
@@ -180,7 +183,8 @@ struct TableSpec {
       accessSpec{ std::move(as) },
       bucketInfo{ std::move(bi) },
       settings{ std::move(st) },
-      ddl { std::move(ddl)}{}
+      ddl{ std::move(ddl) },
+      udfs(std::move(udfs)) {}
 
   inline std::string toString() const {
     // table name @ location - format: time

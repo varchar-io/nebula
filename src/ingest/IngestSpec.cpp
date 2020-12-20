@@ -58,12 +58,14 @@ using nebula::memory::Batch;
 using nebula::meta::BessType;
 using nebula::meta::BlockSignature;
 using nebula::meta::DataSource;
+using nebula::meta::IngestionUDFs;
 using nebula::meta::Table;
 using nebula::meta::TablePtr;
 using nebula::meta::TableSpecPtr;
 using nebula::meta::TestTable;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
+
 using nebula::storage::CsvReader;
 using nebula::storage::JsonReader;
 using nebula::storage::JsonVectorReader;
@@ -89,7 +91,7 @@ static constexpr auto BATCH_SIZE = "batch";
 
 // build blocks from a row cursor source
 bool build(TablePtr, RowCursor&, BlockList&,
-           size_t, const std::string&, TimeRow&) noexcept;
+           size_t, const std::string&, TimeRow&, IngestionUDFs&) noexcept;
 
 // load some nebula test data into current process
 void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
@@ -289,11 +291,12 @@ bool IngestSpec::loadGSheet(BlockList& blocks) noexcept {
 
   // size() will have total number of rows for current spec
   JsonVectorReader reader(schema, values, this->size());
+
   auto tb = table_->to();
   TableService::singleton()->enroll(tb);
 
   TimeRow timeRow(table_->timeSpec, watermark_);
-  return build(tb, reader, blocks, FLAGS_NBLOCK_MAX_ROWS, id_, timeRow);
+  return build(tb, reader, blocks, FLAGS_NBLOCK_MAX_ROWS, id_, timeRow, table_->udfs);
 }
 
 // current is a kafka spec
@@ -415,7 +418,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   size_t bRows = FLAGS_NBLOCK_MAX_ROWS;
   OVERWRITE_IF_EXISTS(bRows, BATCH_SIZE, [](auto& s) { return folly::to<size_t>(s); })
 
-  return build(table, *source, blocks, bRows, id_, timeRow);
+  return build(table, *source, blocks, bRows, id_, timeRow, table_->udfs);
 }
 
 #undef OVERWRITE_IF_EXISTS
@@ -427,7 +430,8 @@ bool build(
   BlockList& blocks,
   size_t bRows,
   const std::string& spec,
-  TimeRow& timeRow) noexcept {
+  TimeRow& timeRow,
+  meta::IngestionUDFs& udfs) noexcept {
 #ifdef PPROF
   HeapProfilerStart("/tmp/heap_ingest.out");
 #endif
@@ -456,6 +460,11 @@ bool build(
   unordered_map<size_t, std::shared_ptr<Batch>> batches;
   // auto batch = std::make_shared<Batch>(*table, bRows);
   auto pod = table->pod();
+
+  // build lambda apply ingestion udfs functions
+  for (const auto& fn : udfs) {
+    LOG(INFO) << fn.first << " " << fn.second;
+  }
 
   size_t blockId = 0;
   while (cursor.hasNext()) {

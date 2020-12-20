@@ -101,7 +101,8 @@ tables:
       create view nebula.ddl as
       select
         actor_id,
-        pin_id
+        dict(pin_id),
+        cast(_time as bigint) as timestamp
       from s3
       where
         source='s3://nebula/ephemeral/dt=%7Bdate%7D/hr=%7Bhour%7D/downstream=%7Bds%7D/contenttype=%7Bct%7D/pinformat=%7Bpf%7D/eventtype=%7Bet%7D/part-r-%7Bbucket%7D-fb7ea820-76a3-4c60-be79-956727df7593.gz.parquet' and

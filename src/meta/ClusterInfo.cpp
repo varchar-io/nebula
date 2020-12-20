@@ -348,7 +348,7 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
     const auto& td = it->second;
 
     std::string ddl;
-
+    IngestionUDFs udfs;
     if (td["ddl"]) {
       ddl = td["ddl"].as<std::string>();
       LOG(INFO) << "using nebula ddl to declare table ingestion" << ddl;
@@ -371,7 +371,8 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
         {},
         BucketInfo::empty(),
         {},
-        ddl);
+        ddl,
+        udfs);
       tableSet.emplace(std::make_shared<TableSpec>(t));
       continue;
     }
@@ -406,7 +407,8 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
       asAccessRules(td["access"]),
       asBucketInfo(td["bucket"]),
       asSettings(td["settings"]),
-      ddl));
+      ddl,
+      udfs));
   }
 
   // swap with new table set
