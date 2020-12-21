@@ -19,6 +19,7 @@ target_link_libraries(${NEBULA_INGEST}
     PUBLIC ${YAML_LIBRARY}
     PUBLIC ${XXH_LIBRARY}
     PUBLIC ${AWS_LIBRARY}
+    PUBLIC ${GCS_LIBRARY}
     PUBLIC ${PERF_LIBRARY})
 
 # build test binary
