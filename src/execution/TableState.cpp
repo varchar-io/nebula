@@ -23,16 +23,22 @@ using nebula::execution::io::BatchBlock;
 using nebula::memory::BatchPtr;
 using BlockPtr = std::shared_ptr<BatchBlock>;
 using nebula::meta::BlockSignature;
+using nebula::surface::eval::HistVector;
 
 #define LOCK_DATA_ACCESS const std::lock_guard<std::mutex> lock(mdata_);
 
 // update block metrics to a list of variables
-inline void update(const BlockPtr block, size_t& rows, size_t& bytes, TableState::Window& window) {
+inline void update(const BlockPtr block,
+                   size_t& rows,
+                   size_t& bytes,
+                   TableState::Window& window,
+                   HistVector& hists) {
   const auto& state = block->state();
   rows += state.numRows;
   bytes += state.rawSize;
   window.first = std::min(block->start(), window.first);
   window.second = std::max(block->end(), window.second);
+  TableStateBase::merge(hists, state.histograms);
 }
 
 void TableState::iterate(std::function<void(const nebula::execution::io::BatchBlock& block)> func) const {
@@ -48,7 +54,7 @@ bool TableState::add(std::shared_ptr<BatchBlock> block) {
   const auto& spec = block->spec();
 
   // collect metrics
-  update(block, rows_, bytes_, window_);
+  update(block, rows_, bytes_, window_, hists_);
   ++blocks_;
 
   // add this block to the repo
@@ -65,14 +71,17 @@ size_t TableState::remove(const std::string& spec) {
   size_t rows = 0;
   size_t bytes = 0;
   std::pair<size_t, size_t> window{ std::numeric_limits<size_t>::max(), 0 };
+  HistVector hists;
   for (auto& b : data_) {
-    update(b.second, rows, bytes, window);
+    update(b.second, rows, bytes, window, hists);
   }
 
+  // updated state data
   blocks_ = data_.size();
   rows_ = rows;
   bytes_ = bytes;
-  window_ = window;
+  std::swap(window_, window);
+  std::swap(hists_, hists);
 
   return count;
 }

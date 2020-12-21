@@ -5,6 +5,7 @@ set(NEBULA_SURFACE NSurface)
 add_library(${NEBULA_SURFACE} STATIC 
     ${NEBULA_SRC}/surface/MockSurface.cpp
     ${NEBULA_SRC}/surface/eval/EvalContext.cpp
+    ${NEBULA_SRC}/surface/eval/Histogram.cpp
     ${NEBULA_SRC}/surface/eval/ValueEval.cpp)
 target_link_libraries(${NEBULA_SURFACE}
     PUBLIC ${NEBULA_TYPE}
@@ -14,7 +15,8 @@ target_link_libraries(${NEBULA_SURFACE}
 
 # build test binary
 add_executable(SurfaceTests 
-    ${NEBULA_SRC}/surface/test/TestSurface.cpp)
+    ${NEBULA_SRC}/surface/test/TestSurface.cpp
+    ${NEBULA_SRC}/surface/test/TestHistogram.cpp)
 target_link_libraries(SurfaceTests 
     PRIVATE ${NEBULA_COMMON}   
     PRIVATE ${NEBULA_SURFACE}    

@@ -135,8 +135,8 @@ private:
 // we can skip the block
 #define DISPATCH_CASE(HT)                                                      \
   const auto [min, max] = std::minmax_element(values->begin(), values->end()); \
-  auto histo = static_cast<const HT&>(b.histogram(name));                      \
-  if (histo.min() > *max || *min > histo.max()) {                              \
+  auto histo = std::dynamic_pointer_cast<HT>(b.histogram(name));               \
+  if (histo->min() > *max || *min > histo->max()) {                            \
     return N;                                                                  \
   }
 

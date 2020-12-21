@@ -37,10 +37,26 @@ using nebula::meta::BlockState;
 using nebula::meta::NBlock;
 using nebula::meta::TestTable;
 using nebula::surface::MockRowData;
+using nebula::surface::eval::HistVector;
 
-std::shared_ptr<BatchBlock> BlockLoader::from(const BlockSignature& sign, std::shared_ptr<nebula::memory::Batch> b) {
+// make a copy of histogram of given block
+HistVector hist(const Batch& b) {
+  auto schema = b.schema();
+  // generate histogram list from current batch
+  const auto numColumns = schema->size();
+  HistVector hists;
+  hists.reserve(numColumns);
+  for (size_t i = 0; i < numColumns; ++i) {
+    auto type = schema->childType(i);
+    hists.push_back(b.histogram(type->name()));
+  }
+
+  return hists;
+}
+
+std::shared_ptr<BatchBlock> BlockLoader::from(const BlockSignature& sign, std::shared_ptr<Batch> b) {
   N_ENSURE_NOT_NULL(b, "requires a solid batch");
-  return std::make_shared<BatchBlock>(sign, b, BlockState{ b->getRows(), b->getMemory() });
+  return std::make_shared<BatchBlock>(sign, b, BlockState{ b->getRows(), b->getMemory(), hist(*b) });
 }
 
 BlockList BlockLoader::load(const BlockSignature& block) {
@@ -162,7 +178,7 @@ BlockList BlockLoader::loadTestBlock(const BlockSignature& b) {
         b.end,
         b.spec },
       block,
-      BlockState{ block->getRows(), block->getRawSize() }));
+      BlockState{ block->getRows(), block->getRawSize(), hist(*block) }));
   }
 
   return blocks;

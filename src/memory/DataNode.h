@@ -106,7 +106,7 @@ public: // data reading API
     return meta_->histogram<T>();
   }
 
-  const nebula::surface::eval::Histogram& histogram() const {
+  std::shared_ptr<nebula::surface::eval::Histogram> histogram() const {
     return meta_->histogram();
   }
 

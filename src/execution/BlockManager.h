@@ -102,6 +102,7 @@ public:
 
   // swap table states for given node
   inline void swap(const nebula::meta::NNode& node, TableStates states) {
+    std::lock_guard<std::mutex> lock(dmux_);
     data_[node] = states;
   }
 
@@ -111,6 +112,7 @@ public:
 
   // get table list of current node
   nebula::common::unordered_set<std::string> tables(const size_t limit) const noexcept {
+    std::lock_guard<std::mutex> lock(dmux_);
     nebula::common::unordered_set<std::string> tables;
     for (const auto& node : data_) {
       for (const auto& ts : node.second) {
@@ -128,6 +130,7 @@ public:
 
   // has spec in node
   bool hasSpec(const nebula::meta::NNode& node, const std::string& table, const std::string& spec) {
+    std::lock_guard<std::mutex> lock(dmux_);
     auto entry = data_.find(node);
     if (entry != data_.end()) {
       const auto& states = entry->second;
@@ -141,6 +144,7 @@ public:
   }
 
   TableStateBase metrics(const std::string& table) const {
+    std::lock_guard<std::mutex> lock(dmux_);
     TableStateBase metricsOnly{ table };
     // aggregate all nodes for given table
     for (auto& ts : data_) {
@@ -153,6 +157,9 @@ public:
 
     return metricsOnly;
   }
+
+  // get historgram of given table/column
+  std::shared_ptr<nebula::surface::eval::Histogram> hist(const std::string&, size_t) const;
 
 private:
   BlockManager() : blocks_{ 0 } {
@@ -172,7 +179,13 @@ private:
   size_t blocks_;
 
   // meta data for remote blocks
-  nebula::common::unordered_map<nebula::meta::NNode, TableStates, nebula::meta::NodeHash, nebula::meta::NodeEqual> data_;
+  nebula::common::unordered_map<
+    nebula::meta::NNode,
+    TableStates,
+    nebula::meta::NodeHash,
+    nebula::meta::NodeEqual>
+    data_;
+  mutable std::mutex dmux_;
 
 private:
   static std::mutex smux;

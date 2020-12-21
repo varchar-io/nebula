@@ -58,6 +58,10 @@ public:
     return window_;
   }
 
+  inline const nebula::surface::eval::HistVector& hists() const {
+    return hists_;
+  }
+
   // merge metrics only from other table state object
   void merge(const TableStateBase& state, bool metricsOnly = true) {
     N_ENSURE(metricsOnly, "Only merge metrics only for now.");
@@ -67,11 +71,29 @@ public:
     bytes_ += state.rawBytes();
     window_.first = std::min(state.window_.first, window_.first);
     window_.second = std::max(state.window_.second, window_.second);
+
+    // merge histogram
+    merge(hists_, state.hists_);
   }
 
   static const TableStateBase& empty() {
     static const TableStateBase EMPTY{ "EMPTY" };
     return EMPTY;
+  }
+
+  inline static void merge(nebula::surface::eval::HistVector& target,
+                           const nebula::surface::eval::HistVector& source) {
+    // merge histogram from state into hists
+    if (target.size() == 0) {
+      target = source;
+      return;
+    }
+
+    // TODO: need support for schema evolution
+    N_ENSURE(target.size() == source.size(), "expect the same number of histograms");
+    for (size_t i = 0; i < target.size(); ++i) {
+      target.at(i)->merge(*source.at(0));
+    }
   }
 
 protected:
@@ -86,6 +108,9 @@ protected:
   size_t bytes_;
   // time window covers blocks
   Window window_;
+
+  // column histogram
+  nebula::surface::eval::HistVector hists_;
 };
 
 // Table State with solid data in it

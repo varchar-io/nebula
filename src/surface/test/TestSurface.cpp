@@ -25,7 +25,7 @@
 #include "surface/eval/Script.h"
 
 namespace nebula {
-namespace memory {
+namespace surface {
 namespace test {
 
 using namespace nebula::common;
@@ -116,5 +116,5 @@ TEST(SurfaceTest, TestScriptContext) {
 }
 
 } // namespace test
-} // namespace memory
+} // namespace surface
 } // namespace nebula

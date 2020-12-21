@@ -116,7 +116,7 @@ TEST(HistogramTest, TestHistogramTypes) {
     m->histogram("abc");
     m->histogram("xyz");
     const auto& h = m->histogram();
-    EXPECT_EQ(h.count, 3);
+    EXPECT_EQ(h->count, 3);
   }
 }
 
@@ -146,12 +146,12 @@ TEST(HistogramTest, TestBlockHistogram) {
     LOG(INFO) << "====== Histogram Of Columns ======";
     LOG(INFO) << "Time: " << batch1.histogram<IntHistogram>("_time_").toString();
     LOG(INFO) << "ID: " << batch1.histogram<IntHistogram>("id").toString();
-    LOG(INFO) << "Event: " << batch1.histogram("event").toString();
-    LOG(INFO) << "Items: " << batch1.histogram("items").toString();
+    LOG(INFO) << "Event: " << batch1.histogram("event")->toString();
+    LOG(INFO) << "Items: " << batch1.histogram("items")->toString();
     LOG(INFO) << "Flag: " << batch1.histogram<BoolHistogram>("flag").toString();
     LOG(INFO) << "Value: " << batch1.histogram<IntHistogram>("value").toString();
     LOG(INFO) << "Weight: " << batch1.histogram<RealHistogram>("weight").toString();
-    LOG(INFO) << "Stamp: " << batch1.histogram("stamp").toString();
+    LOG(INFO) << "Stamp: " << batch1.histogram("stamp")->toString();
   }
 }
 

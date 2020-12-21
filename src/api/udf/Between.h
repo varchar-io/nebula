@@ -93,10 +93,10 @@ private:
 
 // check histogram  if the value range has no overlap with histogram [min, max]
 // we can skip the block
-#define DISPATCH_CASE(HT)                                 \
-  auto histo = static_cast<const HT&>(b.histogram(name)); \
-  if (histo.min() > max || min > histo.max()) {           \
-    return N;                                             \
+#define DISPATCH_CASE(HT)                                        \
+  auto histo = std::dynamic_pointer_cast<HT>(b.histogram(name)); \
+  if (histo->min() > max || min > histo->max()) {                \
+    return N;                                                    \
   }
 
         // only enable for scalar types

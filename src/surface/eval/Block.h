@@ -32,6 +32,9 @@ public:
   virtual ~Block() = default;
 
 public:
+  // get the table schema of current data block
+  virtual nebula::type::Schema schema() const = 0;
+
   // get total number of rows in current data block
   virtual size_t getRows() const = 0;
 
@@ -39,7 +42,7 @@ public:
   virtual nebula::type::TypeNode columnType(const std::string&) const = 0;
 
   // get column histogram
-  virtual const Histogram& histogram(const std::string&) const = 0;
+  virtual std::shared_ptr<Histogram> histogram(const std::string&) const = 0;
 
   // get column partition values - empty if not a partition column
   virtual std::vector<std::any> partitionValues(const std::string&) const = 0;

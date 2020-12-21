@@ -116,6 +116,12 @@ SET(GRPC_CMAKE_ARGS
   -DgRPC_SSL_PROVIDER:STRING=package
   -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/grpc)
 
+# unfortunately ssllib in latest macos doesn't allow application to use
+# they are internal used only - pointing to the version installed by brew
+if(APPLE)
+  SET(GRPC_CMAKE_ARGS ${GRPC_CMAKE_ARGS} "-DOPENSSL_ROOT_DIR:STRING=/usr/local/opt/openssl")
+endif()
+
 # use specific version since flatbuffers not catching up
 # or submit PR to fix ByteBuffer used in Deserialize method
 ExternalProject_Add(grpc

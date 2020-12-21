@@ -57,6 +57,9 @@ message TableStateResponse {
   // metric column are column with number types, others are dimension columns
   repeated string dimension = 6;
   repeated string metric = 7;
+
+  // column histograms serialized in JSON string
+  repeated string hists = 8;
 }
 
 // define query request and response

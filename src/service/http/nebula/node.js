@@ -163,7 +163,8 @@ const getTableState = (q, handler, client) => {
             mt: reply.getMintime(),
             xt: reply.getMaxtime(),
             dl: reply.getDimensionList(),
-            ml: reply.getMetricList()
+            ml: reply.getMetricList(),
+            ht: reply.getHistsList()
         }));
     });
 }

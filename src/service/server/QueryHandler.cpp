@@ -20,6 +20,7 @@
 #include <gflags/gflags.h>
 
 #include "common/Zip.h"
+#include "execution/BlockManager.h"
 #include "execution/core/ServerExecutor.h"
 #include "service/node/NodeClient.h"
 #include "service/node/RemoteNodeConnector.h"
@@ -56,6 +57,7 @@ using nebula::api::dsl::table;
 
 using nebula::common::Zip;
 using nebula::common::ZipFormat;
+using nebula::execution::BlockManager;
 using nebula::execution::Error;
 using nebula::execution::PlanPtr;
 using nebula::execution::QueryContext;
@@ -330,7 +332,8 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
     return std::make_shared<decltype(exp)>(exp);                                             \
   }
 
-// TODO(shuo): get min/max for each column and pass in to hist udaf
+  // TODO(shuo): get min/max for each column and pass in to hist udaf
+  // now we can get given column stats by this call BlockManager::init()->hist
   switch (metric.method()) {
     BUILD_METRIC_CASE(MAX, max)
     BUILD_METRIC_CASE(MIN, min)

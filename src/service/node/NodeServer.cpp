@@ -164,9 +164,17 @@ grpc::Status NodeServerImpl::Poll(
   for (const auto& s : states) {
     s.second->iterate([&mb, &db](const BatchBlock& bb) {
       const auto& state = bb.state();
+      // serialize histograms
+      std::vector<flatbuffers::Offset<flatbuffers::String>> hists;
+      hists.reserve(state.histograms.size());
+      std::transform(state.histograms.begin(), state.histograms.end(),
+                     std::back_inserter(hists),
+                     [&mb](auto h) {
+                       return mb.CreateString(h->toString());
+                     });
       db.push_back(CreateDataBlockDirect(
         mb, bb.table().c_str(), bb.getId(), bb.start(), bb.end(),
-        bb.spec().c_str(), bb.storage().c_str(), state.numRows, state.rawSize));
+        bb.spec().c_str(), bb.storage().c_str(), state.numRows, state.rawSize, &hists));
     });
   }
 

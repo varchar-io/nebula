@@ -142,6 +142,8 @@ Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, Ta
   reply->set_mintime(window.first);
   reply->set_maxtime(window.second);
 
+  auto& h = metrics.hists();
+
   // TODO(cao) - need meta data system to query table info
   auto schema = table->schema();
   for (size_t i = 0, size = schema->size(); i < size; ++i) {
@@ -153,6 +155,10 @@ Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, Ta
     } else {
       reply->add_metric(column->name());
     }
+
+    // send all colummn histograms
+    // bm->hist(tbl, i) = h.at(i)
+    reply->add_hists(h.at(i)->toString());
   }
 
   LOG(INFO) << "Served table stats request for " << request->table();
