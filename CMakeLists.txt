@@ -247,6 +247,9 @@ include(ext/Cuckoo_Ext.cmake)
 # include AWS external project
 include(ext/Aws_Ext.cmake)
 
+# include AWS external project
+include(ext/Gcp_Ext.cmake)
+
 # include protobuf
 include(ext/Protobuf_Ext.cmake)
 
