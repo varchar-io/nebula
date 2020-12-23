@@ -81,6 +81,14 @@ public:
     return a == b;
   }
 
+  // Returns ture if text starts with prefix.
+  static inline bool StartsWith(const std::string_view text, 
+                                const std::string_view prefix) {
+    return prefix.empty() || 
+           (text.size() >= prefix.size() &&
+            std::memcmp(text.data(), prefix.data(), prefix.size()) == 0);
+  }
+
   // char equlas ignoring case
   static inline bool ieq(char a, char b) {
     return a == b || std::tolower(a) == std::tolower(b);
