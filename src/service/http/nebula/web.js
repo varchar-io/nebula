@@ -553,6 +553,9 @@ const onQueryResult = (state, r) => {
     else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['TREEMERGE']) {
         choices(['icicle', 'flame']);
     }
+    else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['HIST']) {
+        choices(['column', 'bar']);
+    }
     // others
     else if (state.metrics.length > 0) {
         choices(['column', 'bar', 'doughnut', 'pie', 'line']);

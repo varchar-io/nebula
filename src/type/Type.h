@@ -281,7 +281,7 @@ public:
   }
 
   // look up direct child which matches the name and execute work /function on it
-  void onChild(const std::string& name, std::function<void(const TypeNode&)> func) {
+  size_t onChild(const std::string& name, std::function<void(const TypeNode&)> func) {
     N_ENSURE(KIND == Kind::STRUCT, "only support working on row type");
 
     // build a field name to data node
@@ -290,9 +290,10 @@ public:
       auto columnType = childType(i);
       if (name == columnType->name()) {
         func(columnType);
-        break;
+        return i;
       }
     }
+    return -1;
   }
 
   // return nullptr if not found

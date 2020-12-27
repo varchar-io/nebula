@@ -346,6 +346,31 @@ export class Charts {
         // 'bar'=>column, 'horizontalBar' for normal bar
         this.displayBar = (chartId, json, keys, metrics, vertical) => {
             this.cls(chartId);
+            // process json string for histogram
+            let histJsonIdx = -1;
+            for (var i = 0; i < metrics.length; i++) {
+                if (metrics[i].endsWith('.HIST')) {
+                    histJsonIdx = i;
+                    break;
+                }
+            }
+            if (histJsonIdx != -1) {
+                let histJsonStr = JSON.parse(json[0][metrics[histJsonIdx]]);
+                let hists = histJsonStr["b"];
+                let dict = {};
+                let labels = [];
+                for (var i = 0; i < hists.length; i++) {
+                    let count = hists[i][2];
+                    if (count == 0) {
+                        continue;
+                    }
+                    let label = "value: " + hists[i][0] + " -> " + hists[i][1];
+                    dict[label] = count;
+                    labels.push(label);
+                }
+                json = [dict];
+                metrics = labels;
+            }
             const model = this.process(json, keys, metrics);
             model.type = vertical ? 'bar' : 'horizontalBar';
             this.displayGeneric(this.id, model, true);

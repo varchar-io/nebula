@@ -76,6 +76,7 @@ TEST(HistogramTest, TestMerge) {
   {
     BoolHistogram h{ 4, 4 };
     BoolHistogram h2{ 3, 1 };
+    h.merge(h2);
     EXPECT_EQ(h.count, 7);
     EXPECT_EQ(h.trueValues, 5);
   }

@@ -285,7 +285,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     const auto& m = req.metric(i);
     // build metric may change column name, using its alais
     columns.push_back(m.column());
-    fields.push_back(buildMetric(m));
+    fields.push_back(buildMetric(m, tb));
   }
 
   q->select(fields).groupby(keys);
@@ -324,7 +324,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
   return q;
 }
 
-std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) const {
+std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric, const Table& table) const {
   const auto& colName = metric.column();
 #define BUILD_METRIC_CASE(TYPE, NAME, ...)                                                   \
   case Rollup::TYPE: {                                                                       \
@@ -332,8 +332,43 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric) cons
     return std::make_shared<decltype(exp)>(exp);                                             \
   }
 
-  // TODO(shuo): get min/max for each column and pass in to hist udaf
-  // now we can get given column stats by this call BlockManager::init()->hist
+#define BUILD_METRIC_HIST(TYPE, NAME, ...)                                                   \
+  auto exp = NAME(col(colName), ##__VA_ARGS__).as(fmt::format("{0}.{1}", colName, #TYPE));   \
+  return std::make_shared<decltype(exp)>(exp);
+
+  if (metric.method() == Rollup::HIST) {
+    auto bm = BlockManager::init();
+    auto schema = table.schema();
+    Kind columnType = Kind::INVALID;
+    // check column type and index
+    auto index = schema->onChild(colName, [&columnType](const TypeNode& found) {
+      columnType = found->k();
+    });
+    auto histogram = bm->hist(table.name(), index);
+    switch (columnType) {
+      case nebula::type::Kind::TINYINT:
+      case nebula::type::Kind::SMALLINT:
+      case nebula::type::Kind::INTEGER:
+      case nebula::type::Kind::BIGINT: {
+        auto histo = std::dynamic_pointer_cast<nebula::surface::eval::IntHistogram>(histogram);
+        auto histMax = histo->v_max;
+        auto histMin = histo->v_min;
+        BUILD_METRIC_HIST(HIST, hist, std::move(histMin), std::move(histMax));
+        break;
+      }
+      case nebula::type::Kind::REAL:
+      case nebula::type::Kind::DOUBLE: {
+        auto histo = std::dynamic_pointer_cast<nebula::surface::eval::RealHistogram>(histogram);
+        double histMax = histo->v_max;
+        double histMin = histo->v_min;
+        BUILD_METRIC_HIST(HIST, hist, std::move(histMin), std::move(histMax));
+        break;
+      }
+      default: break;
+    }
+  }
+#undef BUILD_METRIC_HIST
+
   switch (metric.method()) {
     BUILD_METRIC_CASE(MAX, max)
     BUILD_METRIC_CASE(MIN, min)
