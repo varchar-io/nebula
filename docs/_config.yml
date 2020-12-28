@@ -1,4 +1,7 @@
 title: Nebula
 description: A distributed block-based data storage and compute engine
 show_downloads: true
-theme: jekyll-theme-architect
+# theme: jekyll-theme-architect
+
+plugins:
+  - jekyll-seo-tag

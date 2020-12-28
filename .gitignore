@@ -48,3 +48,7 @@ node_modules
 
 # clion ide
 cmake-build-debug
+
+# jekyll related files
+docs/_site/*
+docs/Gemfile.lock
