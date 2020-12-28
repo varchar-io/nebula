@@ -281,6 +281,7 @@ public:
   }
 
   // look up direct child which matches the name and execute work /function on it
+  // return matched column index, otherwise -1
   size_t onChild(const std::string& name, std::function<void(const TypeNode&)> func) {
     N_ENSURE(KIND == Kind::STRUCT, "only support working on row type");
 
