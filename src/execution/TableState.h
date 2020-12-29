@@ -92,7 +92,7 @@ public:
     // TODO: need support for schema evolution
     N_ENSURE(target.size() == source.size(), "expect the same number of histograms");
     for (size_t i = 0; i < target.size(); ++i) {
-      target.at(i)->merge(*source.at(0));
+      target.at(i)->merge(*source.at(i));
     }
   }
 

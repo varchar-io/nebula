@@ -90,7 +90,7 @@ template <typename T>
 struct NumberHistogram : public Histogram {
   NumberHistogram()
     : NumberHistogram<T>(0,
-                         std ::numeric_limits<T>::max(),
+                         std::numeric_limits<T>::max(),
                          std::numeric_limits<T>::min(),
                          0) {}
   NumberHistogram(uint64_t c, T min, T max, T sum)
@@ -148,7 +148,7 @@ struct NumberHistogram : public Histogram {
 
     auto nh = static_cast<const NumberHistogram<T>&>(other);
     v_min = std::min<T>(v_min, nh.v_min);
-    v_max = std::min<T>(v_max, nh.v_max);
+    v_max = std::max<T>(v_max, nh.v_max);
     v_sum += nh.v_sum;
   }
 
