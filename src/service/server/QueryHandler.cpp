@@ -27,7 +27,7 @@
 
 DEFINE_uint32(AUTO_WINDOW_SIZE, 100, "maximum data point when selecting auto window");
 // TODO(cao): read setting from API call rather than env setting - filter most of value=1 frames
-DEFINE_uint64(TREE_PATH_MIN_SIZE, 2, "min size of tree merge path to return - should be passed from client.");
+DEFINE_uint64(TREE_PATH_MIN_SIZE, 3, "min size of tree merge path to return - should be passed from client.");
 
 /**
  * Define some basic sharable proerpties for nebula service
@@ -326,48 +326,14 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
 std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric, const Table& table) const {
   const auto& colName = metric.column();
-#define BUILD_METRIC_CASE(TYPE, NAME, ...)                                                   \
-  case Rollup::TYPE: {                                                                       \
-    auto exp = NAME(col(colName), ##__VA_ARGS__).as(fmt::format("{0}.{1}", colName, #TYPE)); \
-    return std::make_shared<decltype(exp)>(exp);                                             \
-  }
-
-#define BUILD_METRIC_HIST(TYPE, NAME, ...)                                                   \
-  auto exp = NAME(col(colName), ##__VA_ARGS__).as(fmt::format("{0}.{1}", colName, #TYPE));   \
+#define BUILD_METRIC_EXP(TYPE, NAME, ...)                                                  \
+  auto exp = NAME(col(colName), ##__VA_ARGS__).as(fmt::format("{0}.{1}", colName, #TYPE)); \
   return std::make_shared<decltype(exp)>(exp);
 
-  if (metric.method() == Rollup::HIST) {
-    auto bm = BlockManager::init();
-    auto schema = table.schema();
-    Kind columnType = Kind::INVALID;
-    // check column type and index
-    auto index = schema->onChild(colName, [&columnType](const TypeNode& found) {
-      columnType = found->k();
-    });
-    auto histogram = bm->hist(table.name(), index);
-    switch (columnType) {
-      case nebula::type::Kind::TINYINT:
-      case nebula::type::Kind::SMALLINT:
-      case nebula::type::Kind::INTEGER:
-      case nebula::type::Kind::BIGINT: {
-        auto histo = std::dynamic_pointer_cast<nebula::surface::eval::IntHistogram>(histogram);
-        auto histMax = histo->v_max;
-        auto histMin = histo->v_min;
-        BUILD_METRIC_HIST(HIST, hist, std::move(histMin), std::move(histMax));
-        break;
-      }
-      case nebula::type::Kind::REAL:
-      case nebula::type::Kind::DOUBLE: {
-        auto histo = std::dynamic_pointer_cast<nebula::surface::eval::RealHistogram>(histogram);
-        double histMax = histo->v_max;
-        double histMin = histo->v_min;
-        BUILD_METRIC_HIST(HIST, hist, std::move(histMin), std::move(histMax));
-        break;
-      }
-      default: break;
-    }
+#define BUILD_METRIC_CASE(TYPE, NAME, ...)      \
+  case Rollup::TYPE: {                          \
+    BUILD_METRIC_EXP(TYPE, NAME, ##__VA_ARGS__) \
   }
-#undef BUILD_METRIC_HIST
 
   switch (metric.method()) {
     BUILD_METRIC_CASE(MAX, max)
@@ -385,9 +351,39 @@ std::shared_ptr<Expression> QueryHandler::buildMetric(const Metric& metric, cons
     BUILD_METRIC_CASE(P99_99, pct, 99.99)
     BUILD_METRIC_CASE(TREEMERGE, tpm, FLAGS_TREE_PATH_MIN_SIZE)
     BUILD_METRIC_CASE(CARD_EST, card, true)
-  default:
-    throw NException("Rollup method not supported");
+  case Rollup::HIST: {
+    auto bm = BlockManager::init();
+    auto schema = table.schema();
+    Kind columnType = Kind::INVALID;
+    // check column type and index
+    auto index = schema->onChild(colName, [&columnType](const TypeNode& found) {
+      columnType = found->k();
+    });
+    auto histogram = bm->hist(table.name(), index);
+    switch (columnType) {
+    case nebula::type::Kind::TINYINT:
+    case nebula::type::Kind::SMALLINT:
+    case nebula::type::Kind::INTEGER:
+    case nebula::type::Kind::BIGINT: {
+      auto histo = std::dynamic_pointer_cast<nebula::surface::eval::IntHistogram>(histogram);
+      BUILD_METRIC_EXP(HIST, hist, histo->v_min, histo->v_max)
+    }
+    case nebula::type::Kind::REAL:
+    case nebula::type::Kind::DOUBLE: {
+      auto histo = std::dynamic_pointer_cast<nebula::surface::eval::RealHistogram>(histogram);
+      BUILD_METRIC_EXP(HIST, hist, histo->v_min, histo->v_max)
+    }
+    default:
+      throw NException("Histogram query unsupported for type.");
+    }
   }
+
+  default:
+    throw NException("Rollup method not supported.");
+  }
+
+#undef BUILD_METRIC_CASE
+#undef BUILD_METRIC_EXP
 }
 
 #define CHAIN_AND_RET                                  \
