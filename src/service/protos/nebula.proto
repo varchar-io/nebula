@@ -133,6 +133,7 @@ enum Rollup {
   TREEMERGE = 13;
   // estimated cardinality
   CARD_EST = 14;
+  HIST = 15;
 }
 
 // A metric is defined by rollup method on a column

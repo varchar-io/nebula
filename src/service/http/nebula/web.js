@@ -218,12 +218,22 @@ const initTable = (table, callback) => {
 // place basic check before sending to server
 // return true if failed the check
 const checkRequest = (state) => {
-    // 0. valid start and end 
+    // 0. check if metrics contain hist
+    if (state.metrics && state.metrics.length > 1) {
+        for (var i = 0; i < state.metrics.length; i++) {
+            if (state.metrics[i]["M"] == neb.Rollup.HIST) {
+                msg(`Please only select one hist in Fields`);
+                return true;
+            }
+        }
+    }
+
+    // 1. valid start and end 
     if (!state.start || !state.end) {
         return true;
     }
 
-    // 1. timeline query
+    // 2. timeline query
     if (state.timeline) {
         const windowSize = state.window;
         // window size == 0: auto
@@ -553,6 +563,9 @@ const onQueryResult = (state, r) => {
     else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['TREEMERGE']) {
         choices(['icicle', 'flame']);
     }
+    else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['HIST']) {
+        choices(['column', 'bar']);
+    }
     // others
     else if (state.metrics.length > 0) {
         choices(['column', 'bar', 'doughnut', 'pie', 'line']);
@@ -585,7 +598,13 @@ const onQueryResult = (state, r) => {
 
         // if aggregation specified multiple keys, we merge them into a single key
         let err = null;
-
+        let histIndex = histJsonIdx(metrics);
+        let transformedData = [];
+        let transformedMetrics = {};
+        // json response contains hist data
+        if (histIndex != -1) {
+            [transformedData, transformedMetrics] = processHistJson(data, metrics, histIndex);
+        }
         // render data based on visual choice
         const choice = $(displayId).val();
         const beginMs = time.seconds(state.start) * 1000;
@@ -609,10 +628,18 @@ const onQueryResult = (state, r) => {
                 showTable = false;
                 break;
             case 'column':
-                err = charts.displayBar(chartId, data, keys, metrics, true);
+                if (histIndex != -1) {
+                    err = charts.displayBar(chartId, transformedData, keys, transformedMetrics, true);
+                } else {
+                    err = charts.displayBar(chartId, data, keys, metrics, true);
+                }
                 break;
             case 'bar':
-                err = charts.displayBar(chartId, data, keys, metrics, false);
+                if (histIndex != -1) {
+                    err = charts.displayBar(chartId, transformedData, keys, transformedMetrics, true);
+                } else {
+                    err = charts.displayBar(chartId, data, keys, metrics, true);
+                }
                 break;
             case 'doughnut':
                 err = charts.displayPie(chartId, data, keys, metrics, true);
@@ -655,6 +682,29 @@ const onQueryResult = (state, r) => {
     //  display change will also trigger draw
     $(displayId).change(draw);
 };
+
+const histJsonIdx = (metrics) => {
+    for (var i = 0; i < metrics.length; i++) {
+        if (metrics[i].endsWith('.HIST')) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+const processHistJson = (data, metrics, histJsonIdx) => {
+    let histJsonStr = JSON.parse(data[0][metrics[histJsonIdx]]);
+    let hists = histJsonStr["b"];
+    let dict = {};
+    let labels = [];
+    for (var i = 0; i < hists.length; i++) {
+        let count = hists[i][2];
+        let label = "[" + hists[i][0] + ", " + hists[i][1] + "]";
+        dict[label] = count;
+        labels.push(label);
+    }
+    return [[dict], labels];
+}
 
 const url2state = () => {
     // if no hash value - use the first table as the hash

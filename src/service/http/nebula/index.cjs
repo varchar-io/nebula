@@ -4986,7 +4986,8 @@ proto.nebula.service.Rollup = {
   P99_9: 11,
   P99_99: 12,
   TREEMERGE: 13,
-  CARD_EST: 14
+  CARD_EST: 14,
+  HIST: 15
 };
 
 /**

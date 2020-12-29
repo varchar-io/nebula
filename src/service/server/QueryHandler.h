@@ -72,7 +72,7 @@ private:
     const nebula::surface::eval::LogicalOp = nebula::surface::eval::LogicalOp::AND) const;
 
   // build metric into the query
-  std::shared_ptr<nebula::api::dsl::Expression> buildMetric(const Metric&) const;
+  std::shared_ptr<nebula::api::dsl::Expression> buildMetric(const Metric&, const nebula::meta::Table&) const;
 
   // validate the query request
   nebula::service::base::ErrorCode validate(const QueryRequest&) const noexcept;
