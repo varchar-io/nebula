@@ -699,10 +699,7 @@ const processHistJson = (data, metrics, histJsonIdx) => {
     let labels = [];
     for (var i = 0; i < hists.length; i++) {
         let count = hists[i][2];
-        if (count == 0) {
-            continue;
-        }
-        let label = "value: " + hists[i][0] + " -> " + hists[i][1];
+        let label = "[" + hists[i][0] + ", " + hists[i][1] + "]";
         dict[label] = count;
         labels.push(label);
     }
