@@ -1,7 +1,6 @@
 title: Nebula
 description: Faster Interactive Big Data Analytics
 show_downloads: true
-# theme: jekyll-theme-architect
 
 plugins:
   - jekyll-seo-tag
