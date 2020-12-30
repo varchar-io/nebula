@@ -46,11 +46,12 @@ build=$base/build
 prebuilt=$base/test/bin/$os_dir
 node=$build/NodeServer
 #   check if file not exists, use pre-built version
-if ! [ -z "$node" ]; then
+if [[ ! -f "$node" ]]; then
     node=$prebuilt/NodeServer
 fi
 
 if ! grep -q "$node" <<< `ps aux` ; then
+    echo "starting $node"
     $node &
 else
     echo 'Nebula Node is already running.'
@@ -59,12 +60,13 @@ fi
 server=$build/NebulaServer
 config=$build/configs/test.yml
 #   check if file not exists, use pre-built version
-if ! [ -z "$server" ]; then
+if [[ ! -f "$server" ]]; then
     server=$prebuilt/NebulaServer
     config=$base/src/configs/test.yml
 fi
 
 if ! grep -q "$server" <<< `ps aux` ; then
+    echo "starting $server --CLS_CONF $config"
     $server --CLS_CONF  $config &
 else
     echo 'Nebula Server is already running.'

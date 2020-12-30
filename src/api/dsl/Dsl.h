@@ -95,8 +95,8 @@ static UDFExpression<nebula::surface::eval::UDFType::AVG> avg(const T& expr) {
 }
 
 template <typename T>
-static UDFExpression<nebula::surface::eval::UDFType::PCT, double> pct(const T& expr, double&& percentile) {
-  return UDFExpression<nebula::surface::eval::UDFType::PCT, double>(std::shared_ptr<Expression>(new T(expr)), std::move(percentile));
+static UDFExpression<nebula::surface::eval::UDFType::PCT, double> pct(const T& expr, double percentile) {
+  return UDFExpression<nebula::surface::eval::UDFType::PCT, double>(std::shared_ptr<Expression>(new T(expr)), percentile);
 }
 
 template <typename T>
@@ -151,13 +151,13 @@ static InExpression<U> nin(const T& expr, nebula::common::Zip&& values) {
 }
 
 template <typename T, typename U>
-static BetweenExpression<U> between(const T& expr, const U&& min, const U&& max) {
-  return BetweenExpression<U>(std::shared_ptr<Expression>(new T(expr)), std::move(min), std::move(max));
+static BetweenExpression<U> between(const T& expr, U min, U max) {
+  return BetweenExpression<U>(std::shared_ptr<Expression>(new T(expr)), min, max);
 }
 
 template <typename T, typename U>
-static HistExpression<U> hist(const T& expr, U&& min, U&& max) {
-  return HistExpression<U>(std::shared_ptr<Expression>(new T(expr)), std::move(min), std::move(max));
+static HistExpression<U> hist(const T& expr, U min, U max) {
+  return HistExpression<U>(std::shared_ptr<Expression>(new T(expr)), min, max);
 }
 
 template <typename T, typename std::enable_if_t<!IS_T_LITERAL(T), bool> = true>
