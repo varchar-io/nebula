@@ -562,8 +562,7 @@ const onQueryResult = (state, r) => {
     // tree merge metrics
     else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['TREEMERGE']) {
         choices(['icicle', 'flame']);
-    }
-    else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['HIST']) {
+    } else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['HIST']) {
         choices(['column', 'bar']);
     }
     // others
@@ -597,18 +596,26 @@ const onQueryResult = (state, r) => {
         }
 
         // if aggregation specified multiple keys, we merge them into a single key
+        const histIndex = histJsonIdx(metrics);
         let err = null;
-        let histIndex = histJsonIdx(metrics);
-        let transformedData = [];
-        let transformedMetrics = {};
+        let showTable = true;
+
         // json response contains hist data
         if (histIndex != -1) {
-            [transformedData, transformedMetrics] = processHistJson(data, metrics, histIndex);
+            // no need to show it in table as we transformed the data
+            showTable = false;
+
+            // transform data and metrics
+            const [transformedData, transformedMetrics] = processHistJson(data, metrics, histIndex);
+            data.length = 0;
+            transformedData.map(e => data.push(e));
+            metrics.length = 0;
+            transformedMetrics.map(e => metrics.push(e));
         }
         // render data based on visual choice
         const choice = $(displayId).val();
         const beginMs = time.seconds(state.start) * 1000;
-        let showTable = true;
+
         switch (choice) {
             case 'timeline':
                 err = charts.displayTimeline(chartId, data, keys, metrics, windowCol, beginMs, 0);
@@ -628,18 +635,10 @@ const onQueryResult = (state, r) => {
                 showTable = false;
                 break;
             case 'column':
-                if (histIndex != -1) {
-                    err = charts.displayBar(chartId, transformedData, keys, transformedMetrics, true);
-                } else {
-                    err = charts.displayBar(chartId, data, keys, metrics, true);
-                }
+                err = charts.displayBar(chartId, data, keys, metrics, true);
                 break;
             case 'bar':
-                if (histIndex != -1) {
-                    err = charts.displayBar(chartId, transformedData, keys, transformedMetrics, true);
-                } else {
-                    err = charts.displayBar(chartId, data, keys, metrics, true);
-                }
+                err = charts.displayBar(chartId, data, keys, metrics, false);
                 break;
             case 'doughnut':
                 err = charts.displayPie(chartId, data, keys, metrics, true);
@@ -703,7 +702,9 @@ const processHistJson = (data, metrics, histJsonIdx) => {
         dict[label] = count;
         labels.push(label);
     }
-    return [[dict], labels];
+    return [
+        [dict], labels
+    ];
 }
 
 const url2state = () => {
