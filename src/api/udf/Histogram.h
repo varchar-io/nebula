@@ -36,7 +36,7 @@ class Hist : public BaseType {
   static constexpr size_t BUCKET_NUM = 20;
 
 public:
-  using InputType = typename BaseType::InputType;
+  using InputType = typename std::conditional_t<std::is_floating_point_v<typename BaseType::InputType>, double, int64_t>;
   using NativeType = typename BaseType::NativeType;
   using BaseAggregator = typename BaseType::BaseAggregator;
 
@@ -54,7 +54,7 @@ public:
     }
     virtual ~Aggregator() = default;
 
-    inline virtual void merge(InputType v) override {
+    inline virtual void merge(typename BaseType::InputType v) override {
       histogram_.addValue(v);
     }
 
