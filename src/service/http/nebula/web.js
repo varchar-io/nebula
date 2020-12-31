@@ -635,10 +635,10 @@ const onQueryResult = (state, r) => {
                 showTable = false;
                 break;
             case 'column':
-                err = charts.displayBar(chartId, data, keys, metrics, true);
+                err = charts.displayBar(chartId, data, keys, metrics, true, histIndex != -1);
                 break;
             case 'bar':
-                err = charts.displayBar(chartId, data, keys, metrics, false);
+                err = charts.displayBar(chartId, data, keys, metrics, false, histIndex != -1);
                 break;
             case 'doughnut':
                 err = charts.displayPie(chartId, data, keys, metrics, true);
@@ -692,18 +692,39 @@ const histJsonIdx = (metrics) => {
 }
 
 const processHistJson = (data, metrics, histJsonIdx) => {
-    let histJsonStr = JSON.parse(data[0][metrics[histJsonIdx]]);
-    let hists = histJsonStr["b"];
-    let dict = {};
-    let labels = [];
-    for (var i = 0; i < hists.length; i++) {
-        let count = hists[i][2];
-        let label = "[" + hists[i][0] + ", " + hists[i][1] + "]";
-        dict[label] = count;
-        labels.push(label);
+    let transformedDict = [];
+    let transformedLabels = [];
+    // If json response contains Hist, transform hist json data
+    // keep other parts of the json data as it is.
+    for (var idx = 0; idx < data.length; idx++) {
+        let dict = {};
+        let labels = {};
+        for (var key in data[idx]) {
+            if (key === metrics[histJsonIdx]) {
+                let histJsonStr = JSON.parse(data[idx][key]);
+                let hists = histJsonStr["b"];
+                let tmpDict = {};
+                let tmpLabels = [];
+                for (var i = 0; i < hists.length; i++) {
+                    let count = hists[i][2];
+                    let label = "[" + hists[i][0] + ", " + hists[i][1] + "]";
+                    tmpDict[label] = count;
+                    tmpLabels.push(label);
+                }
+                dict[key] = tmpDict;
+                // Also transform metrics so it could be used to show
+                // multiple graphs
+                labels[key] = tmpLabels;
+            } else {
+                // keep other parts of json response as it is
+                dict[key] = data[idx][key]; 
+            }
+        }
+        transformedLabels.push(labels);
+        transformedDict.push(dict);
     }
     return [
-        [dict], labels
+        transformedDict, transformedLabels
     ];
 }
 

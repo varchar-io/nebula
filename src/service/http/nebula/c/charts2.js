@@ -297,7 +297,7 @@ export class Charts {
             return opts;
         };
 
-        this.displayGeneric = (chartId, model, bg, fil) => {
+        this.displayGeneric = (chartId, model, bg, fil, multiple = false) => {
             // process the data model
             const dataset = {
                 labels: model.labels,
@@ -331,7 +331,7 @@ export class Charts {
             }
 
             // set labels
-            if (this.chart) {
+            if (this.chart && !multiple) {
                 this.chart.destroy();
             }
 
@@ -344,11 +344,28 @@ export class Charts {
 
         // if data specified as pair [], it will be used as min/max display for each label
         // 'bar'=>column, 'horizontalBar' for normal bar
-        this.displayBar = (chartId, json, keys, metrics, vertical) => {
+        this.displayBar = (chartId, json, keys, metrics, vertical, multiple = false) => {
             this.cls(chartId);
-            const model = this.process(json, keys, metrics);
-            model.type = vertical ? 'bar' : 'horizontalBar';
-            this.displayGeneric(this.id, model, true);
+            if (multiple) {
+                let i = 0;
+                const area = $(chartId);
+                area.html("");
+                metrics.forEach(metric => {
+                    const title = this.label(json[i], keys);
+                    for (var k in metric) {
+                        const model = this.process([json[i][k]], keys, metric[k]);
+                        const id = `bar_${i++}`;
+                        area.append(`<center>${title}</center>`);
+                        area.append(`<canvas id='${id}' width='${area.width()}'/>`);
+                        model.type = vertical ? 'bar' : 'horizontalBar';
+                        this.displayGeneric(id, model, true, null, true);
+                    }
+                });
+            } else {
+                const model = this.process(json, keys, metrics);
+                model.type = vertical ? 'bar' : 'horizontalBar';
+                this.displayGeneric(this.id, model, true);
+            }
         };
 
         this.displayLine = (chartId, json, keys, metrics) => {
