@@ -84,7 +84,7 @@ set_target_properties(${BZ2_LIBRARY} PROPERTIES
 
 # lzma
 if(APPLE)
-    set(LZMA_ROOT ${CELLAR_ROOT}/xz/5.2.5/)
+    set(LZMA_ROOT /usr/local/opt/xz)
     set(LZMA_INCLUDE_DIR ${LZMA_ROOT}/include)
     set(LZMA_LIBRARY_PATH ${LZMA_ROOT}/lib/liblzma.a)
 else()

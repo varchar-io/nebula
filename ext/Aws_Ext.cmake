@@ -99,7 +99,7 @@ add_dependencies(${AWS_S3_LIBRARY} aws)
 # or `/opt/local/bin/curl-config --protocols`
 if(APPLE)
   set(CURL_INCLUDE_DIRS /usr/local/opt/curl/include)
-  set(CURL_LIBRARY_PATH /usr/local/opt/curl/lib/libcurl.a)
+  set(CURL_LIBRARY_PATH /usr/local/opt/curl/lib/libcurl.dylib)
 else()
   set(CURL_INCLUDE_DIRS /usr/include)
   # to link curl lib statically, use curl-config to see what is needed
@@ -133,6 +133,12 @@ if(NOT APPLE)
     INTERFACE nettle
     INTERFACE nghttp2 
     INTERFACE psl)
+endif()
+
+if(APPLE)
+  # libresolve is needed by libcares.a - why put it here?
+  # because we want 2 special APPLE libraries sounding hacky.
+  set(AWS_FRAMEWORK "-framework corefoundation -lresolv -L/usr/local/opt/icu4c/lib")
 endif()
 
 # add a bundle

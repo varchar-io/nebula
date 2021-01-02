@@ -1,13 +1,13 @@
 find_package(Threads REQUIRED)
 
 include(ExternalProject)
-SET(GTEST_OPTS
-    -DCMAKE_CXX_STANDARD=17)
+# the commit is working as I tested 
+# while official version doesn't such as "release-1.10.0"
+# so keep it until we test new version
 ExternalProject_Add(gtest
     PREFIX gtest
     GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG release-1.10.0
-    CMAKE_ARGS ${GTEST_OPTS}
+    GIT_TAG 389cb68b87193358358ae87cc56d257fd0d80189
     UPDATE_COMMAND ""
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON

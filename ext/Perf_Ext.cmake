@@ -14,10 +14,12 @@ ExternalProject_Add(gperftools
     LOG_BUILD ON)
 
 ExternalProject_Get_Property(gperftools SOURCE_DIR)
-add_custom_target(mgperftools ALL
-      COMMAND ./autogen.sh && ./configure --prefix=${SOURCE_DIR} && make install -j8
-      WORKING_DIRECTORY ${SOURCE_DIR}
-      DEPENDS gperftools)
+if(NOT EXISTS ${SOURCE_DIR}/lib)
+    add_custom_target(mgperftools ALL
+        COMMAND ./autogen.sh && ./configure --prefix=${SOURCE_DIR} && make install -j8
+        WORKING_DIRECTORY ${SOURCE_DIR}
+        DEPENDS gperftools)
+endif()
 
 set(PERF_INCLUDE_DIR ${SOURCE_DIR}/include)
 file(MAKE_DIRECTORY ${PERF_INCLUDE_DIR})

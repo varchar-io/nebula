@@ -8,9 +8,10 @@ SET(JSON_OPTS
   -DRAPIDJSON_BUILD_TESTS=OFF
   -DRAPIDJSON_BUILD_CXX11=OFF
   -DRAPIDJSON_HAS_STDSTRING=ON)
-ExternalProject_Add(
-  rapidjson
+ExternalProject_Add(rapidjson
+  PREFIX rapidjson
   GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
+  GIT_TAG 585042c02ba6350e10fc43df8beee1bc097f4c5f
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   BUILD_COMMAND ""

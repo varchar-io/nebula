@@ -44,6 +44,16 @@ namespace test {
 
 using nebula::common::Int128_U;
 
+TEST(CommonTest, TestGTestFunc) {
+  struct TestObj {
+    explicit TestObj(int k) : kind{ k } {}
+    int kind;
+  };
+
+  TestObj o{ 0 };
+  LOG(INFO) << ::testing::PrintToString(o);
+}
+
 TEST(CommonTest, TestEnsures) {
   // test generic ensure
   N_ENSURE(3 > 2, "true");
