@@ -22,10 +22,10 @@ ExternalProject_Add(
 # get source dir after download step
 ExternalProject_Get_Property(rapidjson SOURCE_DIR)
 ExternalProject_Get_Property(rapidjson BINARY_DIR)
-set(RAPIDJSON_INCLUDE_DIRS ${SOURCE_DIR}/include)
-file(MAKE_DIRECTORY ${RAPIDJSON_INCLUDE_DIRS})
+set(RAPIDJSON_INCLUDE_DIR ${SOURCE_DIR}/include)
+file(MAKE_DIRECTORY ${RAPIDJSON_INCLUDE_DIR})
 set(JSON_LIBRARY json)
 add_library(${JSON_LIBRARY} INTERFACE)
 set_target_properties(${JSON_LIBRARY} PROPERTIES
-    "INTERFACE_INCLUDE_DIRECTORIES" "${RAPIDJSON_INCLUDE_DIRS}")
+    "INTERFACE_INCLUDE_DIRECTORIES" "${RAPIDJSON_INCLUDE_DIR}")
 add_dependencies(${JSON_LIBRARY} rapidjson)

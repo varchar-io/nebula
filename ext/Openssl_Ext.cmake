@@ -1,13 +1,8 @@
+# OPENSSL has to be available for find_package
+# it's not only used by nebula but also required by other depedency build
 set(OpenSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL REQUIRED)
 
-
-if(APPLE)
-    set(OPENSSL_SSL_LIBRARY "/usr/local/opt/openssl/lib/libssl.a")
-endif()
-
-
-# TODO(cao): this is a hack to link static ssl
 # due to not working option `OPENSSL_USE_STATIC_LIBS`
 get_filename_component(LIBSSL_DIR ${OPENSSL_SSL_LIBRARY} DIRECTORY)
 set(OPENSSL_LIBRARY ssl)

@@ -41,6 +41,10 @@ add_custom_target(makeqjs ALL
 
 set(QJS_INCLUDE_DIRS ${SOURCE_DIR})
 file(MAKE_DIRECTORY ${QJS_INCLUDE_DIRS})
+# NOTE: LATEST boost such as 1.75.0 will conflict with version file
+# either ensure boost old version or we can remove this useless file
+file(REMOVE ${SOURCE_DIR}/version)
+
 set(QJS_LIBRARY_PATH ${SOURCE_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}quickjs.lto.a)
 set(QJS_LIBRARY libqjs)
 add_library(${QJS_LIBRARY} UNKNOWN IMPORTED)

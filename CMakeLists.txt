@@ -193,6 +193,10 @@ find_package(Boost 1.65 MODULE
     thread
   REQUIRED)
 
+if(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+endif()
+
 include(ext/PGQuery_Ext.cmake)
 
 # add dependency of compression

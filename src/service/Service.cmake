@@ -12,7 +12,6 @@ file(MAKE_DIRECTORY ${GEN_DIR})
 # make a placeholder file to be built
 SET(NSERVER "${CMAKE_CURRENT_BINARY_DIR}/NebulaServer")
 set(NNSERVER "${CMAKE_CURRENT_BINARY_DIR}/NodeServer")
-message("Nebula Server: ${NSERVER}")
 file(TOUCH ${NSERVER})
 file(TOUCH ${NNSERVER})
 

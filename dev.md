@@ -1,9 +1,7 @@
 # Work On Nebula
 
 ## Build the project
-
-These steps are tested for Ubuntu LTS 18. 
-Other linux os or macos uses different package manager such as homebrew.
+These steps are tested for MacOS and Ubuntu (LTS 18) only.
 
 ### Install dependencies and build
 run `~/nebula/build.sh` for automate setup (All steps in the build.sh script also listed on the bottom of this page as well)
