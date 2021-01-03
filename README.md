@@ -1,6 +1,6 @@
 # Nebula - fast, secure, simple, scalable
 
-[![](./docs/assets/images/nebula-logo.png)](https://shawncao.medium.com/introduce-nebula-62d6e17dfaeb) <br>
+[![](./docs/assets/images/nebula-logo-small.png)](https://shawncao.medium.com/introduce-nebula-62d6e17dfaeb) <br>
 Nebula is an extreme-fast end-to-end interactive big data analytics solution.
 Nebula is designed as a high-performance columnar data storage and tabular OLAP engine.
 
