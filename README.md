@@ -1,4 +1,5 @@
-# Nebula - Extremely-fast Interactive Big Data Analytics
+# Nebula
+## Extremely-fast Interactive Big Data Analytics
 
 [![](./docs/assets/images/nebula-logo-small.png)](https://shawncao.medium.com/introduce-nebula-62d6e17dfaeb) <br>
 Nebula is an extremely-fast end-to-end interactive big data analytics solution.
