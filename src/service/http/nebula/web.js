@@ -707,7 +707,14 @@ const processHistJson = (data, metrics, histJsonIdx) => {
                 let tmpLabels = [];
                 for (var i = 0; i < hists.length; i++) {
                     let count = hists[i][2];
-                    let label = "[" + hists[i][0] + ", " + hists[i][1] + "]";
+                    let label;
+                    if (i === 0) {
+                        label = "[min, " + hists[i][1] + "]";
+                    } else if (i === hists.length - 1) {
+                        label = "[" + hists[i][0] + ", max]";
+                    } else {
+                        label = "[" + hists[i][0] + ", " + hists[i][1] + "]";
+                    }
                     tmpDict[label] = count;
                     tmpLabels.push(label);
                 }

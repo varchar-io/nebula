@@ -640,8 +640,8 @@ TEST(UDFTest, TestHist) {
   // we will ask itself for finalize
   auto jsonStr = (std::string)(th1->finalize());
   nebula::common::ExtendableSlice slice(1024);
-  EXPECT_EQ(th1->serialize(slice, 12), 467);
-  EXPECT_EQ(th1->load(slice, 12), 467);
+  EXPECT_EQ(th1->serialize(slice, 12), 287);
+  EXPECT_EQ(th1->load(slice, 12), 287);
   CType::NativeType load = th1->finalize();
   EXPECT_EQ(load, jsonStr);
 }

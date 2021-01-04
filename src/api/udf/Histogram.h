@@ -32,8 +32,8 @@ template <nebula::type::Kind IK,
           typename Traits = nebula::surface::eval::UdfTraits<nebula::surface::eval::UDFType::HIST, IK>,
           typename BaseType = nebula::surface::eval::UDAF<Traits::Type, IK>>
 class Hist : public BaseType {
-  // Set default number of buckets to 20
-  static constexpr size_t BUCKET_NUM = 20;
+  // Set default number of buckets to 10
+  static constexpr size_t BUCKET_NUM = 10;
 
 public:
   using InputType = typename std::conditional_t<std::is_floating_point_v<typename BaseType::InputType>, double, int64_t>;
@@ -64,13 +64,13 @@ public:
     }
 
     inline virtual NativeType finalize() override {
-      json_ = jsonfy();
+      json_ = jsonfy(true);
       return json_;
     }
 
     // serialize into a buffer
     inline virtual size_t serialize(nebula::common::ExtendableSlice& slice, size_t offset) override {
-      auto jsonStr = jsonfy();
+      auto jsonStr = jsonfy(false);
       auto bin = slice.write(offset, jsonStr.size());
       auto size = slice.write(offset + bin, jsonStr.data(), jsonStr.size());
       return bin + size;
@@ -122,7 +122,7 @@ public:
   } else {                                                     \
     json.Int64(value);                                         \
   }
-    std::string jsonfy() const noexcept {
+    std::string jsonfy(bool finalize = false) const noexcept {
       // Save histogram in below json format:
       // {"b": [[minVal1, maxVal1, count1, sum1],[minVal2, maxVal2, count2, sum2]...]}
       // The size of the json array is the total number of buckets in histogram
@@ -131,8 +131,21 @@ public:
       json.StartObject();
       json.Key("b");
       json.StartArray();
-      for (size_t i = 0; i < histogram_.getNumBuckets(); ++i) {
+      auto numBuckets = histogram_.getNumBuckets();
+      for (size_t i = 0; i < numBuckets; ++i) {
         const auto& bucket = histogram_.getBucketByIndex(i);
+        if (finalize && i == numBuckets - 2) {
+          if (histogram_.getBucketMax(i) > histogram_.getBucketMin(i + 1)) {
+            const auto& lastBucket = histogram_.getBucketByIndex(i + 1);
+            json.StartArray();
+            SAVE_VALUE(histogram_.getBucketMin(i));
+            SAVE_VALUE(histogram_.getBucketMax(i + 1));
+            json.Int64(bucket.count + lastBucket.count);
+            json.Double(bucket.sum + lastBucket.sum);
+            json.EndArray();
+            break;
+          }
+        }
         json.StartArray();
         SAVE_VALUE(histogram_.getBucketMin(i));
         SAVE_VALUE(histogram_.getBucketMax(i));
