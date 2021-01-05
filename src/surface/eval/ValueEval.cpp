@@ -63,6 +63,32 @@ using nebula::type::TypeTraits;
     return BlockEval::ALL;                                         \
   }
 
+#define DISPATCH_CASES(NONE_EXP, ALL_EXP)                      \
+  case Kind::TINYINT: {                                        \
+    MIN_MAX_COMPARE(TINYINT, IntHistogram, NONE_EXP, ALL_EXP)  \
+    break;                                                     \
+  }                                                            \
+  case Kind::SMALLINT: {                                       \
+    MIN_MAX_COMPARE(SMALLINT, IntHistogram, NONE_EXP, ALL_EXP) \
+    break;                                                     \
+  }                                                            \
+  case Kind::INTEGER: {                                        \
+    MIN_MAX_COMPARE(INTEGER, IntHistogram, NONE_EXP, ALL_EXP)  \
+    break;                                                     \
+  }                                                            \
+  case Kind::BIGINT: {                                         \
+    MIN_MAX_COMPARE(BIGINT, IntHistogram, NONE_EXP, ALL_EXP)   \
+    break;                                                     \
+  }                                                            \
+  case Kind::REAL: {                                           \
+    MIN_MAX_COMPARE(REAL, RealHistogram, NONE_EXP, ALL_EXP)    \
+    break;                                                     \
+  }                                                            \
+  case Kind::DOUBLE: {                                         \
+    MIN_MAX_COMPARE(DOUBLE, RealHistogram, NONE_EXP, ALL_EXP)  \
+    break;                                                     \
+  }
+
 // Optimization for case of "column > C"
 template <>
 EvalBlock buildEvalBlock<LogicalOp::GT>(const std::unique_ptr<ValueEval>& left,
@@ -77,18 +103,7 @@ EvalBlock buildEvalBlock<LogicalOp::GT>(const std::unique_ptr<ValueEval>& left,
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {
-      case Kind::TINYINT:
-      case Kind::SMALLINT:
-      case Kind::INTEGER:
-      case Kind::BIGINT: {
-        MIN_MAX_COMPARE(BIGINT, IntHistogram, max <= value, min > value)
-        break;
-      }
-      case Kind::REAL:
-      case Kind::DOUBLE: {
-        MIN_MAX_COMPARE(DOUBLE, RealHistogram, max <= value, min > value)
-        break;
-      }
+        DISPATCH_CASES(max <= value, min > value)
       default: break;
       }
 
@@ -114,18 +129,7 @@ EvalBlock buildEvalBlock<LogicalOp::GE>(const std::unique_ptr<ValueEval>& left,
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {
-      case Kind::TINYINT:
-      case Kind::SMALLINT:
-      case Kind::INTEGER:
-      case Kind::BIGINT: {
-        MIN_MAX_COMPARE(BIGINT, IntHistogram, max < value, min >= value)
-        break;
-      }
-      case Kind::REAL:
-      case Kind::DOUBLE: {
-        MIN_MAX_COMPARE(DOUBLE, RealHistogram, max < value, min >= value)
-        break;
-      }
+        DISPATCH_CASES(max < value, min >= value)
       default: break;
       }
 
@@ -151,18 +155,7 @@ EvalBlock buildEvalBlock<LogicalOp::LT>(const std::unique_ptr<ValueEval>& left,
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {
-      case Kind::TINYINT:
-      case Kind::SMALLINT:
-      case Kind::INTEGER:
-      case Kind::BIGINT: {
-        MIN_MAX_COMPARE(BIGINT, IntHistogram, min >= value, max < value)
-        break;
-      }
-      case Kind::REAL:
-      case Kind::DOUBLE: {
-        MIN_MAX_COMPARE(DOUBLE, RealHistogram, min >= value, max < value)
-        break;
-      }
+        DISPATCH_CASES(min >= value, max < value)
       default: break;
       }
 
@@ -188,18 +181,7 @@ EvalBlock buildEvalBlock<LogicalOp::LE>(const std::unique_ptr<ValueEval>& left,
       // logic
       auto ct = b.columnType(name);
       switch (ct->k()) {
-      case Kind::TINYINT:
-      case Kind::SMALLINT:
-      case Kind::INTEGER:
-      case Kind::BIGINT: {
-        MIN_MAX_COMPARE(BIGINT, IntHistogram, min > value, max <= value)
-        break;
-      }
-      case Kind::REAL:
-      case Kind::DOUBLE: {
-        MIN_MAX_COMPARE(DOUBLE, RealHistogram, min > value, max <= value)
-        break;
-      }
+        DISPATCH_CASES(min > value, max <= value)
       default: break;
       }
 
@@ -211,6 +193,7 @@ EvalBlock buildEvalBlock<LogicalOp::LE>(const std::unique_ptr<ValueEval>& left,
   return uncertain;
 }
 
+#undef DISPATCH_CASES
 #undef MIN_MAX_COMPARE
 
 // condition "column > C", if max(column) <= C, no records match

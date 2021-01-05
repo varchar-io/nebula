@@ -79,6 +79,28 @@ TEST(ValueEvalTest, TestValueEval) {
   EXPECT_EQ(b5->eval<bool>(ctx), false);
 }
 
+TEST(ValueEvalTest, TestCompatibleCast) {
+  EvalContext ctx{ false };
+
+#define EVAL_TEST(T1, T2)                                       \
+  {                                                             \
+    T1 value = 90;                                              \
+    auto c = nebula::surface::eval::constant(value);            \
+    auto ev = c->eval<T2>(ctx);                                 \
+    LOG(INFO) << "Origin=" << value << ", Eval=" << ev.value(); \
+  }
+
+  EVAL_TEST(int8_t, int8_t)
+  EVAL_TEST(int16_t, int16_t)
+  EVAL_TEST(int32_t, int32_t)
+  EVAL_TEST(int64_t, int64_t)
+
+  // TODO: support compatible casting in type eval
+  // EVAL_TEST(int8_t, int32_t)
+
+#undef EVAL_TEST
+}
+
 TEST(ValueEvalTest, TestValueEvalArthmetic) {
   // add two values
   {

@@ -51,4 +51,5 @@ target_link_libraries(ExecTests
 
 # discover all gtests in this module
 include(GoogleTest)
-gtest_discover_tests(ExecTests TEST_LIST ALL)
+gtest_discover_tests(ExecTests TEST_LIST ALL
+    DISCOVERY_TIMEOUT 10)

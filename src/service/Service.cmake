@@ -254,4 +254,5 @@ endif()
 
 # discover all gtests in this module
 include(GoogleTest)
-gtest_discover_tests(ServiceTests TEST_LIST ALL)
+gtest_discover_tests(ServiceTests TEST_LIST ALL
+  DISCOVERY_TIMEOUT 10)

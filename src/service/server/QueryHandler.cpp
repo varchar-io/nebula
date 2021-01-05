@@ -538,6 +538,8 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     break;                                                                                       \
   }
 
+  // note: we convert the constant expression to the column type so that they align
+  // in the evaluation phase, we will use column type to decide how to eval constant value
   switch (columnType) {
     BUILD_CONST_CASE(BOOLEAN)
     BUILD_CONST_CASE(TINYINT)
