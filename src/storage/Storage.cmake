@@ -61,4 +61,5 @@ target_link_libraries(StorageTests
 
 # discover all gtests in this module
 include(GoogleTest)
-gtest_discover_tests(StorageTests TEST_LIST ALL)
+gtest_discover_tests(StorageTests TEST_LIST ALL
+    DISCOVERY_TIMEOUT 10)
