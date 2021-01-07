@@ -5,10 +5,10 @@ include(ExternalProject)
 ExternalProject_Add(gperftools
     PREFIX gperftools
     GIT_REPOSITORY https://github.com/gperftools/gperftools.git
+    GIT_TAG gperftools-2.8.1
     UPDATE_COMMAND ""
     INSTALL_COMMAND ""
-    BUILD_IN_SOURCE ON
-    BUILD_COMMAND ./autogen.sh && ./configure && make install
+    BUILD_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON
     LOG_BUILD ON)

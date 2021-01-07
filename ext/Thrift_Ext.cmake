@@ -1,10 +1,6 @@
 find_package(Threads REQUIRED)
 include(ExternalProject)
 
-# lib thrift name
-set(THRIFT_LIBRARY libthrift)
-# add_custom_target(copyConfig)
-
 # build thrift
 SET(THRIFT_OPTS
   -DBUILD_TESTING=OFF
@@ -40,6 +36,7 @@ set(THRIFT_INCLUDE_DIR ${SOURCE_DIR}/lib/cpp/src ${BINARY_DIR})
 file(MAKE_DIRECTORY ${THRIFT_INCLUDE_DIR})
 set(THRIFT_LIBRARY_PATH ${BINARY_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}thrift.a)
 
+set(THRIFT_LIBRARY libthrift)
 add_library(${THRIFT_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${THRIFT_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${THRIFT_LIBRARY_PATH}"

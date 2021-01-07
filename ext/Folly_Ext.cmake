@@ -41,6 +41,18 @@ set_target_properties(${FOLLY_LIBRARY} PROPERTIES
     "INTERFACE_INCLUDE_DIRECTORIES" "${FOLLY_INCLUDE_DIR}")
 add_dependencies(${FOLLY_LIBRARY} folly)
 
+# define libiberty for linux
+if(NOT APPLE)
+    set(IBERTY_INCLUDE_DIRS /usr/local/include)
+    set(IBERTY_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/libiberty.a)
+    set(IBERTY_LIBRARY iberty)
+    add_library(${IBERTY_LIBRARY} UNKNOWN IMPORTED)
+    set_target_properties(${IBERTY_LIBRARY} PROPERTIES
+        "IMPORTED_LOCATION" "${IBERTY_LIBRARY_PATH}"
+        "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+        "INTERFACE_INCLUDE_DIRECTORIES" "${IBERTY_INCLUDE_DIRS}")
+endif()
+
 target_link_libraries(${FOLLY_LIBRARY}
     INTERFACE ${IBERTY_LIBRARY}
     INTERFACE ${DC_LIBRARY}

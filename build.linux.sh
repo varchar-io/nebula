@@ -44,15 +44,17 @@ aptGetInstallPackages=(
 # Install Prerequisites
 # install cmake and gcc-10
 (
-  cd $BUILD_DIR
-  MJ_VER=3.19
-  MN_VER=3.19.2
-  wget https://cmake.org/files/v$MJ_VER/cmake-$MN_VER.tar.gz
-  tar -xzvf cmake-$MN_VER.tar.gz
-  cd cmake-$MN_VER/
-  ./bootstrap
-  make -j$(nproc)
-  sudo make install
+  if ! command -v cmake &> /dev/null
+  then
+    MJ_VER=3.19
+    MN_VER=3.19.2
+    wget https://cmake.org/files/v$MJ_VER/cmake-$MN_VER.tar.gz
+    tar -xzvf cmake-$MN_VER.tar.gz
+    cd cmake-$MN_VER/
+    ./bootstrap
+    make -j$(nproc)
+    sudo make install
+  fi
 
   sudo apt-get update
   sudo apt-get install -y gcc-10 g++-10
@@ -66,7 +68,6 @@ done
 
 # Install MBEDTLS
 (
-  cd $BUILD_DIR
   if [ -z "$(ls -A ./mbedtls)" ]; then
     git clone https://github.com/ARMmbed/mbedtls.git
     cd mbedtls && mkdir build && cd build
@@ -77,7 +78,6 @@ done
 
 # Install LIBEVENT
 (
-  cd $BUILD_DIR
   if [ -z "$(ls -A ./libevent)" ]; then
     git clone https://github.com/libevent/libevent.git
     cd libevent
@@ -87,13 +87,16 @@ done
 )
 
 # Install OpenSSL
+SSL_ROOT=/usr/local/openssl
 (
-  cd $BUILD_DIR
   if [ -z "$(ls -A ./openssl)" ]; then
     git clone https://github.com/openssl/openssl.git
-    cd openssl && ./config && make -j$(nproc) && sudo make install
+    cd openssl && ./config --prefix=${SSL_ROOT} && make -j$(nproc) && sudo make install
   fi
 )
 
-# make nebula
-cmake .. && make
+# run nebula cmake
+cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
+
+# execute make
+make -j$(nproc)
