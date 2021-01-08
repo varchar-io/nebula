@@ -1,8 +1,5 @@
 find_package(Threads REQUIRED)
 
-# this project may require Curl, install curl library using this command works
-# "sudo apt-get install libcurl4-openssl-dev"
-
 # AWS SDK build options 
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/setup.html
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html
@@ -114,11 +111,6 @@ set_target_properties(${CURL_LIBRARY} PROPERTIES
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES"  "${CURL_INCLUDE_DIRS}")
 
-# NOTE: libcurl4-openssl version has problem to build on my dev server
-# I end up using "sudo apt-get install libcurl4-gnutls-dev" instead. 
-# Also removed openssl version by "sudo apt-get remove libcurl4-openssl-dev"
-# libcurl depends on lots of other libraries, here is link flags requires
-# -lgnutls -lgcrypt -lz -lidn -lgssapi_krb5 -lldap -llber -lcom_err -lrtmp
 if(NOT APPLE)
   target_link_libraries(${CURL_LIBRARY} 
     INTERFACE gnutls 

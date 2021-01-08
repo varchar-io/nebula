@@ -99,4 +99,4 @@ SSL_ROOT=/usr/local/openssl
 cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
 
 # execute make
-make -j$(nproc)
+sudo make -j$(nproc)

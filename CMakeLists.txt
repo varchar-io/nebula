@@ -1,16 +1,6 @@
 # tool version minimum requirement
 cmake_minimum_required(VERSION 3.14)
 
-# install latest cmake on linux
-# check the version/build to use
-# wget https://github.com/Kitware/CMake/releases/download/v3.15.2/cmake-3.15.2.tar.gz
-# tar -xzvf cmake-3.15.2.tar.gz
-# cd cmake-3.15.2/
-# ./bootstrap
-# make -j36
-# sudo make install
-# cmake --version (check version after installation)
-
 # define project meta
 project(nebula)
 set(NEBULA_ROOT ${PROJECT_SOURCE_DIR})

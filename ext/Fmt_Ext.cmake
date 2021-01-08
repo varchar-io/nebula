@@ -6,7 +6,6 @@ ExternalProject_Add(fmt
   PREFIX fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
   UPDATE_COMMAND ""
-  INSTALL_COMMAND ""
   LOG_DOWNLOAD ON
   LOG_CONFIGURE ON
   LOG_BUILD ON)

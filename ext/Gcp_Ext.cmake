@@ -16,12 +16,6 @@ ExternalProject_Add(absl
     LOG_CONFIGURE ON
     LOG_BUILD ON)
 
-# TODO - trying to install these dependencies in build folder
-# and let GCP use find_package to find them.
-# so that we don't need to `sudo make`
-# allow find_package to find it in build folder
-# SET(absl_ROOT ${${CMAKE_CURRENT_BINARY_DIR}/absl})
-
 # include nlohmann json
 ExternalProject_Add(nlohmann
     PREFIX nlohmann

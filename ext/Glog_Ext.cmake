@@ -14,7 +14,7 @@ ExternalProject_Add(glog
 ExternalProject_Get_Property(glog SOURCE_DIR)
 ExternalProject_Get_Property(glog BINARY_DIR)
 
-set(GLOG_INCLUDE_DIRS ${SOURCE_DIR}/src)
+set(GLOG_INCLUDE_DIRS ${SOURCE_DIR}/src ${BINARY_DIR})
 file(MAKE_DIRECTORY ${GLOG_INCLUDE_DIRS})
 set(GLOG_LIBRARY_PATH ${BINARY_DIR}/libglog.a)
 set(GLOG_LIBRARY libglog)
