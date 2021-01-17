@@ -1,8 +1,5 @@
 find_package(Threads REQUIRED)
 
-# this project may require Curl, install curl library using this command works
-# "sudo apt-get install libcurl4-openssl-dev"
-
 # AWS SDK build options 
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/setup.html
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html
@@ -98,8 +95,8 @@ add_dependencies(${AWS_S3_LIBRARY} aws)
 # `/usr/local/curl/bin/curl-config --protocols`
 # or `/opt/local/bin/curl-config --protocols`
 if(APPLE)
-  set(CURL_INCLUDE_DIRS /opt/local/include)
-  set(CURL_LIBRARY_PATH /opt/local/lib/libcurl.dylib)
+  set(CURL_INCLUDE_DIRS /usr/local/opt/curl/include)
+  set(CURL_LIBRARY_PATH /usr/local/opt/curl/lib/libcurl.dylib)
 else()
   set(CURL_INCLUDE_DIRS /usr/include)
   # to link curl lib statically, use curl-config to see what is needed
@@ -114,11 +111,6 @@ set_target_properties(${CURL_LIBRARY} PROPERTIES
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES"  "${CURL_INCLUDE_DIRS}")
 
-# NOTE: libcurl4-openssl version has problem to build on my dev server
-# I end up using "sudo apt-get install libcurl4-gnutls-dev" instead. 
-# Also removed openssl version by "sudo apt-get remove libcurl4-openssl-dev"
-# libcurl depends on lots of other libraries, here is link flags requires
-# -lgnutls -lgcrypt -lz -lidn -lgssapi_krb5 -lldap -llber -lcom_err -lrtmp
 if(NOT APPLE)
   target_link_libraries(${CURL_LIBRARY} 
     INTERFACE gnutls 
@@ -138,7 +130,7 @@ endif()
 if(APPLE)
   # libresolve is needed by libcares.a - why put it here?
   # because we want 2 special APPLE libraries sounding hacky.
-  set(AWS_FRAMEWORK "-framework corefoundation /usr/lib/libresolv.dylib")
+  set(AWS_FRAMEWORK "-framework corefoundation -lresolv -L/usr/local/opt/icu4c/lib")
 endif()
 
 # add a bundle

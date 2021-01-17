@@ -1,13 +1,13 @@
 # Work On Nebula
 
 ## Build the project
-
-These steps are tested for Ubuntu LTS 18. 
-Other linux os or macos uses different package manager such as homebrew.
+These steps are tested for MacOS and Ubuntu (LTS 18) only.
 
 ### Install dependencies and build
 run `~/nebula/build.sh` for automate setup (All steps in the build.sh script also listed on the bottom of this page as well)
-a little hiccup of this script is we still need to fix below issue manually, hopefully this manual step won't be required after a version upgrade
+A little hiccup of this script is we still need to fix below issue manually, hopefully this manual step won't be required after a version upgrade.
+
+In build script, we use `sudo make` because some of the components needs to be installed in system path.
 
 ### fix grpc
 A local change to solve the the build break (in `~/nebula/build.sh`):

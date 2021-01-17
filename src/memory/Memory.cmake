@@ -20,7 +20,9 @@ target_link_libraries(${NEBULA_MEMORY}
     PUBLIC ${NEBULA_SURFACE}
     PUBLIC ${NEBULA_META}
     PUBLIC ${FOLLY_LIBRARY}
-    PUBLIC ${ROARING_LIBRARY})
+    PUBLIC ${ROARING_LIBRARY}
+    PUBLIC ${JSON_LIBRARY}
+    PUBLIC ${QJS_LIBRARY})
 
 # build test binary
 add_executable(MemoryTests 

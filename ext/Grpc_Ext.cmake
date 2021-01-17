@@ -20,7 +20,7 @@ ExternalProject_Add(grpc-java
   add_custom_target(build-grpc-java-compiler ALL
         COMMAND ../gradlew java_pluginExecutable -PskipAndroid=true
         WORKING_DIRECTORY ${SOURCE_DIR}/compiler
-        DEPENDS grpc-java)
+        DEPENDS grpc-java ${PROTOBUF_LIBRARY})
 
   SET(GRPC_JAVA_PLUGIN ${SOURCE_DIR}/compiler/build/exe/java_plugin/protoc-gen-grpc-java)
 
@@ -162,41 +162,3 @@ endforeach()
 # used in protobuf build
 SET(GRPC_CPP_PLUGIN ${BINARY_DIR}/grpc_cpp_plugin)
 SET(GRPC_NODE_PLUGIN ${BINARY_DIR}/grpc_node_plugin)
-
-
-# a few more installation steps to ensure tools works before try out examples
-# Start https://grpc.io/docs/quickstart/cpp.html
-# 0. install pkg-config
-#    mac version: brew install pkg-config
-# 1. install protobuf to local machine
-#    go to ./build/protobuf/src/protobuf-build and run "sudo make install"
-# 2. install grpc to local machine
-#    go to ./build/grpc/src/grpc-build and run "sudo make install"
-# 3. try out examples
-#    go to folder ./build/grpc/src/grpc/examples/cpp/helloword and "make"
-
-# Below section is used to introduce GRPC_WEB to enable web endpoint
-
-# download the project only
-# ExternalProject_Add(grpcweb
-#   PREFIX grpcweb
-#   GIT_REPOSITORY https://github.com/grpc/grpc-web.git
-#   CONFIGURE_COMMAND ""
-#   BUILD_COMMAND ""
-#   UPDATE_COMMAND ""
-#   INSTALL_COMMAND ""
-#   LOG_DOWNLOAD ON
-#   LOG_CONFIGURE ON
-#   LOG_BUILD ON)
-
-# ExternalProject_Get_Property(grpcweb SOURCE_DIR)
-# ExternalProject_Get_Property(grpcweb BINARY_DIR)
-
-# It's not cmake project, so use custom command to make the project
-# build the proc-gen-grpc-web plugin so that we can use it to gen stubs later
-# SET(GRPC_WEB_PLUGIN "${SOURCE_DIR}/javascript/net/grpc/web/protoc-gen-grpc-web")
-# add_custom_target(build_grpcweb_plugin
-#       ALL COMMAND make plugin -I${PROTOBUF_INCLUDE_DIRS}
-#       WORKING_DIRECTORY ${SOURCE_DIR}
-#       DEPENDS ${PROTOBUF_LIBRARY} libgrpc grpcweb)
-# target_compile_options(build_grpcweb_plugin PRIVATE -I${PROTOBUF_INCLUDE_DIRS})

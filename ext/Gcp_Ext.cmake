@@ -16,12 +16,6 @@ ExternalProject_Add(absl
     LOG_CONFIGURE ON
     LOG_BUILD ON)
 
-# TODO - trying to install these dependencies in build folder
-# and let GCP use find_package to find them.
-# so that we don't need to `sudo make`
-# allow find_package to find it in build folder
-# SET(absl_ROOT ${${CMAKE_CURRENT_BINARY_DIR}/absl})
-
 # include nlohmann json
 ExternalProject_Add(nlohmann
     PREFIX nlohmann
@@ -71,7 +65,8 @@ SET(GCP_OPTS
     -DGOOGLE_CLOUD_CPP_ENABLE=storage
     -DGOOGLE_CLOUD_CPP_STORAGE_ENABLE_GRPC=OFF
     -DGOOGLE_CLOUD_CPP_ENABLE_CXX_EXCEPTIONS=OFF
-    -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF)
+    -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
+    -DCMAKE_CXX_FLAGS=-Wno-error=deprecated-declarations)
 
 # can not use native one as Apple closed its usage
 # can be installed by brew

@@ -10,7 +10,9 @@ add_library(${NEBULA_META} STATIC
 target_link_libraries(${NEBULA_META}
     PUBLIC ${NEBULA_TYPE}
     PUBLIC ${NEBULA_SURFACE}
-    PUBLIC ${YAML_LIBRARY})
+    PUBLIC ${YAML_LIBRARY}
+    PUBLIC ${QJS_LIBRARY}
+    PUBLIC ${JSON_LIBRARY})
 
 # include its own root directory for searching headers
 # set(NMETA_INCLUDE_DIRS ${NEBULA_SRC}/meta)

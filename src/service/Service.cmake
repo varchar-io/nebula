@@ -12,7 +12,6 @@ file(MAKE_DIRECTORY ${GEN_DIR})
 # make a placeholder file to be built
 SET(NSERVER "${CMAKE_CURRENT_BINARY_DIR}/NebulaServer")
 set(NNSERVER "${CMAKE_CURRENT_BINARY_DIR}/NodeServer")
-message("Nebula Server: ${NSERVER}")
 file(TOUCH ${NSERVER})
 file(TOUCH ${NNSERVER})
 
@@ -32,7 +31,7 @@ add_custom_command(
         -I "${nproto_path}"
         --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}"
         "${nproto}"
-      DEPENDS ${nproto})
+      DEPENDS ${nproto} ${PROTOBUF_LIBRARY})
 
 # Include generated *.pb.h files
 include_directories("${GEN_DIR}")
@@ -47,7 +46,7 @@ add_custom_target(nebula_node_client ALL
     -I "${nproto_path}"
     --plugin=protoc-gen-grpc="${GRPC_NODE_PLUGIN}"
     "${nproto}"
-  DEPENDS ${nproto})
+  DEPENDS ${nproto} ${PROTOBUF_LIBRARY})
 
 ## java code
 SET(JAVA_GEN "${GEN_DIR}/java")
@@ -59,7 +58,7 @@ add_custom_target(nebula_java_client ALL
       -I "${nproto_path}"
       --plugin=protoc-gen-grpc="${GRPC_JAVA_PLUGIN}"
       "${nproto}"
-DEPENDS build-grpc-java-compiler ${nproto})
+DEPENDS build-grpc-java-compiler ${nproto} ${PROTOBUF_LIBRARY})
 
 # build flatbuffers schema
 get_filename_component(nfbs "${SERVICE_DIR}/fbs/node.fbs" ABSOLUTE)
@@ -70,7 +69,7 @@ set(NODE_GEN_DIR "${GEN_DIR}/node")
 file(MAKE_DIRECTORY ${NODE_GEN_DIR})
 add_custom_target(compile_fbs ALL
   COMMAND ${FLATBUFFERS_COMPILER} -b -o "${NODE_GEN_DIR}" --cpp --grpc "${nfbs}"
-DEPENDS ${nfbs})
+DEPENDS ${nfbs} ${FLATBUFFERS_LIBRARY})
 
 # Include generated *.pb.h files and specify it as generated file
 set(nodegrpc_srcs "${NODE_GEN_DIR}/node.grpc.fb.cc")

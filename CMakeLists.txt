@@ -1,16 +1,6 @@
 # tool version minimum requirement
 cmake_minimum_required(VERSION 3.14)
 
-# install latest cmake on linux
-# check the version/build to use
-# wget https://github.com/Kitware/CMake/releases/download/v3.15.2/cmake-3.15.2.tar.gz
-# tar -xzvf cmake-3.15.2.tar.gz
-# cd cmake-3.15.2/
-# ./bootstrap
-# make -j36
-# sudo make install
-# cmake --version (check version after installation)
-
 # define project meta
 project(nebula)
 set(NEBULA_ROOT ${PROJECT_SOURCE_DIR})
@@ -173,6 +163,7 @@ set(BUILD_SHARED_LIBS OFF)
 if(APPLE)
   set(DL_EXT "dylib")
   set(CELLAR_ROOT /usr/local/Cellar)
+  add_link_options(-L/usr/local/opt/icu4c/lib)
 else()
   set(DL_EXT "so")
   set(CELLAR_ROOT /home/linuxbrew/.linuxbrew/Cellar)
@@ -192,6 +183,10 @@ find_package(Boost 1.65 MODULE
     system
     thread
   REQUIRED)
+
+if(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+endif()
 
 include(ext/PGQuery_Ext.cmake)
 

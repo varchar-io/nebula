@@ -1,21 +1,7 @@
 find_package(Threads REQUIRED)
 
-# Since we have problems to integrate the source build. 
-# We're using pre-installed versions instead. 
-# ref: https://arrow.apache.org/install/
-# Mac
-# 1. install miniconda according to https://docs.conda.io/en/latest/miniconda.html
-# 2. install arrow through "conda install arrow-cpp=0.13.* -c conda-forge"
-# Ubuntu
-
 # https://cmake.org/cmake/help/latest/module/ExternalProject.html
 include(ExternalProject)
-
-# if cmake make really complains find_package problems on linux
-# let's just install them, such as flex and bison
-# "Could NOT find BISON (missing: BISON_EXECUTABLE)"
-# sudo apt-get install flex
-# sudo apt-get install bison
 
 # build arrow
 SET(ARROW_OPTS
@@ -41,7 +27,8 @@ SET(ARROW_OPTS
   -DPARQUET_BUILD_ENCRYPTION=OFF
   -DPARQUET_MINIMAL_DEPENDENCY=ON
   -DPARQUET_ARROW_LINKAGE=static
-  -DCMAKE_BUILD_TYPE=Release)
+  -DCMAKE_BUILD_TYPE=Release
+  -DCMAKE_CXX_FLAGS=-I${RAPIDJSON_INCLUDE_DIR})
 
 # arrow versions after 0.13.0 does not work with boost 70
 ExternalProject_Add(arrow

@@ -1,14 +1,26 @@
-if(APPLE)
-    set(dcdir /usr/local/Cellar/double-conversion/3.1.5)
-    set(DC_INCLUDE_DIRS ${dcdir}/include)
-    set(DC_LIBRARY_PATH ${dcdir}/lib/libdouble-conversion.a)
-else()
-    # define double-conversion
-    set(DC_INCLUDE_DIRS /usr/local/include)
-    set(DC_LIBRARY_PATH /usr/local/lib/libdouble-conversion.a)
-endif()
+find_package(Threads REQUIRED)
 
-set(DC_LIBRARY doublec)
+include(ExternalProject)
+SET(DC_OPTS
+  -DBUILD_TESTING=OFF)
+ExternalProject_Add(double-conversion
+  PREFIX double-conversion
+  GIT_REPOSITORY https://github.com/google/double-conversion.git
+  GIT_TAG v3.1.5
+  CMAKE_ARGS ${DC_OPTS}
+  INSTALL_COMMAND ""
+  LOG_DOWNLOAD ON
+  LOG_CONFIGURE ON
+  LOG_BUILD ON)
+
+ExternalProject_Get_Property(double-conversion SOURCE_DIR)
+ExternalProject_Get_Property(double-conversion BINARY_DIR)
+
+# define double-conversion
+set(DC_INCLUDE_DIRS ${SOURCE_DIR})
+set(DC_LIBRARY_PATH ${BINARY_DIR}/libdouble-conversion.a)
+
+set(DC_LIBRARY libdc)
 add_library(${DC_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${DC_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${DC_LIBRARY_PATH}"
