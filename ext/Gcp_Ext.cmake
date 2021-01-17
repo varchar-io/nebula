@@ -65,7 +65,8 @@ SET(GCP_OPTS
     -DGOOGLE_CLOUD_CPP_ENABLE=storage
     -DGOOGLE_CLOUD_CPP_STORAGE_ENABLE_GRPC=OFF
     -DGOOGLE_CLOUD_CPP_ENABLE_CXX_EXCEPTIONS=OFF
-    -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF)
+    -DGOOGLE_CLOUD_CPP_ENABLE_MACOS_OPENSSL_CHECK=OFF
+    -DCMAKE_CXX_FLAGS=-Wno-error=deprecated-declarations)
 
 # can not use native one as Apple closed its usage
 # can be installed by brew
