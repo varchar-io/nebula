@@ -96,7 +96,9 @@ SSL_ROOT=/usr/local/openssl
 )
 
 # run nebula cmake
-cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
+echo "enter password for sudo..."
+echo "-----------------------"
+sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
 
 # execute make
 sudo make -j$(nproc)

@@ -68,8 +68,10 @@ preq icu4c
 preq automake
 
 # execute cmake config with preset configs
+echo "enter password for sudo..."
+echo "-----------------------"
 SSL_ROOT=/usr/local/opt/openssl
-cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
+sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
 
 # execute make
 sudo make -j$(sysctl -n hw.logicalcpu)
