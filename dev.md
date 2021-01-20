@@ -9,8 +9,10 @@ A little hiccup of this script is we still need to fix below issue manually, hop
 
 In build script, we use `sudo make` because some of the components needs to be installed in system path.
 
-### fix grpc
-A local change to solve the the build break (in `~/nebula/build.sh`):
+
+### fix grpc + flatbuffer for the version in use
+A local change to solve the the build break (in `~/nebula/build.sh`)
+
 0. ensure `flatbuffers` and `grpc` downloaded by command `make flatbuffers && make grpc`
 1. grpc/src/grpc/include/grpcpp/impl/codegen/byte_buffer.h
    move method to public grpc_byte_buffer* c_buffer() { return buffer_; }
@@ -110,7 +112,7 @@ So we need
 Based on this consideration, I chose leveldb as our internal meta store. We will add web API for service registry.
 
 
-### Manual setup dev environment and build
+## Manual steps to build Nebula (linux)
 ### Install CMake
 Your system may not have new version of cmake required to build nebula.
 Recommend building a version of cmake from source (take 3.18.1 as example):
