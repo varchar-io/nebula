@@ -25,6 +25,7 @@
 #include "common/Spark.h"
 #include "execution/meta/TableService.h"
 #include "meta/ClusterInfo.h"
+#include "meta/Macro.h"
 #include "meta/NNode.h"
 #include "meta/TableSpec.h"
 #include "service/base/GoogleSheet.h"
@@ -47,40 +48,13 @@ using nebula::meta::BlockSignature;
 using nebula::meta::ClusterInfo;
 using nebula::meta::ColumnProps;
 using nebula::meta::KafkaSerde;
+using nebula::meta::Macro;
 using nebula::meta::NNode;
 using nebula::meta::Settings;
 using nebula::meta::TableSpec;
 using nebula::meta::TableSpecPtr;
 using nebula::service::base::GoogleSheet;
 using nebula::service::base::LoadSpec;
-
-size_t LoadHandler::extractWatermark(const common::unordered_map<std::string_view, std::string_view>& p) {
-  const auto datePattern = meta::patternMacroStr.at(meta::PatternMacro::DAILY);
-  const auto hourPattern = meta::patternMacroStr.at(meta::PatternMacro::HOURLY);
-  const auto minutePattern = meta::patternMacroStr.at(meta::PatternMacro::MINUTELY);
-  const auto secondPattern = meta::patternMacroStr.at(meta::PatternMacro::SECONDLY);
-
-  const auto dd = p.find(datePattern);
-  const auto dh = p.find(hourPattern);
-  const auto dm = p.find(minutePattern);
-  const auto ds = p.find(secondPattern);
-
-  auto watermark = 0;
-  if (dd != p.end()) {
-    watermark = Evidence::time(p.at(datePattern), "%Y-%m-%d");
-  }
-  if (dh != p.end()) {
-    watermark += std::stol(std::string(p.at(hourPattern)), nullptr, 10) * meta::HOUR_SECONDS;
-  }
-  if (dm != p.end()) {
-    watermark += std::stol(std::string(p.at(minutePattern)), nullptr, 10) * meta::MINUTE_SECONDS;
-  }
-  if (ds != p.end()) {
-    watermark += std::stol(std::string(p.at(secondPattern)), nullptr, 10);
-  }
-
-  return watermark;
-}
 
 LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, std::string& name) {
   // get request content
@@ -154,7 +128,7 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
   size_t assignId = 0;
   while (p.size() > 0) {
     // get date info if provided by parameters
-    auto watermark = extractWatermark(p);
+    auto watermark = Macro::watermark(p);
 
     // if bucket is required, bucket column value must be provided
     // but if bucket parameter is provided directly, we don't need to compute

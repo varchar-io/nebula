@@ -41,6 +41,7 @@ private:
 
 public: /** only static methods */
   static constexpr auto UNIX_1899_DEC_30 = -2209161600;
+  static constexpr auto MINUTE_SECONDS = 60;
   static constexpr auto HOUR_SECONDS = 3600;
   static constexpr auto DAY_SECONDS = HOUR_SECONDS * 24;
   static constexpr auto NANO_BASE = 1000'000'000'000'000'000;
@@ -209,7 +210,7 @@ public: /** only static methods */
   inline static std::string fmt_minute(const std::time_t& time, bool gmt = true) {
     return format(time, "%M", gmt);
   }
-  
+
   inline static std::string fmt_second(const std::time_t& time, bool gmt = true) {
     return format(time, "%S", gmt);
   }

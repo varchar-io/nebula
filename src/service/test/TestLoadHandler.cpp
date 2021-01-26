@@ -14,39 +14,9 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-#include <rapidjson/document.h>
-
-#include "service/server/LoadHandler.h"
-
 namespace nebula {
 namespace service {
 namespace test {
-
-using nebula::service::server::LoadHandler;
-
-TEST(ServiceTest, loadConfigured) {
-  const auto json = "{\"date\":[\"2020-01-01\"], \"hour\" : [\"01\", \"02\"]}";
-  rapidjson::Document cd;
-  if (cd.Parse(json).HasParseError()) {
-    throw NException(fmt::format("Error parsing params-json: {0}", json));
-  }
-  LoadHandler ptr;
-
-  common::ParamList list(cd);
-  auto p = list.next();
-  std::vector<size_t> wms;
-  while (p.size() > 0) {
-    auto watermark = ptr.extractWatermark(p);
-    wms.push_back(watermark);
-    p = list.next();
-  }
-  EXPECT_EQ(wms.size(), 2);
-  // 2020-01-01 01:00:00
-  EXPECT_EQ(wms.at(0), 1577840400);
-  // 2020-01-01 02:00:00
-  EXPECT_EQ(wms.at(1), 1577844000);
-}
 
 } // namespace test
 } // namespace service

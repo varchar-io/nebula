@@ -17,9 +17,11 @@
 #pragma once
 
 #include <meta/TableSpec.h>
+
 #include "IngestSpec.h"
 #include "common/Hash.h"
 #include "meta/ClusterInfo.h"
+#include "meta/Macro.h"
 #include "meta/TableSpec.h"
 
 /**
@@ -43,6 +45,13 @@ class SpecRepo {
   using SpecPtr = std::shared_ptr<IngestSpec>;
 
 public:
+  // parse pattern string and generate ingest spec
+  static void genPatternSpec(
+    const nebula::meta::PatternMacro, const std::string&,
+    const size_t, const std::string&, const nebula::meta::TableSpecPtr&,
+    std::vector<std::shared_ptr<IngestSpec>>&);
+
+public:
   SpecRepo() = default;
   virtual ~SpecRepo() = default;
 
@@ -60,17 +69,6 @@ public:
   // try to assign a node to a spec
   // assign the spec for given node
   bool confirm(const std::string& spec, const nebula::meta::NNode& node) noexcept;
-
-  // parse pattern string and generate ingest spec
-  void genPatternSpec(long start,
-                      nebula::meta::PatternMacro curr,
-                      nebula::meta::PatternMacro dest,
-                      std::time_t now,
-                      const std::string& pathTemplate,
-                      std::time_t cutOffTime,
-                      const std::string& version,
-                      const meta::TableSpecPtr& table,
-                      std::vector<std::shared_ptr<IngestSpec>>& specs);
 
 private:
   // process a table spec and generate all specs into the given specs container

@@ -63,6 +63,23 @@ public:
     return set;
   }
 
+  // in-place converting a string to lower case
+  static inline void lower(std::string& str) {
+    for (auto itr = str.begin(); itr != str.end(); ++itr) {
+      *itr = std::tolower(*itr);
+    }
+  }
+
+  // make a copy of string in lower case
+  static inline std::string lower2(const std::string& str) {
+    const auto size = str.size();
+    std::string copy(size, 0);
+    for (size_t i = 0; i < size; ++i) {
+      copy.at(i) = std::tolower(str.at(i));
+    }
+    return copy;
+  }
+
   // get last section of the given string if splittable by delimeter
   // if no delimmeter found, return original string view
   static std::string_view last(std::string_view orig, char delimeter = '/') {
@@ -84,6 +101,11 @@ public:
   // char equlas ignoring case
   static inline bool ieq(char a, char b) {
     return a == b || std::tolower(a) == std::tolower(b);
+  }
+
+  // shortcut: two string views have the same value ignoring case
+  static inline bool same(std::string_view v1, std::string_view v2, bool ignoreCase = true) {
+    return v1.size() == v2.size() && prefix(v1.data(), v1.size(), v2.data(), v2.size(), ignoreCase);
   }
 
   static bool prefix(const char* src, size_t s_size,
