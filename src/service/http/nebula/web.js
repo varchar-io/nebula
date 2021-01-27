@@ -177,6 +177,11 @@ const onTableState = (tb, stats, callback) => {
             targetColumns = strColumns;
         }
 
+        if (r === 'CARD_EST') {
+            // tree merge applies on string column (list column in future)
+            targetColumns = [...strColumns, ...numColumns];
+        }
+
         // pair with every metric column
         targetColumns.map(e => all.push(field(e, r)));
     }
@@ -724,7 +729,7 @@ const processHistJson = (data, metrics, histJsonIdx) => {
                 labels[key] = tmpLabels;
             } else {
                 // keep other parts of json response as it is
-                dict[key] = data[idx][key]; 
+                dict[key] = data[idx][key];
             }
         }
         transformedLabels.push(labels);
