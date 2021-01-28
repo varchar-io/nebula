@@ -41,8 +41,10 @@ using nebula::common::unordered_map;
 using nebula::meta::ClusterInfo;
 using nebula::meta::DataSource;
 using nebula::meta::DataSourceUtils;
+using nebula::meta::Macro;
 using nebula::meta::NNode;
 using nebula::meta::NNodeSet;
+using nebula::meta::PatternMacro;
 using nebula::meta::TableSpecPtr;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
@@ -137,70 +139,32 @@ void genSpecs4Swap(const std::string& version,
 }
 
 // iterative replace pathTemplate with current level of pattern macro
-void SpecRepo::genPatternSpec(long start,
-                              nebula::meta::PatternMacro curr,
-                              nebula::meta::PatternMacro dest,
-                              std::time_t now,
+void SpecRepo::genPatternSpec(const nebula::meta::PatternMacro macro,
                               const std::string& pathTemplate,
-                              std::time_t cutOffTime,
+                              const size_t maxSeconds,
                               const std::string& version,
                               const TableSpecPtr& table,
                               std::vector<std::shared_ptr<IngestSpec>>& specs) {
 
-  const auto curUnitInSeconds = nebula::meta::unitInSeconds.at(curr);
-  const auto curMacroStr = nebula::meta::patternMacroStr.at(curr);
-  const auto childMarco = nebula::meta::childPattern.at(curr);
-  const auto startChildPatternIndex = nebula::meta::childSize.at(childMarco) - 1;
+  // right now
+  const auto now = Evidence::now();
   const auto sourceInfo = nebula::storage::parse(table->location);
-
   auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host);
 
-  for (long i = start; i >= 0; i--) {
-    auto str = pathTemplate;
-    const auto watermark = now - i * curUnitInSeconds;
+  // moving step based on macro granularity
+  const auto step = Macro::seconds(macro);
 
-    const auto macroWithBracket = fmt::format("{{{0}}}", curMacroStr);
-    const auto opos = pathTemplate.find(macroWithBracket);
+  // from now going back step by step until exceeding maxSeconds
+  size_t count = 0;
+  while (count < maxSeconds) {
+    const auto watermark = now - count;
+    // populate the file paths for given time point
+    const auto path = Macro::materialize(macro, pathTemplate, watermark);
 
-    // uppercase pattern string
-    std::string upperCurPatternStr;
-    transform(macroWithBracket.begin(), macroWithBracket.end(), std::back_inserter(upperCurPatternStr), toupper);
-    const auto upos = pathTemplate.find(macroWithBracket);
+    // list files in the path and generate spec perf file from it
+    genSpecPerFile(table, version, fs->list(path), specs, watermark);
 
-    // check original case and upper cased macro in pathTemplate
-    const auto pos = opos != std::string::npos ? opos : upos;
-
-    // check declared macro used
-    N_ENSURE(pos != std::string::npos, "pattern not found");
-
-    std::string timeFormat;
-    switch (curr) {
-    case nebula::meta::PatternMacro::DAILY:
-      timeFormat = Evidence::fmt_ymd_dash(watermark);
-      break;
-    case nebula::meta::PatternMacro::HOURLY:
-      timeFormat = Evidence::fmt_hour(watermark);
-      break;
-    case nebula::meta::PatternMacro::MINUTELY:
-      timeFormat = Evidence::fmt_minute(watermark);
-      break;
-    case nebula::meta::PatternMacro::SECONDLY:
-      timeFormat = Evidence::fmt_second(watermark);
-      break;
-    default:
-      LOG(ERROR) << "timestamp or invalid format not handled";
-    }
-
-    const auto path = str.replace(pos, macroWithBracket.size(), timeFormat);
-
-    // watermark is mono incremental when curr == dest, always smaller or equal when scan child marco
-    if (watermark < cutOffTime) continue;
-
-    if (curr == dest) {
-      genSpecPerFile(table, version, fs->list(path), specs, watermark);
-    } else {
-      genPatternSpec(startChildPatternIndex, childMarco, dest, watermark, path, cutOffTime, version, table, specs);
-    }
+    count += step;
   }
 }
 
@@ -211,26 +175,13 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
     // parse location to get protocol, domain/bucket, path
     auto sourceInfo = nebula::storage::parse(table->location);
 
-    // making a s3 fs with given host
-    auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host);
-
-    auto pt = nebula::meta::extractPatternMacro(table->timeSpec.pattern);
-
-    // list all objects/files from given path
-    // A roll spec will cover X days given table location of source data
-    const auto now = Evidence::now();
-    const auto maxDays = table->max_seconds / Evidence::DAY_SECONDS;
-
-    // earliest time in second to process in ascending order
-    long cutOffTime = now - table->max_seconds;
+    // capture pattern from path
+    auto pt = Macro::extract(sourceInfo.path);
 
     // TODO(chenqin): don't support other macro other than dt=date/hr=hour/mi=minute/se=second yet.
-    genPatternSpec(maxDays,
-                   nebula::meta::PatternMacro::DAILY,
-                   pt,
-                   now,
+    genPatternSpec(pt,
                    sourceInfo.path,
-                   cutOffTime,
+                   table->max_seconds,
                    version,
                    table,
                    specs);

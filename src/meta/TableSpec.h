@@ -78,22 +78,6 @@ enum class TimeType {
   PROVIDED
 };
 
-// type of macros accepted in table spec
-enum class PatternMacro {
-  // Daily partition /dt=?
-  DAILY,
-  // hourly partition name /dt=?/hr=?
-  HOURLY,
-  // minute partition name /dt=?/hr=?/mi=?
-  MINUTELY,
-  // use second level directory name /dt=?/hr=?/mi=?/se=?
-  SECONDLY,
-  // use directory name in unix timestamp /ts=?
-  TIMESTAMP,
-  // placeholder for not accepted marcos
-  INVALID,
-};
-
 struct TimeSpec {
   TimeType type;
   // unix time value if provided
@@ -223,74 +207,5 @@ public:
 
 using TableSpecSet = nebula::common::unordered_set<TableSpecPtr, TableSpecHash, TableSpecEqual>;
 
-constexpr auto HOUR_MINUTES = 60;
-constexpr auto MINUTE_SECONDS = 60;
-constexpr auto DAY_HOURS = 24;
-constexpr auto HOUR_SECONDS = HOUR_MINUTES * MINUTE_SECONDS;
-constexpr auto DAY_SECONDS = HOUR_SECONDS * DAY_HOURS;
-
-const nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternDefinitionStr{
-  { nebula::meta::PatternMacro::DAILY, "daily" },
-  { nebula::meta::PatternMacro::HOURLY, "hourly" },
-  { nebula::meta::PatternMacro::MINUTELY, "minutely" },
-  { nebula::meta::PatternMacro::SECONDLY, "secondly" },
-  { nebula::meta::PatternMacro::TIMESTAMP, "timestamp" }
-};
-
-// match fs location macro e.g {date}
-const nebula::common::unordered_map<nebula::meta::PatternMacro, std::string> patternMacroStr{
-  { nebula::meta::PatternMacro::DAILY, "date" },
-  { nebula::meta::PatternMacro::HOURLY, "hour" },
-  { nebula::meta::PatternMacro::MINUTELY, "minute" },
-  { nebula::meta::PatternMacro::SECONDLY, "second" },
-  { nebula::meta::PatternMacro::TIMESTAMP, "timestamp" }
-};
-
-const nebula::common::unordered_map<nebula::meta::PatternMacro, nebula::meta::PatternMacro> childPattern{
-  { nebula::meta::PatternMacro::DAILY, nebula::meta::PatternMacro::HOURLY },
-  { nebula::meta::PatternMacro::HOURLY, nebula::meta::PatternMacro::MINUTELY },
-  { nebula::meta::PatternMacro::MINUTELY, nebula::meta::PatternMacro::SECONDLY }
-};
-
-const nebula::common::unordered_map<nebula::meta::PatternMacro, int> unitInSeconds{
-  { nebula::meta::PatternMacro::DAILY, DAY_SECONDS },
-  { nebula::meta::PatternMacro::HOURLY, HOUR_SECONDS },
-  { nebula::meta::PatternMacro::MINUTELY, MINUTE_SECONDS }
-};
-
-const nebula::common::unordered_map<nebula::meta::PatternMacro, int> childSize{
-  { nebula::meta::PatternMacro::DAILY, DAY_HOURS },
-  { nebula::meta::PatternMacro::HOURLY, HOUR_MINUTES },
-  { nebula::meta::PatternMacro::MINUTELY, MINUTE_SECONDS }
-};
-
-// check if pattern string type
-inline nebula::meta::PatternMacro extractPatternMacro(const std::string& pattern) {
-  // lowercase pattern string match
-  std::string lpattern;
-  transform(pattern.begin(), pattern.end(), std::back_inserter(lpattern), tolower);
-
-  const auto tsMacroFound = lpattern.find(patternDefinitionStr.at(PatternMacro::TIMESTAMP)) != std::string::npos;
-  const auto dateMacroFound = lpattern.find(patternDefinitionStr.at(PatternMacro::DAILY)) != std::string::npos;
-  const auto hourMacroFound = lpattern.find(patternDefinitionStr.at(PatternMacro::HOURLY)) != std::string::npos;
-  const auto minuteMacroFound = lpattern.find(patternDefinitionStr.at(PatternMacro::MINUTELY)) != std::string::npos;
-  const auto secondMacroFound = lpattern.find(patternDefinitionStr.at(PatternMacro::SECONDLY)) != std::string::npos;
-
-  if (secondMacroFound) {
-    return PatternMacro::SECONDLY;
-  } else if (minuteMacroFound) {
-    return PatternMacro::MINUTELY;
-  } else if (hourMacroFound) {
-    return PatternMacro::HOURLY;
-  } else if (dateMacroFound) {
-    return PatternMacro::DAILY;
-  }
-
-  if (tsMacroFound && !secondMacroFound && !minuteMacroFound && !hourMacroFound && !dateMacroFound) {
-    return PatternMacro::TIMESTAMP;
-  }
-
-  return nebula::meta::PatternMacro::INVALID;
-}
 } // namespace meta
 } // namespace nebula

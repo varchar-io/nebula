@@ -142,13 +142,11 @@ private:
       break;
     }
     case nebula::meta::TimeType::MACRO: {
-      if (nebula::meta::extractPatternMacro(ts.pattern) != nebula::meta::PatternMacro::INVALID) {
-        return [watermark](const nebula::surface::RowData*) {
-          return watermark;
-        };
-      } else {
-        return [](const nebula::surface::RowData*) { return 0; };
-      }
+      // time spec is not required for MACRO type now
+      // since the macro materialization will always yield watermark
+      return [watermark](const nebula::surface::RowData*) {
+        return watermark;
+      };
       break;
     }
     case nebula::meta::TimeType::PROVIDED: {

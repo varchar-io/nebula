@@ -35,9 +35,9 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 
 # build test binary
 add_executable(MetaTests
+    ${NEBULA_SRC}/meta/test/TestMacro.cpp
     ${NEBULA_SRC}/meta/test/TestMeta.cpp
-    ${NEBULA_SRC}/meta/test/TestPartition.cpp
-    ${NEBULA_SRC}/meta/test/TestTableSpec.cpp)
+    ${NEBULA_SRC}/meta/test/TestPartition.cpp)
 
 target_link_libraries(MetaTests
     PRIVATE ${NEBULA_META}

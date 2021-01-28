@@ -25,6 +25,7 @@
 #include "common/Spark.h"
 #include "execution/meta/TableService.h"
 #include "meta/ClusterInfo.h"
+#include "meta/Macro.h"
 #include "meta/NNode.h"
 #include "meta/TableSpec.h"
 #include "service/base/GoogleSheet.h"
@@ -47,6 +48,7 @@ using nebula::meta::BlockSignature;
 using nebula::meta::ClusterInfo;
 using nebula::meta::ColumnProps;
 using nebula::meta::KafkaSerde;
+using nebula::meta::Macro;
 using nebula::meta::NNode;
 using nebula::meta::Settings;
 using nebula::meta::TableSpec;
@@ -54,41 +56,11 @@ using nebula::meta::TableSpecPtr;
 using nebula::service::base::GoogleSheet;
 using nebula::service::base::LoadSpec;
 
-size_t LoadHandler::extractWatermark(const common::unordered_map<std::string_view, std::string_view>& p) {
-  const auto datePattern = meta::patternMacroStr.at(meta::PatternMacro::DAILY);
-  const auto hourPattern = meta::patternMacroStr.at(meta::PatternMacro::HOURLY);
-  const auto minutePattern = meta::patternMacroStr.at(meta::PatternMacro::MINUTELY);
-  const auto secondPattern = meta::patternMacroStr.at(meta::PatternMacro::SECONDLY);
-
-  const auto dd = p.find(datePattern);
-  const auto dh = p.find(hourPattern);
-  const auto dm = p.find(minutePattern);
-  const auto ds = p.find(secondPattern);
-
-  auto watermark = 0;
-  if (dd != p.end()) {
-    watermark = Evidence::time(p.at(datePattern), "%Y-%m-%d");
-  }
-  if (dh != p.end()) {
-    watermark += std::stol(std::string(p.at(hourPattern)), nullptr, 10) * meta::HOUR_SECONDS;
-  }
-  if (dm != p.end()) {
-    watermark += std::stol(std::string(p.at(minutePattern)), nullptr, 10) * meta::MINUTE_SECONDS;
-  }
-  if (ds != p.end()) {
-    watermark += std::stol(std::string(p.at(secondPattern)), nullptr, 10);
-  }
-
-  return watermark;
-}
-
 LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, std::string& name) {
   // get request content
   const auto& table = req->table();
   const auto& json = req->json();
-  // STL = TTL in seconds
-  const auto stl = req->ttl();
-  const auto ttlHour = stl / 3600;
+  const auto ttl = req->ttl();
 
   // search the template from ClusterInfo
   auto& ci = ClusterInfo::singleton();
@@ -117,7 +89,7 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
   auto tbSpec = std::make_shared<TableSpec>(
     name,
     tmp->max_mb,
-    ttlHour,
+    ttl,
     tmp->schema,
     tmp->source,
     tmp->loader,
@@ -132,7 +104,7 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
     tmp->settings);
 
   // must enroll this new dataset to make it visible to client
-  TableService::singleton()->enroll(tbSpec->to(), stl);
+  TableService::singleton()->enroll(tbSpec->to(), ttl);
 
   // by comparing the json value in table settings
   rapidjson::Document cd;
@@ -154,7 +126,7 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
   size_t assignId = 0;
   while (p.size() > 0) {
     // get date info if provided by parameters
-    auto watermark = extractWatermark(p);
+    auto watermark = Macro::watermark(p);
 
     // if bucket is required, bucket column value must be provided
     // but if bucket parameter is provided directly, we don't need to compute
@@ -204,9 +176,8 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
   // use passed in name as data source name, API loaded table needs to be started with #
   name = fmt::format("{0}{1}", BlockSignature::EPHEMERAL_TABLE_PREFIX, req->table());
 
-  // STL = TTL in seconds
-  const auto stl = req->ttl();
-  const auto ttlHour = stl / 3600;
+  // TTL in seconds
+  const auto ttl = req->ttl();
 
   // google sheet spec in json format.
   const auto& json = req->json();
@@ -224,7 +195,7 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
   auto tbSpec = std::make_shared<TableSpec>(
     name,
     GoogleSheet::MAX_SIZE_MB,
-    ttlHour,
+    ttl,
     sheet.schema,
     nebula::meta::DataSource::GSHEET,
     GoogleSheet::LOADER,
@@ -239,7 +210,7 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
     sheet.settings);
 
   // pattern must be present in settings
-  TableService::singleton()->enroll(tbSpec->to(), stl);
+  TableService::singleton()->enroll(tbSpec->to(), ttl);
 
   // build ingestion spec for this google sheet
   // use uid (user ID) as its domain
@@ -268,9 +239,8 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
   // get table name - needs to be unique
   name = fmt::format("{0}{1}", BlockSignature::EPHEMERAL_TABLE_PREFIX, req->table());
 
-  // STL = TTL in seconds
-  const auto stl = req->ttl();
-  const auto ttlHour = stl / 3600;
+  // TTL in seconds
+  const auto ttl = req->ttl();
 
   // google sheet spec in json format.
   const auto& json = req->json();
@@ -288,7 +258,7 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
   auto tbSpec = std::make_shared<TableSpec>(
     name,
     LoadSpec::MAX_SIZE_MB,
-    ttlHour,
+    ttl,
     demand.schema,
     demand.source,
     LoadSpec::LOADER,
@@ -303,7 +273,7 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
     demand.settings);
 
   // pattern must be present in settings
-  TableService::singleton()->enroll(tbSpec->to(), stl);
+  TableService::singleton()->enroll(tbSpec->to(), ttl);
 
   // build ingestion spec for this google sheet
   // use uid (user ID) as its domain

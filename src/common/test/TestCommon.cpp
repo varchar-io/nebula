@@ -291,6 +291,10 @@ TEST(CommonTest, TestTimeFormatting) {
   LOG(INFO) << Evidence::fmt_normal(time);
   LOG(INFO) << Evidence::fmt_ymd_dash(time);
   LOG(INFO) << Evidence::fmt_ymd_slash(time);
+  LOG(INFO) << Evidence::fmt_hour(time);
+  LOG(INFO) << Evidence::fmt_minute(time);
+  LOG(INFO) << Evidence::fmt_second(time);
+  LOG(INFO) << time;
 
   // shortcuts are resulting in the same
   EXPECT_EQ(Evidence::fmt_ymd_dash(time), Evidence::format(time, "%F"));
@@ -673,6 +677,19 @@ TEST(CommonTest, TestInt128) {
               << ", sum=" << sum
               << ", count=" << count;
   }
+}
+
+TEST(CommonTest, TestCaseConvertion) {
+  std::string x = "AbC";
+  auto another = nebula::common::Chars::lower_copy(x);
+  EXPECT_EQ(x, "AbC");
+  EXPECT_EQ(another, "abc");
+
+  nebula::common::Chars::lower(x);
+  EXPECT_EQ(x, "abc");
+
+  auto copy = nebula::common::Chars::lower_copy("XYz");
+  EXPECT_EQ(copy, "xyz");
 }
 
 TEST(CommonTest, TestDigest) {
