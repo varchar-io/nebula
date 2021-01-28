@@ -71,7 +71,7 @@ public:
   }
 
   // make a copy of string in lower case
-  static inline std::string lower2(const std::string& str) {
+  static inline std::string lower_copy(const std::string& str) {
     const auto size = str.size();
     std::string copy(size, 0);
     for (size_t i = 0; i < size; ++i) {

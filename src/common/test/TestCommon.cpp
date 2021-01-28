@@ -681,14 +681,14 @@ TEST(CommonTest, TestInt128) {
 
 TEST(CommonTest, TestCaseConvertion) {
   std::string x = "AbC";
-  auto another = nebula::common::Chars::lower2(x);
+  auto another = nebula::common::Chars::lower_copy(x);
   EXPECT_EQ(x, "AbC");
   EXPECT_EQ(another, "abc");
 
   nebula::common::Chars::lower(x);
   EXPECT_EQ(x, "abc");
 
-  auto copy = nebula::common::Chars::lower2("XYz");
+  auto copy = nebula::common::Chars::lower_copy("XYz");
   EXPECT_EQ(copy, "xyz");
 }
 
