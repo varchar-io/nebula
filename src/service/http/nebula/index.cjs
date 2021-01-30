@@ -5073,7 +5073,7 @@ module.exports = require("json-bigint");
 
 // Original file comments:
 //
-// Copyright 2017-present Shawn Cao
+// Copyright 2017-present varchar.io
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -5378,7 +5378,7 @@ var external_stream_ = __webpack_require__(4);
 
 // CONCATENATED MODULE: ./_/handler.js
 /*
- * Copyright 2017-present Shawn Cao
+ * Copyright 2017-present varchar.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -5473,7 +5473,7 @@ class handler_Handler {
 };
 // CONCATENATED MODULE: ./_/serde.js
 /*
- * Copyright 2017-present Shawn Cao
+ * Copyright 2017-present varchar.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -5517,7 +5517,7 @@ const bytes2utf8 = (data) => {
 };
 // CONCATENATED MODULE: ./_/time.js
 /*
- * Copyright 2017-present Shawn Cao
+ * Copyright 2017-present varchar.io
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
