@@ -5067,7 +5067,7 @@ module.exports = require("grpc");
 
 // Original file comments:
 //
-// Copyright 2017-present Shawn Cao
+// Copyright 2017-present varchar.io
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
