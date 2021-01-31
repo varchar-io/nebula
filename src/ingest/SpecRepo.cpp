@@ -247,7 +247,7 @@ void SpecRepo::process(
     return;
   }
 
-  // S3 has two mode:
+  // S3/GCS has two mode:
   // 1. swap data when renewed or
   // 2. roll data clustered by time
   if (dsu::isFileSystem(table->source)) {

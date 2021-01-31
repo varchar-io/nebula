@@ -20,6 +20,7 @@
 #include <gflags/gflags.h>
 
 #include "common/Errors.h"
+#include "meta/TableSpec.h"
 
 // default 100mb memory cache for the meta db
 DEFINE_uint64(DB_CACHE_SIZE, 100 * 1048576, "memory cache size of the db.");
@@ -32,6 +33,8 @@ namespace nebula {
 namespace service {
 namespace base {
 
+using dsu = nebula::meta::DataSourceUtils;
+
 void NativeMetaDb::open() {
   leveldb::Status status = leveldb::DB::Open(options_, local_, &db_);
   N_ENSURE(status.ok(), "Failed to open native meta db");
@@ -40,23 +43,19 @@ void NativeMetaDb::open() {
 void NativeMetaDb::restore() noexcept {
   auto localFs = nebula::storage::makeFS("local", "");
   auto uriInfo = nebula::storage::parse(remote_);
-  if (uriInfo.schema == "s3") {
-    // sync all remote data into a local folder
-    auto fs = nebula::storage::makeFS("s3", uriInfo.host);
+  // sync all remote data into a local folder
+  auto fs = nebula::storage::makeFS(uriInfo.schema, uriInfo.host);
 
-    // find latest version indicated by the version file
-    const auto versionKey = fmt::format("{0}/version", uriInfo.path);
-    char version[32];
-    auto size = fs->read(versionKey, version, sizeof(version));
-    if (size > 0) {
-      // if existing the version, we download it to local to start with
-      auto snapshot = fmt::format("{0}/{1}", uriInfo.path, std::string_view(version, size));
-      if (fs->sync(snapshot, local_)) {
-        LOG(INFO) << "Reuse metadb saved at: " << snapshot;
-      }
+  // find latest version indicated by the version file
+  const auto versionKey = fmt::format("{0}/version", uriInfo.path);
+  char version[32];
+  auto size = fs->read(versionKey, version, sizeof(version));
+  if (size > 0) {
+    // if existing the version, we download it to local to start with
+    auto snapshot = fmt::format("{0}/{1}", uriInfo.path, std::string_view(version, size));
+    if (fs->sync(snapshot, local_)) {
+      LOG(INFO) << "Reuse metadb saved at: " << snapshot;
     }
-
-    return;
   }
 
   // supporting other store type as well
@@ -132,37 +131,32 @@ bool NativeMetaDb::backup() noexcept {
   if (dirty_) {
     dirty_ = false;
     auto uriInfo = nebula::storage::parse(remote_);
-    if (uriInfo.schema == "s3") {
-      // sync all remote data into a local folder
-      auto fs = nebula::storage::makeFS("s3", uriInfo.host);
+    // sync all remote data into a local folder
+    auto fs = nebula::storage::makeFS(uriInfo.schema, uriInfo.host);
 
-      // generate a new unique snapshot
-      auto version = std::to_string(nebula::common::Evidence::unix_timestamp());
-      auto snapshot = fmt::format("{0}/{1}", uriInfo.path, version);
+    // generate a new unique snapshot
+    auto version = std::to_string(nebula::common::Evidence::unix_timestamp());
+    auto snapshot = fmt::format("{0}/{1}", uriInfo.path, version);
 
-      // failed to upload this snapshot
-      if (!fs->sync(backup_, snapshot)) {
-        return false;
-      }
-
-      // write this version into version file
-      auto versionFile = fmt::format("{0}/version", backup_);
-      auto remoteVersion = fmt::format("{0}/version", uriInfo.path);
-      std::ofstream ofs;
-      ofs.open(versionFile, std::ofstream::out);
-      ofs << version;
-      ofs.close();
-
-      // upload this file into S3
-      auto versionUpdated = fs->copy(versionFile, remoteVersion);
-
-      // clean backup folder for next sync
-      resetBackup();
-      return versionUpdated;
+    // failed to upload this snapshot
+    if (!fs->sync(backup_, snapshot)) {
+      return false;
     }
 
-    // not supported location
-    LOG(WARNING) << "Unsupported backup location: " << remote_;
+    // write this version into version file
+    auto versionFile = fmt::format("{0}/version", backup_);
+    auto remoteVersion = fmt::format("{0}/version", uriInfo.path);
+    std::ofstream ofs;
+    ofs.open(versionFile, std::ofstream::out);
+    ofs << version;
+    ofs.close();
+
+    // upload this file into S3
+    auto versionUpdated = fs->copy(versionFile, remoteVersion);
+
+    // clean backup folder for next sync
+    resetBackup();
+    return versionUpdated;
   }
 
   return false;

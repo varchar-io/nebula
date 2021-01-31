@@ -3,9 +3,14 @@ find_package(Threads REQUIRED)
 include(ExternalProject)
 
 # install abseil (required >= c++ 11)
+# Note: use 11 rather than 17 so that we can use absl::string_view rather than std::string_view
+# because GCP common references absl::string_view directly
 SET(ABSL_OPTS
     -DBUILD_TESTING=OFF
-    -DCMAKE_CXX_STANDARD=17)
+    -DBUILD_SHARED_LIBS=OFF
+    -DABSL_USES_STD_STRING_VIEW=OFF
+    -DABSL_USES_STD_OPTIONAL=OFF
+    -DCMAKE_CXX_STANDARD=11)
 ExternalProject_Add(absl
     PREFIX absl
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
@@ -102,6 +107,16 @@ set_target_properties(${GCP_COMM_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${GCP_COMMON_LIB}"
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${GCP_INCLUDE_DIRS}")
+
+# find abseil since we already installed it
+find_package(absl REQUIRED)
+find_package(Crc32c REQUIRED)
+target_link_libraries(${GCP_COMM_LIBRARY}
+    INTERFACE absl::strings
+    INTERFACE absl::time
+    INTERFACE absl::bad_optional_access
+    INTERFACE absl::str_format_internal
+    INTERFACE Crc32c::crc32c)
 
 # gcs lib
 set(GCS_LIB ${BINARY_DIR}/google/cloud/storage/libstorage_client.a)

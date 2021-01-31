@@ -21,6 +21,7 @@
 
 #include "NFileSystem.h"
 #include "aws/S3.h"
+#include "gcp/GCS.h"
 #include "local/File.h"
 
 /**
