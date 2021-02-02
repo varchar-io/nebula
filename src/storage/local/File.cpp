@@ -22,7 +22,7 @@
 #include "common/Evidence.h"
 
 /**
- * A wrapper for interacting with AWS / S3
+ * A wrapper for interacting with local file system
  */
 namespace nebula {
 namespace storage {

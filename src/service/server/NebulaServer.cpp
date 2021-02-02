@@ -496,13 +496,11 @@ void RunServer() {
       auto uri = nebula::storage::parse(conf);
       bool copied = false;
       auto localFs = nebula::storage::makeFS("local");
-      if (uri.schema == "s3") {
-        // create a s3 file system
-        auto fs = nebula::storage::makeFS("s3", uri.host);
-        conf = localFs->temp();
-        N_ENSURE(fs->copy(uri.path, conf), "failed to copy config file");
-        copied = true;
-      }
+      // create a s3 file system
+      auto fs = nebula::storage::makeFS(uri.schema, uri.host);
+      conf = localFs->temp();
+      N_ENSURE(fs->copy(uri.path, conf), "failed to copy config file");
+      copied = true;
 
       // assuming everything else are local file - if not, let runtime fails you
       auto fi = localFs->info(conf);

@@ -37,6 +37,7 @@ namespace meta {
 enum class DataSource {
   Custom,
   S3,
+  GS,
   LOCAL,
   KAFKA,
   GSHEET
@@ -51,6 +52,7 @@ struct DataSourceUtils {
     static const std::string NONE = "";
     static const nebula::common::unordered_map<DataSource, std::string> SOURCE_PROTO = {
       { DataSource::S3, "s3" },
+      { DataSource::GS, "gs" },
       { DataSource::LOCAL, "local" }
     };
 

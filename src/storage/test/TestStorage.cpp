@@ -217,6 +217,29 @@ TEST(StorageTest, TestUriParse) {
   }
 }
 
+TEST(StorageTest, DISABLED_TestGcsSync) {
+  auto fs = nebula::storage::makeFS("gs", "nebula-com");
+  auto lfs = nebula::storage::makeFS("local");
+  auto content = "test";
+  auto local = lfs->temp(false);
+  std::ofstream out(local);
+  out << content;
+  out.close();
+
+  // upload
+  LOG(INFO) << "upload local file";
+  fs->sync(local, "cdn/test.txt");
+
+  // download
+  auto local2 = lfs->temp(false);
+  fs->sync("cdn/test.txt", local2);
+  std::ifstream in(local2);
+  std::string v;
+  std::getline(in, v);
+  in.close();
+  EXPECT_EQ(v, content);
+}
+
 } // namespace test
 } // namespace storage
 } // namespace nebula

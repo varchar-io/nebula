@@ -3,9 +3,14 @@ find_package(Threads REQUIRED)
 include(ExternalProject)
 
 # install abseil (required >= c++ 11)
+# Note: use 11 rather than 17 so that we can use absl::string_view rather than std::string_view
+# because GCP common references absl::string_view directly
 SET(ABSL_OPTS
     -DBUILD_TESTING=OFF
-    -DCMAKE_CXX_STANDARD=17)
+    -DBUILD_SHARED_LIBS=OFF
+    -DABSL_USES_STD_STRING_VIEW=OFF
+    -DABSL_USES_STD_OPTIONAL=OFF
+    -DCMAKE_CXX_STANDARD=11)
 ExternalProject_Add(absl
     PREFIX absl
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
@@ -77,7 +82,7 @@ endif()
 ExternalProject_Add(gcp
     PREFIX gcp
     GIT_REPOSITORY https://github.com/googleapis/google-cloud-cpp.git
-    GIT_TAG v1.21.0
+    GIT_TAG v1.24.0
     # SOURCE_SUBDIR google/cloud/storage
     CMAKE_ARGS ${GCP_OPTS}
     UPDATE_COMMAND ""
@@ -103,8 +108,20 @@ set_target_properties(${GCP_COMM_LIBRARY} PROPERTIES
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${GCP_INCLUDE_DIRS}")
 
+# find abseil since we already installed it
+find_package(absl REQUIRED)
+find_package(Crc32c REQUIRED)
+target_link_libraries(${GCP_COMM_LIBRARY}
+    INTERFACE absl::strings
+    INTERFACE absl::time
+    INTERFACE absl::bad_optional_access
+    INTERFACE absl::str_format_internal
+    INTERFACE Crc32c::crc32c
+    INTERFACE ${OPENSSL_LIBRARY}
+    INTERFACE ${CRYPTO_LIBRARY})
+
 # gcs lib
-set(GCS_LIB ${BINARY_DIR}/google/cloud/storage/libstorage_client.a)
+set(GCS_LIB ${BINARY_DIR}/google/cloud/storage/libgoogle_cloud_cpp_storage.a)
 set(GCS_LIBRARY libgcs)
 add_library(${GCS_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${GCS_LIBRARY} PROPERTIES

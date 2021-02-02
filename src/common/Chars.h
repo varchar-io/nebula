@@ -108,6 +108,13 @@ public:
     return v1.size() == v2.size() && prefix(v1.data(), v1.size(), v2.data(), v2.size(), ignoreCase);
   }
 
+  // shortcut of prefix function in sensitive case
+  static bool prefix(const std::string_view text, const std::string_view prefix) {
+    const auto size = prefix.size();
+    return (size == 0) || (text.size() >= size && std::memcmp(text.data(), prefix.data(), size) == 0);
+  }
+
+  // prefix function with char to char comparison
   static bool prefix(const char* src, size_t s_size,
                      const char* target, size_t t_size,
                      bool ignoreCase = true) {

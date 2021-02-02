@@ -34,6 +34,10 @@ std::unique_ptr<NFileSystem> makeFS(const std::string& proto, const std::string&
     return std::make_unique<nebula::storage::aws::S3>(bucket);
   }
 
+  if (proto == "gs") {
+    return std::make_unique<nebula::storage::gcp::GCS>(bucket);
+  }
+
   throw NException(fmt::format("unsupported file system: {0}", proto));
 }
 
