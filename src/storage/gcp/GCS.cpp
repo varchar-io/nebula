@@ -33,17 +33,16 @@ namespace storage {
 namespace gcp {
 
 using google::cloud::StatusOr;
+using google::cloud::storage::IfGenerationMatch;
 using google::cloud::storage::LimitedErrorCountRetryPolicy;
 using google::cloud::storage::ObjectMetadata;
 using google::cloud::storage::ObjectReadStream;
 using google::cloud::storage::ObjectWriteStream;
 using google::cloud::storage::Prefix;
 
-static constexpr int BUFFER_SIZE = 4096;
-
 std::vector<FileInfo> GCS::list(const std::string& key) {
   std::vector<FileInfo> objects;
-  for (const StatusOr<ObjectMetadata>& meta : client_.ListObjects(bucket_, Prefix(key))) {
+  for (const StatusOr<ObjectMetadata>& meta : client_->ListObjects(bucket_, Prefix(key))) {
     if (meta.ok()) {
       objects.emplace_back(false, 0, meta->size(), meta->name(), bucket_);
     }
@@ -57,7 +56,7 @@ size_t GCS::read(const std::string& key, char* buf, size_t size) {
 }
 
 size_t GCS::read(const std::string& key, const size_t offset, const size_t size, char* buf) {
-  ObjectReadStream stream = client_.ReadObject(bucket_, key);
+  ObjectReadStream stream = client_->ReadObject(bucket_, key);
   if (stream.bad()) {
     LOG(ERROR) << "Failed to read object " << bucket_ << "/" << key;
     return -1;
@@ -71,7 +70,7 @@ size_t GCS::read(const std::string& key, const size_t offset, const size_t size,
 }
 
 FileInfo GCS::info(const std::string& key) {
-  auto meta = client_.GetObjectMetadata(bucket_, key);
+  auto meta = client_->GetObjectMetadata(bucket_, key);
   if (meta.ok()) {
     return FileInfo(false, 0, meta->size(), meta->name(), bucket_);
   }
@@ -81,41 +80,24 @@ FileInfo GCS::info(const std::string& key) {
 }
 
 bool GCS::upload(const std::string& key, const std::string& local) {
-
-  std::ifstream in(local);
-  ObjectWriteStream out = client_.WriteObject(bucket_, key);
-  char* buf = new char[BUFFER_SIZE];
-
-  while (in) {
-    in.read(buf, BUFFER_SIZE);
-    auto size = in.gcount();
-    if (size == 0) {
-      break;
-    }
-
-    out.write(buf, size);
+  StatusOr<ObjectMetadata> metadata = client_->UploadFile(
+    local, bucket_, key, IfGenerationMatch(0));
+  if (!metadata) {
+    LOG(WARNING) << "Failed to upload: " << metadata.status().message();
+    return false;
   }
-
-  delete[] buf;
 
   return true;
 }
 
 bool GCS::download(const std::string& key, const std::string& local) {
-  std::ofstream out(local);
-
   // ObjectReadStream will close the stream in destructor.
-  ObjectReadStream in = client_.ReadObject(bucket_, key);
-  char* buf = new char[BUFFER_SIZE];
-  size_t size = 0;
-  do {
-    in.read(buf, BUFFER_SIZE);
-    size = in.gcount();
-    out.write(buf, size);
-  } while (size > 0);
+  google::cloud::Status status = client_->DownloadToFile(bucket_, key, local);
+  if (!status.ok()) {
+    LOG(WARNING) << "Failed to download: " << status.message();
+  }
 
-  delete[] buf;
-  return true;
+  return status.ok();
 }
 
 bool GCS::copy(const std::string& from, const std::string& to) {
@@ -140,7 +122,7 @@ bool GCS::sync(const std::string& from, const std::string& to, bool recursive) {
   }
 
   if (from.at(0) == '/') {
-    return upload(from, to);
+    return upload(to, from);
   } else if (to.at(0) == '/') {
     return download(from, to);
   }
@@ -150,9 +132,9 @@ bool GCS::sync(const std::string& from, const std::string& to, bool recursive) {
 }
 
 void GCS::rm(const std::string& key) {
-  for (const StatusOr<ObjectMetadata>& meta : client_.ListObjects(bucket_, Prefix(key))) {
+  for (const StatusOr<ObjectMetadata>& meta : client_->ListObjects(bucket_, Prefix(key))) {
     if (meta.ok()) {
-      google::cloud::Status status = client_.DeleteObject(bucket_, meta->name());
+      google::cloud::Status status = client_->DeleteObject(bucket_, meta->name());
       if (!status.ok()) {
         LOG(WARNING) << "Faield to delete " << meta->name() << " : " << status.message();
       }

@@ -30,15 +30,13 @@ namespace storage {
 namespace gcp {
 
 class GCS : public NFileSystem {
-  static inline google::cloud::storage::ClientOptions Options() {
-    auto opts = google::cloud::storage::ClientOptions::CreateDefaultClientOptions();
-    return *opts;
-  }
-
 public:
   GCS(const std::string& bucket)
     : bucket_(bucket),
-      client_{ Options(), google::cloud::storage::LimitedErrorCountRetryPolicy(3) } {
+      client_{ google::cloud::storage::Client::CreateDefaultClient() } {
+        // to create a valid client, we need to set the service account key file, eg.
+        // export GOOGLE_APPLICATION_CREDENTIALS="/var/gcs-key.json"
+    N_ENSURE(client_, fmt::format("failed to create GCS client: {0}.", client_.status().message()));
   }
   virtual ~GCS() = default;
 
@@ -80,7 +78,7 @@ private:
 
 private:
   std::string bucket_;
-  google::cloud::storage::Client client_;
+  google::cloud::StatusOr<google::cloud::storage::Client> client_;
   std::mutex mutex_;
 };
 

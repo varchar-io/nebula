@@ -120,6 +120,8 @@ SET(GRPC_CMAKE_ARGS
 # they are internal used only - pointing to the version installed by brew
 if(APPLE)
   SET(GRPC_CMAKE_ARGS ${GRPC_CMAKE_ARGS} "-DOPENSSL_ROOT_DIR:STRING=/usr/local/opt/openssl")
+else()
+  SET(GRPC_CMAKE_ARGS ${GRPC_CMAKE_ARGS} "-DOPENSSL_ROOT_DIR:STRING=/usr/local/openssl")
 endif()
 
 # use specific version since flatbuffers not catching up

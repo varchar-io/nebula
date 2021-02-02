@@ -82,7 +82,7 @@ endif()
 ExternalProject_Add(gcp
     PREFIX gcp
     GIT_REPOSITORY https://github.com/googleapis/google-cloud-cpp.git
-    GIT_TAG v1.21.0
+    GIT_TAG v1.24.0
     # SOURCE_SUBDIR google/cloud/storage
     CMAKE_ARGS ${GCP_OPTS}
     UPDATE_COMMAND ""
@@ -116,10 +116,12 @@ target_link_libraries(${GCP_COMM_LIBRARY}
     INTERFACE absl::time
     INTERFACE absl::bad_optional_access
     INTERFACE absl::str_format_internal
-    INTERFACE Crc32c::crc32c)
+    INTERFACE Crc32c::crc32c
+    INTERFACE ${OPENSSL_LIBRARY}
+    INTERFACE ${CRYPTO_LIBRARY})
 
 # gcs lib
-set(GCS_LIB ${BINARY_DIR}/google/cloud/storage/libstorage_client.a)
+set(GCS_LIB ${BINARY_DIR}/google/cloud/storage/libgoogle_cloud_cpp_storage.a)
 set(GCS_LIBRARY libgcs)
 add_library(${GCS_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${GCS_LIBRARY} PROPERTIES
