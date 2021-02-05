@@ -496,7 +496,7 @@ void RunServer() {
       auto uri = nebula::storage::parse(conf);
       bool copied = false;
       auto localFs = nebula::storage::makeFS("local");
-      if (uri.schema.length > 0) {
+      if (!uri.schema.empty()) {
         // create a non-local file system
         auto fs = nebula::storage::makeFS(uri.schema, uri.host);
         conf = localFs->temp();
