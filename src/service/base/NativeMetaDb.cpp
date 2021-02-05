@@ -43,19 +43,23 @@ void NativeMetaDb::open() {
 void NativeMetaDb::restore() noexcept {
   auto localFs = nebula::storage::makeFS("local", "");
   auto uriInfo = nebula::storage::parse(remote_);
-  // sync all remote data into a local folder
-  auto fs = nebula::storage::makeFS(uriInfo.schema, uriInfo.host);
+  if (!uriInfo.schema.empty()) {
+    // sync all remote data into a local folder
+    auto fs = nebula::storage::makeFS(uriInfo.schema, uriInfo.host);
 
-  // find latest version indicated by the version file
-  const auto versionKey = fmt::format("{0}/version", uriInfo.path);
-  char version[32];
-  auto size = fs->read(versionKey, version, sizeof(version));
-  if (size > 0) {
-    // if existing the version, we download it to local to start with
-    auto snapshot = fmt::format("{0}/{1}", uriInfo.path, std::string_view(version, size));
-    if (fs->sync(snapshot, local_)) {
-      LOG(INFO) << "Reuse metadb saved at: " << snapshot;
+    // find latest version indicated by the version file
+    const auto versionKey = fmt::format("{0}/version", uriInfo.path);
+    char version[32];
+    auto size = fs->read(versionKey, version, sizeof(version));
+    if (size > 0) {
+      // if existing the version, we download it to local to start with
+      auto snapshot = fmt::format("{0}/{1}", uriInfo.path, std::string_view(version, size));
+      if (fs->sync(snapshot, local_)) {
+        LOG(INFO) << "Reuse metadb saved at: " << snapshot;
+      }
     }
+
+    return;
   }
 
   // supporting other store type as well
