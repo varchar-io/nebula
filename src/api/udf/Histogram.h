@@ -180,7 +180,6 @@ public:
                  }
 
                  // push upbound if the range is not ideal - it's okay to modify max
-
                  if constexpr (std::is_floating_point_v<InputType>) {
                    if (upbound - lowbound < DOUBLE_BUCKET_PRECISION) {
                      upbound = lowbound + DOUBLE_BUCKET_PRECISION;

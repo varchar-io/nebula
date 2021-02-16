@@ -204,8 +204,8 @@ public:
   // NOTE: (found a g++ bug)
   // It declares the method is not mark as const if we change the signature as
   // auto read(size_t position) -> typename std::enable_if<std::is_scalar<T>::value, T&>::type const {
-  template <typename T>
-  inline typename std::enable_if<std::is_scalar<T>::value, T>::type read(size_t position) const {
+  template <typename T, typename = std::enable_if_t<std::is_scalar_v<T>>>
+  inline T read(size_t position) const {
     return *reinterpret_cast<T*>(this->ptr_ + position);
   }
 
@@ -309,6 +309,16 @@ inline size_t
   ensure(position + size);
   *reinterpret_cast<int128_t*>(this->ptr_ + position) = value;
   return size;
+}
+
+// partial template specialization for int128_t to avoid the wrong optimization leading to segfault
+template <>
+#ifndef __clang__
+__attribute__((optimize("O1")))
+#endif
+inline int128_t
+  ExtendableSlice::read(size_t position) const {
+  return *reinterpret_cast<int128_t*>(this->ptr_ + position);
 }
 
 // a basic range struct to hold offset and size in a size_t

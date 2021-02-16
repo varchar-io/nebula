@@ -94,9 +94,9 @@ class Max<nebula::type::Kind::VARCHAR> : public nebula::surface::eval::UDAF<nebu
 public:
   Max(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr)
     : nebula::surface::eval::UDAF<nebula::type::Kind::VARCHAR, nebula::type::Kind::VARCHAR>(
-        name,
-        std::move(expr),
-        {}) {
+      name,
+      std::move(expr),
+      {}) {
     throw NException("Not supporting max(varchar) yet.");
   }
   virtual ~Max() = default;
