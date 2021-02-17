@@ -37,6 +37,16 @@ namespace common {
 namespace test {
 
 TEST(StatsTest, TestHistogram) {
+  // error input
+  {
+    // internal check:
+    // 1) bucket size > 0
+    // 2) min < max
+    folly::Histogram<int64_t> hist(1, 0, 1);
+    hist.addValue(0);
+    EXPECT_EQ(hist.getNumBuckets(), 3);
+  }
+
   // basic histogram functions
   {
     // construct histogram object with (bucketSize, minValue, maxValue)

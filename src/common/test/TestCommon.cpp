@@ -252,6 +252,18 @@ TEST(CommonTest, TestTimeParsing) {
   }
 }
 
+TEST(CommonTest, Test0AndOverflow) {
+  int64_t min = 0, max = 0;
+  size_t size = 100;
+  const size_t delta = max - min;
+  if (delta < size) {
+    max = min + size;
+  }
+
+  LOG(INFO) << "min=" << min << ", max=" << max << ", delta=" << delta;
+  EXPECT_TRUE(min < max);
+}
+
 TEST(CommonTest, TestSerialNumberTime) {
   auto serial = 43386;
   auto date = "10/13/2018";

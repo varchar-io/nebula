@@ -34,6 +34,7 @@ template <nebula::type::Kind IK,
 class Hist : public BaseType {
   // Set default number of buckets to 10
   static constexpr size_t BUCKET_NUM = 10;
+  static constexpr double DOUBLE_BUCKET_PRECISION = 0.001;
 
 public:
   using InputType = typename std::conditional_t<std::is_floating_point_v<typename BaseType::InputType>, double, int64_t>;
@@ -42,15 +43,15 @@ public:
 
 public:
   class Aggregator : public BaseAggregator {
-  static constexpr auto SIZE_SIZE = sizeof(size_t);
+    static constexpr auto SIZE_SIZE = sizeof(size_t);
 
   public:
-    explicit Aggregator(InputType min, InputType max, size_t bucketNum = BUCKET_NUM)
+    explicit Aggregator(InputType min, InputType max, size_t bucketNum)
       : min_{ min },
-      max_{ max },
-      bucketNum_{ bucketNum },
-      bucketSize_{ static_cast<InputType>((max_ - min_) / bucketNum) },
-      histogram_{ bucketSize_, min_, max_ } {
+        max_{ max },
+        bucketNum_{ bucketNum },
+        bucketSize_{ static_cast<InputType>((max_ - min_) / bucketNum) },
+        histogram_{ bucketSize_, min_, max_ } {
     }
     virtual ~Aggregator() = default;
 
@@ -116,11 +117,11 @@ public:
     folly::Histogram<InputType> histogram_;
     std::string json_;
 
-#define SAVE_VALUE(value) \
-  if constexpr (std::is_floating_point_v<InputType>) {    \
-    json.Double(value);                                        \
-  } else {                                                     \
-    json.Int64(value);                                         \
+#define SAVE_VALUE(value)                              \
+  if constexpr (std::is_floating_point_v<InputType>) { \
+    json.Double(value);                                \
+  } else {                                             \
+    json.Int64(value);                                 \
   }
     std::string jsonfy(bool finalize = false) const noexcept {
       // Save histogram in below json format:
@@ -159,12 +160,39 @@ public:
     }
 #undef SAVE_VALUE
   };
+
 public:
-  Hist(const std::string& name, std::unique_ptr<nebula::surface::eval::ValueEval> expr, InputType min, InputType max)
+  Hist(const std::string& name,
+       std::unique_ptr<nebula::surface::eval::ValueEval> expr,
+       InputType min,
+       InputType max,
+       size_t bucketNum = BUCKET_NUM)
     : BaseType(name,
                std::move(expr),
-               [min = min, max = max]() -> std::shared_ptr<Aggregator> {
-                 return std::make_shared<Aggregator>(min, max);
+               [min, max, bucketNum]() -> std::shared_ptr<Aggregator> {
+                 auto lowbound = min;
+                 auto upbound = max;
+                 // preventive handling min > max (if the data has invalid range - wrong stats)
+                 // reset both to 0 to have basic bucket settings by following logic
+                 if (upbound < lowbound) {
+                   lowbound = 0;
+                   upbound = 0;
+                 }
+
+                 // push upbound if the range is not ideal - it's okay to modify max
+                 if constexpr (std::is_floating_point_v<InputType>) {
+                   if (upbound - lowbound < DOUBLE_BUCKET_PRECISION) {
+                     upbound = lowbound + DOUBLE_BUCKET_PRECISION;
+                   }
+                 } else {
+                   // for integer - we need at least 1 for each bucket
+                   const size_t delta = upbound - lowbound;
+                   if (delta < bucketNum) {
+                     upbound = lowbound + bucketNum;
+                   }
+                 }
+
+                 return std::make_shared<Aggregator>(lowbound, upbound, bucketNum);
                }) {}
 
   virtual ~Hist() = default;
