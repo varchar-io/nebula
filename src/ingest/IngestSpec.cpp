@@ -247,12 +247,15 @@ bool IngestSpec::loadGSheet(BlockList& blocks) noexcept {
   const auto& url = this->path();
 
   // read access token from table settings
-  // TODO(cao): do we allow empty token - if it's public?
-  auto& token = this->table_->settings["token"];
   std::vector<std::string> headers{
-    fmt::format("Authorization: Bearer {0}", token),
     "Accept: application/json"
   };
+
+  // TODO(cao): do we allow empty token - if it's public?
+  auto& token = this->table_->settings["token"];
+  if (!token.empty()) {
+    headers.push_back(fmt::format("Authorization: Bearer {0}", token));
+  }
 
   // the sheet content in this json objects
   auto json = http.readJson(url, headers);
