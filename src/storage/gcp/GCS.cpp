@@ -18,7 +18,6 @@
 
 #include <fstream>
 #include <glog/logging.h>
-#include <google/cloud/storage/client.h>
 
 #include "common/Chars.h"
 #include "common/Errors.h"

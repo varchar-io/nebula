@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <google/cloud/storage/client.h>
 #include <mutex>
 
 #include "common/Errors.h"
-#include "google/cloud/storage/client.h"
 #include "storage/NFileSystem.h"
 
 /**
@@ -34,8 +34,8 @@ public:
   GCS(const std::string& bucket)
     : bucket_(bucket),
       client_{ google::cloud::storage::Client::CreateDefaultClient() } {
-        // to create a valid client, we need to set the service account key file, eg.
-        // export GOOGLE_APPLICATION_CREDENTIALS="/var/gcs-key.json"
+    // to create a valid client, we need to set the service account key file, eg.
+    // export GOOGLE_APPLICATION_CREDENTIALS="/var/gcs-key.json"
     N_ENSURE(client_, fmt::format("failed to create GCS client: {0}.", client_.status().message()));
   }
   virtual ~GCS() = default;
