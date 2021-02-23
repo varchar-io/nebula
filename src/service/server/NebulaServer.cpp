@@ -294,6 +294,9 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
     return Status::OK;
   }
 
+  // unregister the table if the load failed
+  TableService::singleton()->unenroll(tableName);
+
   reply->set_error(LoadError::TEMPLATE_NOT_FOUND);
   return Status::CANCELLED;
 }

@@ -80,6 +80,10 @@ public:
     }
   }
 
+  inline void unenroll(const std::string& name) {
+    tables_.erase(name);
+  }
+
   // enroll/refresh tables from the whole cluster info
   void enroll(const nebula::meta::ClusterInfo&);
 
