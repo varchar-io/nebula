@@ -19,9 +19,11 @@
 #include <fstream>
 #include <iostream>
 #include <rapidjson/document.h>
+#include <rapidjson/pointer.h>
 #include <string>
 
 #include "RowParser.h"
+#include "common/Chars.h"
 #include "common/Conv.h"
 #include "common/Errors.h"
 #include "memory/FlatRow.h"
@@ -35,40 +37,58 @@
 namespace nebula {
 namespace storage {
 
+inline rapidjson::Value* locate(rapidjson::Document& doc, const std::string& path) {
+  return rapidjson::Pointer(path.c_str()).Get(doc);
+}
+
+// define column properties
+using fop = std::function<void(nebula::memory::FlatRow&, const std::string&, const rapidjson::Value*)>;
+struct ColumnProps {
+  // maybe empty - but storing parsed path if the name maps to a path
+  std::string path;
+
+  // action to convert data from json node to given storage (eg. FlatRow)
+  fop action;
+};
+
 // represent a reusable row object with single line content
 // we can always parse line for a row object
 class JsonRow final : public RowParser {
-  using fop = std::function<void(nebula::memory::FlatRow&, const std::string&, const rapidjson::Value&)>;
 
 public:
+  // to support flat data from nested structure in JSON, introduce "pathInName" variable
+  // if this is true, use name as path to match value otherwise use name itself
+  // currently we default to support path in name.
   JsonRow(nebula::type::Schema schema, bool nullDefault = true)
-    : schema_{ schema }, nullDefault_{ nullDefault }, hasTime_{ false } {
+    : nullDefault_{ nullDefault }, hasTime_{ false } {
 
 // define how each column read and write to row object
 // if the provided value is string, we use safe_to to convert it to desired type without exception
 // other excpetions, we let it throw
-#define CASE_POP(K, F)                                                                              \
-  case nebula::type::Kind::K: {                                                                     \
-    using T = nebula::type::TypeTraits<nebula::type::Kind::K>;                                      \
-    func_.emplace(name,                                                                             \
-                  [](nebula::memory::FlatRow& r, const std::string& n, const rapidjson::Value& v) { \
-                    if (v.IsNull()) {                                                               \
-                      r.write(n, nebula::type::TypeDetect<T::CppType>::value);                      \
-                    } else if (v.IsString()) {                                                      \
-                      r.write(n, nebula::common::safe_to<T::CppType>(v.GetString()));               \
-                    } else {                                                                        \
-                      r.write(n, (T::CppType)v.F());                                                \
-                    }                                                                               \
-                  });                                                                               \
-    break;                                                                                          \
+#define CASE_POP(K, F)                                                                                            \
+  case nebula::type::Kind::K: {                                                                                   \
+    using T = nebula::type::TypeTraits<nebula::type::Kind::K>;                                                    \
+    props_.emplace(name,                                                                                          \
+                   ColumnProps{ nebula::common::Chars::path(name.data(), name.size()),                            \
+                                [](nebula::memory::FlatRow& r, const std::string& n, const rapidjson::Value* v) { \
+                                  if (v == nullptr || v->IsNull()) {                                              \
+                                    r.write(n, nebula::type::TypeDetect<T::CppType>::value);                      \
+                                  } else if (v->IsString()) {                                                     \
+                                    r.write(n, nebula::common::safe_to<T::CppType>(v->GetString()));              \
+                                  } else {                                                                        \
+                                    r.write(n, (T::CppType)v->F());                                               \
+                                  }                                                                               \
+                                } });                                                                             \
+    break;                                                                                                        \
   }
 
-    for (size_t i = 0; i < schema_->size(); ++i) {
-      auto type = schema_->childType(i);
+    for (size_t i = 0; i < schema->size(); ++i) {
+      auto type = schema->childType(i);
       const auto& name = type->name();
       if (name == nebula::meta::Table::TIME_COLUMN) {
         hasTime_ = true;
       }
+
       switch (type->k()) {
         CASE_POP(BOOLEAN, GetBool)
         CASE_POP(TINYINT, GetInt)
@@ -78,16 +98,17 @@ public:
         CASE_POP(REAL, GetFloat)
         CASE_POP(DOUBLE, GetDouble)
       case nebula::type::Kind::VARCHAR:
-        func_.emplace(name,
-                      [](nebula::memory::FlatRow& r, const std::string& n, const rapidjson::Value& v) {
-                        // is null or is not expected string type (malformed data) - Nebula enforce types.
-                        // we have chance to compatible with other types and convert them into string, such as numbers.
-                        if (v.IsNull() || !v.IsString()) {
-                          r.write(n, "");
-                        } else {
-                          r.write(n, v.GetString(), v.GetStringLength());
-                        }
-                      });
+        props_.emplace(name,
+                       ColumnProps{ nebula::common::Chars::path(name.data(), name.size()),
+                                    [](nebula::memory::FlatRow& r, const std::string& n, const rapidjson::Value* v) {
+                                      // is null or is not expected string type (malformed data) - Nebula enforce types.
+                                      // we have chance to compatible with other types and convert them into string, such as numbers.
+                                      if (v == nullptr || v->IsNull() || !v->IsString()) {
+                                        r.write(n, "");
+                                      } else {
+                                        r.write(n, v->GetString(), v->GetStringLength());
+                                      }
+                                    } });
         break;
 
       default:
@@ -129,20 +150,25 @@ public:
     }
 
     // populate data into row object
-    auto obj = doc.GetObject();
-    for (auto& m : obj) {
-      auto name = m.name.GetString();
-      if (m.value.IsNull() && !nullDefault_) {
+    auto root = doc.GetObject();
+
+    // iterate through all desired name
+    for (auto& column : props_) {
+      // find the json node from root object and it's path
+      auto& name = column.first;
+      auto& prop = column.second;
+
+      // use the pointer to get value pointer by path
+      // https://rapidjson.org/md_doc_pointer.html
+      rapidjson::Value* node = locate(doc, prop.path);
+
+      // if found the node
+      if ((node == nullptr || node->IsNull()) && !nullDefault_) {
         row.writeNull(name);
         continue;
       }
 
-      // look up the populate function to set the value
-      // we do search here to support JSON has more fields than client wants
-      auto f = func_.find(name);
-      if (f != func_.end()) {
-        f->second(row, name, m.value);
-      }
+      prop.action(row, name, node);
     }
 
     return true;
@@ -155,20 +181,19 @@ public:
       row.write(nebula::meta::Table::TIME_COLUMN, 0l);
     }
 
-    for (auto itr = func_.cbegin(); itr != func_.cend(); ++itr) {
+    for (auto itr = props_.cbegin(); itr != props_.cend(); ++itr) {
       row.writeNull(itr->first);
     }
   }
 
 private:
-  nebula::type::Schema schema_;
   // use default value for null case
   bool nullDefault_;
   // flag to indicate if current schema has time column incldued
   bool hasTime_;
 
   // column writer lambda
-  nebula::common::unordered_map<std::string, fop> func_;
+  nebula::common::unordered_map<std::string, ColumnProps> props_;
 };
 
 class JsonReader : public nebula::surface::RowCursor {

@@ -426,6 +426,26 @@ TEST(TypeTest, TestSchemaWithInt128) {
   EXPECT_EQ(map->name(), "map");
 }
 
+TEST(TypeTest, TestFlatSchema) {
+  // test deserialization
+  auto schema = "STRUCT<f1:BIGINT, f2.id:INT, f2.name:STRING>";
+  auto type = TypeSerializer::from(schema);
+
+  EXPECT_EQ(type->size(), 3);
+
+  auto f1 = type->childType(0);
+  EXPECT_EQ(f1->name(), "f1");
+  EXPECT_EQ(f1->k(), nebula::type::Kind::BIGINT);
+
+  auto f2_id = type->childType(1);
+  EXPECT_EQ(f2_id->name(), "f2.id");
+  EXPECT_EQ(f2_id->k(), nebula::type::Kind::INTEGER);
+
+  auto f2_name = type->childType(2);
+  EXPECT_EQ(f2_name->name(), "f2.name");
+  EXPECT_EQ(f2_name->k(), nebula::type::Kind::VARCHAR);
+}
+
 } // namespace test
 } // namespace type
 } // namespace nebula

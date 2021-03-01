@@ -28,18 +28,27 @@ namespace common {
 // split a char streams into a vector of strings
 class Chars {
 public:
-  static unordered_set<std::string> split(const char* data, size_t size, char delimeter = ',') {
+  template <bool order = false,
+            typename T = std::conditional_t<order,
+                                            std::vector<std::string>,
+                                            nebula::common::unordered_set<std::string>>>
+  static T split(const char* data, size_t size, char delimeter = ',') {
     if (!data || size < 1) {
-      return unordered_set<std::string>();
+      return T();
     }
 
     size_t start = 0;
     size_t end = 0;
-    unordered_set<std::string> set;
+    T set;
 
-#define ADD_SEGMENT                         \
-  if (start != end) {                       \
-    set.emplace(data + start, end - start); \
+// a bit ugly: branch based on order (vector vs set)
+#define ADD_SEGMENT                                \
+  if (start != end) {                              \
+    if constexpr (!order) {                        \
+      set.emplace(data + start, end - start);      \
+    } else {                                       \
+      set.emplace_back(data + start, end - start); \
+    }                                              \
   }
 
     while (end < size) {
@@ -78,6 +87,20 @@ public:
       copy.at(i) = std::tolower(str.at(i));
     }
     return copy;
+  }
+
+  // convert a name into a path by replacing all spot into '/' as well as started with it
+  static inline std::string path(const char* data, size_t size, char spot = '.') noexcept {
+    // give it a double size as max capacity
+    std::string p(size + 1, '/');
+
+    // copy data into this buffer
+    for (size_t i = 0; i < size; ++i) {
+      char ch = *(data + i);
+      p[i + 1] = ch == spot ? '/' : ch;
+    }
+
+    return p;
   }
 
   // get last section of the given string if splittable by delimeter
