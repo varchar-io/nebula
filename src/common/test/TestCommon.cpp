@@ -733,6 +733,44 @@ TEST(CommonTest, TestDigest) {
   }
 }
 
+TEST(CommonTest, TestPath) {
+  {
+    auto str = "a.b.c";
+    EXPECT_EQ(nebula::common::Chars::path(str, strlen(str)), "/a/b/c");
+  }
+  {
+    auto str = "a";
+    EXPECT_EQ(nebula::common::Chars::path(str, strlen(str)), "/a");
+  }
+  {
+    auto str = "";
+    EXPECT_EQ(nebula::common::Chars::path(str, strlen(str)), "/");
+  }
+  {
+    auto str = "a.b.";
+    EXPECT_EQ(nebula::common::Chars::path(str, strlen(str)), "/a/b/");
+  }
+  {
+    auto str = "a..b";
+    EXPECT_EQ(nebula::common::Chars::path(str, strlen(str)), "/a//b");
+  }
+}
+
+TEST(CommonTest, TestCharsSplitInOrder) {
+  {
+    auto str = "xyz,abc,";
+    std::vector<std::string> expected{ "xyz", "abc" };
+    auto result = nebula::common::Chars::split<true>(str, strlen(str), ',');
+    EXPECT_EQ(result, expected);
+  }
+  {
+    auto str = "abc,xyz,123,opq,456";
+    std::vector<std::string> expected{ "abc", "xyz", "123", "opq", "456" };
+    auto result = nebula::common::Chars::split<true>(str, strlen(str), ',');
+    EXPECT_EQ(result, expected);
+  }
+}
+
 TEST(CommonTest, TestCharsUtils) {
 #define TEST_SPLIT(EXPECTED, COUNT, D)                                                          \
   auto result = nebula::common::Chars::split(str, strlen(str), D);                              \
