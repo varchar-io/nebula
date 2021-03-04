@@ -115,13 +115,13 @@ private:
     auto& colProps2 = row2Props.colProps.at(i);
 
     // mix another sketch if it has
-    if (UNLIKELY(row1 != row2 && colProps1.sketch != nullptr)) {
+    if (N_UNLIKELY(row1 != row2 && colProps1.sketch != nullptr)) {
       colProps2.sketch->mix(*colProps1.sketch);
       return;
     }
 
     // merge value into existing sketch skipping null
-    if (LIKELY(!colProps1.isNull)) {
+    if (N_LIKELY(!colProps1.isNull)) {
       InputType value = main_->slice.read<InputType>(row1Props.offset + colProps1.offset);
       auto agg = std::static_pointer_cast<TAggregator>(colProps2.sketch);
       agg->merge(value);
@@ -137,13 +137,13 @@ private:
     auto& colProps2 = row2Props.colProps.at(i);
 
     // mix two sketches
-    if (UNLIKELY(row1 != row2 && colProps1.sketch != nullptr)) {
+    if (N_UNLIKELY(row1 != row2 && colProps1.sketch != nullptr)) {
       colProps2.sketch->mix(*colProps1.sketch);
       return;
     }
 
     // merge individual value skip nulls
-    if (LIKELY(!colProps1.isNull)) {
+    if (N_LIKELY(!colProps1.isNull)) {
       std::string_view value = read(row1Props.offset, colProps1.offset);
       auto agg = std::static_pointer_cast<TAggregator>(colProps2.sketch);
       agg->merge(value);

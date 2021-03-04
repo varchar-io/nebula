@@ -322,7 +322,7 @@ TEST(CommonTest, TestRand) {
     size_t val = rand1();
     EXPECT_GE(val, 0);
     EXPECT_LE(val, 100);
-    if (UNLIKELY(val < 2)) {
+    if (N_UNLIKELY(val < 2)) {
       LOG(INFO) << "val: " << val;
     }
   }
@@ -332,7 +332,7 @@ TEST(CommonTest, TestRand) {
   for (auto i = 0; i < 1000; ++i) {
     auto val = rand2();
     EXPECT_TRUE(val >= 0 && val < 1);
-    if (UNLIKELY(val > 0.98)) {
+    if (N_UNLIKELY(val > 0.98)) {
       LOG(INFO) << "val: " << val;
     }
   }
@@ -1345,6 +1345,13 @@ TEST(CommonTest, TestConv) {
 
   auto x = 33;
   EXPECT_EQ(safe_to<std::string>(x), "33");
+}
+
+static char const* header_name() { return "If-Match"; }
+TEST(CommonTest, TestStaticCharPointer) {
+  std::string x = header_name();
+  x += ":";
+  EXPECT_EQ(x, "If-Match:");
 }
 
 } // namespace test

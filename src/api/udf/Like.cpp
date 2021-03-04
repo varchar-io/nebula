@@ -37,7 +37,7 @@ bool match(const char* sp, const size_t ss, size_t si,
     char ch = *(pp + pi);
 
     // if not %, source has to match this
-    if (LIKELY(ch != '%')) {
+    if (N_LIKELY(ch != '%')) {
       if (!(*eqf)(ch, *(sp + si))) {
         return false;
       }

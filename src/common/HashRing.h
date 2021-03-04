@@ -371,7 +371,7 @@ public:
 private:
   // get coverage node in format of (start, end]
   inline std::pair<size_t, size_t> coverage(size_t placementIndex) const {
-    if (UNLIKELY(placementIndex == 0)) {
+    if (N_UNLIKELY(placementIndex == 0)) {
       return std::make_pair(placements_.back().hash, placements_.front().hash);
     }
 

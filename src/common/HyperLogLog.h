@@ -89,7 +89,7 @@ public:
   static inline byte_t leadingZeros(uint32_t x, byte_t max = 32) {
 #if defined(__has_builtin) && (defined(__GNUC__) || defined(__clang__))
     // __builtin_clz(0) is undefined
-    if (UNLIKELY(x == 0)) {
+    if (N_UNLIKELY(x == 0)) {
       return max + 1;
     }
     return std::min<byte_t>(max, ::__builtin_clz(x)) + 1;

@@ -56,7 +56,7 @@ RowCursorPtr compute(const EvaledBlock& data, const nebula::execution::BlockPhas
 
 void BlockExecutor::compute() {
   // instrumentation for profiling on compute branch
-  if (UNLIKELY(FLAGS_CPU_PROF)) {
+  if (N_UNLIKELY(FLAGS_CPU_PROF)) {
     ProfilerStart(FLAGS_PROF_FILE.c_str());
   }
 
@@ -95,7 +95,7 @@ void BlockExecutor::compute() {
     // if not fullfil the condition
     // ignore valid here - if system can't determine how to act on NULL value
     // we don't know how to make decision here too
-    if (LIKELY(!scanAll)) {
+    if (N_LIKELY(!scanAll)) {
       if (!filter.eval<bool>(*ctx).value_or(false)) {
         continue;
       }
@@ -109,7 +109,7 @@ void BlockExecutor::compute() {
   index_ = 0;
   size_ = result_->getRows();
 
-  if (UNLIKELY(FLAGS_CPU_PROF)) {
+  if (N_UNLIKELY(FLAGS_CPU_PROF)) {
     ProfilerStop();
   }
 }

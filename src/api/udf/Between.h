@@ -41,7 +41,7 @@ public:
       expr->asEval(),
       // logic for "in []"
       [min, max](const std::optional<InputType>& source) -> std::optional<bool> {
-        if (UNLIKELY(source == std::nullopt)) {
+        if (N_UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
 

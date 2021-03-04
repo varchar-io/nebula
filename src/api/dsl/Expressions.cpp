@@ -62,7 +62,7 @@ TypeInfo ColumnExpression::type(const nebula::meta::TypeLookup& lookup) {
 
 std::unique_ptr<ValueEval> ColumnExpression::asEval() const {
   auto k = typeInfo().native;
-  if (UNLIKELY(k == Kind::INVALID)) {
+  if (N_UNLIKELY(k == Kind::INVALID)) {
     throw NException("Please call type() first to evalue the schema before convert to value eval tree");
   }
 

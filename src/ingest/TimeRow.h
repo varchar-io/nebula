@@ -54,7 +54,7 @@ public:
   TRANSFER(std::unique_ptr<nebula::surface::MapData>, readMap)
 
   bool isNull(const std::string& field) const override {
-    if (UNLIKELY(field == nebula::meta::Table::TIME_COLUMN)) {
+    if (N_UNLIKELY(field == nebula::meta::Table::TIME_COLUMN)) {
       // timestamp in string 2016-07-15 14:38:03
       return false;
     }
@@ -64,7 +64,7 @@ public:
 
   // _time_ is in long type and it's coming from date string
   int64_t readLong(const std::string& field) const override {
-    if (UNLIKELY(field == nebula::meta::Table::TIME_COLUMN)) {
+    if (N_UNLIKELY(field == nebula::meta::Table::TIME_COLUMN)) {
       // timestamp in string 2016-07-15 14:38:03
       return timeFunc_(row_);
     }
@@ -102,7 +102,7 @@ private:
       // SERIAL_NUMBER translation
       if (ts.pattern == SERIAL_NUMBER) {
         return [col = ts.colName](const nebula::surface::RowData* r) {
-          if (UNLIKELY(r->isNull(col))) {
+          if (N_UNLIKELY(r->isNull(col))) {
             return NULL_TIME;
           }
 
@@ -123,7 +123,7 @@ private:
       // unix time (bigint) conversion
       if (scale > 0) {
         return [col = ts.colName, scale](const nebula::surface::RowData* r) {
-          if (UNLIKELY(r->isNull(col))) {
+          if (N_UNLIKELY(r->isNull(col))) {
             return NULL_TIME;
           }
 
@@ -133,7 +133,7 @@ private:
 
       // last option: string of time pattern such as 'yyyy-mm-dd'
       return [col = ts.colName, pattern = ts.pattern](const nebula::surface::RowData* r) {
-        if (UNLIKELY(r->isNull(col))) {
+        if (N_UNLIKELY(r->isNull(col))) {
           return NULL_TIME;
         }
 

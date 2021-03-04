@@ -53,7 +53,7 @@ void fold(folly::ThreadPoolExecutor& pool,
   const auto size = sources.size();
 
   // nothing to fold
-  if (UNLIKELY(size < 2)) {
+  if (N_UNLIKELY(size < 2)) {
     return;
   }
 

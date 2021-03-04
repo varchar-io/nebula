@@ -59,8 +59,8 @@ public:
   // to support flat data from nested structure in JSON, introduce "pathInName" variable
   // if this is true, use name as path to match value otherwise use name itself
   // currently we default to support path in name.
-  JsonRow(nebula::type::Schema schema, bool nullDefault = true)
-    : nullDefault_{ nullDefault }, hasTime_{ false } {
+  JsonRow(nebula::type::Schema schema, bool defaultNull = false)
+    : defaultNull_{ defaultNull }, hasTime_{ false } {
 
 // define how each column read and write to row object
 // if the provided value is string, we use safe_to to convert it to desired type without exception
@@ -149,12 +149,8 @@ public:
       return false;
     }
 
-    // populate data into row object
-    auto root = doc.GetObject();
-
     // iterate through all desired name
     for (auto& column : props_) {
-      // find the json node from root object and it's path
       auto& name = column.first;
       auto& prop = column.second;
 
@@ -162,8 +158,8 @@ public:
       // https://rapidjson.org/md_doc_pointer.html
       rapidjson::Value* node = locate(doc, prop.path);
 
-      // if found the node
-      if ((node == nullptr || node->IsNull()) && !nullDefault_) {
+      // if not found the node or node has null value
+      if ((node == nullptr || node->IsNull()) && !defaultNull_) {
         row.writeNull(name);
         continue;
       }
@@ -188,7 +184,7 @@ public:
 
 private:
   // use default value for null case
-  bool nullDefault_;
+  bool defaultNull_;
   // flag to indicate if current schema has time column incldued
   bool hasTime_;
 

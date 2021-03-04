@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 3.14)
 project(nebula)
 set(NEBULA_ROOT ${PROJECT_SOURCE_DIR})
 set(NEBULA_SRC ${NEBULA_ROOT}/src)
+set(NEBULA_INSTALL ${NEBULA_ROOT}/build/install)
 
 # define all headers should seek under SRC 
 # so that we have to use full namespace to reference them
@@ -26,6 +27,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+# let all 3rd parties to be installed to here
+set(CMAKE_INSTALL_PREFIX ${NEBULA_INSTALL})
+set(CMAKE_PREFIX_PATH ${NEBULA_INSTALL})
+
 # a switch to use clang or g++
 # clang or g++
 # this switch only works on linux
@@ -46,7 +51,7 @@ else()
     set(NCXX /usr/bin/g++)
     set(NCC /usr/bin/gcc)
     list(APPEND LNCFLAGS 
-      "-Wall -Wextra -Werror -lstdc++ -lstdc++fs"
+      "-Wall -Wextra -Werror -Wno-error=unknown-pragmas -lstdc++ -lstdc++fs"
       "-Wl,--no-as-needed -no-pie -ldl"
       "-I/usr/include/ -I/usr/local/include -L/usr/local/lib -L/usr/lib")
 
@@ -174,7 +179,7 @@ endif()
 
 # find boost
 set(Boost_USE_STATIC_LIBS ON)
-find_package(Boost 1.65 MODULE
+find_package(Boost MODULE
   COMPONENTS
     context
     filesystem
@@ -188,6 +193,13 @@ if(Boost_FOUND)
     include_directories(${Boost_INCLUDE_DIRS})
 endif()
 
+# add dependency of absl
+# include(ext/Absl_Ext.cmake)
+
+# add dependency of crc32c
+# include(ext/Crc32c_Ext.cmake)
+
+# add dependency of pgquery
 include(ext/PGQuery_Ext.cmake)
 
 # add dependency of compression
@@ -212,7 +224,7 @@ include(ext/Libevent_Ext.cmake)
 include(ext/Highway_Ext.cmake)
 
 # add a dependency of fmt 
-include(ext/Fmt_Ext.cmake)
+# include(ext/Fmt_Ext.cmake)
 
 # add a dependency of bf
 include(ext/Bloom_Ext.cmake)
@@ -224,26 +236,26 @@ include(ext/Roaring_Ext.cmake)
 include(ext/Gtest_Ext.cmake)
 
 # set up directory to search for headers
-include_directories(include ${GTEST_INCLUDE_DIRS})
-include_directories(include ${GMOCK_INCLUDE_DIRS})
+# include_directories(include ${GTEST_INCLUDE_DIRS})
+# include_directories(include ${GMOCK_INCLUDE_DIRS})
 
 # add open ssl definition
-include(ext/Openssl_Ext.cmake)
+# include(ext/Openssl_Ext.cmake)
 
 # add thrift module
-include(ext/Thrift_Ext.cmake)
+# include(ext/Thrift_Ext.cmake)
 
 # include pre-installed folly
-include(ext/Folly_Ext.cmake)
+# include(ext/Folly_Ext.cmake)
 
 # add a dependency of cuckoo filter
 include(ext/Cuckoo_Ext.cmake)
 
 # include AWS external project
-include(ext/Aws_Ext.cmake)
+# include(ext/Aws_Ext.cmake)
 
 # include AWS external project
-include(ext/Gcp_Ext.cmake)
+# include(ext/Gcp_Ext.cmake)
 
 # include protobuf
 include(ext/Protobuf_Ext.cmake)

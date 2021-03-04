@@ -39,7 +39,7 @@ namespace test {
 using namespace roaring;
 
 // copied from the example of croaring page in github
-TEST(RoraringTest, TestRoaringBitmap) {  
+TEST(RoraringTest, TestRoaringBitmap) {
   Roaring r1;
   for (uint32_t i = 100; i < 1000; i++) {
     r1.add(i);

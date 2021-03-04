@@ -6,7 +6,7 @@ ExternalProject_Add(glog
   GIT_REPOSITORY https://github.com/google/glog.git
   GIT_TAG v0.4.0
   UPDATE_COMMAND ""
-  INSTALL_COMMAND ""
+  INSTALL_DIR ${NEBULA_INSTALL}
   LOG_DOWNLOAD ON
   LOG_CONFIGURE ON
   LOG_BUILD ON)

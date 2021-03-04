@@ -68,10 +68,14 @@ add_dependencies(${CARES_LIBRARY} c-ares)
 #     + if (!bb || !(buffer = bb->c_buffer())) {
 #         return ::grpc::Status(::grpc::StatusCode::INTERNAL, "No payload");
 #       }
+SET(FB_OPTS
+  -DFLATBUFFERS_BUILD_TESTS:BOOL=OFF
+  -DFLATBUFFERS_STATIC_FLATC:BOOL=ON)
 ExternalProject_Add(flatbuffers
   PREFIX flatbuffers
   GIT_REPOSITORY https://github.com/google/flatbuffers.git
   GIT_TAG v1.12.0
+  CMAKE_ARGS ${FB_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   LOG_DOWNLOAD ON

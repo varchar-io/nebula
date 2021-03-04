@@ -31,7 +31,7 @@ void EvalContext::reset(const nebula::surface::Accessor& row) {
   // std::addressof ?
   this->row_ = &row;
 
-  if (UNLIKELY(cache_ != nullptr)) {
+  if (N_UNLIKELY(cache_ != nullptr)) {
     // clear t he evaluation map
     cache_.reset();
   }

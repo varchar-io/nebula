@@ -19,7 +19,7 @@ ExternalProject_Get_Property(protobuf SOURCE_DIR)
 set(INST_DIR /usr/local)
 if(NOT EXISTS ${INST_DIR}/bin/protoc)
     add_custom_target(mprotobuf ALL
-        COMMAND git submodule update --init --recursive && ./autogen.sh && ./configure --prefix=${INST_DIR} && make install -j8
+        COMMAND sudo git submodule update --init --recursive && sudo ./autogen.sh && sudo ./configure --prefix=${INST_DIR} && sudo make install -j8 && sudo ldconfig
         WORKING_DIRECTORY ${SOURCE_DIR}
         DEPENDS protobuf)
 endif()

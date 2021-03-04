@@ -117,7 +117,7 @@ public:
     auto last = offsetSize_->read<IndexType>((count_ - 1) * INDEX_WIDTH);
 
     // NULLS in the hole
-    if (LIKELY(index >= count_)) {
+    if (N_LIKELY(index >= count_)) {
       while (count_ <= index) {
         offsetSize_->write(count_ * INDEX_WIDTH, last);
         ++count_;

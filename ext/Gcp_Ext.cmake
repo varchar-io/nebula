@@ -2,61 +2,17 @@ find_package(Threads REQUIRED)
 
 include(ExternalProject)
 
-# install abseil (required >= c++ 11)
-# Note: use 11 rather than 17 so that we can use absl::string_view rather than std::string_view
-# because GCP common references absl::string_view directly
-SET(ABSL_OPTS
-    -DBUILD_TESTING=OFF
-    -DBUILD_SHARED_LIBS=OFF
-    -DABSL_USES_STD_STRING_VIEW=OFF
-    -DABSL_USES_STD_OPTIONAL=OFF
-    -DCMAKE_CXX_STANDARD=11)
-ExternalProject_Add(absl
-    PREFIX absl
-    GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-    GIT_TAG 20200923.2
-    CMAKE_ARGS ${ABSL_OPTS}
-    UPDATE_COMMAND ""
-    LOG_DOWNLOAD ON
-    LOG_CONFIGURE ON
-    LOG_BUILD ON)
-
 # include nlohmann json
 ExternalProject_Add(nlohmann
     PREFIX nlohmann
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG v3.9.1
     UPDATE_COMMAND ""
+    INSTALL_DIR ${NEBULA_INSTALL}
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON
     LOG_BUILD ON)
 
-# allow find_package to find it in build folder
-# ExternalProject_Get_Property(nlohmann BINARY_DIR)
-# SET(nlohmann_json_ROOT ${BINARY_DIR})
-
-SET(CRC32C_OPTS
-    -DCRC32C_BUILD_TESTS=OFF
-    -DCRC32C_BUILD_BENCHMARKS=OFF)
-ExternalProject_Add(crc32c
-    PREFIX crc32c
-    GIT_REPOSITORY https://github.com/google/crc32c.git
-    GIT_TAG 1.1.1
-    CMAKE_ARGS ${CRC32C_OPTS}
-    UPDATE_COMMAND ""
-    LOG_DOWNLOAD ON
-    LOG_CONFIGURE ON
-    LOG_BUILD ON)
-
-# allow find_package to find it in build folder
-# ExternalProject_Get_Property(crc32c BINARY_DIR)
-# SET(Crc32c_ROOT ${BINARY_DIR})
-
-# specify each package root for GCP to find if install correctly
-# -DCMAKE_POLICY_DEFAULT_CMP0074=NEW
-# -Dabsl_ROOT=${absl_ROOT}
-# -Dnlohmann_json_ROOT=${nlohmann_json_ROOT}
-# -DCrc32c_ROOT=${Crc32c_ROOT}
 SET(GCP_OPTS
     -DBUILD_TESTING=OFF
     -DGOOGLE_CLOUD_CPP_ENABLE_BIGQUERY=OFF
@@ -85,14 +41,13 @@ ExternalProject_Add(gcp
     GIT_TAG v1.24.0
     # SOURCE_SUBDIR google/cloud/storage
     CMAKE_ARGS ${GCP_OPTS}
-    UPDATE_COMMAND ""
     INSTALL_COMMAND ""
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON
     LOG_BUILD ON)
 
 # gcp depends on absl
-add_dependencies(gcp absl nlohmann crc32c)
+add_dependencies(gcp nlohmann)
 
 # get source dir after download step
 ExternalProject_Get_Property(gcp SOURCE_DIR)
@@ -109,6 +64,7 @@ set_target_properties(${GCP_COMM_LIBRARY} PROPERTIES
     "INTERFACE_INCLUDE_DIRECTORIES" "${GCP_INCLUDE_DIRS}")
 
 # find abseil since we already installed it
+# add_dependencies(${GCP_COMM_LIBRARY} absl Crc32c)
 find_package(absl REQUIRED)
 find_package(Crc32c REQUIRED)
 target_link_libraries(${GCP_COMM_LIBRARY}

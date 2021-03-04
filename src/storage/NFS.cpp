@@ -72,7 +72,7 @@ UriInfo parse(const std::string& strUri) {
     // locate the last position
     // why do we need a loop for the start and end, pathTail won't help if last character is "/"
     for (; p; p = p->next) {
-      if (LIKELY(p->text.first != p->text.afterLast)) {
+      if (N_LIKELY(p->text.first != p->text.afterLast)) {
         end = p->text.afterLast;
       }
     }

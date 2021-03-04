@@ -113,7 +113,7 @@ struct NumberHistogram : public Histogram {
   }
 
   inline T avg() const {
-    if (UNLIKELY(count == 0)) {
+    if (N_UNLIKELY(count == 0)) {
       return 0;
     }
 

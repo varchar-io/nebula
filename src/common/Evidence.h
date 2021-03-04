@@ -163,7 +163,7 @@ public: /** only static methods */
                               fmt.c_str(),
                               gmt ? std::gmtime(&time) : std::localtime(&time));
 
-    if (LIKELY(size < MAX)) {
+    if (N_LIKELY(size < MAX)) {
       output.resize(size);
     }
 

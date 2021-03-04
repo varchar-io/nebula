@@ -81,7 +81,7 @@ public:
     static constexpr auto EMPTY = "";
     const auto& vector = data_.at(field);
     const auto realIndex = index();
-    if (UNLIKELY(realIndex >= vector.Size())) {
+    if (N_UNLIKELY(realIndex >= vector.Size())) {
       return EMPTY;
     }
 
@@ -117,7 +117,7 @@ private:
   T convert(const std::string& field) const {
     const auto& vector = data_.at(field);
     const auto realIndex = index();
-    if (UNLIKELY(realIndex >= vector.Size())) {
+    if (N_UNLIKELY(realIndex >= vector.Size())) {
       return T();
     }
 

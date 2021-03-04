@@ -84,7 +84,7 @@ public:
 public:
   void add(IndexType, NType value) {
     size_ += slice_.write(size_, value);
-    if (UNLIKELY(bf_ != nullptr)) {
+    if (N_UNLIKELY(bf_ != nullptr)) {
       if (!bf_->add(value)) {
         bf_ = nullptr;
         LOG(INFO) << "Failed to add value to bloom filter: " << size()
@@ -149,7 +149,7 @@ public:
   void add(IndexType, T);
 
   inline void addVoid(IndexType index) {
-    if (LIKELY(void_ != nullptr)) {
+    if (N_LIKELY(void_ != nullptr)) {
       void_(index);
     }
   }

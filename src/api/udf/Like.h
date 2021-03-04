@@ -56,7 +56,7 @@ public:
       name,
       std::move(expr),
       [pattern, caseSensitive](const std::optional<InputType>& source) -> std::optional<NativeType> {
-        if (UNLIKELY(source == std::nullopt)) {
+        if (N_UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
 

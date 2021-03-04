@@ -16,35 +16,24 @@
 
 #pragma once
 
-// To avoid conflicts, we should try best to put a prefix NEBULA for each of these macros
-#undef LIKELY
-#undef UNLIKELY
-#undef FORCE_INLINE
-#undef NO_INLINE
-#undef MAYBE_UNUSED
-#undef GLUE
-#undef LITERAL
-#undef FOFF
-#undef ALEN
-
 #if defined(__GNUC__)
-#define LIKELY(x) (__builtin_expect((x), 1))
-#define UNLIKELY(x) (__builtin_expect((x), 0))
+#define N_LIKELY(x) (__builtin_expect((x), 1))
+#define N_UNLIKELY(x) (__builtin_expect((x), 0))
 #else
-#define LIKELY(x) (x)
-#define UNLIKELY(x) (x)
+#define N_LIKELY(x) (x)
+#define N_UNLIKELY(x) (x)
 #endif
 
-#define FORCE_INLINE inline __attribute__((always_inline))
-#define NO_INLINE __attribute__((noinline))
-#define MAYBE_UNUSED __attribute__((unused))
+#define N_FORCE_INLINE inline __attribute__((always_inline))
+#define N_NO_INLINE __attribute__((noinline))
+#define N_MAYBE_UNUSED __attribute__((unused))
 
 // define glue to glue two symbols together as one symbol beforee compiling
 // such as "GLUE(x, y)" MACRO translated into "xy"
-#define GLUE(x, y) x##y
+#define N_GLUE(x, y) x##y
 
 // Basic litteral transformation LITERAL(x) => "x"
-#define LITERAL(x) #x
+#define N_LITERAL(x) #x
 
 // get offset of given field in given object.
 #ifndef FOFF

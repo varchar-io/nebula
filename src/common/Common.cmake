@@ -41,9 +41,25 @@ target_link_libraries(CommonTests
     PRIVATE ${YAML_LIBRARY}
     PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${QJS_LIBRARY}
-    PRIVATE ${LEVELDB_LIBRARY})
+    PRIVATE ${LEVELDB_LIBRARY}
+    PRIVATE ${GCS_LIBRARY}
+    PRIVATE ${CURL_LIBRARY})
+
+# build test binary
+add_executable(ExtTests
+    ${NEBULA_SRC}/common/test/TestGcs.cpp)
+
+target_link_libraries(ExtTests
+    PRIVATE ${GTEST_LIBRARY} 
+    PRIVATE ${GTEST_MAIN_LIBRARY}
+    PRIVATE ${GLOG_LIBRARY}
+    PRIVATE ${GFLAGS_LIBRARY}
+    PRIVATE ${GCS_LIBRARY}
+    PRIVATE ${CURL_LIBRARY})
 
 # discover all gtests in this module
 include(GoogleTest)
 gtest_discover_tests(CommonTests TEST_LIST ALL
+    DISCOVERY_TIMEOUT 10)
+gtest_discover_tests(ExtTests TEST_LIST ALL
     DISCOVERY_TIMEOUT 10)

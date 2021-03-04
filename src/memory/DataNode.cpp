@@ -279,7 +279,7 @@ size_t DataNode::append(const nebula::surface::RowData& row) {
 #define TYPE_READ_DELEGATE(TYPE)              \
   template <>                                 \
   TYPE DataNode::read(size_t index) {         \
-    if (UNLIKELY(meta_->isRealNull(index))) { \
+    if (N_UNLIKELY(meta_->isRealNull(index))) { \
       return data_->defaultValue<TYPE>();     \
     }                                         \
     return data_->read<TYPE>(index);          \

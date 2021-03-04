@@ -347,7 +347,7 @@ void RleDecoder::next(int64_t* data, uint64_t numValues) {
   uint64_t nRead = 0;
 
   while (nRead < numValues) {
-    if (UNLIKELY(runRead_ == runLength_)) {
+    if (N_UNLIKELY(runRead_ == runLength_)) {
       resetRun();
       firstByte_ = readByte();
     }

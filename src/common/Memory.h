@@ -67,7 +67,7 @@ public:
 
     // extend the memory if possible
     NByte* newP = (NByte*)std::realloc(p, newSize);
-    if (UNLIKELY(!newP)) {
+    if (N_UNLIKELY(!newP)) {
       free(p, size);
       throw std::bad_alloc();
     }
@@ -249,7 +249,7 @@ private:
   template <bool CHECK = false>
   inline void ensure(const size_t desired) {
     static constexpr size_t errors[] = { 8, 16 };
-    if (UNLIKELY(desired >= size_)) {
+    if (N_UNLIKELY(desired >= size_)) {
       // start with 2 times
       auto fold = 2.0;
       if (numExtended_ > 8) {
@@ -264,13 +264,13 @@ private:
         ++numExtended_;
         size *= fold;
 
-        if constexpr (UNLIKELY(CHECK)) {
+        if constexpr (N_UNLIKELY(CHECK)) {
           const auto count = numExtended_ - numExtended;
           if (count >= errors[0]) {
             LOG(WARNING) << "Slices increased too fast in single request";
 
             // over error bound - fail it
-            if (UNLIKELY(count > errors[1])) {
+            if (N_UNLIKELY(count > errors[1])) {
               LOG(FATAL) << "Too fast allocation from " << size_ << " towards " << size;
             }
           }
@@ -403,7 +403,7 @@ public:
   auto write(size_t position, const T& value) -> typename std::enable_if<std::is_scalar<T>::value, size_t>::type {
     constexpr size_t size = sizeof(T);
     // if current buffer can't fit the data, compress and flush the buffer
-    if (UNLIKELY(write_.size + size > size_)) {
+    if (N_UNLIKELY(write_.size + size > size_)) {
       compress(position);
     }
 
@@ -424,14 +424,14 @@ public:
   // read a scalar type
   template <typename T>
   typename std::enable_if<std::is_scalar<T>::value, T>::type read(size_t position) const {
-    if (UNLIKELY(this->ptr_ != nullptr)) {
+    if (N_UNLIKELY(this->ptr_ != nullptr)) {
       if (write_.include(position)) {
         return *reinterpret_cast<T*>(this->ptr_ + position - write_.offset);
       }
     }
 
     // check if position is in current range
-    if (UNLIKELY(!bufferPtr_ || !blocks_.at(bid_).range.include(position))) {
+    if (N_UNLIKELY(!bufferPtr_ || !blocks_.at(bid_).range.include(position))) {
       uncompress(position);
     }
 

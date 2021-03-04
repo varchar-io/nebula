@@ -121,11 +121,11 @@ std::unique_ptr<ValueEval> custom(const std::string& name, const std::string& ex
         ExpressionType::ARTHMETIC,                                                                \
         OPT_LAMBDA(T, {                                                                           \
           auto v1 = children.at(0)->eval<T1>(ctx);                                                \
-          if (UNLIKELY(v1 == std::nullopt)) {                                                     \
+          if (N_UNLIKELY(v1 == std::nullopt)) {                                                   \
             return std::nullopt;                                                                  \
           }                                                                                       \
           auto v2 = children.at(1)->eval<T2>(ctx);                                                \
-          if (UNLIKELY(v2 == std::nullopt)) {                                                     \
+          if (N_UNLIKELY(v2 == std::nullopt)) {                                                   \
             return std::nullopt;                                                                  \
           }                                                                                       \
           return T(v1.value() SIGN v2.value());                                                   \
@@ -180,11 +180,11 @@ BEB_LOGICAL(OR)
         ExpressionType::LOGICAL,                                                                  \
         OPT_LAMBDA(bool, {                                                                        \
           auto v1 = children.at(0)->eval<T1>(ctx);                                                \
-          if (UNLIKELY(v1 == std::nullopt)) {                                                     \
+          if (N_UNLIKELY(v1 == std::nullopt)) {                                                   \
             return std::nullopt;                                                                  \
           }                                                                                       \
           auto v2 = children.at(1)->eval<T2>(ctx);                                                \
-          if (UNLIKELY(v2 == std::nullopt)) {                                                     \
+          if (N_UNLIKELY(v2 == std::nullopt)) {                                                   \
             return std::nullopt;                                                                  \
           }                                                                                       \
           return v1.value() SIGN v2.value();                                                      \

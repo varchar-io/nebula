@@ -55,7 +55,7 @@ struct BlockSignature {
 
   inline bool sameSpec(const BlockSignature& another) const {
     // same object by comparing address
-    if (UNLIKELY(std::addressof(another) == std::addressof(*this))) {
+    if (N_UNLIKELY(std::addressof(another) == std::addressof(*this))) {
       return true;
     }
 

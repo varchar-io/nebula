@@ -35,7 +35,7 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
   current_ = rowId;
 
   // populate all dimension values encoded in bess
-  if (UNLIKELY(batch_.pod_ != nullptr)) {
+  if (N_UNLIKELY(batch_.pod_ != nullptr)) {
     bessValue_ = batch_.bess_.readBits(current_ * batch_.bessBits_, batch_.bessBits_);
   }
 
@@ -44,14 +44,14 @@ RowAccessor& RowAccessor::seek(size_t rowId) {
 
 #define READ_TYPE_BY_FIELD(TYPE, FUNC)                                    \
   std::optional<TYPE> RowAccessor::FUNC(const std::string& field) const { \
-    if (UNLIKELY(batch_.pod_ != nullptr)) {                               \
+    if (N_UNLIKELY(batch_.pod_ != nullptr)) {                               \
       TYPE v;                                                             \
       if (batch_.pod_->value(field, batch_.spaces_, bessValue_, v)) {     \
         return v;                                                         \
       }                                                                   \
     }                                                                     \
     const auto& d = dnMap_.at(field);                                     \
-    if (UNLIKELY(d->isNull(current_))) {                                  \
+    if (N_UNLIKELY(d->isNull(current_))) {                                  \
       return std::nullopt;                                                \
     }                                                                     \
     return d->read<TYPE>(current_);                                       \

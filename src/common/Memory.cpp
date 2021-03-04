@@ -31,7 +31,7 @@ Pool& Pool::getDefault() {
 
 // append a bytes array of length bytes to position
 size_t ExtendableSlice::write(size_t position, const NByte* data, size_t length) {
-  if (UNLIKELY(length == 0)) {
+  if (N_UNLIKELY(length == 0)) {
     return 0;
   }
 
@@ -150,7 +150,7 @@ std::string_view PagedSlice::read(size_t position, size_t size) const {
   }
 
   // if the requested data is still in write buffer
-  if (UNLIKELY(this->ptr_ != nullptr)) {
+  if (N_UNLIKELY(this->ptr_ != nullptr)) {
     if (write_.include(position)) {
       return std::string_view((char*)this->ptr_ + position - write_.offset, size);
     }
@@ -158,7 +158,7 @@ std::string_view PagedSlice::read(size_t position, size_t size) const {
 
   // because we make sure every single element is captured in single block
   // so we don't have single item across block
-  if (UNLIKELY(!bufferPtr_ || !blocks_.at(bid_).range.include(position))) {
+  if (N_UNLIKELY(!bufferPtr_ || !blocks_.at(bid_).range.include(position))) {
     uncompress(position);
   }
 
@@ -171,7 +171,7 @@ std::string_view PagedSlice::read(size_t position, size_t size) const {
 
 // ensure the buffer is big enough to hold single item
 void PagedSlice::ensure(size_t size) {
-  if (UNLIKELY(size >= size_)) {
+  if (N_UNLIKELY(size >= size_)) {
     size_t newSize = size_;
     while (newSize <= size) {
       newSize *= 2;
@@ -264,7 +264,7 @@ void PagedSlice::uncompress(size_t position) const {
   *const_cast<size_t*>(&bid_) = i;
 
   const auto& block = blocks_.at(i);
-  if (UNLIKELY(block.compressed)) {
+  if (N_UNLIKELY(block.compressed)) {
     // prepare the read buffer for this block
     if (buffer_ == nullptr || buffer_->size() < block.range.size) {
       auto buffer = std::make_unique<OneSlice>(block.range.size);

@@ -78,7 +78,7 @@ void readStruct(uint64_t base,
       auto name = f->second;
 
       // time field special handling
-      if (UNLIKELY(name == Table::TIME_COLUMN)) {
+      if (N_UNLIKELY(name == Table::TIME_COLUMN)) {
         int64_t time = Evidence::unix_timestamp();
         proto.readI64(time);
         row.write(name, Evidence::to_seconds(time));
@@ -150,7 +150,7 @@ bool ThriftRow::parse(void* buf, size_t size, nebula::memory::FlatRow& row) noex
 
   // in case anything happened, not all fields found from this message
   const auto numWritten = fieldsWritten.size();
-  if (UNLIKELY(numWritten < numFields)) {
+  if (N_UNLIKELY(numWritten < numFields)) {
     for (auto itr = fields_.cbegin(); itr != fields_.cend(); ++itr) {
       if (fieldsWritten.find(itr->first) == fieldsWritten.end()) {
         row.writeNull(itr->second);

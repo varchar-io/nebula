@@ -35,7 +35,7 @@ public:
       name,
       std::move(expr),
       [](const std::optional<NativeType>& origin) -> std::optional<bool> {
-        if (UNLIKELY(origin == std::nullopt)) {
+        if (N_UNLIKELY(origin == std::nullopt)) {
           return std::nullopt;
         }
 

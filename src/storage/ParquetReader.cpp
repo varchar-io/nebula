@@ -28,7 +28,7 @@ using nebula::type::Kind;
 
 const RowData& ParquetReader::next() {
   // TODO build a flat row out of a reader
-  if (UNLIKELY(groupReader_ == nullptr) || cursorInGroup_ == groupRows_) {
+  if (N_UNLIKELY(groupReader_ == nullptr) || cursorInGroup_ == groupRows_) {
     groupReader_ = reader_->RowGroup(group_++);
     cursorInGroup_ = 0;
     groupRows_ = groupReader_->metadata()->num_rows();

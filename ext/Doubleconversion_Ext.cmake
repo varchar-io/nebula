@@ -8,7 +8,7 @@ ExternalProject_Add(double-conversion
   GIT_REPOSITORY https://github.com/google/double-conversion.git
   GIT_TAG v3.1.5
   CMAKE_ARGS ${DC_OPTS}
-  INSTALL_COMMAND ""
+  INSTALL_DIR ${NEBULA_INSTALL}
   LOG_DOWNLOAD ON
   LOG_CONFIGURE ON
   LOG_BUILD ON)

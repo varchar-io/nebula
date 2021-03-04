@@ -96,7 +96,7 @@ void Phase<PhaseType::COMPUTE>::display() const {
   LOG(INFO) << indent4 << "FILTER: " << bliteral(filter_ != nullptr);
   const auto hasAgg = (keys_.size() < fields_.size());
   LOG(INFO) << indent4 << "GROUP: " << bliteral(hasAgg);
-  if (LIKELY(hasAgg)) {
+  if (N_LIKELY(hasAgg)) {
     LOG(INFO) << indent4 << indent4 << "KEYS: " << join(keys_);
   }
 }
@@ -121,7 +121,7 @@ void Phase<PhaseType::GLOBAL>::display() const {
   const auto& s = sorts();
   const auto hasSort = s.size() > 0;
   LOG(INFO) << indent4 << "SORT : " << bliteral(hasSort);
-  if (LIKELY(hasSort)) {
+  if (N_LIKELY(hasSort)) {
     LOG(INFO) << indent4 << indent4 << "KEYS: " << join(s);
   }
 }

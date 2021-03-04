@@ -286,7 +286,7 @@ public:
     // we exactly know what method to call for every single column
 
     // perf: we pay this check for every read
-    if (UNLIKELY(scriptData_ != nullptr)) {
+    if (N_UNLIKELY(scriptData_ != nullptr)) {
       ValueEval* ve = scriptData_->column(col);
       if (ve) {
         return ve->eval<T>(*this);

@@ -47,7 +47,7 @@ public:
       expr->asEval(),
       // logic for "in []"
       [values](const std::optional<InputType>& source) -> std::optional<bool> {
-        if (UNLIKELY(source == std::nullopt)) {
+        if (N_UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
 
@@ -64,7 +64,7 @@ public:
       expr->asEval(),
       // logic for "not in []"
       [values](const std::optional<InputType>& source) -> std::optional<bool> {
-        if (UNLIKELY(source == std::nullopt)) {
+        if (N_UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
 

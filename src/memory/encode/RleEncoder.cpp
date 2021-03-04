@@ -649,7 +649,7 @@ void RleEncoder::preparePatchedBlob(EncodingOption& option) {
  * Encode an int64_t value 
  */
 void RleEncoder::write(int64_t val) {
-  if (UNLIKELY(numLiterals_ == 0)) {
+  if (N_UNLIKELY(numLiterals_ == 0)) {
     initializeLiterals(val);
     return;
   }

@@ -73,7 +73,7 @@ static constexpr cstr lslash(cstr str) {
 
 #define THROW_IF_NOT_EXP(EXP, MSG)                                       \
   ({                                                                     \
-    if (UNLIKELY(!(EXP))) {                                              \
+    if (N_UNLIKELY(!(EXP))) {                                              \
       throw NException(fmt::format("[Violation: {0}]: {1}", #EXP, MSG)); \
     }                                                                    \
   })

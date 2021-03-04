@@ -57,7 +57,7 @@ public:
     virtual ~Aggregator() = default;
     // aggregate an value in
     inline virtual void merge(InputType v) override {
-      if (LIKELY(buffer_.size() < BUFFER_SIZE)) {
+      if (N_LIKELY(buffer_.size() < BUFFER_SIZE)) {
         buffer_.emplace_back(double(v));
         return;
       }

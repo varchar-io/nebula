@@ -45,7 +45,7 @@ file(MAKE_DIRECTORY ${QJS_INCLUDE_DIRS})
 # either ensure boost old version or we can remove this useless file
 file(REMOVE ${SOURCE_DIR}/version)
 
-set(QJS_LIBRARY_PATH ${SOURCE_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}quickjs.lto.a)
+set(QJS_LIBRARY_PATH ${SOURCE_DIR}/${CMAKE_FIND_LIBRARY_PREFIXES}quickjs.a)
 set(QJS_LIBRARY libqjs)
 add_library(${QJS_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${QJS_LIBRARY} PROPERTIES

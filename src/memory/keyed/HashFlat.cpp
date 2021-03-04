@@ -248,7 +248,7 @@ std::pair<size_t, size_t> HashFlat::optimalKeys(size_t row) const noexcept {
 // The function has very similar logic as row accessor, we inline it for perf
 size_t HashFlat::hash(size_t rowId) const {
   // if optimal, let's figure out offset and length of the key bytes
-  if (LIKELY(optimal_)) {
+  if (N_LIKELY(optimal_)) {
     auto kp = optimalKeys(rowId);
     auto ptr = main_->slice.ptr();
     // just hash the key set
@@ -256,7 +256,7 @@ size_t HashFlat::hash(size_t rowId) const {
   }
 
   // hash on every column and write value into keyHash_ chunk
-  if (LIKELY(keyHash_ != nullptr)) {
+  if (N_LIKELY(keyHash_ != nullptr)) {
     size_t* ptr = (size_t*)keyHash_->ptr();
     auto len = keyHash_->size();
     std::memset(ptr, 0, len);
@@ -274,7 +274,7 @@ size_t HashFlat::hash(size_t rowId) const {
 // check if two rows are equal to each other on given columns
 bool HashFlat::equal(size_t row1, size_t row2) const {
   // if optimal, let's figure out offset and length of the key bytes
-  if (LIKELY(optimal_)) {
+  if (N_LIKELY(optimal_)) {
     auto kp1 = optimalKeys(row1);
     auto kp2 = optimalKeys(row2);
     // if length equals - return false

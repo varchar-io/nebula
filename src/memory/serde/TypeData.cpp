@@ -70,7 +70,7 @@ void StringData::add(IndexType, std::string_view value) {
   size_ += slice_.write(size_, value.data(), value.size());
   // TODO(cao) - disable bloom filter string type for now
   // Due to hash function missing for string_view type
-  // if (UNLIKELY(bf_ != nullptr)) {
+  // if (N_UNLIKELY(bf_ != nullptr)) {
   //   bf_->add(value.);
   // }
 }
