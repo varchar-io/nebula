@@ -3,6 +3,12 @@
 # root build script to dispath to different platform
 ROOT=$(git rev-parse --show-toplevel)
 
+# use vcpkg to manage major packages
+# install vcpkg and use vcpkg to install our dependencies
+# 1. install vcpkg to $HOME
+# 2. install boost, glog, gflags, gtest
+# 3. install folly, aws, gcs
+
 if [ "$(uname -s)" == "Darwin" ]; then
   ( "$ROOT/build.mac.sh" ) 
   exit

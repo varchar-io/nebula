@@ -6,6 +6,7 @@ project(nebula)
 set(NEBULA_ROOT ${PROJECT_SOURCE_DIR})
 set(NEBULA_SRC ${NEBULA_ROOT}/src)
 set(NEBULA_INSTALL ${NEBULA_ROOT}/build/install)
+set(HOME_DIR $ENV{HOME})
 
 # define all headers should seek under SRC 
 # so that we have to use full namespace to reference them
@@ -177,6 +178,7 @@ endif()
 # TODO(cao) - move to jemalloc
 # ref https://www.facebook.com/notes/facebook-engineering/scalable-memory-allocation-using-jemalloc/480222803919/
 
+########################## package managed ##########################
 # find boost
 set(Boost_USE_STATIC_LIBS ON)
 find_package(Boost MODULE
@@ -189,15 +191,55 @@ find_package(Boost MODULE
     thread
   REQUIRED)
 
-if(Boost_FOUND)
-    include_directories(${Boost_INCLUDE_DIRS})
-endif()
+# find glog
+# target: glog::glog
+# find_package(glog CONFIG REQUIRED)
+
+# find gflags
+# target: gflags_static)
+# find_package(gflags CONFIG REQUIRED)
+
+# find gtest
+# target: GTest::gmock GTest::gtest GTest::gmock_main GTest::gtest_main
+# find_package(GTest CONFIG REQUIRED)
+
+# find folly
+# target: Folly::folly Folly::folly_deps
+# find_package(folly CONFIG REQUIRED)
+
+# find lz4
+# target lz4::lz4
+# find_package(lz4 CONFIG REQUIRED)
+
+# find zstd
+# target: zstd::libzstd_static
+# find_package(zstd CONFIG REQUIRED)
+
+# find snappy
+# target: Snappy::snappy
+# find_package(Snappy CONFIG REQUIRED)
+
+# set up the needed tool from tool chain
+# triplet: VCPKG_TARGET_TRIPLET
+set(VCPKG_ROOT ${HOME_DIR}/vcpkg)
+set(VCPKG_TOOLS ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools)
+# protoc compiler
+# set(PROTO_COMPILER ${VCPKG_TOOLS}/protobuf/protoc)
+# flatbuffers compiler
+# set(FLATBUFFERS_COMPILER ${VCPKG_TOOLS}/flatbuffers/flatc)
+# grpc plugins: cpp plugin, node plugin 
+# set(GRPC_CPP_PLUGIN ${VCPKG_TOOLS}/grpc/grpc_cpp_plugin)
+# set(GRPC_NODE_PLUGIN ${VCPKG_TOOLS}/grpc/grpc_node_plugin)
+
+########################## Self Maintained ##########################
+# include xxhash
+include(ext/Xxh_Ext.cmake)
 
 # add dependency of absl
-# include(ext/Absl_Ext.cmake)
+include(ext/Absl_Ext.cmake)
 
 # add dependency of crc32c
-# include(ext/Crc32c_Ext.cmake)
+include(ext/Crc32c_Ext.cmake)
 
 # add dependency of pgquery
 include(ext/PGQuery_Ext.cmake)
@@ -224,7 +266,7 @@ include(ext/Libevent_Ext.cmake)
 include(ext/Highway_Ext.cmake)
 
 # add a dependency of fmt 
-# include(ext/Fmt_Ext.cmake)
+include(ext/Fmt_Ext.cmake)
 
 # add a dependency of bf
 include(ext/Bloom_Ext.cmake)
@@ -236,26 +278,26 @@ include(ext/Roaring_Ext.cmake)
 include(ext/Gtest_Ext.cmake)
 
 # set up directory to search for headers
-# include_directories(include ${GTEST_INCLUDE_DIRS})
-# include_directories(include ${GMOCK_INCLUDE_DIRS})
+include_directories(include ${GTEST_INCLUDE_DIRS})
+include_directories(include ${GMOCK_INCLUDE_DIRS})
 
 # add open ssl definition
-# include(ext/Openssl_Ext.cmake)
+include(ext/Openssl_Ext.cmake)
 
 # add thrift module
-# include(ext/Thrift_Ext.cmake)
+include(ext/Thrift_Ext.cmake)
 
 # include pre-installed folly
-# include(ext/Folly_Ext.cmake)
+include(ext/Folly_Ext.cmake)
 
 # add a dependency of cuckoo filter
 include(ext/Cuckoo_Ext.cmake)
 
 # include AWS external project
-# include(ext/Aws_Ext.cmake)
+include(ext/Aws_Ext.cmake)
 
 # include AWS external project
-# include(ext/Gcp_Ext.cmake)
+include(ext/Gcp_Ext.cmake)
 
 # include protobuf
 include(ext/Protobuf_Ext.cmake)
@@ -271,9 +313,6 @@ include(ext/Omm_Ext.cmake)
 
 # include arrow
 include(ext/Arrow_Ext.cmake)
-
-# include xxhash
-include(ext/Xxh_Ext.cmake)
 
 # include yaml
 include(ext/Yaml_Ext.cmake)
