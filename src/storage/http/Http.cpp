@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 #include <glog/logging.h>
-#include <stdlib.h>
+#include <stdio.h>
 
 #include "Http.h"
 
@@ -118,28 +118,40 @@ static size_t write(void* ptr, size_t size, size_t nmemb, void* stream) {
 bool HttpService::download(const std::string& url,
                            const std::vector<std::string>& headers,
                            const std::string& local) const {
-
   // set the URL and perform
+  LOG(INFO) << "Download file from " << url
+            << " to " << local
+            << "with headers: " << headers.size();
   curl_easy_setopt(curl_, CURLOPT_URL, url.c_str());
 
   // if custom headers are present - set them
   SET_HTTP_HEADERS
 
   // no need progress
-  curl_easy_setopt(curl_handle, CURLOPT_NOPROGRESS, 1L);
-  curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, write);
+  curl_easy_setopt(curl_, CURLOPT_NOPROGRESS, 1L);
+  curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, write);
   // open the file for writing
-  FILE* pagefile = fopen(local, "wb");
+  FILE* pagefile = fopen(local.c_str(), "wb");
   if (pagefile) {
+    nebula::common::Finally closeFile([&pagefile]() {
+      fclose(pagefile);
+    });
     // start to write data
-    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, pagefile);
+    curl_easy_setopt(curl_, CURLOPT_WRITEDATA, pagefile);
 
     // perform the download action
-    curl_easy_perform(curl_handle);
+    CURLcode res = curl_easy_perform(curl_);
+    // check the result code
+    if (res != CURLE_OK) {
+      LOG(ERROR) << "Failed to read URL: " << url << "; Code=" << res;
+      false;
+    }
 
-    // close the file
-    fclose(pagefile);
+    return true;
   }
+
+  LOG(ERROR) << "Can't open file: " << local;
+  return false;
 }
 
 #undef SET_HTTP_HEADERS

@@ -30,7 +30,7 @@ namespace base {
 
 // extract more info from a load spec
 struct LoadSpec;
-void extract(const std::string&, LoadSpec&);
+void extract(LoadSpec&);
 
 // client side will send a load spec to load
 // the spec definition is parsed from LoadRequest.json in nebula.proto
@@ -105,7 +105,7 @@ struct LoadSpec {
     N_ENSURE(format.size() > 0, "data format is required");
 
     // extract other info such as source, domain, etc.
-    extract(path, *this);
+    extract(*this);
 
     // set access token if present through settings
     if (!token.empty()) {
@@ -130,16 +130,20 @@ struct LoadSpec {
 };
 
 // extract other information from given path
-void extract(const std::string& path, LoadSpec& spec) {
+void extract(LoadSpec& spec) {
   // detect data source
-  auto uri = nebula::storage::parse(path);
+  auto uri = nebula::storage::parse(spec.path);
   const auto ds = nebula::meta::DataSourceUtils::from(uri.schema);
 
   // custom data source is not allowed to be visible to external (API)
   if (ds != nebula::meta::DataSource::NEBULA) {
     spec.source = ds;
     spec.domain = uri.host;
-    spec.path = uri.path;
+
+    // for file system, update the path to path (key, prefix)
+    if (nebula::meta::DataSourceUtils::isFileSystem(ds)) {
+      spec.path = uri.path;
+    }
   }
 }
 

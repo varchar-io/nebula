@@ -270,7 +270,7 @@ bool IngestSpec::loadHttp(BlockList& blocks) noexcept {
   }
 
   // the sheet content in this json objects
-  if (!http.downlaod(url, headers, tmpFile)) {
+  if (!http.download(url, headers, tmpFile)) {
     LOG(WARNING) << "Failed to download to local: " << path_;
     return false;
   }

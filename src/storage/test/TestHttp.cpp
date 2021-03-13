@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "storage/NFS.h"
 #include "storage/http/Http.h"
 
 namespace nebula {
@@ -37,7 +38,7 @@ TEST(HttpTest, TestBasicDownload) {
   auto url = "https://user-images.githubusercontent.com/26632293/103615010-a998c600-4ede-11eb-8b55-ee5dcd4e4026.png";
   nebula::storage::http::HttpService http;
   auto fs = nebula::storage::makeFS("local");
-  auto tmpFile = local->temp();
+  auto tmpFile = fs->temp();
   bool r = http.download(url,
                          { "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36" },
                          tmpFile);
