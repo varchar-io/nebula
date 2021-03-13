@@ -33,6 +33,22 @@ TEST(HttpTest, TestBasicRead) {
   LOG(INFO) << "Content: " << json;
 }
 
+TEST(HttpTest, TestBasicDownload) {
+  auto url = "https://user-images.githubusercontent.com/26632293/103615010-a998c600-4ede-11eb-8b55-ee5dcd4e4026.png";
+  nebula::storage::http::HttpService http;
+  auto fs = nebula::storage::makeFS("local");
+  auto tmpFile = local->temp();
+  bool r = http.download(url,
+                         { "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.121 Safari/537.36" },
+                         tmpFile);
+  // this download should be always true
+  EXPECT_TRUE(r);
+
+  // check the file size
+  auto info = fs->info(tmpFile);
+  EXPECT_EQ(info.size, 476920);
+}
+
 TEST(HttpTest, TestReadGoogleSheets) {
   auto url = "https://sheets.googleapis.com/v4/spreadsheets/10FP5MEDG-iGtWO8y4Wd6dyKSHcETg4sKCkBFf8DvqFQ/values:batchGet?majorDimension=COLUMNS&ranges=A%3AZ&key=AIzaSyDdDCIglhCzcSz6lXEoq9qNekfL4C7Jx2A";
   nebula::storage::http::HttpService http;

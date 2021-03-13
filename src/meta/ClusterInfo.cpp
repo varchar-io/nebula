@@ -83,26 +83,6 @@ using nebula::common::Evidence;
 using nebula::common::unordered_map;
 using nebula::type::TypeSerializer;
 
-DataSource asDataSource(const std::string& data) {
-  if (data == "custom") {
-    return DataSource::Custom;
-  }
-
-  if (data == "s3") {
-    return DataSource::S3;
-  }
-
-  if (data == "kafka") {
-    return DataSource::KAFKA;
-  }
-
-  if (data == "local") {
-    return DataSource::LOCAL;
-  }
-
-  throw NException("Misconfigured data source");
-}
-
 AccessType asAccessType(const std::string& name) {
   if (name == "read") return AccessType::READ;
   if (name == "aggregation") return AccessType::AGGREGATION;
@@ -347,7 +327,7 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
 
     // table definition
     const auto& td = it->second;
-    auto ds = asDataSource(td["data"].as<std::string>());
+    auto ds = DataSourceUtils::from(td["data"].as<std::string>());
 
     // TODO(cao): sorry but we have a hard rule here,
     // every Kafka table will be named as "k.{topic_name}"

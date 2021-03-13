@@ -18,6 +18,7 @@
 
 #include <unordered_map>
 
+#include "common/Chars.h"
 #include "meta/Table.h"
 #include "type/Serde.h"
 #include "type/Type.h"
@@ -33,27 +34,34 @@
 namespace nebula {
 namespace meta {
 
-// define data source
+// define data sources supported in Nebula:
+// NEBULA is a reserved type only used internally.
+// Any external reference will be treated as illegal (invalid)
 enum class DataSource {
-  Custom,
+  NEBULA,
   S3,
   GS,
   LOCAL,
   KAFKA,
-  GSHEET
+  GSHEET,
+  HTTP
 };
 
 struct DataSourceUtils {
   static bool isFileSystem(const DataSource& ds) {
-    return ds == DataSource::S3 || ds == DataSource::LOCAL;
+    return ds == DataSource::S3
+           || ds == DataSource::GS
+           || ds == DataSource::LOCAL;
   }
 
+  // get protocol of this type of data source
   static const std::string& getProtocol(const DataSource& ds) {
     static const std::string NONE = "";
     static const nebula::common::unordered_map<DataSource, std::string> SOURCE_PROTO = {
       { DataSource::S3, "s3" },
       { DataSource::GS, "gs" },
-      { DataSource::LOCAL, "local" }
+      { DataSource::LOCAL, "local" },
+      { DataSource::HTTP, "http" }
     };
 
     auto p = SOURCE_PROTO.find(ds);
@@ -62,6 +70,35 @@ struct DataSourceUtils {
     }
 
     return NONE;
+  }
+
+  // Get data source entity from its name
+  static DataSource from(const std::string& data) noexcept {
+    if (nebula::common::Chars::same(data, "s3")) {
+      return DataSource::S3;
+    }
+
+    if (nebula::common::Chars::same(data, "gs")) {
+      return DataSource::GS;
+    }
+
+    if (nebula::common::Chars::same(data, "kafka")) {
+      return DataSource::KAFKA;
+    }
+
+    if (nebula::common::Chars::same(data, "local")) {
+      return DataSource::LOCAL;
+    }
+
+    if (nebula::common::Chars::same(data, "http")
+        || nebula::common::Chars::same(data, "https")) {
+      return DataSource::HTTP;
+    }
+
+    // CUSTOM usually means a internal type such as Nebula Test data set
+    // Not allowed to be used for external data
+    // throw NException(fmt::format("Unsupported data source: {0}", data));
+    return DataSource::NEBULA;
   }
 };
 

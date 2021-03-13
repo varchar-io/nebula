@@ -224,6 +224,8 @@ bool IngestSpec::loadRoll() noexcept {
 bool IngestSpec::loadApi() noexcept {
   BlockList blocks;
   auto result = false;
+
+  // normal file system access: S3, GS, Local
   if (dsu::isFileSystem(table_->source)) {
     // load current
     result = this->load(blocks);
@@ -233,12 +235,57 @@ bool IngestSpec::loadApi() noexcept {
     result = this->loadGSheet(blocks);
   }
 
+  if (table_->source == DataSource::HTTP) {
+    result = this->loadHttp(blocks);
+  }
+
   if (result) {
     auto bm = BlockManager::init();
     // move all new blocks in
     bm->add(blocks);
   }
 
+  return result;
+}
+
+// TODO(cao): refactor it to reuse similar flow as `load`
+// the only difference is one is downlaod data from HTTP
+// while the other is from cloud storage.
+bool IngestSpec::loadHttp(BlockList& blocks) noexcept {
+  // id is the file path, copy it from s3 to a local folder
+  auto local = nebula::storage::makeFS("local");
+  auto tmpFile = local->temp();
+
+  // download the HTTP file to local as temp file
+  HttpService http;
+  const auto& url = this->path();
+
+  // read access token from table settings
+  std::vector<std::string> headers;
+
+  // set access token if present
+  auto& token = this->table_->settings["token"];
+  if (!token.empty()) {
+    headers.push_back(fmt::format("Authorization: Bearer {0}", token));
+  }
+
+  // the sheet content in this json objects
+  if (!http.downlaod(url, headers, tmpFile)) {
+    LOG(WARNING) << "Failed to download to local: " << path_;
+    return false;
+  }
+
+  // check if data blocks with the same ingest ID exists
+  // since it is a swap loader, we will remove those blocks
+  bool result = this->ingest(tmpFile, blocks);
+
+  // NOTE: assuming tmp file is created by mkstemp API
+  // we unlink it for os to recycle it (linux), ignoring the result
+  // https://stackoverflow.com/questions/32445579/when-a-file-created-with-mkstemp-is-deleted
+  unlink(tmpFile.c_str());
+
+  // swap each of the blocks into block manager
+  // as long as they share the same table / spec
   return result;
 }
 

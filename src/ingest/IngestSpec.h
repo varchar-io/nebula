@@ -155,6 +155,9 @@ private:
   // load google sheet
   bool loadGSheet(nebula::execution::io::BlockList& blocks) noexcept;
 
+  // load an http resource
+  bool loadHttp(nebula::execution::io::BlockList& blocks) noexcept;
+
   // load current spec as blocks
   bool load(nebula::execution::io::BlockList&) noexcept;
 
