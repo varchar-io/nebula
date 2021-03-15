@@ -173,7 +173,7 @@ thead {
     background: mediumpurple;
     color: #fff;
     text-align: left;
-
+    cursor: pointer;
 }
 
 tbody {
