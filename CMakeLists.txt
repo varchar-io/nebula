@@ -190,6 +190,9 @@ find_package(Boost MODULE
     system
     thread
   REQUIRED)
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+endif()
 
 # find glog
 # target: glog::glog

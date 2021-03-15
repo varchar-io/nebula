@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 #include <glog/logging.h>
+#include <stdio.h>
 
 #include "Http.h"
 
@@ -47,6 +48,21 @@ HttpService::~HttpService() {
   curl_ = nullptr;
 }
 
+#define SET_HTTP_HEADERS                                \
+  struct curl_slist* chunk = NULL;                      \
+  nebula::common::Finally releaseChunk([&chunk]() {     \
+    if (chunk) {                                        \
+      curl_slist_free_all(chunk);                       \
+    }                                                   \
+  });                                                   \
+                                                        \
+  if (!headers.empty()) {                               \
+    for (auto& header : headers) {                      \
+      chunk = curl_slist_append(chunk, header.c_str()); \
+    }                                                   \
+    curl_easy_setopt(curl_, CURLOPT_HTTPHEADER, chunk); \
+  }
+
 size_t read(void* data, size_t size, size_t nmemb, std::string* str) {
   size_t len = size * nmemb;
   str->append((char*)data, len);
@@ -67,20 +83,7 @@ std::string HttpService::readJson(const std::string& url, const std::vector<std:
   curl_easy_setopt(curl_, CURLOPT_WRITEDATA, &json);
 
   // if custom headers are present - set them
-  struct curl_slist* chunk = NULL;
-  nebula::common::Finally releaseChunk([&chunk]() {
-    if (chunk) {
-      curl_slist_free_all(chunk);
-    }
-  });
-
-  if (!headers.empty()) {
-    for (auto& header : headers) {
-      chunk = curl_slist_append(chunk, header.c_str());
-    }
-
-    curl_easy_setopt(curl_, CURLOPT_HTTPHEADER, chunk);
-  }
+  SET_HTTP_HEADERS
 
   // perform the request
   CURLcode res = curl_easy_perform(curl_);
@@ -104,6 +107,54 @@ std::string HttpService::readJson(const std::string& url, const std::vector<std:
 
   return json;
 }
+
+// buffering from curl and writing into the file (replace with ostream?)
+static size_t write(void* ptr, size_t size, size_t nmemb, void* stream) {
+  size_t written = fwrite(ptr, size, nmemb, (FILE*)stream);
+  return written;
+}
+
+// follow https://curl.se/libcurl/c/url2file.html
+bool HttpService::download(const std::string& url,
+                           const std::vector<std::string>& headers,
+                           const std::string& local) const {
+  // set the URL and perform
+  LOG(INFO) << "Download file from " << url
+            << " to " << local
+            << "with headers: " << headers.size();
+  curl_easy_setopt(curl_, CURLOPT_URL, url.c_str());
+
+  // if custom headers are present - set them
+  SET_HTTP_HEADERS
+
+  // no need progress
+  curl_easy_setopt(curl_, CURLOPT_NOPROGRESS, 1L);
+  curl_easy_setopt(curl_, CURLOPT_WRITEFUNCTION, write);
+  // open the file for writing
+  FILE* pagefile = fopen(local.c_str(), "wb");
+  if (pagefile) {
+    nebula::common::Finally closeFile([&pagefile]() {
+      fclose(pagefile);
+    });
+    // start to write data
+    curl_easy_setopt(curl_, CURLOPT_WRITEDATA, pagefile);
+
+    // perform the download action
+    CURLcode res = curl_easy_perform(curl_);
+    // check the result code
+    if (res != CURLE_OK) {
+      LOG(ERROR) << "Failed to read URL: " << url << "; Code=" << res;
+      false;
+    }
+
+    return true;
+  }
+
+  LOG(ERROR) << "Can't open file: " << local;
+  return false;
+}
+
+#undef SET_HTTP_HEADERS
 
 } // namespace http
 } // namespace storage

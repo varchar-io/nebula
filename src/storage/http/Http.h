@@ -42,7 +42,11 @@ public:
   virtual ~HttpService();
 
 public:
+  // read a URL as JSON data result
   std::string readJson(const std::string&, const std::vector<std::string>&) const;
+
+  // download a data file from given URL into a local file
+  bool download(const std::string&, const std::vector<std::string>&, const std::string&) const;
 
 private:
   CURL* curl_;

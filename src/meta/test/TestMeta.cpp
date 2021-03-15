@@ -21,7 +21,7 @@
 #include "meta/ClusterInfo.h"
 #include "meta/NBlock.h"
 #include "meta/Pod.h"
-#include "meta/Table.h"
+#include "meta/TableSpec.h"
 #include "meta/TestTable.h"
 #include "type/Serde.h"
 
@@ -61,6 +61,45 @@ TEST(MetaTest, TestNNode) {
   NNode n2{ n1 };
   ASSERT_TRUE(n1.equals(n2));
   LOG(INFO) << "N2=" << n2.toString();
+}
+
+TEST(MetaTest, TestDataSource) {
+  using ds = nebula::meta::DataSource;
+  using dsu = nebula::meta::DataSourceUtils;
+
+  // test isFileSystem
+  {
+    EXPECT_TRUE(dsu::isFileSystem(ds::S3));
+    EXPECT_TRUE(dsu::isFileSystem(ds::GS));
+    EXPECT_TRUE(dsu::isFileSystem(ds::LOCAL));
+    EXPECT_FALSE(dsu::isFileSystem(ds::HTTP));
+    EXPECT_FALSE(dsu::isFileSystem(ds::KAFKA));
+    EXPECT_FALSE(dsu::isFileSystem(ds::NEBULA));
+    EXPECT_FALSE(dsu::isFileSystem(ds::GSHEET));
+  }
+
+  // test get protocol
+  {
+    EXPECT_EQ("s3", dsu::getProtocol(ds::S3));
+    EXPECT_EQ("gs", dsu::getProtocol(ds::GS));
+    EXPECT_EQ("http", dsu::getProtocol(ds::HTTP));
+    EXPECT_EQ("local", dsu::getProtocol(ds::LOCAL));
+    EXPECT_EQ("", dsu::getProtocol(ds::KAFKA));
+    EXPECT_EQ("", dsu::getProtocol(ds::NEBULA));
+    EXPECT_EQ("", dsu::getProtocol(ds::GSHEET));
+  }
+
+  // test get data source from name
+  {
+    EXPECT_EQ(ds::S3, dsu::from("S3"));
+    EXPECT_EQ(ds::GS, dsu::from("gs"));
+    EXPECT_EQ(ds::HTTP, dsu::from("http"));
+    EXPECT_EQ(ds::HTTP, dsu::from("HTTPs"));
+    EXPECT_EQ(ds::LOCAL, dsu::from("local"));
+    EXPECT_EQ(ds::KAFKA, dsu::from("KAFKA"));
+    EXPECT_EQ(ds::NEBULA, dsu::from(""));
+    EXPECT_EQ(ds::NEBULA, dsu::from("xyz"));
+  }
 }
 
 TEST(MetaTest, TestClusterConfigLoad) {

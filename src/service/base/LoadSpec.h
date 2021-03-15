@@ -28,6 +28,10 @@ namespace nebula {
 namespace service {
 namespace base {
 
+// extract more info from a load spec
+struct LoadSpec;
+void extract(LoadSpec&);
+
 // client side will send a load spec to load
 // the spec definition is parsed from LoadRequest.json in nebula.proto
 struct LoadSpec {
@@ -47,6 +51,9 @@ struct LoadSpec {
 
   // data format - such as "csv"
   std::string format;
+
+  // optional access token
+  std::string token;
 
   // time spec of this load demand
   std::string tcol;
@@ -87,6 +94,7 @@ struct LoadSpec {
     READ_MEMBER("path", path, GetString)
     READ_MEMBER("schema", schema, GetString)
     READ_MEMBER("format", format, GetString)
+    READ_MEMBER("token", token, GetString)
 
     // time related
     READ_MEMBER("tcol", tcol, GetString)
@@ -94,16 +102,14 @@ struct LoadSpec {
 
     N_ENSURE(path.size() > 0, "data path is required");
     N_ENSURE(schema.size() > 0, "data schema is required");
-    N_ENSURE(format.size() > 0, "data schema is required");
+    N_ENSURE(format.size() > 0, "data format is required");
 
-    // detect data source
-    auto uri = nebula::storage::parse(path);
-    // TODO(cao): only support S3 for now
-    if (uri.schema == "s3") {
-      // create a s3 file system
-      source = nebula::meta::DataSource::S3;
-      domain = uri.host;
-      path = uri.path;
+    // extract other info such as source, domain, etc.
+    extract(*this);
+
+    // set access token if present through settings
+    if (!token.empty()) {
+      settings["token"] = token;
     }
 
     if (format == "csv") {
@@ -122,6 +128,25 @@ struct LoadSpec {
     }
   }
 };
+
+// extract other information from given path
+void extract(LoadSpec& spec) {
+  // detect data source
+  auto uri = nebula::storage::parse(spec.path);
+  const auto ds = nebula::meta::DataSourceUtils::from(uri.schema);
+
+  // custom data source is not allowed to be visible to external (API)
+  if (ds != nebula::meta::DataSource::NEBULA) {
+    spec.source = ds;
+    spec.domain = uri.host;
+
+    // for file system, update the path to path (key, prefix)
+    if (nebula::meta::DataSourceUtils::isFileSystem(ds)) {
+      spec.path = uri.path;
+    }
+  }
+}
+
 } // namespace base
 } // namespace service
 } // namespace nebula
