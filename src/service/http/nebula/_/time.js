@@ -64,12 +64,16 @@ const k_now = 'now';
 const k_count = 'count';
 const k_unit = 'unit';
 
+// this function only works for UTC time
+// TODO(cao): add second parameter to treat `ds` as UTC or local time.
 const seconds = (ds) => {
     if (ds === null || ds === undefined) {
         return 0;
     }
 
-    const ms = (x) => Math.round(new Date(x).getTime() / 1000);
+    // ensure we treat the input as UTC time stamp
+    // it's okay if multiple `UTC` found in the literal (so no need to check)
+    const ms = (x) => Math.round(new Date(`${x} UTC`).getTime() / 1000);
     const digsOnly = (+ds == ds);
 
     // digit only expression is just a utc unix time in seconds
@@ -81,7 +85,7 @@ const seconds = (ds) => {
     const str = `${ds}`.toLowerCase();
     const m = str.match(pattern);
     if (m) {
-        // check if it is now
+        // check if it is now - same as `new Date().getTime()` UTC seconds
         if (m.groups[k_now]) {
             return ms(Date.now());
         }
@@ -98,8 +102,30 @@ const seconds = (ds) => {
     return ms(ds);
 };
 
+// format a unixtime stamp in milliseconds into a UTC time string
+const pad2 = (v) => `${v}`.padStart(2, 0);
+const format = (unix_ms) => {
+    const date = new Date(unix_ms);
+    const y = date.getUTCFullYear();
+    // month is 0-based index
+    const m = pad2(date.getUTCMonth() + 1);
+    const d = pad2(date.getUTCDate());
+    const h = pad2(date.getUTCHours())
+    const mi = pad2(date.getUTCMinutes());
+    const s = pad2(date.getUTCSeconds());
+    return `${y}-${m}-${d} ${h}:${mi}:${s}`;
+};
+
+const uuidv4 = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+});
+
 // same copy as time.js - 
 // need a hack to make it work for both require and es6 import
 export const time = {
-    seconds: seconds
+    seconds: seconds,
+    format: format,
+    uuidv4: uuidv4
 };

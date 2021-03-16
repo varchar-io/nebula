@@ -61,7 +61,8 @@ const $$ = (e) => $(e).val();
 let ds = {
     keys: [],
     metrics: [],
-    rows: []
+    rows: [],
+    orders: {}
 };
 
 // current table info, change when switching different tables
@@ -75,7 +76,6 @@ const windowCol = "_window_";
 const autoKey = (c) => c == timeCol || c == windowCol;
 const charts = new Charts();
 const nebula = new Nebula();
-const formatTime = charts.formatTime;
 // chart display area container
 const chartId = "#show";
 const fieldsId = "fields";
@@ -144,10 +144,10 @@ const onTableState = (tb, stats, callback) => {
     const bc = tb.bc;
     const rc = Math.round(tb.rc / 10000) / 100;
     const ms = Math.round(tb.ms / 10000000) / 100;
-    const mints = formatTime(tb.mt * 1000);
-    const maxts = formatTime(tb.xt * 1000 + 1);
+    const mints = time.format(tb.mt * 1000);
+    const maxts = time.format(tb.xt * 1000 + 1);
 
-    stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min T: ${mints}, Max T: ${maxts}]`);
+    stats.text(`[Blocks: ${bc}, Rows: ${rc}M, Mem: ${ms}GB, Min UTC: ${mints}, Max UTC: ${maxts}]`);
 
     makeCalendar(fpcs, startId, '#startc', mints, mints, maxts);
     makeCalendar(fpce, endId, '#endc', maxts, mints, maxts);
@@ -568,11 +568,11 @@ const onQueryResult = (state, r) => {
     else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['TREEMERGE']) {
         choices(['icicle', 'flame']);
     } else if (state.metrics.length == 1 && state.metrics[0].M == neb.Rollup['HIST']) {
-        choices(['column', 'bar']);
+        choices(['column', 'bar', 'none']);
     }
     // others
     else if (state.metrics.length > 0) {
-        choices(['column', 'bar', 'doughnut', 'pie', 'line']);
+        choices(['column', 'bar', 'doughnut', 'pie', 'line', 'none']);
     } else {
         choices();
     }
@@ -663,8 +663,8 @@ const onQueryResult = (state, r) => {
             // always display data in table
             $("#table").attr("class", "fh300");
             charts.displayTable("#table", ds.rows, [timeCol, windowCol, ...ds.keys], ds.metrics);
-            // if there is no metrics, do not limit table height
-            if (metrics.length == 0) {
+            // if there is no metrics, or no graph to display, do not limit table height
+            if (metrics.length == 0 || choice === 'none') {
                 $("#table").removeClass("fh300");
             }
         }
@@ -685,6 +685,27 @@ const onQueryResult = (state, r) => {
 
     //  display change will also trigger draw
     $(displayId).change(draw);
+
+    // when user clicks table header, sorting the data and redraw it
+    window.n_sort = (key) => {
+        // do not support sort on timeline
+        if (ds.timeline) {
+            return;
+        }
+
+        // sort data rows
+        const A = "ASC";
+        const D = "DESC";
+        const O = (ds.orders[key] || A) === A ? D : A;
+        ds.orders[key] = O;
+
+        // use the new order to sort rows by this column key
+        const C = O === A ? ((x, y) => x > y ? 1 : -1) : ((x, y) => x < y ? 1 : -1);
+        ds.rows.sort((r1, r2) => C(r1[key], r2[key]));
+
+        // redraw after data changes
+        draw();
+    };
 };
 
 const histJsonIdx = (metrics) => {

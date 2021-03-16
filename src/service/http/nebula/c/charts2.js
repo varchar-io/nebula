@@ -20,8 +20,10 @@ import {
 import {
     Color
 } from "./color.min.js";
+import {
+    time
+} from "../_/time.min.js";
 
-const pad2 = (v) => `${v}`.padStart(2, 0);
 const isTime = (c) => c === "_time_";
 const windowKey = '_window_';
 const autoKey = (c) => isTime(c) || c == windowKey;
@@ -34,18 +36,6 @@ export class Charts {
         // clear the show area
         this.cls = (chartId) => $(chartId).html(`<canvas id='${this.id}' height='100pt'/>`);
 
-        // using UTC time as backend using unix time stamp
-        this.formatTime = (unix_ms) => {
-            const date = new Date(unix_ms);
-            const y = date.getUTCFullYear();
-            // month is 0-based index
-            const m = pad2(date.getUTCMonth() + 1);
-            const d = pad2(date.getUTCDate());
-            const h = pad2(date.getUTCHours())
-            const mi = pad2(date.getUTCMinutes());
-            const s = pad2(date.getUTCSeconds());
-            return `${y}-${m}-${d} ${h}:${mi}:${s}`;
-        };
         this.displayTable = (chartId, json, keys, metrics) => {
             // Get Table headers and print 
             if (json.length > 0) {
@@ -62,6 +52,7 @@ export class Charts {
                 cols.forEach(k =>
                     $("<th/>").appendTo(head)
                     .attr("width", `${width}%`)
+                    .attr("onclick", `n_sort('${k}')`)
                     .text((autoKey(k) ? "[time]" : k)));
 
                 // Get table body and print 
@@ -69,7 +60,7 @@ export class Charts {
                     const r = $("<tr/>").appendTo(content);
                     cols.forEach(k => {
                         const v = row[k];
-                        $("<td/>").appendTo(r).text(isTime(k) ? this.formatTime(v * 1000) : v);
+                        $("<td/>").appendTo(r).text(isTime(k) ? time.format(v * 1000) : v);
                     });
                 });
             }
@@ -392,7 +383,7 @@ export class Charts {
             this.cls(chartId);
 
             // const time = row[timeCol] * 1000 + start;
-            const model = this.process(json, keys, metrics, timeCol, (x) => this.formatTime(x * 1000 + start));
+            const model = this.process(json, keys, metrics, timeCol, (x) => time.format(x * 1000 + start));
             model.xtime = true;
             model.type = mode == 2 ? 'bar' : 'line';
             this.displayGeneric(this.id, model, mode, mode == 1);
