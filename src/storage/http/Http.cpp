@@ -144,7 +144,7 @@ bool HttpService::download(const std::string& url,
     // check the result code
     if (res != CURLE_OK) {
       LOG(ERROR) << "Failed to read URL: " << url << "; Code=" << res;
-      false;
+      return false;
     }
 
     return true;
