@@ -73,7 +73,7 @@ const seconds = (ds) => {
 
     // ensure we treat the input as UTC time stamp
     // it's okay if multiple `UTC` found in the literal (so no need to check)
-    const ms = (x) => Math.round(new Date(`${x} UTC`).getTime() / 1000);
+    const ms = (x) => Math.round(new Date(x).getTime() / 1000);
     const digsOnly = (+ds == ds);
 
     // digit only expression is just a utc unix time in seconds
@@ -99,7 +99,7 @@ const seconds = (ds) => {
     }
 
     // absolute time value in a time string like '2020-07-07 10:05:03'
-    return ms(ds);
+    return ms(`${ds} UTC`);
 };
 
 // format a unixtime stamp in milliseconds into a UTC time string

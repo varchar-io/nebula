@@ -5591,7 +5591,7 @@ const seconds = (ds) => {
 
     // ensure we treat the input as UTC time stamp
     // it's okay if multiple `UTC` found in the literal (so no need to check)
-    const ms = (x) => Math.round(new Date(`${x} UTC`).getTime() / 1000);
+    const ms = (x) => Math.round(new Date(x).getTime() / 1000);
     const digsOnly = (+ds == ds);
 
     // digit only expression is just a utc unix time in seconds
@@ -5617,7 +5617,7 @@ const seconds = (ds) => {
     }
 
     // absolute time value in a time string like '2020-07-07 10:05:03'
-    return ms(ds);
+    return ms(`${ds} UTC`);
 };
 
 // format a unixtime stamp in milliseconds into a UTC time string
@@ -5633,11 +5633,19 @@ const format = (unix_ms) => {
     const s = pad2(date.getUTCSeconds());
     return `${y}-${m}-${d} ${h}:${mi}:${s}`;
 };
+
+const uuidv4 = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+});
+
 // same copy as time.js - 
 // need a hack to make it work for both require and es6 import
 const time = {
     seconds: seconds,
-    format: format
+    format: format,
+    uuidv4: uuidv4
 };
 // CONCATENATED MODULE: ./n/lib-api.js
 
