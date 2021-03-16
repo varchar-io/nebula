@@ -701,7 +701,15 @@ const onQueryResult = (state, r) => {
 
         // use the new order to sort rows by this column key
         const C = O === A ? ((x, y) => x > y ? 1 : -1) : ((x, y) => x < y ? 1 : -1);
-        ds.rows.sort((r1, r2) => C(r1[key], r2[key]));
+
+        // Note: ideally the data is already in right type in json response
+        // due to bigint precision problem in js - we use string for bigint
+        // hence we need metrics check
+        if (ds.metrics.includes(key)) {
+            ds.rows.sort((r1, r2) => C(+r1[key], +r2[key]));
+        } else {
+            ds.rows.sort((r1, r2) => C(r1[key], r2[key]));
+        }
 
         // redraw after data changes
         draw();
