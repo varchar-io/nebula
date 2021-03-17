@@ -158,15 +158,6 @@ std::unique_ptr<RdKafka::Message> KafkaReader::message() {
   return msg;
 }
 
-// TODO(cao): do we need to handle different timestamp or availability?
-inline size_t readMessageTimestamp(const RdKafka::Message& msg) {
-  // convert to seconds, nebula use seconds as timestamp
-  return (size_t)msg.timestamp().timestamp / 1000;
-  // if (ts.type != RdKafka::MessageTimestamp::MSG_TIMESTAMP_NOT_AVAILABLE)
-  // if (ts.type == RdKafka::MessageTimestamp::MSG_TIMESTAMP_CREATE_TIME)
-  // if (ts.type == RdKafka::MessageTimestamp::MSG_TIMESTAMP_LOG_APPEND_TIME)
-}
-
 // next row data of CsvRow
 const nebula::surface::RowData& KafkaReader::next() {
   // parse this msg into row_ based on serde info
@@ -174,13 +165,16 @@ const nebula::surface::RowData& KafkaReader::next() {
   row_.reset();
 
   // always write message timestamp into time column
-  if (!parser_->hasTime()) {
-    row_.write(Table::TIME_COLUMN, readMessageTimestamp(*msg_));
-  }
+  const size_t msgSize = msg_->len();
+  const size_t msgTime = msg_->timestamp().timestamp / 1000;
 
-  // parse this payload
-  if (!parser_->parse(msg_->payload(), msg_->len(), row_)) {
-    parser_->nullify(row_);
+  // message is empty or failed in parsing its payload
+  if (msgSize == 0
+      || !parser_->parse(msg_->payload(), msgSize, row_)) {
+    LOG(WARNING) << "Invalid kafka message in parsing, size=" << msgSize;
+    parser_->nullify(row_, msgTime);
+  } else if (!parser_->hasTime()) {
+    row_.write(Table::TIME_COLUMN, msgTime);
   }
 
   // move index and load next message

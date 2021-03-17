@@ -120,7 +120,7 @@ public:
   ~JsonRow() = default;
 
 public:
-  virtual bool hasTime() const noexcept override {
+  virtual inline bool hasTime() const noexcept override {
     return hasTime_;
   }
 
@@ -170,11 +170,11 @@ public:
     return true;
   }
 
-  virtual void nullify(nebula::memory::FlatRow& row) noexcept override {
+  virtual void nullify(nebula::memory::FlatRow& row, size_t time) noexcept override {
     // write everything a null if encoutering an invalid message
     row.reset();
     if (!hasTime()) {
-      row.write(nebula::meta::Table::TIME_COLUMN, 0l);
+      row.write(nebula::meta::Table::TIME_COLUMN, time);
     }
 
     for (auto itr = props_.cbegin(); itr != props_.cend(); ++itr) {

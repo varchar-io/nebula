@@ -35,8 +35,8 @@ public:
   // parse a buffer into given flatrow
   virtual bool parse(void*, size_t, nebula::memory::FlatRow&) noexcept = 0;
 
-  // client can choose to ask parser to fill all null values
-  virtual void nullify(nebula::memory::FlatRow&) noexcept = 0;
+  // client can choose to ask parser to fill all null values with default time to 0
+  virtual void nullify(nebula::memory::FlatRow&, size_t = 0) noexcept = 0;
 };
 
 } // namespace storage
