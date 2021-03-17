@@ -219,7 +219,7 @@ TEST(StorageTest, TestUriParse) {
 
 // Issue of download failure on Mac:
 //    https://github.com/googleapis/google-cloud-cpp/issues/5872
-TEST(StorageTest, TestGcsSync) {
+TEST(StorageTest, DISABLED_TestGcsSync) {
   auto fs = nebula::storage::makeFS("gs", "nebula-com");
   auto lfs = nebula::storage::makeFS("local");
   auto content = "test";

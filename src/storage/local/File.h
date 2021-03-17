@@ -46,7 +46,8 @@ public:
 
   virtual inline bool copy(const std::string& from, const std::string& to) override {
     // TODO(cao): it doesn't copy anything if options specified (e.g replace_existing)
-    std::filesystem::copy(from, to, std::filesystem::copy_options::overwrite_existing);
+    using co = std::filesystem::copy_options;
+    std::filesystem::copy(from, to, co::overwrite_existing | co::recursive);
     return true;
   }
 

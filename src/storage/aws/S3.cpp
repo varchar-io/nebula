@@ -150,7 +150,7 @@ bool uploadFile(const Aws::S3::S3Client& client,
     return false;
   }
 
-  LOG(INFO) << "Success: upload " << file << " to key=" << key;
+  VLOG(1) << "Success: upload " << file << " to key=" << key;
   return true;
 }
 
@@ -247,11 +247,13 @@ bool S3::upload(const std::string& local, const std::string& s3) {
   auto& client = s3client();
   for (auto& f : files) {
     if (!f.isDir) {
+      // f.name will be full path from local, we need to
+      auto nameOnly = nebula::common::Chars::last(f.name);
       if (!uploadFile(client,
                       this->bucket_,
-                      fmt::format("{0}/{1}", s3, f.name),
-                      fmt::format("{0}/{1}", local, f.name))) {
-        LOG(WARNING) << "Failed to upload: file=" << f.name;
+                      fmt::format("{0}/{1}", s3, nameOnly),
+                      fmt::format("{0}/{1}", local, nameOnly))) {
+        LOG(WARNING) << "Failed to upload: file=" << nameOnly;
         return false;
       }
     }

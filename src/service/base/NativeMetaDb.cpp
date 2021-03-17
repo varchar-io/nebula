@@ -115,7 +115,9 @@ bool NativeMetaDb::write(const std::string& key, const std::string& value) {
   auto ok = status.ok();
   if (ok) {
     // any successful write will cause the db dirty (in terms of in sync with backup)
-    if (remote_.size() > 0 && tick_.elapsedMs() > FLAGS_DB_BACKUP_INTERVAL) {
+    if (remote_.size() > 0
+        && !dirty_
+        && tick_.elapsedMs() > FLAGS_DB_BACKUP_INTERVAL) {
       // close db
       close();
 
@@ -133,7 +135,6 @@ bool NativeMetaDb::write(const std::string& key, const std::string& value) {
 bool NativeMetaDb::backup() noexcept {
   // upload data from backup_ to remote_
   if (dirty_) {
-    dirty_ = false;
     auto uriInfo = nebula::storage::parse(remote_);
     // sync all remote data into a local folder
     auto fs = nebula::storage::makeFS(uriInfo.schema, uriInfo.host);
@@ -147,6 +148,7 @@ bool NativeMetaDb::backup() noexcept {
       return false;
     }
 
+    LOG(INFO) << "Sync DB from " << backup_ << " to snapshot=" << snapshot;
     // write this version into version file
     auto versionFile = fmt::format("{0}/version", backup_);
     auto remoteVersion = fmt::format("{0}/version", uriInfo.path);
@@ -159,7 +161,11 @@ bool NativeMetaDb::backup() noexcept {
     auto versionUpdated = fs->copy(versionFile, remoteVersion);
 
     // clean backup folder for next sync
-    resetBackup();
+    if (versionUpdated) {
+      dirty_ = false;
+      resetBackup();
+    }
+
     return versionUpdated;
   }
 
@@ -169,8 +175,10 @@ bool NativeMetaDb::backup() noexcept {
 void NativeMetaDb::resetBackup() {
   if (fs_->list(backup_).size() != 0) {
     fs_->rm(backup_);
-    backup_ = fs_->temp(true);
   }
+
+  // always create a new temp for backup
+  backup_ = fs_->temp(true);
 }
 
 void NativeMetaDb::close() noexcept {
@@ -184,7 +192,6 @@ void NativeMetaDb::close() noexcept {
 
   if (!backup_.empty()) {
     // indicate we can upload backup_ now
-    resetBackup();
     dirty_ = fs_->sync(local_, backup_);
     LOG(INFO) << "Prepare local=" << local_ << " to backup=" << backup_ << ", ready=" << dirty_;
   }
