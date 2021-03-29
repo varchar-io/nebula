@@ -407,7 +407,7 @@ export class Charts {
                 const id = `fg_${i++}`;
                 area.append(`<center>${title}</center>`);
                 area.append(`<canvas id='${id}' width='${area.width()}'/>`);
-                new Flame(id, JSON.parse(stack), flame);
+                new Flame(id, stack, flame);
             });
         };
     }

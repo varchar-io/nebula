@@ -21,11 +21,12 @@ export class Flame {
     /**
      *
      * @param {id} id  - the HTML element canva ID.
-     * @param {stack} stack - the recursive stack object tree example:
+     * @param {json} json - the recursive stack object in json format tree example:
      * {name: "", value:100, children: [{name: "a", value:50}, {name: "b", value:50, children: [...]}]}
      * @param {reverse} reverse flame (bottom-up) view or icicle view (top-down), default as icicle.
      */
-    constructor(id, stack, reverse) {
+    constructor(id, json, reverse) {
+        // font size and style
         const fontSize = 16;
         const font = `1rem Segoe UI`;
         const paddingV = 10;
@@ -45,6 +46,118 @@ export class Flame {
             this.ratio = ratio;
         }
 
+        // menu height and buttons
+        const menuHeight = 30;
+        // each button is defined by text, bound and click handler
+        const buttons = [{
+            name: "[Reverse Focus]",
+            coord: {
+                x: 0,
+                y: 0,
+                w: 100,
+                h: menuHeight
+            },
+            handler: () => {
+                if (!this.selected || this.selected.name === this.stack.name) {
+                    alert('No non-root node selected.');
+                    return;
+                }
+
+                // iterate into all branches and use selected name as root
+                // make a copy from stack object
+                const focus = {
+                    name: this.selected.name,
+                    value: 0,
+                    children: []
+                };
+                const path = [{
+                    o: this.stack,
+                    i: 0
+                }];
+
+                // merge a valid path into a focus tree
+                const merge = (p, f) => {
+                    console.log(`get a path: ${p[p.length-1].o.name} - depth: ${p.length}`);
+                    // going backwards adding this path into the new focus tree
+                    let index = p.length - 1;
+                    f.value += p[index].o.value;
+                    let last = f;
+                    while (index-- > 0) {
+                        const node = p[index].o;
+                        let existing = last.children.find(e => e.name === node.name);
+                        if (!existing) {
+                            existing = {
+                                name: node.name,
+                                value: node.value,
+                                children: []
+                            };
+                            last.children.push(existing);
+                        }
+
+                        // assign current to last
+                        last = existing;
+                    }
+                };
+
+                // BFS the search path
+                let pop = false;
+                while (path.length > 0) {
+                    // check if we need pop
+                    if (pop) {
+                        const item = path.splice(path.length - 1, 1)[0];
+                        if (path.length > 0) {
+                            const parent = path[path.length - 1].o;
+                            const nextId = item.i + 1;
+                            if (nextId < parent.children.length) {
+                                path.push({
+                                    o: parent.children[nextId],
+                                    i: nextId
+                                });
+                                pop = false;
+                            }
+                        }
+                        continue;
+                    }
+
+                    // check if current item match target.
+                    const last = path[path.length - 1].o;
+                    if (last.name === this.selected.name) {
+                        merge(path, focus);
+                        pop = true;
+                        continue;
+                    }
+
+                    // check if current node can go further
+                    if (!last.children || last.children.length === 0) {
+                        pop = true;
+                        continue;
+                    }
+
+                    path.push({
+                        o: last.children[0],
+                        i: 0
+                    });
+                    pop = false;
+                }
+
+                // render the new view for this new focus
+                this.stack = focus;
+                this.init();
+                this.paint();
+            }
+        }, {
+            name: "[Reset]",
+            coord: {
+                x: 120,
+                y: 0,
+                w: 80,
+                h: menuHeight
+            },
+            handler: () => {
+                this.reset();
+            }
+        }];
+
         this.updateH = (height) => {
             this.canvas.style.height = height + 'px';
             this.canvas.height = height * ratio;
@@ -60,7 +173,7 @@ export class Flame {
             if (name == 'all') {
                 type = 4;
             } else if (this.selected && this.selected.name == name) {
-                type = 5;
+                return '#9370d8';
             } else if (name.endsWith("_[j]") || name.endsWith("_[i]") || name.endsWith("_[k]")) {
                 type = 1;
             } else if (name.startsWith('java.') || name.startsWith('scala.') || name.startsWith('sun.')) {
@@ -73,6 +186,19 @@ export class Flame {
         }
 
         this.yp = (c) => this.reverse ? (this.height - c.y - frameH) : c.y;
+
+        this.paintMenu = () => {
+            // draw a background
+            this.ctx.fillStyle = '#091982';
+            this.ctx.fillRect(paddingH, 0, this.canvas.offsetWidth - paddingH * 2, menuHeight);
+
+            // paint all buttons one by one
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = font;
+            buttons.forEach(e => {
+                this.ctx.fillText(e.name, e.coord.x + paddingH * 2, 20, e.width);
+            });
+        };
 
         this.draw = (frame) => {
             const name = frame.name || "all";
@@ -117,6 +243,8 @@ export class Flame {
             });
             return children;
         };
+
+        // mark every node according its relationship to the selected focus
         this.mark = (frame, root) => {
             // locate any node (not including all)
             if (root) {
@@ -195,9 +323,10 @@ export class Flame {
         this.paint = (root) => {
             this.selected = root;
             this.maxLevel = 0;
-            this.mark(stack, root);
+            this.mark(this.stack, root);
+
             // update the height
-            this.height = (this.maxLevel + 1) * (frameH + 2);
+            this.height = (this.maxLevel + 1) * (frameH) + menuHeight;
             if (!root) {
                 this.updateH(this.height);
             }
@@ -206,17 +335,30 @@ export class Flame {
             this.ctx.fillStyle = '#ffffff';
             this.ctx.fillRect(0, 0, this.canvas.offsetWidth, this.canvas.offsetHeight);
 
-            this.visit(stack, root);
+            // paint the menu at the top
+            this.paintMenu();
+
+            this.visit(this.stack, root);
         };
 
         // initialize the root rendering props
-        stack.width = this.canvas.offsetWidth - 2 * paddingH;
-        stack.level = 0;
-        stack.coord = {
-            x: paddingH,
-            y: paddingV
+        this.init = () => {
+            this.stack.width = this.canvas.offsetWidth - 2 * paddingH;
+            this.stack.level = 0;
+            this.stack.coord = {
+                x: paddingH,
+                y: paddingV + menuHeight
+            };
+        }
+
+        this.reset = () => {
+            this.stack = JSON.parse(json);
+            this.init();
+            this.paint();
         };
-        this.paint();
+
+        // parse the stack object from json data
+        this.reset();
 
         // handle navigation events
         // find frame which has coord
@@ -245,20 +387,34 @@ export class Flame {
 
         this.canvas.onmousemove = (event) => {
             const c = this.canvas;
-            const frame = this.find(stack, {
+            const point = {
                 x: event.pageX - c.offsetLeft,
                 y: event.pageY - c.offsetTop
-            });
+            };
+            const frame = this.find(this.stack, point);
 
             // if found, cast a opaque overlay to it
             if (frame) {
                 c.style.cursor = 'pointer';
-                const pct = (frame.width * 100 / stack.width).toPrecision(3);
+                const pct = (frame.width * 100 / this.stack.width).toPrecision(3);
                 c.title = `name: ${frame.name}, value: ${frame.value}, ratio: ${pct}%`;
                 c.onclick = () => {
                     this.paint(frame);
                 };
                 return;
+            }
+
+            // check if it hits a button in menu
+            if (point.y < menuHeight) {
+                const btn = buttons.find(b => point.x >= b.coord.x && point.x < (b.coord.x + b.coord.w));
+                if (btn) {
+                    c.style.cursor = 'pointer';
+                    c.title = `click action: ${btn.name}`;
+                    c.onclick = () => {
+                        btn.handler();
+                    };
+                    return;
+                }
             }
 
             // if not hit anything
