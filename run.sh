@@ -72,11 +72,12 @@ else
     echo 'Nebula Server is already running.'
 fi
 
-# run nebula API using node.js
+# run nebula API using node.js 
+# (package install uses `npm install` to avoid `yarn` name conflict with hadoop yarn)
 api=$base/src/service/http/nebula
 if ! grep -q "$api" <<< `ps aux` ; then
     pushd $api
-    yarn
+    npm install
     NS_ADDR=localhost:9190 NODE_PORT=8088 node node.js
 else
     echo 'Nebula API is already running.'
