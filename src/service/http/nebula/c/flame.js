@@ -326,7 +326,7 @@ export class Flame {
             this.mark(this.stack, root);
 
             // update the height
-            this.height = (this.maxLevel + 1) * (frameH) + menuHeight;
+            this.height = (this.maxLevel + 1) * (frameH + 2) + menuHeight;
             if (!root) {
                 this.updateH(this.height);
             }
