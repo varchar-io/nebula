@@ -14,7 +14,7 @@ Documents of design, internals and stories will be shared at [project site](http
 
 ## Demo
 ### 10 minutes video
-[![Click To Watch Nebula Demo Video](./test/nebula-rep.png)](https://youtu.be/ciYD73z6Eiw "Nebula Demo")
+[![Click To Watch Nebula Demo Video](./test/nebula-rep.png)](https://youtu.be/Fwevde7iBws "Nebula Demo")
 
 ### generating bar chart from 100GB data in 600ms
 ![Generate bar from 700M rows in 600ms](./test/nebula-rep2.png)
