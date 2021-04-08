@@ -28,6 +28,7 @@ target_link_libraries(${NEBULA_STORAGE}
 
 #build test binary
 add_executable(StorageTests
+    ${NEBULA_SRC}/storage/test/TestCsvReader.cpp
     ${NEBULA_SRC}/storage/test/TestHttp.cpp
     ${NEBULA_SRC}/storage/test/TestJsonReader.cpp
     ${NEBULA_SRC}/storage/test/TestKafka.cpp
