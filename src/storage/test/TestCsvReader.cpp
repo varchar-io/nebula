@@ -26,14 +26,14 @@ namespace storage {
 namespace test {
 
 TEST(CsvTest, TestNormal) {
-  std::stringstream line("a,b,c");
+  std::stringstream line("abc,\"{\"\"a\"\": \"\"123\"\", \"\"b\"\": \"\"456\"\"}\",99");
   nebula::storage::CsvRow row(',');
   row.readNext(line);
   const auto& d = row.rawData();
   EXPECT_EQ(d.size(), 3);
-  EXPECT_EQ(d.at(0), "a");
-  EXPECT_EQ(d.at(1), "b");
-  EXPECT_EQ(d.at(2), "c");
+  EXPECT_EQ(d.at(0), "abc");
+  EXPECT_EQ(d.at(1), "{\"a\": \"123\", \"b\": \"456\"}");
+  EXPECT_EQ(d.at(2), "99");
 }
 
 TEST(CsvTest, TestLineParse) {
@@ -110,6 +110,19 @@ TEST(CsvTest, TestEmptyField) {
     const auto& d = row.rawData();
     EXPECT_EQ(d.size(), expected.size());
     EXPECT_EQ(d, expected);
+  }
+}
+
+TEST(CsvTest, TestException) {
+  // illegal test cases
+  std::vector<std::string> cases = {
+    "a,\" \"b,c"
+  };
+
+  for (auto& text : cases) {
+    std::stringstream line(text);
+    nebula::storage::CsvRow row(',');
+    EXPECT_THROW(row.readNext(line), nebula::common::NebulaException);
   }
 }
 
