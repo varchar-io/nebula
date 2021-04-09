@@ -30,26 +30,26 @@ static constexpr auto DQ = '"';
 
 // ending a field by reading comma or LF or CRLF
 // returning if the field is last one in current line
-int32_t endField(std::istream& str, char ch, const char deli) {
+bool endField(std::istream& str, char ch, const char deli) {
   // end of file will end last field
   if (str.eof()) {
-    return 1;
+    return true;
   }
 
   // line break as CRLF
   if (ch == CR) {
     str.get(ch);
     N_ENSURE(ch == LF, "end line as CRLF");
-    return 1;
+    return true;
   }
 
   // single line break (unix) is fine (RFC4180 states CRLF always though)
   if (ch == LF) {
-    return 1;
+    return true;
   }
 
   N_ENSURE(ch == deli, "has to be delimeter");
-  return 0;
+  return false;
 }
 
 // form a cell value and return state: -1=no cell,0=non-last field, 1=last
@@ -93,7 +93,7 @@ int32_t field(std::istream& str, std::string& cell, const char deli) {
           continue;
         } else {
           // ending the field with stream, letter already read and delimeter
-          return endField(str, ch, deli);
+          return endField(str, ch, deli) ? 1 : 0;
         }
       }
     } else {

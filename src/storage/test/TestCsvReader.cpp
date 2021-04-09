@@ -126,6 +126,19 @@ TEST(CsvTest, TestException) {
   }
 }
 
+TEST(CsvTest, TestComplexRealCsv) {
+  nebula::storage::CsvReader reader("test/data/test.csv", ',', true, {});
+  auto lines = 0;
+  while (reader.hasNext()) {
+    auto& r = reader.next();
+    auto dt = r.readString("dt");
+    EXPECT_EQ(dt, "2021-03-28");
+    ++lines;
+  }
+
+  EXPECT_EQ(lines, 2);
+}
+
 } // namespace test
 } // namespace storage
 } // namespace nebula
