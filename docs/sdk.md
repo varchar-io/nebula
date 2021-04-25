@@ -74,7 +74,8 @@ these DSL functions will help us construct filter for the query (note there is a
 | lt       |                lt(col, val)               | column "col" smaller than given value    |
 | like       |              like(col, pattern)         | column "col" like SQL pattern such as "%abc", case sensitive |
 | ilike       |             ilike(col, pattern)        | column "col" like SQL pattern such as "%ABC", case insensitive |
-
+| unlike       |              unlike(col, pattern)         | opposite value of like |
+| iunlike       |             iunlike(col, pattern)        | opposite value of ilike |
 
 ### column
 `nebula.column("{col}")` is API to be used in your custom code logic to compute new column values. It evaluated as the specified column value in runtime.

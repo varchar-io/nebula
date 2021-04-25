@@ -51,17 +51,22 @@ public:
   Like(const std::string& name,
        std::unique_ptr<nebula::surface::eval::ValueEval> expr,
        const std::string& pattern,
-       bool caseSensitive = true)
+       bool caseSensitive = true,
+       bool unlike = false)
     : UdfLikeBase(
       name,
       std::move(expr),
-      [pattern, caseSensitive](const std::optional<InputType>& source) -> std::optional<NativeType> {
+      [pattern, caseSensitive, unlike](const std::optional<InputType>& source)
+        -> std::optional<NativeType> {
         if (N_UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
 
         auto v = source.value();
-        return match(v.data(), v.size(), 0, pattern.data(), pattern.size(), 0, caseSensitive);
+        auto m = match(v.data(), v.size(), 0,
+                       pattern.data(), pattern.size(), 0,
+                       caseSensitive);
+        return unlike ? !m : m;
       }) {}
   virtual ~Like() = default;
 };

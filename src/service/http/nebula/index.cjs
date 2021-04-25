@@ -4958,7 +4958,9 @@ proto.nebula.service.Operation = {
   MORE: 2,
   LESS: 3,
   LIKE: 4,
-  ILIKE: 5
+  ILIKE: 5,
+  UNLIKE: 6,
+  IUNLIKE: 7
 };
 
 /**

@@ -51,6 +51,7 @@ using nebula::api::dsl::like;
 using nebula::api::dsl::LogicalExpression;
 using nebula::api::dsl::nin;
 using nebula::api::dsl::Query;
+using nebula::api::dsl::reverse;
 using nebula::api::dsl::SortType;
 using nebula::api::dsl::starts;
 using nebula::api::dsl::table;
@@ -566,29 +567,30 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     CHAIN_AND_RET                                   \
   }
 
-  // Optimization:
-  // like expression can be fall back to "starts" if the pattern satisfy it
-#define BUILD_LIKE(CS)                                               \
-  static constexpr char matcher = '%';                               \
-  const auto& pattern = pred.value(0);                               \
-  size_t pos = 0;                                                    \
-  auto cursor = pattern.cbegin();                                    \
-  auto end = pattern.cend();                                         \
-  while (cursor < end) {                                             \
-    if (*cursor == matcher) {                                        \
-      break;                                                         \
-    }                                                                \
-                                                                     \
-    ++pos;                                                           \
-    ++cursor;                                                        \
-  }                                                                  \
-                                                                     \
-  if (pos == pattern.size() - 1) {                                   \
-    auto exp = starts(columnExpression, pattern.substr(0, pos), CS); \
-    CHAIN_AND_RET                                                    \
-  }                                                                  \
-                                                                     \
-  auto exp = like(columnExpression, pattern, CS);                    \
+// Optimization:
+// like expression can be fall back to "starts" if the pattern satisfy it
+// REV is to wrap `not()` around the expression
+#define BUILD_LIKE(CS, REV)                                               \
+  static constexpr char matcher = '%';                                    \
+  const auto& pattern = pred.value(0);                                    \
+  size_t pos = 0;                                                         \
+  auto cursor = pattern.cbegin();                                         \
+  auto end = pattern.cend();                                              \
+  while (cursor < end) {                                                  \
+    if (*cursor == matcher) {                                             \
+      break;                                                              \
+    }                                                                     \
+                                                                          \
+    ++pos;                                                                \
+    ++cursor;                                                             \
+  }                                                                       \
+                                                                          \
+  if (pos == pattern.size() - 1) {                                        \
+    auto exp = starts(columnExpression, pattern.substr(0, pos), CS, REV); \
+    CHAIN_AND_RET                                                         \
+  }                                                                       \
+                                                                          \
+  auto exp = like(columnExpression, pattern, CS, REV);                    \
   CHAIN_AND_RET
 
   switch (pop) {
@@ -597,10 +599,16 @@ std::shared_ptr<Expression> QueryHandler::buildPredicate(
     BUILD_LOGICAL_CASE(MORE, >)
     BUILD_LOGICAL_CASE(LESS, <)
   case Operation::LIKE: {
-    BUILD_LIKE(true)
+    BUILD_LIKE(true, false)
   }
   case Operation::ILIKE: {
-    BUILD_LIKE(false)
+    BUILD_LIKE(false, false)
+  }
+  case Operation::UNLIKE: {
+    BUILD_LIKE(true, true)
+  }
+  case Operation::IUNLIKE: {
+    BUILD_LIKE(false, true)
   }
   default:
     throw NException("Nebula predicate operation not supported yet");

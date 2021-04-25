@@ -525,3 +525,15 @@ export const ilike = (col, val) => ({
     o: OP.ILIKE,
     v: s([val])
 });
+
+export const unlike = (col, val) => ({
+    c: col,
+    o: OP.UNLIKE,
+    v: s([val])
+});
+
+export const iunlike = (col, val) => ({
+    c: col,
+    o: OP.IUNLIKE,
+    v: s([val])
+});

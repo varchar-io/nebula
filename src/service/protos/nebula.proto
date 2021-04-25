@@ -62,8 +62,6 @@ message TableStateResponse {
   repeated string hists = 8;
 }
 
-// define query request and response
-
 // single predicate which is column op [list of values]
 // Operation defines comparions op to form a predicate: =, !=, >, <
 enum Operation {
@@ -73,6 +71,8 @@ enum Operation {
   LESS = 3;
   LIKE = 4;
   ILIKE = 5;
+  UNLIKE = 6;
+  IUNLIKE = 7;
 }
 
 enum ZipFormat {

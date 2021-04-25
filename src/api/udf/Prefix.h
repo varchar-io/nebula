@@ -39,18 +39,23 @@ public:
     const std::string& name,
     std::unique_ptr<nebula::surface::eval::ValueEval> expr,
     const std::string& prefix,
-    bool caseSensitive = true)
+    bool caseSensitive = true,
+    bool opposite = false)
     : UdfPrefixBase(
       name,
       std::move(expr),
-      [prefix, caseSensitive](const std::optional<InputType>& source) -> std::optional<NativeType> {
+      [prefix, caseSensitive, opposite](const std::optional<InputType>& source)
+        -> std::optional<NativeType> {
         if (N_UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
 
         auto v = source.value();
-        return nebula::common::Chars::prefix(
-          v.data(), v.size(), prefix.data(), prefix.size(), !caseSensitive);
+        auto p = nebula::common::Chars::prefix(
+          v.data(), v.size(),
+          prefix.data(), prefix.size(),
+          !caseSensitive);
+        return opposite ? !p : p;
       }) {}
   virtual ~Prefix() = default;
 };

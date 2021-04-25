@@ -121,13 +121,25 @@ static ScriptExpression<T> script(const std::string& name, const std::string& sc
 }
 
 template <typename T>
-static LikeExpression like(const T& expr, const std::string& pattern, bool caseSensitive = true) {
-  return LikeExpression(std::shared_ptr<Expression>(new T(expr)), pattern, caseSensitive);
+static LikeExpression like(const T& expr,
+                           const std::string& pattern,
+                           bool caseSensitive = true,
+                           bool opposite = false) {
+  return LikeExpression(std::shared_ptr<Expression>(new T(expr)),
+                        pattern,
+                        caseSensitive,
+                        opposite);
 }
 
 template <typename T>
-static PrefixExpression starts(const T& expr, const std::string& prefix, bool caseSensitive = true) {
-  return PrefixExpression(std::shared_ptr<Expression>(new T(expr)), prefix, caseSensitive);
+static PrefixExpression starts(const T& expr,
+                               const std::string& prefix,
+                               bool caseSensitive = true,
+                               bool opposite = false) {
+  return PrefixExpression(std::shared_ptr<Expression>(new T(expr)),
+                          prefix,
+                          caseSensitive,
+                          opposite);
 }
 
 template <typename T, typename U>

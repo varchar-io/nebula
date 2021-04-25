@@ -77,8 +77,9 @@ struct ExpressionData {
   // extra customized info
   std::string custom;
 
-  // extra flag
+  // extra flags
   bool flag;
+  bool flag2;
 };
 
 // a type info structure for all expressions

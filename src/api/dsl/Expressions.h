@@ -598,8 +598,14 @@ protected:
 using LikeBase = BoolUDF<nebula::surface::eval::UDFType::LIKE>;
 class LikeExpression : public LikeBase {
 public:
-  LikeExpression(std::shared_ptr<Expression> left, const std::string& pattern, bool caseSensitive = true)
-    : LikeBase(left), pattern_{ pattern }, caseSensitive_{ caseSensitive } {}
+  LikeExpression(std::shared_ptr<Expression> left,
+                 const std::string& pattern,
+                 bool caseSensitive = true,
+                 bool unlike = false)
+    : LikeBase(left),
+      pattern_{ pattern },
+      caseSensitive_{ caseSensitive },
+      unlike_{ unlike } {}
 
 public:
   ALL_LOGICAL_OPS()
@@ -608,26 +614,35 @@ public:
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
       nebula::surface::eval::UDFType::LIKE,
-      nebula::type::Kind::VARCHAR>(expr_, pattern_, caseSensitive_);
+      nebula::type::Kind::VARCHAR>(expr_, pattern_, caseSensitive_, unlike_);
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
     auto data = LikeBase::serialize();
     data->custom = pattern_;
     data->flag = caseSensitive_;
+    data->flag2 = unlike_;
     return data;
   }
 
 private:
   std::string pattern_;
   bool caseSensitive_;
+  bool unlike_;
 };
 
 using PrefixBase = BoolUDF<nebula::surface::eval::UDFType::PREFIX>;
 class PrefixExpression : public PrefixBase {
 public:
-  PrefixExpression(std::shared_ptr<Expression> left, const std::string& prefix, bool caseSensitive = true)
-    : PrefixBase(left), prefix_{ prefix }, caseSensitive_{ caseSensitive } {}
+  PrefixExpression(
+    std::shared_ptr<Expression> left,
+    const std::string& prefix,
+    bool caseSensitive = true,
+    bool opposite = false)
+    : PrefixBase(left),
+      prefix_{ prefix },
+      caseSensitive_{ caseSensitive },
+      opposite_{ opposite } {}
 
 public:
   ALL_LOGICAL_OPS()
@@ -636,19 +651,21 @@ public:
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
       nebula::surface::eval::UDFType::PREFIX,
-      nebula::type::Kind::VARCHAR>(expr_, prefix_, caseSensitive_);
+      nebula::type::Kind::VARCHAR>(expr_, prefix_, caseSensitive_, opposite_);
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
     auto data = PrefixBase::serialize();
     data->custom = prefix_;
     data->flag = caseSensitive_;
+    data->flag2 = opposite_;
     return data;
   }
 
 private:
   std::string prefix_;
   bool caseSensitive_;
+  bool opposite_;
 };
 
 using InBase = BoolUDF<nebula::surface::eval::UDFType::IN>;
@@ -800,10 +817,10 @@ private:
 template <typename T>
 class HistExpression : public UDFExpression<nebula::surface::eval::UDFType::HIST, T, T> {
 public:
-    HistExpression(
-      std::shared_ptr<Expression> inner,
-      T min,
-      T max)
+  HistExpression(
+    std::shared_ptr<Expression> inner,
+    T min,
+    T max)
     : UDFExpression<nebula::surface::eval::UDFType::HIST, T, T>(inner, min, max) {}
 
 public:

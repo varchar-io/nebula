@@ -41,7 +41,9 @@ import {
     gt,
     lt,
     like,
-    ilike
+    ilike,
+    unlike,
+    iunlike,
 } from './__/sdk.min.js';
 import {
     Constraints
@@ -390,7 +392,9 @@ const restore = () => {
                 MORE: ">",
                 LESS: "<",
                 LIKE: "like",
-                ILIKE: "ilike"
+                ILIKE: "ilike",
+                UNLIKE: "unlike",
+                IUNLIKE: "iunlike"
             };
 
             const ops = {};
