@@ -72,7 +72,11 @@ export class Constraints {
             if (r) {
                 r.v.map(e => values.append(`<option value="${e}">${e}</option>`));
             }
+
+            // by default - comma is separator
+            // supporting comma by assigning delimiter as empty
             const sdv = values.selectize({
+                delimiter: '',
                 plugins: ['restore_on_backspace', 'remove_button'],
                 persist: false,
                 create: input => {
