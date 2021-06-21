@@ -825,7 +825,13 @@ const execute = (state) => {
 // when user click share button
 $('#share').on("click", () => {
     const path = location.href.substr(location.origin.length);
-    fetch(`/?api=url&url=${encodeURIComponent(path)}`, FETCH_OPT)
+    fetch(`/?api=url`, {
+            method: "POST",
+            headers: {
+                'content-type': 'application/json',
+            },
+            body: path
+        })
         .then(response => response.json())
         .then((data) => {
             if (data.code && data.code.length > 4) {
