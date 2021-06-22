@@ -406,7 +406,7 @@ const cmd_handlers = {
     "user": (req, res, q) => res.write(JSON.stringify(userInfo(q, req.headers))),
     "nuclear": (req, res, q) => res.write(shutdown()),
     "load": (req, res, q) => load(q.type, q.table, q.json, q.ttl || 3600, new Handler(res)),
-    "url": (req, res, q) => shorten(q.url, new Handler(res))
+    "url": (req, res, q) => shorten(q.url || q.post, new Handler(res))
 };
 
 const compression = (req) => {
@@ -434,6 +434,7 @@ const compression = (req) => {
     };
 };
 
+// read a post request body as a string
 const readPost = (req) => {
     // try to parse values into data
     return new Promise((resolve, reject) => {
@@ -506,11 +507,15 @@ createServer(async function (req, res) {
 
     const q = parsed.query;
     if (q.api) {
+        // fetch post body if present
+        if (req.method == "POST") {
+            q.post = await readPost(req).catch(e => log(`Error: ${e}`));
+        }
         // support post API in JSON as well if query object is not found in URL.
         // if URL specified query object, then POST data will be ignored
         // because it is an application/json data, so query is already json object
-        if (!q.query && req.method == "POST") {
-            q.query = await readPost(req).catch(e => log(`Error: ${e}`));
+        if (!q.query) {
+            q.query = q.post;
         }
 
         // pitfall: use brackets, otherwise it will become literal 'contentTypeKey'

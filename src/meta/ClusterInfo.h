@@ -109,9 +109,9 @@ public:
   void exit() noexcept {
     // do one more time backup before exiting
     // abnormal exiting handling (e.g. SIGINT)
+    // close will be responsible for backup if needed
     if (db_) {
       db_->close();
-      db_->backup();
     }
   }
 

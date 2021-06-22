@@ -424,8 +424,17 @@ std::string LoadClusterConfig() {
 }
 
 void signalHandler(int signum) {
+  static std::atomic<bool> signaled(false);
+
   LOG(INFO) << "Exiting nebula server by signal: " << signum;
-  nebula::service::base::bestEffortDie();
+  // if bestEffortDie failed again with another signal, this will cause an infinite loop
+  // and definitely it's not good to catch it as normal.
+  // https://code.google.com/archive/p/segvcatch/ is alternative way to make it as exception.
+  if (signaled == false) {
+    signaled = true;
+    nebula::service::base::bestEffortDie();
+  }
+
   exit(signum);
 }
 
