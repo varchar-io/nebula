@@ -306,8 +306,7 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   Evidence::Duration tick;
   ErrorCode error = ErrorCode::NONE;
 
-  auto tableName = request->table();
-
+  const auto tableName = request->table();
   // get the table registry and activate it by recording latest used time
   auto tr = TableService::singleton()->query(tableName);
   tr.activate();
@@ -320,6 +319,7 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
 
   // get query context
   auto context = buildQueryContext(ctx);
+  const auto user = context->user();
 
   // compile query into a query plan
   auto plan = handler_.compile(
@@ -331,7 +331,7 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   // create a remote connector and execute the query plan
   auto connector = std::make_shared<RemoteNodeConnector>(query);
   RowCursorPtr result = handler_.query(threadPool_, plan, connector, error);
-  auto durationMs = tick.elapsedMs();
+  const auto durationMs = tick.elapsedMs();
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, durationMs);
   }
@@ -343,17 +343,20 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   stats->set_rowsscanned(queryStats.rowsScan);
   stats->set_blocksscanned(queryStats.blocksScan);
   stats->set_rowsreturn(queryStats.rowsRet);
-  LOG(INFO) << "Finished a query in " << durationMs << "ms for " << queryStats.toString();
   tick.reset();
 
   // TODO(cao) - use JSON for now, this should come from message request
   // User/client can specify what kind of format of result it expects
   reply->set_type(DataType::JSON);
   reply->set_data(ServiceProperties::jsonify(result, plan->getOutputSchema()));
-  LOG(INFO) << "Serialize result to client takes " << tick.elapsedMs() << "ms";
 
-  // counting how many queries we have successfully served
-  LOG(INFO) << "Total query served: " << handler_.meta()->incrementQueryServed();
+  // ttime: transfer time = result serialization time
+  LOG(INFO) << "[Query] id=" << handler_.meta()->incrementQueryServed()
+            << ", table=" << tableName
+            << ", user=" << user
+            << ", latency=" << durationMs
+            << ", ttime=" << tick.elapsedMs()
+            << ", stats=" << queryStats.toString();
 
   return Status::OK;
 }
