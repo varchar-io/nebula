@@ -27,12 +27,22 @@ struct convert<nebula::meta::MetaConf> {
       return false;
     }
 
-    auto db = node["db"].as<std::string>();
-    if (db == "native") {
-      conf.type = nebula::meta::DBType::NATIVE;
+    auto nd = node["db"];
+    std::string db{ "none" };
+    if (nd) {
+      db = nd.as<std::string>();
     }
 
-    conf.store = node["store"].as<std::string>();
+    if (db == "native") {
+      conf.type = nebula::meta::DBType::NATIVE;
+    } else if (db == "none") {
+      conf.type = nebula::meta::DBType::NONE;
+    }
+
+    auto ns = node["store"];
+    if (ns) {
+      conf.store = ns.as<std::string>();
+    }
     return true;
   }
 };

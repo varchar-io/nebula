@@ -9,9 +9,9 @@ server:
   anode: false
   auth: false
 
+  # db could be "none" to not store anything
   meta:
-    db: native
-    store: s3://nebula/meta/
+    db: none
 
   discovery:
     method: config

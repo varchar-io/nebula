@@ -597,6 +597,10 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
 }
 
 std::unique_ptr<MetaDb> createMetaDB(const MetaConf& conf) {
+  if (conf.type == DBType::NONE) {
+    return std::make_unique<nebula::meta::VoidDb>();
+  }
+
   if (conf.type == DBType::NATIVE) {
     // generate a tmp path as local DB path
     return std::make_unique<NativeMetaDb>(conf.store);

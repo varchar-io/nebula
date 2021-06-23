@@ -32,6 +32,7 @@ namespace meta {
 
 // define metadb where metadata is stored and synced.
 enum class DBType {
+  NONE,
   NATIVE
 };
 

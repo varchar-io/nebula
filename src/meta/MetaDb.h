@@ -42,9 +42,9 @@ public:
 class VoidDb final : public MetaDb {
 public:
   ~VoidDb() = default;
-  inline virtual bool read(const std::string&, std::string&) const override { return true; }
-  inline virtual bool write(const std::string&, const std::string&) override { return true; }
-  inline virtual bool backup() noexcept override { return true; }
+  inline virtual bool read(const std::string&, std::string&) const override { return false; }
+  inline virtual bool write(const std::string&, const std::string&) override { return false; }
+  inline virtual bool backup() noexcept override { return false; }
   inline virtual void close() noexcept override {}
 };
 
