@@ -25,6 +25,7 @@
 #include "common/Hash.h"
 #include "memory/FlatRow.h"
 #include "surface/DataSurface.h"
+#include "type/Serde.h"
 #include "type/Type.h"
 
 /**
@@ -169,6 +170,7 @@ public:
     // sheet rows (size) doesn't really mean the data rows (many are empty not in data)
     // we need to find out the max rows of each column vector
     size_t maxRows = 0;
+    LOG(INFO) << "Load data with schema=" << nebula::type::TypeSerializer::to(schema);
     for (ST i = 0; i < numColumns; ++i) {
       auto columnVector = values[i].GetArray();
       auto numRows = columnVector.Size();
@@ -183,6 +185,9 @@ public:
         if (!headless) {
           auto name = nebula::common::normalize(columnVector[0].GetString());
           node = schema->find(name);
+          if (!node) {
+            LOG(WARNING) << "Name not found in schema:" << name << "|";
+          }
         }
 
         if (node) {

@@ -287,7 +287,8 @@ TEST(CommonTest, TestNormalize) {
     { "#$%X-RAY?!", "_x_ray_" },
     { "how! aRe you??", "how_are_you_" },
     { "#$%@#", "_" },
-    { "___123_#$%X___456_xyz?!", "_123_x_456_xyz_" }
+    { "___123_#$%X___456_xyz?!", "_123_x_456_xyz_" },
+    { "reason ", "reason_" }
   };
 
   for (auto itr = tests.begin(); itr != tests.end(); ++itr) {
