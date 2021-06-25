@@ -38,6 +38,9 @@ struct GoogleSheet {
   static constexpr auto BACKUP = "";
   // google sheets use columns data format
   static constexpr auto FORMAT = "COLUMNS";
+  // google sheet fetch date time in format of serial number or formatted string
+  static constexpr auto DTO_SERIAL_NUMBER = "SERIAL_NUMBER";
+  static constexpr auto DTO_FORMATTED_STRING = "FORMATTED_STRING";
   // serde to understand the data in each formats
   static constexpr auto SERDE = "JSON";
   // URI of the sheet (sheet or drive)
@@ -48,7 +51,7 @@ struct GoogleSheet {
   static constexpr auto GSHEET_URL_GET =
     "https://sheets.googleapis.com/v4/spreadsheets/"
     "{id}/values/{range}?majorDimension={format}&key={key}"
-    "&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER";
+    "&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption={dto}";
 
   // sheet ID
   std::string id;
@@ -136,17 +139,22 @@ struct GoogleSheet {
                              this->rows);
 
     // url
+    const auto timeSpecAvailable = tcol.length() > 0;
+    const auto& dtFormat = timeSpecAvailable ?
+                             GoogleSheet::DTO_SERIAL_NUMBER :
+                             GoogleSheet::DTO_FORMATTED_STRING;
     this->url = nebula::common::format(GoogleSheet::GSHEET_URL_GET,
                                        { { "id", id },
                                          { "range", range },
                                          { "format", GoogleSheet::FORMAT },
-                                         { "key", key } });
+                                         { "key", key },
+                                         { "dto", dtFormat } });
 
-    // TODO(cao): use a static time for now
-    if (tcol.length() > 0) {
+    // if time column/spec specified, use serial number for accurate parsing.
+    if (timeSpecAvailable) {
       this->timeSpec.type = nebula::meta::TimeType::COLUMN;
       this->timeSpec.colName = tcol;
-      this->timeSpec.pattern = "SERIAL_NUMBER";
+      this->timeSpec.pattern = GoogleSheet::DTO_SERIAL_NUMBER ;
     } else {
       this->timeSpec.type = nebula::meta::TimeType::STATIC;
       this->timeSpec.unixTimeValue = nebula::common::Evidence::unix_timestamp();
