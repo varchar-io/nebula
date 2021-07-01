@@ -17,6 +17,7 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <rapidjson/writer.h>
 #include <regex>
 #include <valarray>
 #include <xxh3.h>
@@ -1353,6 +1354,47 @@ TEST(CommonTest, TestStaticCharPointer) {
   std::string x = header_name();
   x += ":";
   EXPECT_EQ(x, "If-Match:");
+}
+
+TEST(CommonTest, TestRapidJsonHandles) {
+  // parse empty json string will signal failure
+  {
+    std::string str;
+    rapidjson::Document doc;
+    auto& parsed = doc.Parse(str.data(), str.size());
+    EXPECT_TRUE(parsed.HasParseError() || doc.IsObject());
+  }
+
+  // data writing
+  {
+    const std::string invalidJson = "{\"v\":Infinity}";
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer,
+                      rapidjson::UTF8<>,
+                      rapidjson::UTF8<>,
+                      rapidjson::CrtAllocator,
+                      rapidjson::kWriteNanAndInfFlag>
+      json(buffer);
+    json.StartObject();
+    json.Key("v");
+
+    // will succeed since we specified the flag
+    auto dr = json.Double(std::numeric_limits<float>::infinity());
+    EXPECT_TRUE(dr);
+    json.EndObject();
+    auto result = buffer.GetString();
+    LOG(INFO) << "result=" << result << "|dr=" << dr;
+    EXPECT_EQ(result, invalidJson);
+  }
+
+  // sum too many doubles will end up infinitiy?
+  {
+    float sum = std::numeric_limits<float>::max();
+    for (int i = 0; i < 100; ++i) {
+      sum += std::numeric_limits<float>::max();
+    }
+    EXPECT_EQ(std::to_string(sum), "inf");
+  }
 }
 
 } // namespace test

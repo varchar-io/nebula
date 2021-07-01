@@ -16,6 +16,7 @@
 
 #include "Histogram.h"
 
+#include <glog/logging.h>
 #include <rapidjson/document.h>
 
 #include "common/Errors.h"
@@ -26,13 +27,22 @@ namespace eval {
 
 std::shared_ptr<Histogram> from(const std::string& str) {
   rapidjson::Document doc;
-  auto& parsed = doc.Parse(str.data(), str.size());
-  N_ENSURE(!parsed.HasParseError() && doc.IsObject(), "invalid json for histogram.");
+  auto& parsed = doc.Parse<rapidjson::kParseNanAndInfFlag>(str.data(), str.size());
+  if (parsed.HasParseError() || !doc.IsObject()) {
+    // some bad values observed (sum field is not filled in serialization):
+    //  {"type":"REAL","count":4544,"min":0.0,"max":555.2260236721745,"sum":}
+    LOG(ERROR) << "Seen a bad histogram value:" << str;
+    return std::make_shared<Histogram>();
+  }
 
   // populate data into row object
   auto obj = doc.GetObject();
   auto type = obj.FindMember("type");
-  N_ENSURE(type != obj.MemberEnd(), "type is required for histogram.");
+  if (type == obj.MemberEnd()) {
+    LOG(ERROR) << "Seen no type in histogram value: " << str;
+    return std::make_shared<Histogram>();
+  }
+
   std::string_view s(type->value.GetString(), type->value.GetStringLength());
   // 4 types are supported BASE, BOOL, INT, REAL
   if (s == "BASE") {

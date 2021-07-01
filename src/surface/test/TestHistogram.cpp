@@ -102,6 +102,37 @@ TEST(HistogramTest, TestMerge) {
   }
 }
 
+TEST(HistogramTest, TestFailOver) {
+  // test realhistogram handling infinite value
+  {
+    const auto inf = std::numeric_limits<float>::infinity();
+    const auto expected = "{\"type\":\"REAL\",\"count\":2,\"min\":1.0,\"max\":3.6,\"sum\":Infinity}";
+    RealHistogram orig{ 2, 1.0, 3.6, inf };
+    EXPECT_EQ(orig.toString(), expected);
+    auto histBase = nebula::surface::eval::from(expected);
+    auto hist = static_cast<RealHistogram*>(histBase.get());
+    EXPECT_EQ(hist->count, 2);
+    EXPECT_NEAR(hist->v_min, 1.0, 0.0000000001);
+    EXPECT_NEAR(hist->v_max, 3.6, 0.0000000001);
+    EXPECT_FALSE(std::isfinite(hist->v_sum));
+  }
+  // test inthistogram handling infinite value
+  {
+    // integer's infinite value is 0
+    const auto inf = std::numeric_limits<int64_t>::infinity();
+    EXPECT_EQ(inf, 0);
+    const auto expected = "{\"type\":\"INT\",\"count\":2,\"min\":1,\"max\":3,\"sum\":0}";
+    IntHistogram orig{ 2, 1, 3, inf };
+    EXPECT_EQ(orig.toString(), expected);
+    auto histBase = nebula::surface::eval::from(expected);
+    auto hist = static_cast<IntHistogram*>(histBase.get());
+    EXPECT_EQ(hist->count, 2);
+    EXPECT_EQ(hist->v_min, 1);
+    EXPECT_EQ(hist->v_max, 3);
+    EXPECT_TRUE(std::isfinite(hist->v_sum));
+  }
+}
+
 } // namespace test
 } // namespace surface
 } // namespace nebula

@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <vector>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+#include <vector>
 
 #include "common/Likely.h"
 #include "fmt/format.h"
@@ -31,11 +31,16 @@ namespace eval {
  * Define histogram data - Count is common value indicating total valid values.
  */
 
-#define TOSTRING_JSON_START(TYPE)                          \
-  rapidjson::StringBuffer buffer;                          \
-  rapidjson::Writer<rapidjson::StringBuffer> json(buffer); \
-  json.StartObject();                                      \
-  json.Key("type");                                        \
+#define TOSTRING_JSON_START(TYPE)                   \
+  rapidjson::StringBuffer buffer;                   \
+  rapidjson::Writer<rapidjson::StringBuffer,        \
+                    rapidjson::UTF8<>,              \
+                    rapidjson::UTF8<>,              \
+                    rapidjson::CrtAllocator,        \
+                    rapidjson::kWriteNanAndInfFlag> \
+    json(buffer);                                   \
+  json.StartObject();                               \
+  json.Key("type");                                 \
   json.String(TYPE);
 
 #define TOSTRING_JSON_END \
