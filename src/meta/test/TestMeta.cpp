@@ -108,7 +108,9 @@ TEST(MetaTest, TestClusterConfigLoad) {
   clusterInfo.load(yamlFile, [](const nebula::meta::MetaConf&) {
     return std::unique_ptr<nebula::meta::MetaDb>(new nebula::meta::VoidDb());
   });
-  EXPECT_TRUE(clusterInfo.db().write("key", "value"));
+
+  // VoidDB now return false in its interfaces
+  EXPECT_FALSE(clusterInfo.db().write("key", "value"));
 
   // verify data against config file
   const auto& nodes = clusterInfo.nodes();

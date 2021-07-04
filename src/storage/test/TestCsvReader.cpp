@@ -75,6 +75,36 @@ TEST(CsvTest, TestMultiLineParse) {
   }
 }
 
+TEST(CsvTest, TestMultiLineEndWithEmpty) {
+  std::stringstream line("a,b,c,\n\n\nx,y,z,\r\n");
+  nebula::storage::CsvRow row(',');
+  {
+    row.readNext(line);
+    const auto& d = row.rawData();
+    EXPECT_EQ(d.size(), 4);
+    EXPECT_EQ(d.at(0), "a");
+    EXPECT_EQ(d.at(1), "b");
+    EXPECT_EQ(d.at(2), "c");
+    EXPECT_EQ(d.at(3), "");
+  }
+  {
+    row.readNext(line);
+    const auto& d = row.rawData();
+    EXPECT_EQ(d.size(), 4);
+    EXPECT_EQ(d.at(0), "x");
+    EXPECT_EQ(d.at(1), "y");
+    EXPECT_EQ(d.at(2), "z");
+    EXPECT_EQ(d.at(3), "");
+    EXPECT_FALSE(!line);
+  }
+  {
+    row.readNext(line);
+    const auto& d = row.rawData();
+    EXPECT_EQ(d.size(), 0);
+    EXPECT_TRUE(!line);
+  }
+}
+
 TEST(CsvTest, TestEscapedFields) {
   // test cases and expected results
   std::vector<std::tuple<std::string, std::vector<std::string>>> cases = {
@@ -137,6 +167,17 @@ TEST(CsvTest, TestComplexRealCsv) {
   }
 
   EXPECT_EQ(lines, 2);
+}
+
+TEST(CsvTest, TestCsvExportedFromGSheet) {
+  nebula::storage::CsvReader reader("test/data/birthrate.csv", ',', true, {});
+  auto lines = 0;
+  while (reader.hasNext()) {
+    auto& r = reader.next();
+    LOG(INFO) << "Row: " << ++lines << ", first column: " << r.readString("Country Name");
+  }
+
+  EXPECT_EQ(lines, 267);
 }
 
 } // namespace test

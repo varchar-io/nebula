@@ -53,12 +53,16 @@ bool endField(std::istream& str, char ch, const char deli) {
 }
 
 // form a cell value and return state: -1=no cell,0=non-last field, 1=last
-int32_t field(std::istream& str, std::string& cell, const char deli) {
+int32_t field(std::istream& str, std::string& cell, const char deli, const bool skip) {
   char ch;
-  // 1. do not start with any LF/CR
+  // 1. do not start with any LF/CR when there is no any fields yet (empty lines)
   while (!str.eof()) {
     str.read(&ch, 1);
-    if (ch != LF && ch != CR) {
+    if (ch == CR || ch == LF) {
+      if (!skip) {
+        return endField(str, ch, deli);
+      }
+    } else {
       break;
     }
   }
@@ -117,16 +121,19 @@ int32_t field(std::istream& str, std::string& cell, const char deli) {
 }
 
 // follow RFC4180 for CSV rules
-void CsvRow::readNext(std::istream& str) {
+bool CsvRow::readNext(std::istream& str) {
   data_.clear();
   int state = -1;
   do {
     std::string cell;
-    state = field(str, cell, delimiter_);
+    state = field(str, cell, delimiter_, data_.empty());
     if (state != -1 || data_.size() > 0) {
       data_.emplace_back(std::move(cell));
     }
   } while (state == 0);
+
+  // if read valid data in
+  return !data_.empty();
 }
 
 std::istream& operator>>(std::istream& str, CsvRow& data) {

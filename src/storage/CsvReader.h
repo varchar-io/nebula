@@ -86,7 +86,8 @@ public:
   }
 
 public:
-  void readNext(std::istream&);
+  // true if read a valid row, otherwise false
+  bool readNext(std::istream&);
   inline const std::vector<std::string>& rawData() const {
     return data_;
   }
@@ -113,7 +114,7 @@ public:
       for (size_t i = 0, size = columns.size(); i < size; ++i) {
         columns_[columns.at(i)] = i;
       }
-    } else if (fstream_ >> row_) {
+    } else if (row_.readNext(fstream_)) {
       headerRead = true;
       // parse the header as column list
       N_ENSURE(withHeader, "Header must be present if schema not provided.");
@@ -135,7 +136,7 @@ public:
     }
 
     // read one row
-    if (fstream_ >> row_) {
+    if (row_.readNext(fstream_)) {
       size_ = 1;
     }
   }
@@ -149,7 +150,7 @@ public:
 
     // read next row
     // we should handle those to skip less rows
-    while (fstream_ >> row_) {
+    while (row_.readNext(fstream_)) {
       // sometimes the data has trailing delimeter
       // and we may have one more collected than column size
       if (row_.rawData().size() >= columns_.size()) {
