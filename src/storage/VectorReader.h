@@ -183,7 +183,7 @@ public:
         // otherwise, we will use the column by index
         auto node = schema->childType(i);
         if (!headless) {
-          auto name = nebula::common::normalize(columnVector[0].GetString());
+          auto name = nebula::common::normalize(getTitle(columnVector[0]));
           node = schema->find(name);
           if (!node) {
             LOG(WARNING) << "Name not found in schema:" << name << "|";
@@ -223,6 +223,21 @@ public:
 
   virtual std::unique_ptr<nebula::surface::RowData> item(size_t) const override {
     throw NException("stream-based JSON Reader does not support random access.");
+  }
+
+private:
+  inline std::string getTitle(const rapidjson::Value& vt) {
+    if (vt.IsString()) {
+      return vt.GetString();
+    } else if (vt.IsInt()) {
+      return std::to_string(vt.GetInt());
+    } else if (vt.IsInt64()) {
+      return std::to_string(vt.GetInt64());
+    } else if (vt.IsDouble()) {
+      return std::to_string(vt.GetDouble());
+    } else {
+      return "unknown";
+    }
   }
 
 private:
