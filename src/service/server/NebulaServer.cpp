@@ -253,7 +253,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   std::vector<folly::Future<bool>> futures;
   futures.reserve(specs.size());
   for (auto spec : specs) {
-    auto promise = std::make_shared<folly::Promise<bool>>();
+    auto promise = std::make_shared<folly::Promise<TaskState>>();
 
     // pass values since we reutrn the whole lambda - don't reference temporary things
     // such as local stack allocated variables, including "this" the client itself.
@@ -264,31 +264,43 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
       TaskState state = client->task(t);
       if (state == TaskState::SUCCEEDED) {
         spec->setState(SpecState::READY);
-        promise->setValue(true);
         // update state immediately to reflesh the load state
         client->update();
-        return;
       }
 
-      // else return empty result set
-      promise->setValue(false);
+      // set the task state
+      promise->setValue(state);
     });
 
     futures.push_back(promise->getFuture());
   }
 
   auto x = folly::collectAll(futures).get();
-  auto succeeded = true;
+  auto unsuccess = TaskState::SUCCEEDED;
   for (auto it = x.begin(); it < x.end(); ++it) {
     // if the result is empty
-    if (!it->hasValue() || !it->value()) {
-      succeeded = false;
+    if (!it->hasValue()) {
+      unsuccess = TaskState::UNKNOWN;
+      break;
+    }
+
+    auto s = it->value();
+    if (s != TaskState::SUCCEEDED) {
+      unsuccess = s;
       break;
     }
   }
 
-  if (succeeded) {
+  if (unsuccess == TaskState::SUCCEEDED) {
     reply->set_error(err);
+    reply->set_loadtimems(tick.elapsedMs());
+    reply->set_table(tableName);
+    return Status::OK;
+  }
+
+  // if it's in processing, we let client know that
+  if (unsuccess == TaskState::PROCESSING) {
+    reply->set_error(LoadError::IN_LOADING);
     reply->set_loadtimems(tick.elapsedMs());
     reply->set_table(tableName);
     return Status::OK;

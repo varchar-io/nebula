@@ -87,6 +87,7 @@ TaskState TaskExecutor::execute(Task task) {
   }
 
   // execute the task and record its state
+  setState(task.type(), sign, TaskState::PROCESSING);
   auto state = process(task) ? TaskState::SUCCEEDED : TaskState::FAILED;
   setState(task.type(), sign, state);
 

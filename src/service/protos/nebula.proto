@@ -274,6 +274,7 @@ enum LoadError {
   ANAUTHORIZED = 4;
   EMPTY_RESULT = 5;
   NOT_SUPPORTED = 6;
+  IN_LOADING = 7;
 }
 
 // load command response
