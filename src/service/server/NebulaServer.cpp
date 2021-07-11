@@ -250,7 +250,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   // now we have a list of specs, let's assign nodes to these ingest specs and send to each node
   auto& threadPool = pool();
   auto connector = std::make_shared<node::RemoteNodeConnector>(nullptr);
-  std::vector<folly::Future<bool>> futures;
+  std::vector<folly::Future<TaskState>> futures;
   futures.reserve(specs.size());
   for (auto spec : specs) {
     auto promise = std::make_shared<folly::Promise<TaskState>>();
