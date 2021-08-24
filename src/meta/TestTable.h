@@ -31,14 +31,15 @@ namespace meta {
 class TestTable : public Table {
   static constexpr auto NAME = "nebula.test";
   static auto CP() {
-    static const Column COL_ID{ true, false, "", {} };
+    static const Column COL_ID{ true, false, false, "", {}, {} };
     // place an access rule on event column requiring user to be in nebula-users to read
     static const Column COL_EVENT{
       false,
       true,
       false,
       "",
-      { AccessRule{ AccessType::READ, { "nebula-users" }, ActionType::MASK } }
+      { AccessRule{ AccessType::READ, { "nebula-users" }, ActionType::MASK } },
+      {}
     };
     static const Column COL_TAG{
       false,

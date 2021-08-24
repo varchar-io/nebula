@@ -30,11 +30,11 @@ SET(ARROW_OPTS
   -DCMAKE_BUILD_TYPE=Release
   -DCMAKE_CXX_FLAGS=-I${RAPIDJSON_INCLUDE_DIR})
 
-# arrow versions after 0.13.0 does not work with boost 70
+# arrow 0.16.0 pass build on M1 (arm based)
 ExternalProject_Add(arrow
   PREFIX arrow
   GIT_REPOSITORY https://github.com/apache/arrow.git
-  GIT_TAG apache-arrow-0.14.0
+  GIT_TAG apache-arrow-0.16.0
   SOURCE_SUBDIR cpp
   CMAKE_ARGS ${ARROW_OPTS}
   UPDATE_COMMAND ""

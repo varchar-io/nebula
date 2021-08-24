@@ -72,3 +72,14 @@ On the page top, the demo video shows how nebula client SDK is used and tables a
         .limit(10)
         .run();
 ```
+
+# Open source
+Open source is wonderful - that is the reason we can build software and make innovations on top of others.
+Without these great open source projects, Nebula won't be possible: 
+
+- GRPC:     [network/communication](https://github.com/grpc/grpc)
+- Folly:    [algo/concurrency](https://github.com/facebook/folly)
+- QuickJS:  [fast/compact/embeded JS engine](https://github.com/bellard/quickjs)
+- Protobuf: [protocol buf - define interfaces](https://github.com/protocolbuffers/protobuf)
+
+Many others plays critical roles in Nebula: common tools (glog/gflags/gtest/yaml-cpp/fmt/leveldb), serde (msgpack/rapidjson/rdkafka), algos(xxhash, roaring bitmap, zstd, lz4)...

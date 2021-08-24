@@ -218,3 +218,7 @@ A local change to solve the the build break (in `~/nebula/build`):
 - mkdir build && cd build
 - cmake ..
 - make
+
+# FYI - Manual Fixes
+1. folly: DistributedMutex-inl.h:1052:5: error: 'atomic_notify_one<unsigned long>' is unavailable
+Fix: it refers to "std::" by default, just add the namespace "folly::" to atomic_notify_one call.

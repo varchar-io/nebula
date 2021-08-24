@@ -6,7 +6,7 @@ include(ExternalProject)
 ExternalProject_Add(nlohmann
     PREFIX nlohmann
     GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.9.1
+    GIT_TAG v3.10.1
     UPDATE_COMMAND ""
     INSTALL_DIR ${NEBULA_INSTALL}
     LOG_DOWNLOAD ON
@@ -32,7 +32,7 @@ SET(GCP_OPTS
 # can not use native one as Apple closed its usage
 # can be installed by brew
 if(APPLE)
-    SET(GCP_OPTS ${GCP_OPTS} "-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl")
+    SET(GCP_OPTS ${GCP_OPTS} "-DOPENSSL_ROOT_DIR=${OPT_DIR}/openssl")
 endif()
 
 ExternalProject_Add(gcp

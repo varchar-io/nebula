@@ -32,11 +32,18 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 set(CMAKE_INSTALL_PREFIX ${NEBULA_INSTALL})
 set(CMAKE_PREFIX_PATH ${NEBULA_INSTALL})
 
+# ON MAC, opt folder
+set(OPT_DIR /usr/local/opt)
+
 # a switch to use clang or g++
 # clang or g++
 # this switch only works on linux
 set(NC gcc)
 if(APPLE)
+  if(ARM STREQUAL "1")
+    set(OPT_DIR /opt/homebrew/opt)
+  endif()
+
   set(NCXX /usr/bin/g++)
   set(NCC /usr/bin/gcc)
   set(NCFLAGS "-Wall -Wextra -Werror -Wno-error=extern-c-compat -Wno-error=inconsistent-missing-override -Wno-error=nullability-completeness -Wno-error=sign-compare -Wno-error=unknown-warning-option")
@@ -169,7 +176,7 @@ set(BUILD_SHARED_LIBS OFF)
 if(APPLE)
   set(DL_EXT "dylib")
   set(CELLAR_ROOT /usr/local/Cellar)
-  add_link_options(-L/usr/local/opt/icu4c/lib)
+  add_link_options(-L${OPT_DIR}/icu4c/lib)
 else()
   set(DL_EXT "so")
   set(CELLAR_ROOT /home/linuxbrew/.linuxbrew/Cellar)

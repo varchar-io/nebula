@@ -10,8 +10,8 @@ SET(FOLLY_OPTS
 if(APPLE)
     SET(FOLLY_OPTS 
         ${FOLLY_OPTS}
-        -DOPENSSL_ROOT_DIR=/usr/local/opt/openssl
-        -DCMAKE_CXX_FLAGS=-L/usr/local/opt/icu4c/lib)
+        -DOPENSSL_ROOT_DIR=${OPT_DIR}/openssl
+        -DCMAKE_CXX_FLAGS=-L${OPT_DIR}/icu4c/lib)
 endif()
 
 ExternalProject_Add(folly

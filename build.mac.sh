@@ -12,6 +12,15 @@ if [ "$(uname -s)" != "Darwin" ]; then
   exit
 fi
 
+# On new Macbook (M1 chip), there are changes compared to intel chip.
+# such as homebrew uses different locations
+IS_ARM=0
+OPT_DIR="/usr/local/opt"
+if [ "$(uname -p)" == "arm" ]; then
+  IS_ARM=1
+  OPT_DIR="/opt/homebrew/opt"
+fi
+
 # create build folder
 ROOT=$(git rev-parse --show-toplevel)
 BUILD_DIR=$ROOT/build
@@ -58,6 +67,7 @@ preq zstd
 preq snappy
 preq lz4
 preq bzip2
+preq xz
 preq bison
 
 # folly dependencies
@@ -70,8 +80,8 @@ preq automake
 # execute cmake config with preset configs
 echo "enter password for sudo..."
 echo "-----------------------"
-SSL_ROOT=/usr/local/opt/openssl
-sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
+SSL_ROOT=$OPT_DIR/openssl
+sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DARM=1 -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
 
 # execute make
 sudo make -j$(sysctl -n hw.logicalcpu)

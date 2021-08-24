@@ -17,6 +17,7 @@ add_executable(CommonTests
     ${NEBULA_SRC}/common/test/TestCompression.cpp
     ${NEBULA_SRC}/common/test/TestDistAlgo.cpp
     ${NEBULA_SRC}/common/test/TestExts.cpp
+    ${NEBULA_SRC}/common/test/TestGcs.cpp
     ${NEBULA_SRC}/common/test/TestHash.cpp
     ${NEBULA_SRC}/common/test/TestIpAddr.cpp
     ${NEBULA_SRC}/common/test/TestJs.cpp
@@ -26,7 +27,7 @@ add_executable(CommonTests
     ${NEBULA_SRC}/common/test/TestStatsAlgo.cpp)
 
 target_link_libraries(CommonTests 
-    PRIVATE ${NEBULA_COMMON}    
+    PRIVATE ${NEBULA_COMMON}
     PRIVATE ${OMM_LIBRARY}
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY}

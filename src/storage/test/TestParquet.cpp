@@ -90,8 +90,9 @@ bool writeParquetFile(const std::string& file, size_t rows) {
   try {
     // Create a local file output stream instance.
     using FileClass = ::arrow::io::FileOutputStream;
-    std::shared_ptr<FileClass> out_file;
-    PARQUET_THROW_NOT_OK(FileClass::Open(file, &out_file));
+    arrow::Result<std::shared_ptr<FileClass>> result = FileClass::Open(file);
+    PARQUET_THROW_NOT_OK(result.status());
+    std::shared_ptr<FileClass> out_file = result.ValueOrDie();
 
     // Setup the parquet schema
     std::shared_ptr<GroupNode> schema = SetupSchema();

@@ -9,7 +9,8 @@ SET(ABSL_OPTS
     -DBUILD_TESTING=OFF
     -DBUILD_SHARED_LIBS=OFF
     -DABSL_USES_STD_STRING_VIEW=ON
-    -DABSL_USES_STD_OPTIONAL=ON)
+    -DABSL_USES_STD_OPTIONAL=ON
+    -DCMAKE_CXX_STANDARD=11)
 ExternalProject_Add(absl
     PREFIX absl
     GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git

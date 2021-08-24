@@ -1,6 +1,6 @@
 if(APPLE)
     # define libevent
-    set(ledir /usr/local/opt/libevent)
+    set(ledir ${OPT_DIR}/libevent)
     set(EVENT_INCLUDE_DIRS ${ledir}/include)
     set(EVENT_LIBRARY_PATH ${ledir}/lib/libevent.a)
     set(EVENT_CORE_PATH ${ledir}/lib/libevent_core.a)

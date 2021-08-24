@@ -1,8 +1,8 @@
 find_package(Threads REQUIRED)
 
 if(APPLE)
-  set(GFLAGS_INCLUDE_DIRS /usr/local/opt/gflags/include)
-  set(GFLAGS_LIBRARY_PATH /usr/local/opt/gflags/lib/libgflags.dylib)
+  set(GFLAGS_INCLUDE_DIRS ${OPT_DIR}/gflags/include)
+  set(GFLAGS_LIBRARY_PATH ${OPT_DIR}/gflags/lib/libgflags.dylib)
 else()
   set(COM_LIB_DIR /usr/lib/x86_64-linux-gnu)
   set(GFLAGS_INCLUDE_DIRS /usr/include)

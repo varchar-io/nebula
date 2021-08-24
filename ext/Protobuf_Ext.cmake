@@ -5,7 +5,7 @@ include(ExternalProject)
 ExternalProject_Add(protobuf
     PREFIX protobuf
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-    GIT_TAG v3.14.0
+    GIT_TAG v3.17.3
     UPDATE_COMMAND ""
     INSTALL_COMMAND ""
     CONFIGURE_COMMAND ""
@@ -17,9 +17,15 @@ ExternalProject_Add(protobuf
 # get source dir after download step
 ExternalProject_Get_Property(protobuf SOURCE_DIR)
 set(INST_DIR /usr/local)
+
+set(CMD_UPDATE_CACHE ldconfig)
+if(APPLE)
+set(CMD_UPDATE_CACHE update_dyld_shared_cache)
+endif()
+
 if(NOT EXISTS ${INST_DIR}/bin/protoc)
     add_custom_target(mprotobuf ALL
-        COMMAND sudo git submodule update --init --recursive && sudo ./autogen.sh && sudo ./configure --prefix=${INST_DIR} && sudo make install -j8 && sudo ldconfig
+        COMMAND sudo git submodule update --init --recursive && sudo ./autogen.sh && sudo ./configure --prefix=${INST_DIR} && sudo make install -j8 && sudo ${CMD_UPDATE_CACHE}
         WORKING_DIRECTORY ${SOURCE_DIR}
         DEPENDS protobuf)
 endif()

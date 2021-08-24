@@ -7,7 +7,7 @@ include(ExternalProject)
 ExternalProject_Add(grpc-java
   PREFIX grpc-java
   GIT_REPOSITORY https://github.com/grpc/grpc-java.git
-  GIT_TAG v1.25.0
+  GIT_TAG v1.40.1
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
   UPDATE_COMMAND ""
@@ -16,6 +16,8 @@ ExternalProject_Add(grpc-java
   LOG_CONFIGURE ON
   LOG_BUILD ON)
 
+# seems GRPC-java not working on ARM yet
+if(ARM STREQUAL "0")
   ExternalProject_Get_Property(grpc-java SOURCE_DIR)
   add_custom_target(build-grpc-java-compiler ALL
         COMMAND ../gradlew java_pluginExecutable -PskipAndroid=true
@@ -23,6 +25,7 @@ ExternalProject_Add(grpc-java
         DEPENDS grpc-java ${PROTOBUF_LIBRARY})
 
   SET(GRPC_JAVA_PLUGIN ${SOURCE_DIR}/compiler/build/exe/java_plugin/protoc-gen-grpc-java)
+endif()
 
 # build cares
 SET(CARES_OPTS
@@ -35,6 +38,7 @@ SET(CARES_OPTS
 ExternalProject_Add(c-ares
   PREFIX c-ares
   GIT_REPOSITORY https://github.com/c-ares/c-ares.git
+  GIT_TAG cares-1_17_2
   CMAKE_ARGS ${CARES_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
@@ -122,7 +126,7 @@ SET(GRPC_CMAKE_ARGS
 # unfortunately ssllib in latest macos doesn't allow application to use
 # they are internal used only - pointing to the version installed by brew
 if(APPLE)
-  SET(GRPC_CMAKE_ARGS ${GRPC_CMAKE_ARGS} "-DOPENSSL_ROOT_DIR:STRING=/usr/local/opt/openssl")
+  SET(GRPC_CMAKE_ARGS ${GRPC_CMAKE_ARGS} "-DOPENSSL_ROOT_DIR:STRING=${OPT_DIR}/openssl")
 else()
   SET(GRPC_CMAKE_ARGS ${GRPC_CMAKE_ARGS} "-DOPENSSL_ROOT_DIR:STRING=/usr/local/openssl")
 endif()

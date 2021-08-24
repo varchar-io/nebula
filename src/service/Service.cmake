@@ -48,17 +48,19 @@ add_custom_target(nebula_node_client ALL
     "${nproto}"
   DEPENDS ${nproto} ${PROTOBUF_LIBRARY})
 
-## java code
-SET(JAVA_GEN "${GEN_DIR}/java")
-file(MAKE_DIRECTORY ${JAVA_GEN})
-add_custom_target(nebula_java_client ALL
-  COMMAND ${PROTO_COMPILER}
-      --grpc_out="${JAVA_GEN}"
-      --java_out=${JAVA_GEN}
-      -I "${nproto_path}"
-      --plugin=protoc-gen-grpc="${GRPC_JAVA_PLUGIN}"
-      "${nproto}"
-DEPENDS build-grpc-java-compiler ${nproto} ${PROTOBUF_LIBRARY})
+## java code doesn't build on ARM based machine (M1) - disable it for now
+if(ARM STREQUAL "0")
+  SET(JAVA_GEN "${GEN_DIR}/java")
+  file(MAKE_DIRECTORY ${JAVA_GEN})
+  add_custom_target(nebula_java_client ALL
+    COMMAND ${PROTO_COMPILER}
+        --grpc_out="${JAVA_GEN}"
+        --java_out=${JAVA_GEN}
+        -I "${nproto_path}"
+        --plugin=protoc-gen-grpc="${GRPC_JAVA_PLUGIN}"
+        "${nproto}"
+  DEPENDS build-grpc-java-compiler ${nproto} ${PROTOBUF_LIBRARY})
+endif()
 
 # build flatbuffers schema
 get_filename_component(nfbs "${SERVICE_DIR}/fbs/node.fbs" ABSOLUTE)
