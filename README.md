@@ -40,8 +40,61 @@ Configure your data source from a permanent storage (file system) and run analyt
 AWS S3, Azure Blob Storage are often used storage system with support of file formats like CSV, Parquet, ORC. 
 These file formats and storage system are frequently used in modern big data ecosystems.
 
+For example, this simple config will let you analyze a S3 data on Nebula
+```yaml
+seattle.calls:
+  retention:
+    max-mb: 40000
+    max-hr: 0
+  schema: "ROW<cad:long, clearence:string, type:string, priority:int, init_type:string, final_type:string, queue_time:string, arrive_time:string, precinct:string, sector:string, beat:string>"
+  data: s3
+  loader: Swap
+  source: s3://nebula/seattle_calls.10k.tsv
+  backup: s3://nebula/n202/
+  format: csv
+  time:
+    type: column
+    column: queue_time
+    pattern: "%m/%d/%Y %H:%M:%S"
+  settings:
+    # csv delimiter - it defaults to tab key, so have to specify
+    # try to use tab rather than comma - nebula CSV reader may have bug if column value contains comma
+    # csv.delimiter: ","
+    # the data has header - it defaults to true hence can be ommited.
+    csv.header: true
+```
+
 ## Realtime Data Analytics
 Connect Nebula to real-time data source such as Kafka with data formats in thrift or JSON, and do real-time data analytics.
+
+For example, this config section will ask Nebula to connect one Kafka topic for real time code profiling.
+```yaml
+  k.pinterest-code:
+    retention:
+      max-mb: 200000
+      max-hr: 48
+    schema: "ROW<service:string, host:string, tag:string, lang:string, stack:string>"
+    data: kafka
+    topic: <topic>
+    loader: Roll
+    source: <brokers>
+    backup: s3://nebula/n116/
+    format: json
+    columns:
+      service:
+        dict: true
+      host:
+        dict: true
+      tag:
+        dict: true
+      lang:
+        dict: true
+    time:
+      # kafka will inject a time column when specified provided
+      type: provided
+    settings:
+      batch: 500
+```
 
 ## Ephemeral Data Analytics
 Define a template in Nebula, and load data through Nebula API to allow data live for specific period. 
@@ -50,6 +103,43 @@ Run analytics on Nebula to serve queries in this ephemeral data's life time.
 ## Sparse Storage
 Highly break down input data into huge small data cubes living in Nebula nodes, usually a simple predicate (filter) will massively 
 prune dowm data to scan for super low latency in your analytics.
+
+For exmaple, config internal partition leveraging sparse storage for super fast pruning for queries targeting specific dimension:
+(It also demonstrates how to set up column level access control: access group and access action for specific columns)
+```yaml
+  nebula.test:
+    retention:
+      # max 10G RAM assigment
+      max-mb: 10000
+      # max 10 days assignment
+      max-hr: 240
+    schema: "ROW<id:int, event:string, tag:string, items:list<string>, flag:bool, value:tinyint>"
+    data: custom
+    loader: NebulaTest
+    source: ""
+    backup: s3://nebula/n100/
+    format: none
+    # NOTE: refernece only, column properties defined here will not take effect
+    # because they are overwritten/decided by definition of TestTable.h
+    columns:
+      id:
+        bloom_filter: true
+      event:
+        access:
+          read:
+            groups: ["nebula-users"]
+            action: mask
+      tag:
+        partition:
+          values: ["a", "b", "c"]
+          chunk: 1
+    time:
+      type: static
+      # get it from linux by "date +%s"
+      value: 1565994194
+```
+
+
 
 ## Nebula Is Programmable
 Through the great projecct QuickJS, Nebula is able to support full ES6 programing through its simple UI code editor.
@@ -82,4 +172,8 @@ Without these great open source projects, Nebula won't be possible:
 - QuickJS:  [fast/compact/embeded JS engine](https://github.com/bellard/quickjs)
 - Protobuf: [protocol buf - define interfaces](https://github.com/protocolbuffers/protobuf)
 
-Many others plays critical roles in Nebula: common tools (glog/gflags/gtest/yaml-cpp/fmt/leveldb), serde (msgpack/rapidjson/rdkafka), algos(xxhash, roaring bitmap, zstd, lz4)...
+Many others are used by Nebula:
+- common tools (glog/gflags/gtest/yaml-cpp/fmt/leveldb)
+- serde (msgpack/rapidjson/rdkafka)
+- algos(xxhash, roaring bitmap, zstd, lz4)
+- ...
