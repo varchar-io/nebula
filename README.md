@@ -22,6 +22,11 @@ Documents of design, internals and stories will be shared at [project site](http
 ### Write an instant javascript function in real-time query.
 ![Transform column, aggregate by it with filters](./test/nebula-ide.png)
 
+## Slides
+[General talk](https://docs.google.com/presentation/d/1-npCBu_tLZRikMDvqOTHWzVLO3UuQxqEBedD3f0YnEE)
+I provide free talks / presentations, and short-term onboard consultanting.
+
+If you consider adopting Nebula, feel free to shoot me email at [email](mailto:caoxhua@gmail.com?subject=[Nebula]%20questions)
 
 # Get Started
 ## Run It!
@@ -177,3 +182,7 @@ Many others are used by Nebula:
 - serde (msgpack/rapidjson/rdkafka)
 - algos(xxhash, roaring bitmap, zstd, lz4)
 - ...
+
+# Adoptions
+
+![Pinterest](https://avatars.githubusercontent.com/u/541152?s=200&v=4)
