@@ -24,7 +24,7 @@ With Nebula, you could easily:
 
 * Write an instant javascript function in real-time query.
 
-![Transform column, aggregate by it with filters](./test/nebula-ide.png)
+![Transform column, aggregate by it with filters](./test/nebula-ide-cropped.png)
 
 To learn more about how to do it, please take a look at:
 
