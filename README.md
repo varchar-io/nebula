@@ -12,18 +12,25 @@ It can do much more than these:
 
 Documents of design, internals and stories will be shared at [project site](https://nebula.bz).
 
-## Demo
-### 10 minutes video
-[![Click To Watch Nebula Demo Video](./test/nebula-rep.png)](https://youtu.be/Fwevde7iBws "Nebula Demo")
+## Introduction
 
-### generating bar chart from 100GB data in 600ms
+With Nebula, you could easily:
+
+* Generate beautiful charts from TB's data in less than 1s
+
+![pretty chart 1](./test/nebula-rep.png)
+
 ![Generate bar from 700M rows in 600ms](./test/nebula-rep2.png)
 
-### Write an instant javascript function in real-time query.
+* Write an instant javascript function in real-time query.
 ![Transform column, aggregate by it with filters](./test/nebula-ide.png)
 
-## Slides
-[General talk](https://docs.google.com/presentation/d/1-npCBu_tLZRikMDvqOTHWzVLO3UuQxqEBedD3f0YnEE)
+To learn more about how to do it, please take a look at:
+
+- [10 minutes quick tutorial video](https://youtu.be/Fwevde7iBws)
+
+- [Nebula presentation slides](https://docs.google.com/presentation/d/1-npCBu_tLZRikMDvqOTHWzVLO3UuQxqEBedD3f0YnEE)
+
 I provide free talks / presentations, and short-term onboard consultanting.
 
 If you consider adopting Nebula, feel free to shoot me email at [email](mailto:caoxhua@gmail.com?subject=[Nebula]%20questions)
