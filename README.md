@@ -26,6 +26,8 @@ With Nebula, you could easily:
 
 ![Transform column, aggregate by it with filters](./test/nebula-ide-cropped.png)
 
+![Pivot data on client for visual](./test/nebula-sdk.png)
+
 To learn more about how to do it, please take a look at:
 
 - [10 minutes quick tutorial video](https://youtu.be/Fwevde7iBws)
