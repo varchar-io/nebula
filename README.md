@@ -23,6 +23,7 @@ With Nebula, you could easily:
 ![Generate bar from 700M rows in 600ms](./test/nebula-rep2.png)
 
 * Write an instant javascript function in real-time query.
+
 ![Transform column, aggregate by it with filters](./test/nebula-ide.png)
 
 To learn more about how to do it, please take a look at:
