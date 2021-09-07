@@ -4,7 +4,7 @@ import styles from './HomepageFeatures.module.css';
 
 const FeatureList = [
   {
-    title: 'Easy to Use',
+    title: 'Easy to use',
     description: (
       <>
         Nebula has almost no dependency to deploy a cluster.
