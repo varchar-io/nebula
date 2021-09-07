@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://varchar-io.github.io/blog</id>
+    <title>Nebula Blog</title>
+    <updated>2021-04-01T00:00:00.000Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://varchar-io.github.io/blog"/>
+    <subtitle>Nebula Blog</subtitle>
+    <icon>https://varchar-io.github.io/img/favicon.ico</icon>
+    <entry>
+        <title type="html"><![CDATA[Custom Column - Instant UDF]]></title>
+        <id>Custom Column - Instant UDF</id>
+        <link href="https://varchar-io.github.io/blog/2021/04/01/custom_column"/>
+        <updated>2021-04-01T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[Overview]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Expression, UDF, and UDAF]]></title>
+        <id>Expression, UDF, and UDAF</id>
+        <link href="https://varchar-io.github.io/blog/2021/03/01/expression_udf_udaf"/>
+        <updated>2021-03-01T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[Nebula analytics relies on aggregations, and these aggregations are expressed by]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Sketch: extensible customized aggregation]]></title>
+        <id>Sketch: extensible customized aggregation</id>
+        <link href="https://varchar-io.github.io/blog/2021/02/01/sketch"/>
+        <updated>2021-02-01T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[We need extensible model to support adding any customized data structure for special data aggregation.]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Web UI]]></title>
+        <id>Web UI</id>
+        <link href="https://varchar-io.github.io/blog/2021/01/01/web_ui"/>
+        <updated>2021-01-01T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[From service deployment perspective, there are 4 major components backs up Nebula service.]]></summary>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[BigInt Problem]]></title>
+        <id>BigInt Problem</id>
+        <link href="https://varchar-io.github.io/blog/2020/09/01/bigint"/>
+        <updated>2020-09-01T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[We know that Javascript can only represent 2^53-1 as it max number. For any values larger than that will lose precision during data exchange in javascript runtime. Most of the time, we have to pay cost to serializing 64bits in string format.]]></summary>
+    </entry>
+</feed>

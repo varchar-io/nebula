@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+    <channel>
+        <title>Nebula Blog</title>
+        <link>https://varchar-io.github.io/blog</link>
+        <description>Nebula Blog</description>
+        <lastBuildDate>Thu, 01 Apr 2021 00:00:00 GMT</lastBuildDate>
+        <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
+        <generator>https://github.com/jpmonette/feed</generator>
+        <item>
+            <title><![CDATA[Custom Column - Instant UDF]]></title>
+            <link>https://varchar-io.github.io/blog/2021/04/01/custom_column</link>
+            <guid>Custom Column - Instant UDF</guid>
+            <pubDate>Thu, 01 Apr 2021 00:00:00 GMT</pubDate>
+            <description><![CDATA[Overview]]></description>
+        </item>
+        <item>
+            <title><![CDATA[Expression, UDF, and UDAF]]></title>
+            <link>https://varchar-io.github.io/blog/2021/03/01/expression_udf_udaf</link>
+            <guid>Expression, UDF, and UDAF</guid>
+            <pubDate>Mon, 01 Mar 2021 00:00:00 GMT</pubDate>
+            <description><![CDATA[Nebula analytics relies on aggregations, and these aggregations are expressed by]]></description>
+        </item>
+        <item>
+            <title><![CDATA[Sketch: extensible customized aggregation]]></title>
+            <link>https://varchar-io.github.io/blog/2021/02/01/sketch</link>
+            <guid>Sketch: extensible customized aggregation</guid>
+            <pubDate>Mon, 01 Feb 2021 00:00:00 GMT</pubDate>
+            <description><![CDATA[We need extensible model to support adding any customized data structure for special data aggregation.]]></description>
+        </item>
+        <item>
+            <title><![CDATA[Web UI]]></title>
+            <link>https://varchar-io.github.io/blog/2021/01/01/web_ui</link>
+            <guid>Web UI</guid>
+            <pubDate>Fri, 01 Jan 2021 00:00:00 GMT</pubDate>
+            <description><![CDATA[From service deployment perspective, there are 4 major components backs up Nebula service.]]></description>
+        </item>
+        <item>
+            <title><![CDATA[BigInt Problem]]></title>
+            <link>https://varchar-io.github.io/blog/2020/09/01/bigint</link>
+            <guid>BigInt Problem</guid>
+            <pubDate>Tue, 01 Sep 2020 00:00:00 GMT</pubDate>
+            <description><![CDATA[We know that Javascript can only represent 2^53-1 as it max number. For any values larger than that will lose precision during data exchange in javascript runtime. Most of the time, we have to pay cost to serializing 64bits in string format.]]></description>
+        </item>
+    </channel>
+</rss>
