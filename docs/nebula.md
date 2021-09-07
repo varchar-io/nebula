@@ -1,1 +1,0 @@
-placeholder: scenarios, architecture, performance, api, deployment
