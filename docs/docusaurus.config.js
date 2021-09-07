@@ -6,13 +6,14 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 (module.exports = {
   title: 'Nebula',
   tagline: 'Extremely-fast Interactive Big Data Analytics',
-  url: 'https://nebula.bz',
+  url: 'https://varchar-io.github.io',
   baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico',
   organizationName: 'varchar-io', // Usually your GitHub org/user name.
   projectName: 'nebula', // Usually your repo name.
+  trailingSlash: false,
 
   presets: [
     [
@@ -42,7 +43,7 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
             position: 'left',
             label: 'Tutorial',
           },
-          {to: '/blog', label: 'Blog', position: 'left'},
+          { to: '/blog', label: 'Blog', position: 'left' },
           {
             href: 'https://github.com/varchar-io/nebula',
             label: 'GitHub',
