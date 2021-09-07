@@ -2,17 +2,19 @@
 layout: default
 ---
 
-# Time column, value and unit
+# Time 
+column, value and unit
+
 Internally - Nebula uses a reserved time column `__time__` to represent time point for every single record.
 It uses unix time UTC time value in seconds.
 
-# Local friendly time in the future
+## Local friendly time in the future
 In the future, we will enable user to see converted local time on its UI.
 
-# Time are supported mostly by javascript built-in Date object.
+## Time are supported mostly by javascript built-in Date object.
 So all user input from web or other client will be converted by `time.seconds` method.
 
-# Various forms of time supported
+## Various forms of time supported
 The time range start and end value can be any type of below format as long as it's valid
 
 - milliseconds: unix time in UTC milliseconds
