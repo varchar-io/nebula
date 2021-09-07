@@ -37,7 +37,7 @@ Nebula data gateway requires user principal or access token to query Nebula serv
 This provides a unified way to control data access in a fine-grained granularity.
 
 Here is a detailed post explaining how access control works and how it looks, check it out...
-[Nebula Access Control](access_control.md)
+[Nebula Access Control](2-access_control.md)
 
 ### Data Anonymization
 
@@ -135,8 +135,6 @@ Nebula supports two types of UDFs.
     };
 
   ```
-
-Here is a [quick note](expression_udf_udaf.md) on UDF, UDAF and its design choices.
 
 
 ### Visualization
