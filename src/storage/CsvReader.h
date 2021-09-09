@@ -23,6 +23,7 @@
 #include <string>
 
 #include "common/Errors.h"
+#include "common/Format.h"
 #include "common/Hash.h"
 #include "surface/DataSurface.h"
 
@@ -42,14 +43,16 @@ public:
     return false;
   }
 
-#define CONV_TYPE_INDEX(TYPE, FUNC)                    \
-  TYPE FUNC(const std::string& field) const override { \
-    auto index = columnLookup_(field);                 \
-    try {                                              \
-      return folly::to<TYPE>(data_.at(index));         \
-    } catch (std::exception & ex) {                    \
-      return TYPE();                                   \
-    }                                                  \
+#define CONV_TYPE_INDEX(TYPE, FUNC)                        \
+  TYPE FUNC(const std::string& field) const override {     \
+    auto index = columnLookup_(field);                     \
+    try {                                                  \
+      auto& v = const_cast<std::string&>(data_.at(index)); \
+      nebula::common::unformat<TYPE>(v);                   \
+      return folly::to<TYPE>(v);                           \
+    } catch (std::exception & ex) {                        \
+      return TYPE();                                       \
+    }                                                      \
   }
 
   CONV_TYPE_INDEX(bool, readBool)

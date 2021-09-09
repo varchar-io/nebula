@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <string>
 
 #include "Errors.h"
@@ -106,6 +107,26 @@ static inline std::string normalize(const std::string& input) {
   }
 
   return buffer;
+}
+
+template <typename T>
+static inline void unformat(std::string& input) {
+  if constexpr (std::is_arithmetic_v<T>) {
+    size_t r = 0, w = 0;
+    for (size_t size = input.size(); r < size; ++r) {
+      auto ch = input.at(r);
+      if (ch != ',' && ch != ' ') {
+        if (w != r) {
+          input.at(w) = input.at(r);
+        }
+        w++;
+      }
+    }
+
+    if (w < r) {
+      input.resize(w);
+    }
+  }
 }
 
 } // namespace common

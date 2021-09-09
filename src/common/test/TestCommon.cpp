@@ -1397,6 +1397,40 @@ TEST(CommonTest, TestRapidJsonHandles) {
   }
 }
 
+TEST(FormatTest, TestUnformat) {
+  std::vector<std::string> tests = {
+    "123,456",
+    "1,23,45,6",
+    "1,2345,6,",
+    "1,2,3,4,5,6",
+    "12, 3456",
+    "12345,6",
+    "123456,",
+    ", 123456"
+  };
+
+  // test string type has no change
+  for (size_t i = 0; i < tests.size(); ++i) {
+    // make a copy for test
+    std::string str(tests.at(i));
+    nebula::common::unformat<std::string>(str);
+    EXPECT_EQ(str, tests.at(i));
+  }
+
+  // test number type has removed comma and space
+  for (size_t i = 0; i < tests.size(); ++i) {
+    // make a copy for test
+    std::string str(tests.at(i));
+    nebula::common::unformat<int64_t>(str);
+    EXPECT_EQ(str, "123456");
+  }
+
+  // test one floating value
+  std::string fstr{ "123,456.789" };
+  nebula::common::unformat<float>(fstr);
+  EXPECT_EQ(fstr, "123456.789");
+}
+
 } // namespace test
 } // namespace common
 } // namespace nebula

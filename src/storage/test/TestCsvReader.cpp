@@ -180,6 +180,32 @@ TEST(CsvTest, TestCsvExportedFromGSheet) {
   EXPECT_EQ(lines, 267);
 }
 
+TEST(CsvTest, TestParseFormattedNumber) {
+  std::stringstream line("abc,\"123,456\",99");
+  nebula::storage::CsvRow row(',');
+  row.setSchema([](const std::string& name) {
+    if (name == "name") { return 0; }
+    if (name == "value") { return 1; }
+    if (name == "rank") { return 2; }
+    return -1;
+  });
+
+  row.readNext(line);
+  const auto& d = row.rawData();
+  EXPECT_EQ(d.size(), 3);
+  EXPECT_EQ(d.at(0), "abc");
+  EXPECT_EQ(d.at(1), "123,456");
+  EXPECT_EQ(d.at(2), "99");
+
+  // csv data relies on folly::to if it can't recognize the format?
+  // EXPECT_EQ(folly::to<int64_t>("123,456"), 123456);
+
+  // schema of the data is <string, bigint, int>
+  EXPECT_EQ(row.readString("name"), "abc");
+  EXPECT_EQ(row.readLong("value"), 123456);
+  EXPECT_EQ(row.readInt("rank"), 99);
+}
+
 } // namespace test
 } // namespace storage
 } // namespace nebula
