@@ -47,7 +47,7 @@ ExternalProject_Add(gcp
     LOG_BUILD ON)
 
 # gcp depends on absl
-add_dependencies(gcp nlohmann absl crc32c)
+add_dependencies(gcp nlohmann)
 
 # get source dir after download step
 ExternalProject_Get_Property(gcp SOURCE_DIR)
@@ -65,8 +65,8 @@ set_target_properties(${GCP_COMM_LIBRARY} PROPERTIES
 
 # find abseil since we already installed it
 # add_dependencies(${GCP_COMM_LIBRARY} absl Crc32c)
-# find_package(absl REQUIRED)
-# find_package(Crc32c REQUIRED)
+find_package(absl REQUIRED)
+find_package(Crc32c REQUIRED)
 target_link_libraries(${GCP_COMM_LIBRARY}
     INTERFACE absl::strings
     INTERFACE absl::time
