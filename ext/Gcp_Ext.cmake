@@ -2,6 +2,40 @@ find_package(Threads REQUIRED)
 
 include(ExternalProject)
 
+# install abseil (required >= c++ 11)
+# Note: use 11 rather than 17 so that we can use absl::string_view rather than std::string_view
+# because GCP common references absl::string_view directly
+SET(ABSL_OPTS
+    -DBUILD_TESTING=OFF
+    -DBUILD_SHARED_LIBS=OFF
+    -DABSL_USES_STD_STRING_VIEW=ON
+    -DABSL_USES_STD_OPTIONAL=ON
+    -DCMAKE_CXX_STANDARD=11)
+ExternalProject_Add(absl
+    PREFIX absl
+    GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
+    GIT_TAG 20200923.3
+    CMAKE_ARGS ${ABSL_OPTS}
+    INSTALL_DIR ${NEBULA_INSTALL}
+    LOG_DOWNLOAD ON
+    LOG_CONFIGURE ON
+    LOG_BUILD ON)
+
+# install crc32
+SET(CRC32C_OPTS
+    -DCRC32C_BUILD_TESTS=OFF
+    -DCRC32C_BUILD_BENCHMARKS=OFF)
+ExternalProject_Add(crc32c
+    PREFIX crc32c
+    GIT_REPOSITORY https://github.com/google/crc32c.git
+    GIT_TAG 1.1.1
+    CMAKE_ARGS ${CRC32C_OPTS}
+    UPDATE_COMMAND ""
+    INSTALL_DIR ${NEBULA_INSTALL}
+    LOG_DOWNLOAD ON
+    LOG_CONFIGURE ON
+    LOG_BUILD ON)
+
 # include nlohmann json
 ExternalProject_Add(nlohmann
     PREFIX nlohmann
@@ -47,7 +81,7 @@ ExternalProject_Add(gcp
     LOG_BUILD ON)
 
 # gcp depends on absl
-add_dependencies(gcp nlohmann)
+add_dependencies(gcp nlohmann absl crc32c)
 
 # get source dir after download step
 ExternalProject_Get_Property(gcp SOURCE_DIR)
@@ -65,8 +99,8 @@ set_target_properties(${GCP_COMM_LIBRARY} PROPERTIES
 
 # find abseil since we already installed it
 # add_dependencies(${GCP_COMM_LIBRARY} absl Crc32c)
-find_package(absl REQUIRED)
-find_package(Crc32c REQUIRED)
+# find_package(absl REQUIRED)
+# find_package(Crc32c REQUIRED)
 target_link_libraries(${GCP_COMM_LIBRARY}
     INTERFACE absl::strings
     INTERFACE absl::time

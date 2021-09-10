@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Support build on Ubuntu (tested on Ubuntu 18.0)
+# Support build on Ubuntu (tested on Ubuntu 20.04 LTS)
 # If the script doesn't work for you, look up manual steps in dev.md
 # This script is basically automation script of dev.md
 # It is supposed to run in same folder where the file lives (root).
@@ -19,7 +19,7 @@ mkdir -p $BUILD_DIR && cd $BUILD_DIR
 
 # on a complete new system -
 # before everything starts - need at least c compiler
-sudo apt install -y build-essential libssl-dev cmake
+sudo apt install -y build-essential libssl-dev cmake libboost-all-dev
 
 # packages could be installed by apt install
 aptGetInstallPackages=(
@@ -73,7 +73,7 @@ done
 # Install MBEDTLS
 (
   if [ -z "$(ls -A ./mbedtls)" ]; then
-    git clone https://github.com/ARMmbed/mbedtls.git
+    git clone --depth 1 --branch v3.0.0 https://github.com/ARMmbed/mbedtls.git
     cd mbedtls && mkdir build && cd build
     cmake -DCMAKE_CXX_FLAGS=-fPIC -DCMAKE_C_FLAGS=-fPIC .. && make -j$(nproc)
     sudo make install
@@ -83,7 +83,7 @@ done
 # Install LIBEVENT
 (
   if [ -z "$(ls -A ./libevent)" ]; then
-    git clone https://github.com/libevent/libevent.git
+    git clone --depth 1 --branch release-2.1.12-stable https://github.com/libevent/libevent.git
     cd libevent
     cmake . && make -j$(nproc)
     sudo make install

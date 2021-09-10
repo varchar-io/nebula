@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Support build on Ubuntu (tested on Ubuntu 18.0)
+# Support build on MacOs (tested on M1/arm based)
 # If the script doesn't work for you, look up manual steps in dev.md
 # This script is basically automation script of dev.md
 # It is supposed to run in same folder where the file lives (root).
