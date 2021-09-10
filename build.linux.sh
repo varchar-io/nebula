@@ -19,7 +19,7 @@ mkdir -p $BUILD_DIR && cd $BUILD_DIR
 
 # on a complete new system -
 # before everything starts - need at least c compiler
-sudo apt install -y build-essential libssl-dev openssl-devel cmake libboost-all-dev
+sudo apt install -y build-essential libssl-dev openssl cmake libboost-all-dev
 
 # packages could be installed by apt install
 aptGetInstallPackages=(
