@@ -245,9 +245,6 @@ set(VCPKG_TOOLS ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools)
 # include xxhash
 include(ext/Xxh_Ext.cmake)
 
-# add dependency of crc32c
-include(ext/Crc32c_Ext.cmake)
-
 # add dependency of pgquery
 include(ext/PGQuery_Ext.cmake)
 

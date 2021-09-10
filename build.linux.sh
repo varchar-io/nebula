@@ -90,6 +90,28 @@ done
   fi
 )
 
+# Install Abseil
+(
+  if [ -z "$(ls -A ./abseil-cpp)" ]; then
+    git clone --depth 1 --branch 20200923.3 https://github.com/abseil/abseil-cpp.git
+    cd abseil-cpp && mkdir build && cd build
+    cmake -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=OFF -DABSL_USES_STD_STRING_VIEW=ON -DABSL_USES_STD_OPTIONAL=ON -DCMAKE_CXX_STANDARD=11 ..
+    make -j$(nproc)
+    sudo make install
+  fi
+)
+
+# Install crc32c
+(
+  if [ -z "$(ls -A ./crc32c)" ]; then
+    git clone --depth 1 --branch 1.1.1 https://github.com/google/crc32c.git
+    cd crc32c && mkdir build && cd build
+    cmake -DCRC32C_BUILD_TESTS=OFF -DCRC32C_BUILD_BENCHMARKS=OFF ..
+    make -j$(nproc)
+    sudo make install
+  fi
+)
+
 # run nebula cmake
 echo "enter password for sudo..."
 echo "-----------------------"
