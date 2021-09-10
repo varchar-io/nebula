@@ -19,9 +19,9 @@ mkdir -p $BUILD_DIR && cd $BUILD_DIR
 
 # on a complete new system -
 # before everything starts - need at least c compiler
-sudo apt install -y build-essential libssl-dev
+sudo apt install -y build-essential libssl-dev cmake
 
-# packages could be installed by apt-get install
+# packages could be installed by apt install
 aptGetInstallPackages=(
   "libcurl4-gnutls-dev"
   "libunwind-dev"
@@ -60,14 +60,14 @@ aptGetInstallPackages=(
     sudo make install
   fi
 
-  # sudo apt-get update
-  sudo apt-get install -y gcc-10 g++-10
+  # sudo apt update
+  sudo apt install -y gcc-10 g++-10
   sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 900 --slave /usr/bin/g++ g++ /usr/bin/g++-10
 )
 
 # loop through aptGetInstallPackages to install
 for package in "${aptGetInstallPackages[@]}"; do
-    sudo apt-get install -y "$package"
+    sudo apt install -y "$package"
 done
 
 # Install MBEDTLS
