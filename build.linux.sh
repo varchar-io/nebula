@@ -106,7 +106,7 @@ done
   if [ -z "$(ls -A ./crc32c)" ]; then
     git clone --depth 1 --branch 1.1.1 https://github.com/google/crc32c.git
     cd crc32c && mkdir build && cd build
-    cmake -DCRC32C_BUILD_TESTS=OFF -DCRC32C_BUILD_BENCHMARKS=OFF ..
+    cmake -DCRC32C_BUILD_TESTS=OFF -DCRC32C_BUILD_BENCHMARKS=OFF -DCRC32C_USE_GLOG=OFF ..
     make -j$(nproc)
     sudo make install
   fi
