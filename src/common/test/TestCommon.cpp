@@ -1431,6 +1431,21 @@ TEST(FormatTest, TestUnformat) {
   EXPECT_EQ(fstr, "123456.789");
 }
 
+TEST(FormatTest, TestSheetColumnName) {
+  for (size_t i = 1; i < 150; ++i) {
+    LOG(INFO) << nebula::common::sheetColName(i);
+  }
+
+  EXPECT_EQ(nebula::common::sheetColName(1), "A");
+  EXPECT_EQ(nebula::common::sheetColName(5), "E");
+  EXPECT_EQ(nebula::common::sheetColName(10), "J");
+  EXPECT_EQ(nebula::common::sheetColName(20), "T");
+  EXPECT_EQ(nebula::common::sheetColName(26), "Z");
+  EXPECT_EQ(nebula::common::sheetColName(27), "AA");
+  EXPECT_EQ(nebula::common::sheetColName(52), "AZ");
+  EXPECT_EQ(nebula::common::sheetColName(77), "BY");
+}
+
 } // namespace test
 } // namespace common
 } // namespace nebula

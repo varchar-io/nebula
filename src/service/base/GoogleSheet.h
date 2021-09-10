@@ -133,11 +133,8 @@ struct GoogleSheet {
     this->settings["key"] = this->key;
 
     // TODO(cao): split this into multiple specs when row number is large
-    // TODO(cao): support more than 26 columns by following
-    // sheet column name pattern: [A-Z, AA, AB...ZZ]
-    // get range of the sheet => A1:{LAST_COL}{MAX_ROW}
     auto range = fmt::format("A1:{0}{1}",
-                             (char)('A' + std::max<size_t>(this->cols - 1, 25)),
+                             nebula::common::sheetColName(this->cols),
                              this->rows);
 
     // url
@@ -156,7 +153,7 @@ struct GoogleSheet {
     if (timeSpecAvailable) {
       this->timeSpec.type = nebula::meta::TimeType::COLUMN;
       this->timeSpec.colName = tcol;
-      this->timeSpec.pattern = GoogleSheet::DTO_SERIAL_NUMBER ;
+      this->timeSpec.pattern = GoogleSheet::DTO_SERIAL_NUMBER;
     } else {
       this->timeSpec.type = nebula::meta::TimeType::STATIC;
       this->timeSpec.unixTimeValue = nebula::common::Evidence::unix_timestamp();

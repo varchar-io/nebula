@@ -129,5 +129,30 @@ static inline void unformat(std::string& input) {
   }
 }
 
+// sheet column name pattern: [A-Z, AA, AB...ZZ]
+// get range of the sheet => A1:{LAST_COL}{MAX_ROW}
+
+static inline std::string sheetColName(size_t size) {
+  static const auto MAX_SIZE = 26 * 27;
+  static const auto BASE = 'A';
+  static const auto BAND = 26;
+
+  // maximum column to support is ZZ
+  if (--size >= MAX_SIZE) {
+    return "ZZ";
+  }
+
+  std::string str;
+
+  // maximum support till ZZ
+  auto high = size / BAND;
+  auto low = size % BAND;
+  if (high > 0) {
+    str.append(1, BASE + high - 1);
+  }
+  str.append(1, BASE + low);
+  return str;
+}
+
 } // namespace common
 } // namespace nebula
