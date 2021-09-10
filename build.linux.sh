@@ -12,6 +12,9 @@ if [ "$(uname -s)" != "Linux" ]; then
   exit
 fi
 
+# turn off git warning on specific branch checkout
+git config --global advice.detachedHead false
+
 ROOT=$(git rev-parse --show-toplevel)
 BUILD_DIR=$ROOT/build
 # enter into nebula build folder
