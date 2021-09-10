@@ -5,6 +5,7 @@ include(ExternalProject)
 ExternalProject_Add(bloom
   PREFIX bloom
   GIT_REPOSITORY https://github.com/mavam/libbf.git
+  GIT_TAG v1.0.0
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   LOG_DOWNLOAD ON
@@ -15,12 +16,8 @@ ExternalProject_Add(bloom
 ExternalProject_Get_Property(bloom SOURCE_DIR)
 ExternalProject_Get_Property(bloom BINARY_DIR)
 set(BF_INCLUDE_DIRS ${SOURCE_DIR})
+set(BF_LIBRARY_PATH ${BINARY_DIR}/lib/libbf.dylib)
 
-if(APPLE)
-    set(BF_LIBRARY_PATH ${BINARY_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}bf.dylib)
-else()
-    set(BF_LIBRARY_PATH ${BINARY_DIR}/lib/${CMAKE_FIND_LIBRARY_PREFIXES}bf.so)
-endif()
 set(BF_LIBRARY bf)
 add_library(${BF_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${BF_LIBRARY} PROPERTIES

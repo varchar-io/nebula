@@ -16,8 +16,8 @@ endif()
 
 ExternalProject_Add(folly
   PREFIX folly
-  GIT_REPOSITORY https://github.com/facebook/folly.git
-  GIT_TAG v2020.09.21.00
+  GIT_REPOSITORY https://github.com/varchar-io/folly.git
+  GIT_TAG patch-nebula
   CMAKE_ARGS ${FOLLY_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""

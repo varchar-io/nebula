@@ -12,9 +12,6 @@ if [ "$(uname -s)" != "Linux" ]; then
   exit
 fi
 
-# turn off git warning on specific branch checkout
-git config --global advice.detachedHead false
-
 ROOT=$(git rev-parse --show-toplevel)
 BUILD_DIR=$ROOT/build
 # enter into nebula build folder
@@ -125,7 +122,7 @@ SSL_ROOT=/usr/local/openssl
 (
   if [ -z "$(ls -A ${SSL_ROOT}/lib/libssl.a)" ]; then
     sudo rm -rf ./openssl
-    git clone --depth 1 --branch openssl-3.0.0 https://github.com/openssl/openssl.git
+    git clone --depth 1 --branch OpenSSL_1_1_1k https://github.com/openssl/openssl.git
     cd openssl && ./config --prefix=${SSL_ROOT} && make -j$(nproc) && sudo make install
   fi
 )
