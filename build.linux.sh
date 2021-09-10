@@ -115,7 +115,7 @@ done
 # run nebula cmake
 echo "enter password for sudo..."
 echo "-----------------------"
-sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=/usr/local/openssl
+sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=/usr/lib/x86_64-linux-gnu
 
 # execute make
 sudo make -j$(nproc)
