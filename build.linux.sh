@@ -17,6 +17,10 @@ BUILD_DIR=$ROOT/build
 # enter into nebula build folder
 mkdir -p $BUILD_DIR && cd $BUILD_DIR
 
+# on a complete new system -
+# before everything starts - need at least c compiler
+sudo apt install -y build-essential libssl-dev
+
 # packages could be installed by apt-get install
 aptGetInstallPackages=(
   "libcurl4-gnutls-dev"
@@ -86,19 +90,10 @@ done
   fi
 )
 
-# Install OpenSSL
-SSL_ROOT=/usr/local/openssl
-(
-  if [ -z "$(ls -A ./openssl)" ]; then
-    git clone https://github.com/openssl/openssl.git
-    cd openssl && ./config --prefix=${SSL_ROOT} && make -j$(nproc) && sudo make install
-  fi
-)
-
 # run nebula cmake
 echo "enter password for sudo..."
 echo "-----------------------"
-sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
+sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=/usr/local/openssl
 
 # execute make
 sudo make -j$(nproc)
