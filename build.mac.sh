@@ -52,6 +52,9 @@ preq() {
   fi
 }
 
+## fmt
+preq fmt
+
 ## boost
 preq boost
 

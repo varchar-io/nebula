@@ -23,6 +23,7 @@ sudo apt install -y build-essential libssl-dev cmake libboost-all-dev
 
 # packages could be installed by apt install
 aptGetInstallPackages=(
+  "libfmt-dev"
   "libcurl4-gnutls-dev"
   "libunwind-dev"
   "libiberty-dev"
