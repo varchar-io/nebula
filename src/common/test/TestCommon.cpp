@@ -191,15 +191,17 @@ TEST(CommonTest, TestSliceAndExtendableSlice) {
   EXPECT_EQ(cursor, 20);
   cursor += slice.write(cursor, 6.4);
   EXPECT_EQ(cursor, 28);
+  // different platform has different size: sizeof(8.9L)
+  const auto LD_SIZE = sizeof(8.9L);
   cursor += slice.write(cursor, 8.9L);
-  EXPECT_EQ(cursor, 44);
+  EXPECT_EQ(cursor, 28 + LD_SIZE);
   auto str = "abcxyz";
   cursor += slice.write(cursor, str, std::strlen(str));
-  EXPECT_EQ(cursor, 50);
+  EXPECT_EQ(cursor, 34 + LD_SIZE);
 
   int128_t i128 = 16;
   cursor += slice.write(cursor, i128);
-  EXPECT_EQ(cursor, 66);
+  EXPECT_EQ(cursor, 50 + LD_SIZE);
 
   // read all data written above
   EXPECT_EQ(slice.read<bool>(0), true);
@@ -210,8 +212,8 @@ TEST(CommonTest, TestSliceAndExtendableSlice) {
   EXPECT_EQ(slice.read<float>(16), 3.2f);
   EXPECT_EQ(slice.read<double>(20), 6.4);
   EXPECT_EQ(slice.read<long double>(28), 8.9L);
-  EXPECT_EQ(slice.read(44, 6), "abcxyz");
-  EXPECT_TRUE(slice.read<int128_t>(50) == i128);
+  EXPECT_EQ(slice.read(28 + LD_SIZE, 6), "abcxyz");
+  EXPECT_TRUE(slice.read<int128_t>(34 + LD_SIZE) == i128);
 
   // write to position overflow sinle slice - paged slice will auto grow
   slice.write(1050, 1.0);
