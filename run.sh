@@ -29,13 +29,18 @@ shopt -u nocasematch
 
 # get os name
 os=$(uname -s)
+arch=$(uname -p)
 os_dir=
 if [ "$os" == "Linux" ]; then
     os_dir="linux"
+    # TODO: support arm arch for linux too?
 fi
 
 if [ "$os" == "Darwin" ]; then
     os_dir="macos"
+    if [ "$arch" == "arm" ]; then
+        os_dir=$os_dir/arm
+    fi
 fi
 
 # assuming nebula code is ~/nebula

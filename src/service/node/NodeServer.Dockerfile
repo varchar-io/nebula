@@ -1,5 +1,8 @@
 FROM ubuntu:20.04
 
+# Set timezone:
+RUN ln -snf /usr/share/zoneinfo/$CONTAINER_TIMEZONE /etc/localtime && echo $CONTAINER_TIMEZONE > /etc/timezone
+
 RUN apt update
 RUN apt install -y software-properties-common \
   build-essential \
