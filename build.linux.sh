@@ -39,6 +39,7 @@ aptGetInstallPackages=(
   "libboost-dev"
   "liblz4-dev"
   "libzstd-dev"
+  "libbz2-dev"
   "libsnappy-dev"
   "liblzma-dev"
   "autoconf"
