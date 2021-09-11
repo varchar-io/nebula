@@ -23,7 +23,9 @@ namespace nebula {
 namespace common {
 namespace test {
 
-TEST(CommonTest, TestGcsQuickStart) {
+// Currently we are using CURL+GCS HTTP API to read gcs data
+// disable all GCP SDK tests - they crash in different versions
+TEST(CommonTest, DISABLED_TestGcsQuickStart) {
   // Create a client to communicate with Google Cloud Storage. This client
   // uses the default configuration for authentication and project id.
   const auto bucket_name = "nebula-com";
