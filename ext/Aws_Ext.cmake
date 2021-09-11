@@ -140,7 +140,7 @@ else()
   set(CURL_INCLUDE_DIRS /usr/include)
   # to link curl lib statically, use curl-config to see what is needed
   # /usr/bin/curl-config --cflags --static-libs
-  set(CURL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/libcurl.a)
+  set(CURL_LIBRARY_PATH /usr/lib/x86_64-linux-gnu/libcurl.so)
 endif()
 
 set(CURL_LIBRARY curl)
