@@ -16,7 +16,7 @@ ExternalProject_Add(bloom
 ExternalProject_Get_Property(bloom SOURCE_DIR)
 ExternalProject_Get_Property(bloom BINARY_DIR)
 set(BF_INCLUDE_DIRS ${SOURCE_DIR})
-set(BF_LIBRARY_PATH ${BINARY_DIR}/lib/libbf.dylib)
+set(BF_LIBRARY_PATH ${BINARY_DIR}/lib/libbf.${DL_EXT})
 
 set(BF_LIBRARY bf)
 add_library(${BF_LIBRARY} UNKNOWN IMPORTED)
