@@ -267,7 +267,7 @@ include(ext/Doubleconversion_Ext.cmake)
 include(ext/Libevent_Ext.cmake)
 
 # include highway for SIMD
-include(ext/Highway_Ext.cmake)
+# include(ext/Highway_Ext.cmake)
 
 # add a dependency of fmt 
 include(ext/Fmt_Ext.cmake)

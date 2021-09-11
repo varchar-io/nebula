@@ -5,7 +5,7 @@ include(ExternalProject)
 ExternalProject_Add(bloom
   PREFIX bloom
   GIT_REPOSITORY https://github.com/mavam/libbf.git
-  GIT_TAG v1.0.0
+  GIT_TAG 5478275d8a4e9a5cc163b44c34517c515bd898ec
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   LOG_DOWNLOAD ON
