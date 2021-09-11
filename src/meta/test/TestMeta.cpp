@@ -182,7 +182,8 @@ TEST(MetaTest, TestAccessRules) {
 
   // assume user has two normal groups
   nebula::common::unordered_set<std::string> groups;
-  groups.emplace("eng", "ads");
+  groups.emplace("eng");
+  groups.emplace("ads");
 
   // run check access function to ensure it works as expected
 #define TEST_COL_READ_ACCESS(COL, EXPECT) \

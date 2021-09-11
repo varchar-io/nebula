@@ -31,7 +31,7 @@ add_custom_command(
         -I "${nproto_path}"
         --plugin=protoc-gen-grpc="${GRPC_CPP_PLUGIN}"
         "${nproto}"
-      DEPENDS ${nproto} ${PROTOBUF_LIBRARY})
+      DEPENDS grpc ${nproto} ${PROTOBUF_LIBRARY})
 
 # Include generated *.pb.h files
 include_directories("${GEN_DIR}")
@@ -46,7 +46,7 @@ add_custom_target(nebula_node_client ALL
     -I "${nproto_path}"
     --plugin=protoc-gen-grpc="${GRPC_NODE_PLUGIN}"
     "${nproto}"
-  DEPENDS ${nproto} ${PROTOBUF_LIBRARY})
+  DEPENDS grpc ${nproto} ${PROTOBUF_LIBRARY})
 
 ## java code doesn't build on ARM based machine (M1) - disable it for now
 if(ARM STREQUAL "0")

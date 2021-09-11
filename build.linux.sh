@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Support build on Ubuntu (tested on Ubuntu 18.0)
+# Support build on Ubuntu (tested on Ubuntu 20.04 LTS)
 # If the script doesn't work for you, look up manual steps in dev.md
 # This script is basically automation script of dev.md
 # It is supposed to run in same folder where the file lives (root).
@@ -19,10 +19,11 @@ mkdir -p $BUILD_DIR && cd $BUILD_DIR
 
 # on a complete new system -
 # before everything starts - need at least c compiler
-sudo apt install -y build-essential libssl-dev cmake
+sudo apt install -y build-essential libssl-dev cmake libboost-all-dev
 
 # packages could be installed by apt install
 aptGetInstallPackages=(
+  "libfmt-dev"
   "libcurl4-gnutls-dev"
   "libunwind-dev"
   "libiberty-dev"
@@ -38,6 +39,7 @@ aptGetInstallPackages=(
   "libboost-dev"
   "liblz4-dev"
   "libzstd-dev"
+  "libbz2-dev"
   "libsnappy-dev"
   "liblzma-dev"
   "autoconf"
@@ -72,8 +74,9 @@ done
 
 # Install MBEDTLS
 (
-  if [ -z "$(ls -A ./mbedtls)" ]; then
-    git clone https://github.com/ARMmbed/mbedtls.git
+  if [ -z "$(ls -A /usr/local/lib/libmbedtls.a)" ]; then
+    sudo rm -rf ./mbedtls
+    git clone --depth 1 --branch v3.0.0 https://github.com/ARMmbed/mbedtls.git
     cd mbedtls && mkdir build && cd build
     cmake -DCMAKE_CXX_FLAGS=-fPIC -DCMAKE_C_FLAGS=-fPIC .. && make -j$(nproc)
     sudo make install
@@ -82,18 +85,53 @@ done
 
 # Install LIBEVENT
 (
-  if [ -z "$(ls -A ./libevent)" ]; then
-    git clone https://github.com/libevent/libevent.git
+  if [ -z "$(ls -A /usr/local/lib/libevent.a)" ]; then
+    sudo rm -rf ./libevent
+    git clone --depth 1 --branch release-2.1.12-stable https://github.com/libevent/libevent.git
     cd libevent
     cmake . && make -j$(nproc)
     sudo make install
   fi
 )
 
+# Install Abseil
+(
+  if [ -z "$(ls -A /usr/local/lib/libabsl_strings.a)" ]; then
+    sudo rm -rf ./abseil-cpp
+    git clone --depth 1 --branch 20200923.3 https://github.com/abseil/abseil-cpp.git
+    cd abseil-cpp && mkdir build && cd build
+    cmake -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=OFF -DABSL_USES_STD_STRING_VIEW=ON -DABSL_USES_STD_OPTIONAL=ON -DCMAKE_CXX_STANDARD=11 ..
+    make -j$(nproc)
+    sudo make install
+  fi
+)
+
+# Install crc32c
+(
+  if [ -z "$(ls -A /usr/local/lib/libcrc32c.a)" ]; then
+    sudo rm -rf ./crc32c
+    git clone --depth 1 --branch 1.1.1 https://github.com/google/crc32c.git
+    cd crc32c && mkdir build && cd build
+    cmake -DCRC32C_BUILD_TESTS=OFF -DCRC32C_BUILD_BENCHMARKS=OFF -DCRC32C_USE_GLOG=OFF ..
+    make -j$(nproc)
+    sudo make install
+  fi
+)
+
+# Install OpenSSL
+SSL_ROOT=/usr/local/openssl
+(
+  if [ -z "$(ls -A ${SSL_ROOT}/lib/libssl.a)" ]; then
+    sudo rm -rf ./openssl
+    git clone --depth 1 --branch OpenSSL_1_1_1k https://github.com/openssl/openssl.git
+    cd openssl && ./config --prefix=${SSL_ROOT} && make -j$(nproc) && sudo make install
+  fi
+)
+
 # run nebula cmake
 echo "enter password for sudo..."
 echo "-----------------------"
-sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=/usr/local/openssl
+sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=${SSL_ROOT}
 
 # execute make
 sudo make -j$(nproc)

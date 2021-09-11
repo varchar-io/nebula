@@ -245,12 +245,6 @@ set(VCPKG_TOOLS ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools)
 # include xxhash
 include(ext/Xxh_Ext.cmake)
 
-# add dependency of absl
-include(ext/Absl_Ext.cmake)
-
-# add dependency of crc32c
-include(ext/Crc32c_Ext.cmake)
-
 # add dependency of pgquery
 include(ext/PGQuery_Ext.cmake)
 
@@ -273,7 +267,7 @@ include(ext/Doubleconversion_Ext.cmake)
 include(ext/Libevent_Ext.cmake)
 
 # include highway for SIMD
-include(ext/Highway_Ext.cmake)
+# include(ext/Highway_Ext.cmake)
 
 # add a dependency of fmt 
 include(ext/Fmt_Ext.cmake)

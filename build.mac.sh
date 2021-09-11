@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Support build on Ubuntu (tested on Ubuntu 18.0)
+# Support build on MacOs (tested on M1/arm based)
 # If the script doesn't work for you, look up manual steps in dev.md
 # This script is basically automation script of dev.md
 # It is supposed to run in same folder where the file lives (root).
@@ -52,6 +52,9 @@ preq() {
   fi
 }
 
+## fmt
+preq fmt
+
 ## boost
 preq boost
 
@@ -62,6 +65,7 @@ preq openssl
 preq curl
 
 # compressions: zlib, zstd, snappy, lz4, bzip2
+preq gzip
 preq zlib
 preq zstd
 preq snappy
@@ -76,6 +80,18 @@ preq icu4c
 
 # perf tools build using automake
 preq automake
+
+
+# build and install gflags - brew has only dylib
+(
+  if [ -z "$(ls -A /usr/local/lib/libgflags.a)" ]; then
+    sudo rm -rf ./gflags
+    git clone --depth 1 --branch v2.2.2 https://github.com/gflags/gflags.git
+    cd gflags && mkdir bd && cd bd
+    cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_STATIC_LIBS=ON -DBUILD_TESTING=OFF ..
+    make && sudo make install
+  fi
+)
 
 # execute cmake config with preset configs
 echo "enter password for sudo..."

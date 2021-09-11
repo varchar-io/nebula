@@ -3,6 +3,9 @@
 # root build script to dispath to different platform
 ROOT=$(git rev-parse --show-toplevel)
 
+# turn off git warning on specific branch checkout
+git config --global advice.detachedHead false
+
 # use vcpkg to manage major packages
 # install vcpkg and use vcpkg to install our dependencies
 # 1. install vcpkg to $HOME

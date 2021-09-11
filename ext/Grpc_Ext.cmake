@@ -76,8 +76,8 @@ SET(FB_OPTS
   -DFLATBUFFERS_BUILD_TESTS:BOOL=OFF)
 ExternalProject_Add(flatbuffers
   PREFIX flatbuffers
-  GIT_REPOSITORY https://github.com/google/flatbuffers.git
-  GIT_TAG v1.12.0
+  GIT_REPOSITORY https://github.com/varchar-io/flatbuffers.git
+  GIT_TAG patch-nebula
   CMAKE_ARGS ${FB_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
@@ -135,8 +135,8 @@ endif()
 # or submit PR to fix ByteBuffer used in Deserialize method
 ExternalProject_Add(grpc
   PREFIX grpc
-  GIT_REPOSITORY https://github.com/grpc/grpc.git
-  GIT_TAG v1.20.0
+  GIT_REPOSITORY https://github.com/varchar-io/grpc.git
+  GIT_TAG patch-nebula
   CMAKE_CACHE_ARGS ${GRPC_CMAKE_ARGS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
