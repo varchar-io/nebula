@@ -6,12 +6,14 @@ find_package(Threads REQUIRED)
 SET(AWS_CMAKE_BUILD_OPTIONS
   -DBUILD_SHARED_LIBS:BOOL=ON
   -DENABLE_UNITY_BUILD=ON
+  -DENABLE_TESTING=OFF
   -DENABLE_FUNCTIONAL_TESTING=OFF
   -DBUILD_DEPS:BOOL=ON
   -DBUILD_ONLY:STRING=s3
   -DCPP_STANDARD=17
   -DCMAKE_BUILD_TYPE=Release
   -DCMAKE_CXX_FLAGS=-Wno-error=deprecated-declarations
+  -DCMAKE_CXX_FLAGS=-Wno-error=uninitialized
   -DCUSTOM_MEMORY_MANAGEMENT=0)
 
 # https://cmake.org/cmake/help/latest/module/ExternalProject.html
