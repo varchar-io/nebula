@@ -85,7 +85,7 @@ set_target_properties(${AWS_CHECKSUMS_LIBRARY} PROPERTIES
 # set up dependencies - eventstream
 set(AWS_EVENTSTREAM_INCLUDE_DIR ${CRT_SRC_ROOT}/aws-c-event-stream/include)
 file(MAKE_DIRECTORY ${AWS_EVENTSTREAM_INCLUDE_DIR})
-set(AWS_EVENTSTREAM_LIBRARY_PATH ${BINARY_DIR}/lib/libaws-c-event-stream.a)
+set(AWS_EVENTSTREAM_LIBRARY_PATH ${BINARY_DIR}/lib/libaws-c-event-stream.a ${BINARY_DIR}/lib/libs2n.a)
 set(AWS_EVENTSTREAM_LIBRARY awseventstream)
 add_library(${AWS_EVENTSTREAM_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${AWS_EVENTSTREAM_LIBRARY} PROPERTIES
