@@ -41,7 +41,7 @@ set(CRT_LIB_ROOT ${BINARY_DIR}/crt/aws-crt-cpp/crt)
 # set up dependencies - io
 set(AWS_IO_INCLUDE_DIR ${CRT_SRC_ROOT}/aws-c-io/include)
 file(MAKE_DIRECTORY ${AWS_IO_INCLUDE_DIR})
-set(AWS_IO_LIBRARY_PATH ${CRT_LIB_ROOT}/aws-c-io/libaws-c-io.${DL_EXT})
+set(AWS_IO_LIBRARY_PATH ${CRT_LIB_ROOT}/aws-c-io/libaws-c-io.a)
 set(AWS_IO_LIBRARY awsio)
 add_library(${AWS_IO_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${AWS_IO_LIBRARY} PROPERTIES
@@ -52,7 +52,7 @@ set_target_properties(${AWS_IO_LIBRARY} PROPERTIES
 # set up dependencies - io
 set(AWS_MQTT_INCLUDE_DIR ${CRT_SRC_ROOT}/aws-c-mqtt/include)
 file(MAKE_DIRECTORY ${AWS_MQTT_INCLUDE_DIR})
-set(AWS_MQTT_LIBRARY_PATH ${CRT_LIB_ROOT}/aws-c-mqtt/libaws-c-mqtt.${DL_EXT})
+set(AWS_MQTT_LIBRARY_PATH ${CRT_LIB_ROOT}/aws-c-mqtt/libaws-c-mqtt.a)
 set(AWS_MQTT_LIBRARY awsmqtt)
 add_library(${AWS_MQTT_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${AWS_MQTT_LIBRARY} PROPERTIES
@@ -63,7 +63,7 @@ set_target_properties(${AWS_MQTT_LIBRARY} PROPERTIES
 # set up dependencies - common
 set(AWS_COMMON_INCLUDE_DIR ${CRT_SRC_ROOT}/aws-c-common/include ${CRT_LIB_ROOT}/aws-c-common/generated/include)
 file(MAKE_DIRECTORY ${AWS_COMMON_INCLUDE_DIR})
-set(AWS_COMMON_LIBRARY_PATH ${CRT_LIB_ROOT}/aws-c-common/libaws-c-common.${DL_EXT})
+set(AWS_COMMON_LIBRARY_PATH ${CRT_LIB_ROOT}/aws-c-common/libaws-c-common.a)
 set(AWS_COMMON_LIBRARY awscommon)
 add_library(${AWS_COMMON_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${AWS_COMMON_LIBRARY} PROPERTIES
@@ -74,7 +74,7 @@ set_target_properties(${AWS_COMMON_LIBRARY} PROPERTIES
 # set up dependencies - checksums
 set(AWS_CHECKSUMS_INCLUDE_DIR ${CRT_SRC_ROOT}/aws-checksums/include)
 file(MAKE_DIRECTORY ${AWS_CHECKSUMS_INCLUDE_DIR})
-set(AWS_CHECKSUMS_LIBRARY_PATH ${CRT_LIB_ROOT}/aws-checksums/libaws-checksums.${DL_EXT})
+set(AWS_CHECKSUMS_LIBRARY_PATH ${CRT_LIB_ROOT}/aws-checksums/libaws-checksums.a)
 set(AWS_CHECKSUMS_LIBRARY awschecksums)
 add_library(${AWS_CHECKSUMS_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${AWS_CHECKSUMS_LIBRARY} PROPERTIES
@@ -85,7 +85,7 @@ set_target_properties(${AWS_CHECKSUMS_LIBRARY} PROPERTIES
 # set up dependencies - eventstream
 set(AWS_EVENTSTREAM_INCLUDE_DIR ${CRT_SRC_ROOT}/aws-c-event-stream/include)
 file(MAKE_DIRECTORY ${AWS_EVENTSTREAM_INCLUDE_DIR})
-set(AWS_EVENTSTREAM_LIBRARY_PATH ${BINARY_DIR}/lib/libaws-c-event-stream.${DL_EXT})
+set(AWS_EVENTSTREAM_LIBRARY_PATH ${BINARY_DIR}/lib/libaws-c-event-stream.a)
 set(AWS_EVENTSTREAM_LIBRARY awseventstream)
 add_library(${AWS_EVENTSTREAM_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${AWS_EVENTSTREAM_LIBRARY} PROPERTIES
@@ -96,7 +96,7 @@ set_target_properties(${AWS_EVENTSTREAM_LIBRARY} PROPERTIES
 # set up dependencies - crt
 set(AWS_CRT_INCLUDE_DIR ${SOURCE_DIR}/crt/aws-crt-cpp/include)
 file(MAKE_DIRECTORY ${AWS_CRT_INCLUDE_DIR})
-set(AWS_CRT_LIBRARY_PATH ${BINARY_DIR}/crt/aws-crt-cpp/libaws-crt-cpp.${DL_EXT})
+set(AWS_CRT_LIBRARY_PATH ${BINARY_DIR}/crt/aws-crt-cpp/libaws-crt-cpp.a)
 set(AWS_CRT_LIBRARY awscrt)
 add_library(${AWS_CRT_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${AWS_CRT_LIBRARY} PROPERTIES
@@ -107,7 +107,7 @@ set_target_properties(${AWS_CRT_LIBRARY} PROPERTIES
 # add AWS core
 set(AWS_CORE_INCLUDE_DIRS ${SOURCE_DIR}/aws-cpp-sdk-core/include)
 file(MAKE_DIRECTORY ${AWS_CORE_INCLUDE_DIRS})
-set(AWS_CORE_LIBRARY_PATH ${BINARY_DIR}/aws-cpp-sdk-core/libaws-cpp-sdk-core.${DL_EXT})
+set(AWS_CORE_LIBRARY_PATH ${BINARY_DIR}/aws-cpp-sdk-core/libaws-cpp-sdk-core.a)
 
 set(AWS_CORE_LIBRARY awscore)
 add_library(${AWS_CORE_LIBRARY} UNKNOWN IMPORTED)
@@ -121,7 +121,7 @@ add_dependencies(${AWS_CORE_LIBRARY} aws)
 # add AWS S3
 set(AWS_S3_INCLUDE_DIRS ${SOURCE_DIR}/aws-cpp-sdk-s3/include)
 file(MAKE_DIRECTORY ${AWS_S3_INCLUDE_DIRS})
-set(AWS_S3_LIBRARY_PATH ${BINARY_DIR}/aws-cpp-sdk-s3/libaws-cpp-sdk-s3.${DL_EXT})
+set(AWS_S3_LIBRARY_PATH ${BINARY_DIR}/aws-cpp-sdk-s3/libaws-cpp-sdk-s3.a)
 set(AWS_S3_LIBRARY awss3)
 add_library(${AWS_S3_LIBRARY} UNKNOWN IMPORTED)
 set_target_properties(${AWS_S3_LIBRARY} PROPERTIES
