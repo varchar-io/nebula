@@ -239,7 +239,7 @@ endif()
 
 # add a bundle
 set(AWS_LIBRARY awslib)
-add_library(${AWS_LIBRARY} IMPORTED)
+add_library(${AWS_LIBRARY} PUBLIC IMPORTED)
 target_link_libraries(${AWS_LIBRARY} 
   PRIVATE ${AWS_S3_LIBRARY}
   PRIVATE ${AWS_CORE_LIBRARY}
