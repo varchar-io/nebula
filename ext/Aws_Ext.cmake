@@ -4,7 +4,7 @@ find_package(Threads REQUIRED)
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/setup.html
 # https://docs.aws.amazon.com/sdk-for-cpp/v1/developer-guide/cmake-params.html
 SET(AWS_CMAKE_BUILD_OPTIONS
-  -DBUILD_SHARED_LIBS:BOOL=ON
+  -DBUILD_SHARED_LIBS:BOOL=OFF
   -DENABLE_UNITY_BUILD=ON
   -DENABLE_TESTING=OFF
   -DENABLE_FUNCTIONAL_TESTING=OFF
