@@ -5,6 +5,7 @@ services:
       context: ./
       dockerfile: ./node/NodeServer.Dockerfile
     image: nebula/node
+    platform: linux/amd64
     ports:
       - "9199:9199"
     cap_add:
@@ -17,6 +18,7 @@ services:
       context: ./
       dockerfile: ./server/NebulaServer.Dockerfile
     image: nebula/server
+    platform: linux/amd64
     ports:
       - "9190:9190"
     # We're using this for performance profiling NET_ADMIN, SYS_ADMIN
@@ -32,6 +34,7 @@ services:
       context: ./
       dockerfile: ./http/web.Dockerfile
     image: nebula/web
+    platform: linux/amd64
     ports:
       - "8088:8088"
     network_mode: "host"
