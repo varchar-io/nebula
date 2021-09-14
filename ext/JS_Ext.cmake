@@ -13,8 +13,8 @@ find_package(Threads REQUIRED)
 include(ExternalProject)
 ExternalProject_Add(quickjs
     PREFIX quickjs
-    GIT_REPOSITORY https://github.com/bellard/quickjs
-    GIT_TAG 204682fb87ab9312f0cf81f959ecd181180457bc
+    GIT_REPOSITORY https://github.com/varchar-io/quickjs
+    GIT_TAG patch-nebula
     UPDATE_COMMAND ""
     INSTALL_COMMAND ""
     CONFIGURE_COMMAND ""
