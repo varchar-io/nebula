@@ -20,11 +20,11 @@ target_link_libraries(${NEBULA_STORAGE}
     PUBLIC ${URIP_LIBRARY}
     PUBLIC ${PARQUET_LIBRARY}
     PUBLIC ${ARROW_LIBRARY}
-    PUBLIC ${AWS_LIBRARY}
     PUBLIC ${GCS_LIBRARY}
     PUBLIC ${KAFKA_LIBRARY}
     PUBLIC ${JSON_LIBRARY}
-    PUBLIC ${THRIFT_LIBRARY})
+    PUBLIC ${THRIFT_LIBRARY}
+    PRIVATE ${AWS_LIBRARY})
 
 #build test binary
 add_executable(StorageTests
