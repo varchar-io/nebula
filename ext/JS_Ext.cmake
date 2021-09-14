@@ -10,6 +10,8 @@ find_package(Threads REQUIRED)
 # But this awesome lightweight quickjs is the first thing we're trying.
 # Unless we see performance issue - this is a very good fit.
 # Current commit 204682fb87ab9312f0cf81f959ecd181180457bc @ 11/08
+# We're now using a patch-nebula branch which disabled bignum support in quickjs
+# To avoid some build conflicts between qjs and aws s2n lib (mp_add definitions) [shame]
 include(ExternalProject)
 ExternalProject_Add(quickjs
     PREFIX quickjs
