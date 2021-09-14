@@ -1,16 +1,17 @@
 FROM ubuntu:20.04
 
-# Set timezone:
-RUN ln -snf /usr/share/zoneinfo/$CONTAINER_TIMEZONE /etc/localtime && echo $CONTAINER_TIMEZONE > /etc/timezone
-
-RUN apt update
-RUN apt install -y software-properties-common \
-  build-essential \
-  libunwind-dev \
-  curl \
-  supervisor \
-  wget \
-  libstdc++6
+# install basic dependencies
+RUN apt update && apt install -y software-properties-common
+RUN apt update --option Acquire::Retries=100 --option Acquire::http::Timeout="300" \
+    && apt install -y \
+    build-essential \
+    libssl-dev \
+    libunwind-dev \
+    libcurl4-gnutls-dev \
+    gnutls-dev \
+    libstdc++6 \
+    gcc-10 \
+    g++-10
 RUN apt upgrade -y
 RUN apt dist-upgrade
 
