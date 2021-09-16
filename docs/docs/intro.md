@@ -82,4 +82,87 @@ For details, please see [Nebula Discovery](basics/5-discovery.md)
 
 
 ### Kubernetes
-(to be updated)
+
+Suppose you already have a kubernetes cluster. Follow the steps below to deploy nebula in your cluster and access it from your localhost.
+
+* Create a configuration file nebula.yaml.
+
+```shell
+cat > nebula.yaml <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nebula-server
+spec:
+  selector:
+     matchLabels:
+       app: nebula-server
+  template:
+    metadata:
+      labels:
+        app: nebula-server
+    spec:
+      containers:
+        - name: nebula-web
+          image: columns/nebula.web
+          env:
+          - name: NS_ADDR
+            value: "localhost:9190"
+          - name: NODE_PORT
+            value: "8088"
+        - name: nebula-server
+          image: columns/nebula.server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nebula
+spec:
+  type: NodePort
+  selector:
+    app: nebula-server
+  ports:
+    - port: 9190
+      name: server
+      targetPort: 9190
+    - port: 8088
+      name: web
+      targetPort: 8088
+      nodePort: 30008
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nebula-node
+spec:
+  replicas: 2
+  selector:
+     matchLabels:
+       app: nebula-node
+  template:
+    metadata:
+      labels:
+        app: nebula-node
+    spec:
+      containers:
+        - name: nebula-node
+          image: columns/nebula.node
+          env:
+          - name: NSERVER
+            value: "nebula:9190"
+EOF
+```
+
+* Create resources by applying nebula.yaml
+
+```shell
+kubectl apply -f nebula.yaml
+```
+
+* Use port forwarding to view nebula UI from your browser.
+
+```shell
+kubectl port-forward service/nebula 8088:8088
+```
+
+Now open http://localhost:8088 to play with nebula UI. You can scale up by simply increasing "replicas" of the deplyment nebula-node in nebula.yaml and running `kubectl apply -f nebula.yaml` again.
