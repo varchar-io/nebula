@@ -28,6 +28,9 @@ Download the data and use this spec to load it into Nebula test cluster with 3 E
     source: s3://pinlogs/nebula/bench1/
     backup: s3://nebula/n109/
     format: csv
+    csv:
+      hasHeader: false
+      delimiter: "|"
     columns:
       l_returnflag:
         dict: true
@@ -41,9 +44,6 @@ Download the data and use this spec to load it into Nebula test cluster with 3 E
       type: column
       column: l_shipdate
       pattern: "%Y-%m-%d"
-    settings:
-      csv.delimiter: "|"
-      csv.header: false
 ```
 
 

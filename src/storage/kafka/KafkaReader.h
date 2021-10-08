@@ -22,7 +22,7 @@
 #include "common/Errors.h"
 #include "memory/FlatRow.h"
 #include "meta/TableSpec.h"
-#include "storage/JsonReader.h"
+#include "storage/JsonRow.h"
 #include "storage/ThriftReader.h"
 #include "surface/DataSurface.h"
 

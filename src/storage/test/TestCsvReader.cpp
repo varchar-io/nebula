@@ -157,7 +157,8 @@ TEST(CsvTest, TestException) {
 }
 
 TEST(CsvTest, TestComplexRealCsv) {
-  nebula::storage::CsvReader reader("test/data/test.csv", ',', true, {});
+  nebula::meta::CsvProps csv{ true, "," };
+  nebula::storage::CsvReader reader("test/data/test.csv", csv, {});
   auto lines = 0;
   while (reader.hasNext()) {
     auto& r = reader.next();
@@ -170,7 +171,8 @@ TEST(CsvTest, TestComplexRealCsv) {
 }
 
 TEST(CsvTest, TestCsvExportedFromGSheet) {
-  nebula::storage::CsvReader reader("test/data/birthrate.csv", ',', true, {});
+  nebula::meta::CsvProps csv{ true, "," };
+  nebula::storage::CsvReader reader("test/data/birthrate.csv", csv, {});
   auto lines = 0;
   while (reader.hasNext()) {
     auto& r = reader.next();

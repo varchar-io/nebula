@@ -57,6 +57,7 @@ using nebula::execution::meta::TableService;
 using nebula::memory::Batch;
 using nebula::meta::BessType;
 using nebula::meta::BlockSignature;
+using nebula::meta::DataFormat;
 using nebula::meta::DataSource;
 using nebula::meta::Table;
 using nebula::meta::TablePtr;
@@ -65,8 +66,8 @@ using nebula::meta::TestTable;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
 using nebula::storage::CsvReader;
-using nebula::storage::JsonReader;
 using nebula::storage::JsonVectorReader;
+using nebula::storage::makeJsonReader;
 using nebula::storage::ParquetReader;
 using nebula::storage::http::HttpService;
 using nebula::storage::kafka::KafkaReader;
@@ -80,10 +81,6 @@ static constexpr auto LOADER_SWAP = "Swap";
 static constexpr auto LOADER_ROLL = "Roll";
 static constexpr auto LOADER_API = "Api";
 
-// reading settings if it has special delimeter, by default tab "\t"
-static constexpr auto CSV_DELIMITER_KEY = "csv.delimiter";
-// a setting indicates if the csv file has header, by default true
-static constexpr auto CSV_HEADER_KEY = "csv.header";
 // a settings to overwrite batch size of a table
 static constexpr auto BATCH_SIZE = "batch";
 
@@ -444,20 +441,20 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
   // depends on the type
   std::unique_ptr<RowCursor> source = nullptr;
-  if (table_->format == "csv") {
-    auto delimiter = '\t';
-    auto withHeader = true;
-    OVERWRITE_IF_EXISTS(delimiter, CSV_DELIMITER_KEY, [](auto& s) { return s.at(0); })
-    OVERWRITE_IF_EXISTS(withHeader, CSV_HEADER_KEY, [](auto& s) { return folly::to<bool>(s); })
-
-    source = std::make_unique<CsvReader>(file, delimiter, withHeader, columns);
-  } else if (table_->format == "json") {
-    source = std::make_unique<JsonReader>(file, schema);
-  } else if (table_->format == "parquet") {
-    // schema is modified with time column, we need original schema here
-    source = std::make_unique<ParquetReader>(file, schema);
-  } else {
-    LOG(ERROR) << "Unsupported file format: " << table_->format;
+  try {
+    if (table_->format == DataFormat::CSV) {
+      source = std::make_unique<CsvReader>(file, table_->csv, columns);
+    } else if (table_->format == DataFormat::JSON) {
+      source = makeJsonReader(file, table_->json, schema);
+    } else if (table_->format == DataFormat::PARQUET) {
+      // schema is modified with time column, we need original schema here
+      source = std::make_unique<ParquetReader>(file, schema);
+    } else {
+      LOG(ERROR) << "Supported data formats: csv, json, parquet.";
+      return false;
+    }
+  } catch (const std::exception& exp) {
+    LOG(ERROR) << "Exception in creating reader for " << table_->toString() << ", exception: " << exp.what();
     return false;
   }
 

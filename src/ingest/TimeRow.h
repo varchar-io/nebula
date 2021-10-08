@@ -101,7 +101,7 @@ private:
 
       // SERIAL_NUMBER translation
       if (ts.pattern == SERIAL_NUMBER) {
-        return [col = ts.colName](const nebula::surface::RowData* r) {
+        return [col = ts.column](const nebula::surface::RowData* r) {
           if (N_UNLIKELY(r->isNull(col))) {
             return NULL_TIME;
           }
@@ -122,7 +122,7 @@ private:
 
       // unix time (bigint) conversion
       if (scale > 0) {
-        return [col = ts.colName, scale](const nebula::surface::RowData* r) {
+        return [col = ts.column, scale](const nebula::surface::RowData* r) {
           if (N_UNLIKELY(r->isNull(col))) {
             return NULL_TIME;
           }
@@ -132,7 +132,7 @@ private:
       }
 
       // last option: string of time pattern such as 'yyyy-mm-dd'
-      return [col = ts.colName, pattern = ts.pattern](const nebula::surface::RowData* r) {
+      return [col = ts.column, pattern = ts.pattern](const nebula::surface::RowData* r) {
         if (N_UNLIKELY(r->isNull(col))) {
           return NULL_TIME;
         }

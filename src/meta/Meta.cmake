@@ -6,10 +6,12 @@ add_library(${NEBULA_META} STATIC
     ${NEBULA_SRC}/meta/ClusterInfo.cpp
     ${NEBULA_SRC}/meta/NodeManager.cpp
     ${NEBULA_SRC}/meta/Table.cpp
+    ${NEBULA_SRC}/meta/TableSpec.cpp
     ${NEBULA_SRC}/meta/TestTable.cpp)
 target_link_libraries(${NEBULA_META}
     PUBLIC ${NEBULA_TYPE}
     PUBLIC ${NEBULA_SURFACE}
+    PUBLIC ${MSGPACK_LIBRARY}
     PUBLIC ${YAML_LIBRARY}
     PUBLIC ${QJS_LIBRARY}
     PUBLIC ${JSON_LIBRARY})
@@ -37,7 +39,8 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 add_executable(MetaTests
     ${NEBULA_SRC}/meta/test/TestMacro.cpp
     ${NEBULA_SRC}/meta/test/TestMeta.cpp
-    ${NEBULA_SRC}/meta/test/TestPartition.cpp)
+    ${NEBULA_SRC}/meta/test/TestPartition.cpp
+    ${NEBULA_SRC}/meta/test/TestTableSpec.cpp)
 
 target_link_libraries(MetaTests
     PRIVATE ${NEBULA_META}

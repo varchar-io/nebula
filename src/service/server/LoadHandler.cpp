@@ -45,14 +45,21 @@ using nebula::ingest::IngestSpec;
 using nebula::ingest::SpecState;
 using nebula::meta::AccessSpec;
 using nebula::meta::BlockSignature;
+using nebula::meta::BucketInfo;
 using nebula::meta::ClusterInfo;
 using nebula::meta::ColumnProps;
+using nebula::meta::CsvProps;
+using nebula::meta::DataFormat;
+using nebula::meta::DataFormatUtils;
+using nebula::meta::DataSource;
+using nebula::meta::JsonProps;
 using nebula::meta::KafkaSerde;
 using nebula::meta::Macro;
 using nebula::meta::NNode;
 using nebula::meta::Settings;
 using nebula::meta::TableSpec;
 using nebula::meta::TableSpecPtr;
+using nebula::meta::ThriftProps;
 using nebula::service::base::GoogleSheet;
 using nebula::service::base::LoadSpec;
 
@@ -96,7 +103,10 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
     tmp->location,
     tmp->backup,
     tmp->format,
-    tmp->serde,
+    tmp->csv,
+    tmp->json,
+    tmp->thrift,
+    tmp->kafkaSerde,
     tmp->columnProps,
     tmp->timeSpec,
     tmp->accessSpec,
@@ -197,16 +207,19 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
     GoogleSheet::MAX_SIZE_MB,
     ttl,
     sheet.schema,
-    nebula::meta::DataSource::GSHEET,
+    DataSource::GSHEET,
     GoogleSheet::LOADER,
     sheet.url,
     GoogleSheet::BACKUP,
-    GoogleSheet::FORMAT,
+    DataFormat::GSHEET,
+    CsvProps{},
+    JsonProps{},
+    ThriftProps{},
     serde,
     props,
     sheet.timeSpec,
     sheet.accessSpec,
-    nebula::meta::BucketInfo::empty(),
+    BucketInfo::empty(),
     sheet.settings);
 
   // pattern must be present in settings
@@ -253,6 +266,12 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
   LoadSpec demand{ doc };
 
   // build a table spec
+  auto format = DataFormatUtils::from(demand.format);
+  if (format == DataFormat::UNKNOWN) {
+    LOG(ERROR) << "Data format is unknown: " << demand.format;
+    return {};
+  }
+
   KafkaSerde serde;
   ColumnProps props;
   auto tbSpec = std::make_shared<TableSpec>(
@@ -264,12 +283,15 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
     LoadSpec::LOADER,
     demand.path,
     LoadSpec::BACKUP,
-    demand.format,
+    format,
+    demand.csv,
+    demand.json,
+    demand.thrift,
     serde,
     props,
     demand.timeSpec,
     demand.accessSpec,
-    nebula::meta::BucketInfo::empty(),
+    BucketInfo::empty(),
     demand.settings);
 
   // pattern must be present in settings

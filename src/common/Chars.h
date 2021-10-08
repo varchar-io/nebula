@@ -90,6 +90,7 @@ public:
   }
 
   // convert a name into a path by replacing all spot into '/' as well as started with it
+  // for example, name `a.b.c` will become `/a/b/c`
   static inline std::string path(const char* data, size_t size, char spot = '.') noexcept {
     // give it a double size as max capacity
     std::string p(size + 1, '/');
@@ -132,9 +133,9 @@ public:
   }
 
   // shortcut of prefix function in sensitive case
-  static bool prefix(const std::string_view text, const std::string_view prefix) {
-    const auto size = prefix.size();
-    return (size == 0) || (text.size() >= size && std::memcmp(text.data(), prefix.data(), size) == 0);
+  static inline bool prefix(const std::string_view text, const std::string_view pfx) {
+    const auto size = pfx.size();
+    return (size == 0) || (text.size() >= size && std::memcmp(text.data(), pfx.data(), size) == 0);
   }
 
   // prefix function with char to char comparison

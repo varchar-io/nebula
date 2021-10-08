@@ -40,6 +40,7 @@ namespace kafka {
 
 using nebula::common::Evidence;
 using nebula::memory::FlatRow;
+using nebula::meta::DataFormat;
 using nebula::meta::Table;
 
 class SegmentedRebalanceCb : public RdKafka::RebalanceCb {
@@ -110,9 +111,9 @@ void KafkaReader::init() {
 
   // create parser
   // support thrift binary and json
-  if (table_->format == "thrift" && table_->serde.protocol == "binary") {
-    parser_ = std::make_unique<ThriftRow>(table_->serde.cmap);
-  } else if (table_->format == "json") {
+  if (table_->format == DataFormat::THRIFT && table_->thrift.protocol == "binary") {
+    parser_ = std::make_unique<ThriftRow>(table_->thrift.columnsMap);
+  } else if (table_->format == DataFormat::JSON) {
     parser_ = std::make_unique<JsonRow>(nebula::type::TypeSerializer::from(table_->schema));
   } else {
     throw NException("Only support thrift(TBinaryProtocol) and JSON for now.");

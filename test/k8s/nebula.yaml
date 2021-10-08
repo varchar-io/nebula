@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nebula-server
+spec:
+  selector:
+     matchLabels:
+       app: nebula-server
+  template:
+    metadata:
+      labels:
+        app: nebula-server
+    spec:
+      containers:
+        - name: nebula-web
+          image: columns/nebula.web
+          env:
+          - name: NS_ADDR
+            value: "localhost:9190"
+          - name: NODE_PORT
+            value: "8088"
+        - name: nebula-server
+          image: columns/nebula.server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nebula
+spec:
+  type: NodePort
+  selector:
+    app: nebula-server
+  ports:
+    - port: 9190
+      name: server
+      targetPort: 9190
+    - port: 8088
+      name: web
+      targetPort: 8088
+      nodePort: 30008
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nebula-node
+spec:
+  replicas: 1
+  selector:
+     matchLabels:
+       app: nebula-node
+  template:
+    metadata:
+      labels:
+        app: nebula-node
+    spec:
+      containers:
+        - name: nebula-node
+          image: columns/nebula.node
+          env:
+          - name: NSERVER
+            value: "nebula:9190"

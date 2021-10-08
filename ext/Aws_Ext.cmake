@@ -234,7 +234,12 @@ endif()
 if(APPLE)
   # libresolve is needed by libcares.a - why put it here?
   # because we want 2 special APPLE libraries sounding hacky.
-  set(AWS_FRAMEWORK "-framework corefoundation -lresolv -L${OPT_DIR}/icu4c/lib")
+  set(AWS_FRAMEWORK "-framework corefoundation -framework security -lresolv -L${OPT_DIR}/icu4c/lib")
+
+  # somehow aws-sdk doesn't build libs2n on apple/clang
+  # seems not needed on mac with security framework, 
+  # otherwise can build from https://github.com/aws/s2n-tls
+  set(AWS_S2N_LIBRARY "")
 endif()
 
 # add a bundle

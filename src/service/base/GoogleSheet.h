@@ -74,9 +74,6 @@ struct GoogleSheet {
   // api key to access google api
   std::string key;
 
-  // time column name if specified, otherwise using static current time
-  std::string tcol;
-
   // the full google sheet URL
   std::string url;
 
@@ -124,22 +121,33 @@ struct GoogleSheet {
     READ_MEMBER("gtoken", gtoken, GetString)
     READ_MEMBER("key", key, GetString)
 
-    // check if we have time column set -
-    // if yes, only supporting serial number for now
-    READ_MEMBER("tcolumn", tcol, GetString)
-
     // save these as settings
     this->settings["token"] = this->gtoken;
     this->settings["key"] = this->key;
+
+    // extract time setting
+    // gsheet has speical pattern: "GoogleSheet::DTO_SERIAL_NUMBER"
+    {
+      auto member = obj.FindMember("time");
+      if (member != obj.MemberEnd() && member->value.IsObject()) {
+        const auto& timeObj = member->value.GetObject();
+        this->timeSpec.from(timeObj);
+      } else {
+        // if time is not defined, use a static current time as its time
+        this->timeSpec.type = nebula::meta::TimeType::STATIC;
+        this->timeSpec.unixTimeValue = nebula::common::Evidence::unix_timestamp();
+      }
+    }
 
     // TODO(cao): split this into multiple specs when row number is large
     auto range = fmt::format("A1:{0}{1}",
                              nebula::common::sheetColName(this->cols),
                              this->rows);
 
-    // url
-    const auto timeSpecAvailable = tcol.length() > 0;
-    const auto& dtFormat = timeSpecAvailable ?
+    // build up gsheet reading url
+    const auto useSerialNumberTime = this->timeSpec.type == nebula::meta::TimeType::COLUMN
+                                     && this->timeSpec.pattern == GoogleSheet::DTO_SERIAL_NUMBER;
+    const auto& dtFormat = useSerialNumberTime ?
                              GoogleSheet::DTO_SERIAL_NUMBER :
                              GoogleSheet::DTO_FORMATTED_STRING;
     this->url = nebula::common::format(GoogleSheet::GSHEET_URL_GET,
@@ -148,16 +156,6 @@ struct GoogleSheet {
                                          { "format", GoogleSheet::FORMAT },
                                          { "key", key },
                                          { "dto", dtFormat } });
-
-    // if time column/spec specified, use serial number for accurate parsing.
-    if (timeSpecAvailable) {
-      this->timeSpec.type = nebula::meta::TimeType::COLUMN;
-      this->timeSpec.colName = tcol;
-      this->timeSpec.pattern = GoogleSheet::DTO_SERIAL_NUMBER;
-    } else {
-      this->timeSpec.type = nebula::meta::TimeType::STATIC;
-      this->timeSpec.unixTimeValue = nebula::common::Evidence::unix_timestamp();
-    }
 
 #undef READ_MEMBER
   }

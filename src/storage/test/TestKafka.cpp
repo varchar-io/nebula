@@ -1,4 +1,4 @@
-  /*
+/*
   * Copyright 2017-present varchar.io
   *
   * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,21 +14,21 @@
   * limitations under the License.
   */
 
-  #include <fmt/format.h>
-  #include <glog/logging.h>
-  #include <gtest/gtest.h>
-  #include <rdkafkacpp.h>
-  #include <thrift/protocol/TBinaryProtocol.h>
-  #include <thrift/protocol/TCompactProtocol.h>
-  #include <thrift/transport/TBufferTransports.h>
+#include <fmt/format.h>
+#include <glog/logging.h>
+#include <gtest/gtest.h>
+#include <rdkafkacpp.h>
+#include <thrift/protocol/TBinaryProtocol.h>
+#include <thrift/protocol/TCompactProtocol.h>
+#include <thrift/transport/TBufferTransports.h>
 
-  #include "common/Evidence.h"
-  #include "meta/TableSpec.h"
-  #include "storage/kafka/KafkaReader.h"
+#include "common/Evidence.h"
+#include "meta/TableSpec.h"
+#include "storage/kafka/KafkaReader.h"
 
-  namespace nebula {
-  namespace storage {
-  namespace test {
+namespace nebula {
+namespace storage {
+namespace test {
 
 using apache::thrift::protocol::TBinaryProtocol;
 using apache::thrift::protocol::TCompactProtocol;
@@ -327,8 +327,6 @@ TEST(KafkaTest, DISABLED_TestKafkaTopic) {
 
 TEST(KafkaTest, DISABLED_TestKafkaReader) {
   nebula::meta::KafkaSerde serde;
-  serde.protocol = "binary";
-  serde.cmap = { { "id", 1 }, { "referer", 3 }, { "country", 6 } };
   auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, TOPIC, serde);
 
   // 10 hours ago
@@ -337,6 +335,12 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
   N_ENSURE(segments.size() > 0, "more than 0 segments");
   LOG(INFO) << "Generated " << segments.size() << " segments. Pick first one to read";
 
+  nebula::meta::CsvProps csv;
+  nebula::meta::JsonProps json;
+  nebula::meta::ThriftProps thrift{
+    "binary",
+    { { "id", 1 }, { "referer", 3 }, { "country", 6 } }
+  };
   nebula::meta::ColumnProps cp;
   nebula::meta::TimeSpec ts;
   nebula::meta::AccessSpec as;
@@ -347,7 +351,8 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
   auto table = std::make_shared<nebula::meta::TableSpec>(
     TOPIC, 1000, 100, "ROW<id:string, referer:string, country:string>",
     nebula::meta::DataSource::KAFKA, "Roll", BROKERS, "",
-    "thrift", std::move(serde), std::move(cp), std::move(ts),
+    nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
+    std::move(serde), std::move(cp), std::move(ts),
     std::move(as), std::move(bi), std::move(settings));
 
   const auto& seg = segments.front();
@@ -385,14 +390,6 @@ TEST(KafkaTest, TestKafkaSegmentSerde) {
 
 TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   nebula::meta::KafkaSerde serde;
-  serde.protocol = "binary";
-  serde.cmap = { { "_time_", 1 },
-                 { "userId", 3001 },
-                 { "magicType", 3003 },
-                 { "statusCode", 4002 },
-                 { "count", 4001 },
-                 { "error", 4003 } };
-
   auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<brokers>", "<topic>", serde);
 
   // 10 hours ago
@@ -401,6 +398,17 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   N_ENSURE(segments.size() > 0, "more than 0 segments");
   LOG(INFO) << "Generated " << segments.size() << " segments. Pick first one to read";
 
+  nebula::meta::CsvProps csv;
+  nebula::meta::JsonProps json;
+  nebula::meta::ThriftProps thrift{
+    "binary",
+    { { "_time_", 1 },
+      { "userId", 3001 },
+      { "magicType", 3003 },
+      { "statusCode", 4002 },
+      { "count", 4001 },
+      { "error", 4003 } }
+  };
   nebula::meta::ColumnProps cp;
   nebula::meta::TimeSpec ts;
   nebula::meta::AccessSpec as;
@@ -411,7 +419,8 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   auto table = std::make_shared<nebula::meta::TableSpec>(
     "<topic>", 1000, 100, "ROW<userId:long, magicType:short, statusCode:byte, count:int, error:string>",
     nebula::meta::DataSource::KAFKA, "Roll", "<brokers>", "",
-    "thrift", std::move(serde), std::move(cp), std::move(ts),
+    nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
+    std::move(serde), std::move(cp), std::move(ts),
     std::move(as), std::move(bi), std::move(settings));
 
   auto count = 0;

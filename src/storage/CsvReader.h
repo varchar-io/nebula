@@ -25,6 +25,7 @@
 #include "common/Errors.h"
 #include "common/Format.h"
 #include "common/Hash.h"
+#include "meta/TableSpec.h"
 #include "surface/DataSurface.h"
 
 /**
@@ -107,10 +108,10 @@ std::istream& operator>>(std::istream&, CsvRow&);
 
 class CsvReader : public nebula::surface::RowCursor {
 public:
-  CsvReader(const std::string& file, char delimiter, bool withHeader, const std::vector<std::string>& columns)
-    : nebula::surface::RowCursor(0), fstream_{ file }, row_{ delimiter }, cacheRow_{ delimiter } {
+  CsvReader(const std::string& file, const nebula::meta::CsvProps& csv, const std::vector<std::string>& columns)
+    : nebula::surface::RowCursor(0), fstream_{ file }, row_{ csv.delimiter.at(0) }, cacheRow_{ csv.delimiter.at(0) } {
 
-    LOG(INFO) << "Reading a delimiter separated file: " << file << " by " << delimiter;
+    LOG(INFO) << "Reading a delimiter separated file: " << file << " by " << csv.delimiter;
     bool headerRead = false;
     // if the schema is given
     if (columns.size() > 0) {
@@ -120,7 +121,7 @@ public:
     } else if (row_.readNext(fstream_)) {
       headerRead = true;
       // parse the header as column list
-      N_ENSURE(withHeader, "Header must be present if schema not provided.");
+      N_ENSURE(csv.hasHeader, "Header must be present if schema not provided.");
 
       // row_ has headers - build the name-index mapping
       const auto& raw = row_.rawData();
@@ -134,7 +135,7 @@ public:
     });
 
     // if data has header and header was not consumed yet (to build schema), we have to skip the first row
-    if (withHeader && !headerRead) {
+    if (csv.hasHeader && !headerRead) {
       fstream_ >> row_;
     }
 

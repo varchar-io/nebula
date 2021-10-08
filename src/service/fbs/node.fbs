@@ -79,83 +79,10 @@ table NodeStateReply {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // Define Task Spec Serialization Format
 //////////////////////////////////////////////////////////////////////////////////////////////////
-table PartitionInfo {
-  values: [string];
-  chunk: uint64;
-}
-
-table ColumnProp {
-  name: string;
-  // bloom filter
-  bf: bool;
-  // enable dictionary
-  dict: bool;
-  // enable compression
-  comp: bool;
-  // default value when input is NULL
-  dv: string;
-  // partition info of this column
-  pi: PartitionInfo;
-}
-
-table ColumnMap {
-  name: string;
-  index: uint32;
-}
-
-table Serde {
-  protocol: string;
-
-  // optional: column map - map column name to some integer value
-  column_map: [ColumnMap];
-}
-
 // this is serde format mapping to IngestSpec
-// we also flatten other info into the single task spec.
-// TODO(cao) - do not flatten fields, it is hard to maintain
-// Create a new table type to hold these table speicfic fields
 table IngestTask {
-  // ref: TableSpec.name
-  name: string;
-
-  // ref: TableSpec.max_seconds
-  max_seconds: uint64;
-
-  // ref: TableSpec.loader 
-  loader: string;
-
-  // ref: TableSpec.DataSource
-  source: byte;
-
-  // location of the table
-  location: string;
-
-  // ref: TableSpec.format 
-  format: string;
-
-  // ref: TableSpec.schema 
-  schema: string;
-
-  // ref: TableSpec.settings
-  settings: string;
-
-  // ref: TimeType
-  time_type: byte;
-
-  // ref: TimeSpec.unixtimeValue
-  time_value: uint64;
-
-  // ref: TimeSpec.colName
-  time_column: string;
-
-  // ref: TimeSpec.pattern
-  time_format: string;
-
-  // data serde
-  serde: Serde;
-
-  // column properties
-  column_props: [ColumnProp];
+  // table spec serialized by msgpack
+  table_spec: string;
 
   // ingest spec itself
   version: string;

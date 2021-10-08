@@ -14,9 +14,34 @@
  * limitations under the License.
  */
 
+#include <fstream>
+#include <gtest/gtest.h>
+#include <istream>
+#include <rapidjson/document.h>
+
+#include "service/base/LoadSpec.h"
+
 namespace nebula {
 namespace service {
 namespace test {
+
+TEST(LoadSpecTest, TestLoadSpecDeserialization) {
+  auto json = "test/data/load_spec.json";
+  std::ifstream file(json);
+  std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+  rapidjson::Document doc;
+  auto& r = doc.Parse(content.data(), content.length());
+
+  EXPECT_FALSE(r.HasParseError());
+  nebula::service::base::LoadSpec spec(r);
+  EXPECT_EQ(spec.format, "JSON");
+  EXPECT_EQ(spec.json.rowsField, "results");
+  auto& cm = spec.json.columnsMap;
+  EXPECT_EQ(cm.size(), 8);
+  for (auto& itr : cm) {
+    EXPECT_EQ(itr.first, itr.second);
+  }
+}
 
 } // namespace test
 } // namespace service

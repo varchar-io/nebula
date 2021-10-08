@@ -26,8 +26,6 @@
 #include "meta/Table.h"
 #include "surface/DataSurface.h"
 
-MSGPACK_ADD_ENUM(nebula::type::Kind)
-
 /**
  * Define query strucuture.
  */

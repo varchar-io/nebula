@@ -16,10 +16,11 @@
 
 #pragma once
 
+#include "Types.h"
+
 #include <unordered_map>
 #include <unordered_set>
 
-#include "Access.h"
 #include "common/Errors.h"
 #include "meta/Pod.h"
 #include "type/Type.h"
@@ -38,6 +39,24 @@ namespace meta {
 using nebula::type::Kind;
 using nebula::type::Schema;
 
+struct AccessRule {
+  explicit AccessRule() {}
+  explicit AccessRule(AccessType accessType, std::vector<std::string> gps, ActionType actionType)
+    : type{ accessType }, groups{ std::move(gps) }, action{ actionType } {}
+
+  AccessType type;
+  // TODO(cao): this may not be generic enough
+  // it initially means security group (LDAP or else a user belongs to).
+  std::vector<std::string> groups;
+  ActionType action;
+
+  // make it serializable with msgpack
+  MSGPACK_DEFINE(type, groups, action)
+};
+
+// define an alias of access spec
+using AccessSpec = std::vector<AccessRule>;
+
 // only save partition values as string
 // if values is empty then the owner column is not a partition column
 struct PartitionInfo {
@@ -46,12 +65,16 @@ struct PartitionInfo {
   inline bool valid() const {
     return chunk > 0 && values.size() > 0;
   }
+
+  // make it serializable with msgpack
+  MSGPACK_DEFINE(values, chunk)
 };
 
 // Bucket info is used to support reading specific bucket based on
 // a given bucketed column value.
 // Right now, we only support numeric column value mod on bucket count
 struct BucketInfo {
+  explicit BucketInfo() {}
   explicit BucketInfo(size_t c, const std::string& bc)
     : count{ c }, bucketColumn{ bc } {}
 
@@ -66,15 +89,22 @@ struct BucketInfo {
     static const BucketInfo EMPTY{ 0, "" };
     return EMPTY;
   }
+
+  // make it serializable with msgpack
+  MSGPACK_DEFINE(count, bucketColumn)
 };
 
 struct CustomColumn {
+  explicit CustomColumn() {}
   explicit CustomColumn(const std::string& n, Kind k, const std::string& e)
     : name{ n }, kind{ k }, expr{ e } {}
 
   std::string name;
   Kind kind;
   std::string expr;
+
+  // make it serializable with msgpack
+  MSGPACK_DEFINE(name, kind, expr)
 };
 
 /**
@@ -113,9 +143,12 @@ struct Column {
 
   // partition info - can be used to convert as PartitionKey
   PartitionInfo partition;
+
+  // make it serializable with msgpack
+  MSGPACK_DEFINE(withBloomFilter, withDict, withCompress, defaultValue, rules, partition)
 };
 
-using ColumnProps = nebula::common::unordered_map<std::string, Column>;
+using ColumnProps = std::unordered_map<std::string, Column>;
 
 using TypeLookup = std::function<nebula::type::Kind(const std::string&)>;
 
@@ -224,5 +257,6 @@ private:
   void loadTable();
   std::unique_ptr<PK> makeKey(const std::string&, const PartitionInfo&) const;
 };
+
 } // namespace meta
 } // namespace nebula

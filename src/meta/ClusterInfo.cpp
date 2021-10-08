@@ -163,30 +163,31 @@ std::unordered_map<std::string, std::string> asSettings(const YAML::Node& node) 
 }
 
 TimeSpec asTimeSpec(const YAML::Node& node) {
-  auto timeType = node["type"].as<std::string>();
-  if (timeType == "static") {
-    return { TimeType::STATIC, node["value"].as<size_t>(), "", "" };
+  TimeSpec spec;
+  auto strType = node["type"].as<std::string>();
+  spec.type = TimeTypeUtils::from(strType);
+
+  // handle each time type
+  switch (spec.type) {
+  case TimeType::STATIC:
+    spec.unixTimeValue = node["value"].as<size_t>();
+    break;
+  case TimeType::COLUMN:
+    spec.column = node["column"].as<std::string>();
+    // "%m/%d/%Y %H:%M:%S"
+    spec.pattern = node["pattern"].as<std::string>();
+    break;
+  case TimeType::MACRO:
+    // "daily", "hourly", ...
+    spec.pattern = node["pattern"].as<std::string>();
+    break;
+  case TimeType::PROVIDED:
+  case TimeType::CURRENT: break;
+  default:
+    throw NException(fmt::format("Misconfigured time type: {0}", strType));
   }
 
-  if (timeType == "current") {
-    return { TimeType::CURRENT, 0, "", "" };
-  }
-
-  if (timeType == "column") {
-    return {
-      TimeType::COLUMN, 0, node["column"].as<std::string>(), node["pattern"].as<std::string>()
-    };
-  }
-
-  if (timeType == "macro") {
-    return { TimeType::MACRO, 0, "", node["pattern"].as<std::string>() };
-  }
-
-  if (timeType == "provided") {
-    return { TimeType::PROVIDED, 0, "", "" };
-  }
-
-  throw NException("Misconfigured time spec");
+  return spec;
 }
 
 Column col(const YAML::Node& settings) {
@@ -234,7 +235,7 @@ Column col(const YAML::Node& settings) {
 }
 
 // read column properties definition from table config
-unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
+std::unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
   // iterate over each column
   ColumnProps props;
   for (YAML::const_iterator it = node.begin(); it != node.end(); ++it) {
@@ -249,8 +250,6 @@ unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
 KafkaSerde asSerde(const YAML::Node& node) {
   KafkaSerde serde;
   if (node) {
-    serde.protocol = node["protocol"].as<std::string>();
-
     // kafka topic retention time
     auto retention = node["topic-retention"];
     if (retention) {
@@ -260,16 +259,47 @@ KafkaSerde asSerde(const YAML::Node& node) {
     if (size) {
       serde.size = size.as<uint64_t>();
     }
+  }
 
-    auto maps = node["cmap"];
+  return serde;
+}
+
+CsvProps asCsvProps(const YAML::Node& node) {
+  CsvProps csv;
+  if (node) {
+    csv.hasHeader = node["hasHeader"].as<bool>();
+    csv.delimiter = node["delimiter"].as<std::string>();
+  }
+  return csv;
+}
+
+JsonProps asJsonProps(const YAML::Node& node) {
+  JsonProps json;
+  if (node) {
+    json.rowsField = node["rowsField"].as<std::string>();
+    auto maps = node["columnsMap"];
     if (maps) {
       for (YAML::const_iterator it = maps.begin(); it != maps.end(); ++it) {
-        serde.cmap.emplace(it->first.as<std::string>(), it->second.as<uint32_t>());
+        json.columnsMap.emplace(it->first.as<std::string>(), it->second.as<std::string>());
+      }
+    }
+  }
+  return json;
+}
+
+ThriftProps asThriftProps(const YAML::Node& node) {
+  ThriftProps thrift;
+  if (node) {
+    thrift.protocol = node["protocol"].as<std::string>();
+    auto maps = node["columnsMap"];
+    if (maps) {
+      for (YAML::const_iterator it = maps.begin(); it != maps.end(); ++it) {
+        thrift.columnsMap.emplace(it->first.as<std::string>(), it->second.as<uint32_t>());
       }
     }
   }
 
-  return serde;
+  return thrift;
 }
 
 /** [example]
@@ -360,7 +390,10 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
       td["loader"].as<std::string>(),
       td["source"].as<std::string>(),
       td["backup"].as<std::string>(),
-      td["format"].as<std::string>(),
+      DataFormatUtils::from(td["format"].as<std::string>()),
+      asCsvProps(td["csv"]),
+      asJsonProps(td["json"]),
+      asThriftProps(td["thrift"]),
       asSerde(td["serde"]),
       asColumnProps(td["columns"]),
       asTimeSpec(td["time"]),

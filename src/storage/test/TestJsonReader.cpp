@@ -28,25 +28,63 @@ namespace storage {
 namespace test {
 
 using nebula::memory::FlatRow;
-using nebula::storage::JsonReader;
 using nebula::storage::JsonRow;
+using nebula::storage::LineJsonReader;
 using nebula::type::TypeSerializer;
 
-TEST(JsonTest, DISABLED_TestJsonReader) {
-  auto file = "/home/shawncao/pme_sample.txt";
-  auto schema = TypeSerializer::from(
-    "ROW<__time:long,app:tinyint,country:string,publish_type:int,gender:tinyint,downstream:string,contenttype:string,ct:int>");
-  JsonReader r(file, schema);
+TEST(JsonTest, TestLineJsonReader) {
+  auto file = "test/data/line_json.txt";
+  auto schema = TypeSerializer::from("ROW<v:int,vw:real,o:real,c:real>");
+  LineJsonReader r(file, {}, schema);
   size_t count = 0;
   while (r.hasNext()) {
     const auto& row = r.next();
-    count++;
-    LOG(INFO) << "time: " << row.readLong("__time")
-              << ", app: " << (int)row.readByte("app")
-              << ", country: " << (row.isNull("country") ? "null" : row.readString("country"))
-              << ", ct: " << row.readInt("ct");
+    EXPECT_EQ(row.readInt("v"), ++count);
   }
   LOG(INFO) << "count=" << count;
+  EXPECT_EQ(count, 10);
+}
+
+TEST(JsonTest, TestLineJsonReaderWithColumnsMap) {
+  auto file = "test/data/line_json.txt";
+  auto schema = TypeSerializer::from("ROW<version:int,vw:real,o:real,c:real>");
+  nebula::meta::JsonProps jsonProps{ "rows", { { "version", "v" } } };
+  LineJsonReader r(file, jsonProps, schema);
+  size_t count = 0;
+  while (r.hasNext()) {
+    const auto& row = r.next();
+    EXPECT_EQ(row.readInt("version"), ++count);
+  }
+  LOG(INFO) << "count=" << count;
+  EXPECT_EQ(count, 10);
+}
+
+TEST(JsonTest, TestObjectJsonReaderWithRootArray) {
+  auto file = "test/data/root_array.json";
+  auto schema = TypeSerializer::from("ROW<version:int,vw:real,o:real,c:real>");
+  nebula::meta::JsonProps jsonProps{ "[ROOT]", { { "version", "v" } } };
+  ObjectJsonReader r(file, jsonProps, schema);
+  size_t count = 0;
+  while (r.hasNext()) {
+    const auto& row = r.next();
+    EXPECT_EQ(row.readInt("version"), ++count);
+  }
+  LOG(INFO) << "count=" << count;
+  EXPECT_EQ(count, 10);
+}
+
+TEST(JsonTest, TestObjectJsonReaderWithFieldArray) {
+  auto file = "test/data/field_array.json";
+  auto schema = TypeSerializer::from("ROW<version:int,vw:real,o:real,c:real>");
+  nebula::meta::JsonProps jsonProps{ "results", { { "version", "v" } } };
+  ObjectJsonReader r(file, jsonProps, schema);
+  size_t count = 0;
+  while (r.hasNext()) {
+    const auto& row = r.next();
+    EXPECT_EQ(row.readInt("version"), ++count);
+  }
+  LOG(INFO) << "count=" << count;
+  EXPECT_EQ(count, 10);
 }
 
 TEST(JsonTest, TestLocate) {
@@ -56,9 +94,10 @@ TEST(JsonTest, TestLocate) {
   EXPECT_FALSE(parsed.HasParseError());
   EXPECT_TRUE(doc.IsObject());
 
+  auto root = doc.GetObject();
   // locate and check path a/b/c
   {
-    auto node = nebula::storage::locate(doc, "/a/b/c");
+    auto node = nebula::storage::locate(root, "/a/b/c");
     EXPECT_NE(node, nullptr);
     EXPECT_FALSE(node->IsNull());
     EXPECT_EQ(node->GetInt(), 1);
@@ -66,7 +105,7 @@ TEST(JsonTest, TestLocate) {
 
   // locate check path a/b/d
   {
-    auto node = nebula::storage::locate(doc, "/a/b/d");
+    auto node = nebula::storage::locate(root, "/a/b/d");
     EXPECT_NE(node, nullptr);
     EXPECT_FALSE(node->IsNull());
     EXPECT_EQ(node->GetInt(), 2);
@@ -74,7 +113,7 @@ TEST(JsonTest, TestLocate) {
 
   // locate and check path a/c/b
   {
-    auto node = nebula::storage::locate(doc, "/a/c/b");
+    auto node = nebula::storage::locate(root, "/a/c/b");
     EXPECT_EQ(node, nullptr);
   }
 }

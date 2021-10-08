@@ -16,9 +16,9 @@
 
 #pragma once
 
+#include <rapidjson/document.h>
 #include <unordered_map>
 
-#include "common/Chars.h"
 #include "meta/Table.h"
 #include "type/Serde.h"
 #include "type/Type.h"
@@ -34,99 +34,38 @@
 namespace nebula {
 namespace meta {
 
-// define data sources supported in Nebula:
-// NEBULA is a reserved type only used internally.
-// Any external reference will be treated as illegal (invalid)
-enum class DataSource {
-  NEBULA,
-  S3,
-  GS,
-  LOCAL,
-  KAFKA,
-  GSHEET,
-  HTTP
-};
-
-struct DataSourceUtils {
-  static bool isFileSystem(const DataSource& ds) {
-    return ds == DataSource::S3
-           || ds == DataSource::GS
-           || ds == DataSource::LOCAL;
+#define READ_MEMBER(NAME, VAR, GETTER)    \
+  {                                       \
+    auto member = obj.FindMember(NAME);   \
+    if (member != obj.MemberEnd()) {      \
+      this->VAR = member->value.GETTER(); \
+    }                                     \
   }
-
-  // get protocol of this type of data source
-  static const std::string& getProtocol(const DataSource& ds) {
-    static const std::string NONE = "";
-    static const nebula::common::unordered_map<DataSource, std::string> SOURCE_PROTO = {
-      { DataSource::S3, "s3" },
-      { DataSource::GS, "gs" },
-      { DataSource::LOCAL, "local" },
-      { DataSource::HTTP, "http" }
-    };
-
-    auto p = SOURCE_PROTO.find(ds);
-    if (p != SOURCE_PROTO.end()) {
-      return p->second;
-    }
-
-    return NONE;
-  }
-
-  // Get data source entity from its name
-  static DataSource from(const std::string& data) noexcept {
-    if (nebula::common::Chars::same(data, "s3")) {
-      return DataSource::S3;
-    }
-
-    if (nebula::common::Chars::same(data, "gs")) {
-      return DataSource::GS;
-    }
-
-    if (nebula::common::Chars::same(data, "kafka")) {
-      return DataSource::KAFKA;
-    }
-
-    if (nebula::common::Chars::same(data, "local")) {
-      return DataSource::LOCAL;
-    }
-
-    if (nebula::common::Chars::same(data, "http")
-        || nebula::common::Chars::same(data, "https")) {
-      return DataSource::HTTP;
-    }
-
-    // CUSTOM usually means a internal type such as Nebula Test data set
-    // Not allowed to be used for external data
-    // throw NException(fmt::format("Unsupported data source: {0}", data));
-    return DataSource::NEBULA;
-  }
-};
-
-// type of time source to fill time column
-enum class TimeType {
-  // fixed value
-  STATIC,
-  // using current timestamp when loading
-  CURRENT,
-  // time is from a given column
-  COLUMN,
-  // system defined macro named by pattern
-  MACRO,
-  // system will provide depending on sub-system behavior
-  // such as, Kafka will fill message timestamp for it
-  PROVIDED
-};
 
 struct TimeSpec {
   TimeType type;
   // unix time value if provided
   size_t unixTimeValue;
   // column name for given
-  std::string colName;
+  std::string column;
   // time pattern to parse value out
   // if pattern not given which implies it is a string column
   // the column will be treated as integer of unix time value
   std::string pattern;
+
+  void from(const rapidjson::GenericObject<true, rapidjson::Value>& obj) {
+    READ_MEMBER("column", column, GetString);
+    READ_MEMBER("pattern", pattern, GetString);
+
+    // convert type
+    auto member = obj.FindMember("type");
+    if (member != obj.MemberEnd()) {
+      this->type = TimeTypeUtils::from(member->value.GetString());
+    }
+  }
+
+  // make it msgpack serializable
+  MSGPACK_DEFINE(type, unixTimeValue, column, pattern);
 };
 
 // serde info for some data format, such as thrift
@@ -137,18 +76,74 @@ struct KafkaSerde {
   // size of each ingestion batch
   uint64_t size = 0;
 
+  // make it msgpack serializable
+  MSGPACK_DEFINE(retention, size);
+};
+
+// key-value settings in both string types
+using Settings = std::unordered_map<std::string, std::string>;
+
+// format related props
+struct CsvProps {
+  // indicating if first row is header
+  bool hasHeader;
+  // only first letter is used
+  std::string delimiter;
+
+  CsvProps(bool h = true, std::string d = ",")
+    : hasHeader{ h }, delimiter{ std::move(d) } {}
+
+  // materialize csv props from json settings
+  void from(const rapidjson::GenericObject<true, rapidjson::Value>& obj) {
+    READ_MEMBER("hasHeader", hasHeader, GetBool);
+    READ_MEMBER("delimiter", delimiter, GetString);
+  }
+
+  // make it msgpack serializable
+  MSGPACK_DEFINE(hasHeader, delimiter);
+};
+
+struct JsonProps {
+  // rows field, given a json object
+  // empty("") means it is just a row object
+  // "[ROOT]" means it is an array, every item is a row object
+  // other value will navigate the object to get the array of rows
+  std::string rowsField;
+
+  // column name to row field mapping - kinda of renaming/alias support
+  std::unordered_map<std::string, std::string> columnsMap;
+
+  // materialize json props from json settings
+  void from(const rapidjson::GenericObject<true, rapidjson::Value>& obj) {
+    READ_MEMBER("rowsField", rowsField, GetString)
+    // populate the map from json object with string to string map
+    auto cm = obj.FindMember("columnsMap");
+    if (cm != obj.MemberEnd()) {
+      const auto& map = cm->value.GetObject();
+      for (auto& prop : map)
+        this->columnsMap[prop.name.GetString()] = prop.value.GetString();
+    }
+  }
+
+  // make it msgpack serializable
+  MSGPACK_DEFINE(rowsField, columnsMap);
+};
+
+struct ThriftProps {
   // protocol - thrift has binary, or compact protocol
-  // json may have bson variant
   std::string protocol;
 
   // column map from column name to field ID
   // which should be defined by thrift schema
-  nebula::common::unordered_map<std::string, uint32_t> cmap;
+  std::unordered_map<std::string, uint32_t> columnsMap;
+
+  // make it msgpack serializable
+  MSGPACK_DEFINE(protocol, columnsMap);
 };
 
-// TODO(cao): use nebula::common::unordered_map if it supports msgpack serde
-// key-value settings in both string types
-using Settings = std::unordered_map<std::string, std::string>;
+struct TableSpec;
+// define table spec pointer
+using TableSpecPtr = std::shared_ptr<TableSpec>;
 
 struct TableSpec {
   // table name
@@ -167,10 +162,16 @@ struct TableSpec {
   std::string location;
   // backup location uri
   std::string backup;
-  // data format
-  std::string format;
+  // data format: csv, json, thrift, parquet
+  DataFormat format;
+  // format dependant property for csv
+  CsvProps csv;
+  // format dependant property for json
+  JsonProps json;
+  // format dependant property for thrift
+  ThriftProps thrift;
   // Serde of the data
-  KafkaSerde serde;
+  KafkaSerde kafkaSerde;
   // column properties
   ColumnProps columnProps;
   // time spec to generate time value
@@ -182,25 +183,36 @@ struct TableSpec {
   // settings spec just get list of key-values
   Settings settings;
 
-  TableSpec(std::string n, size_t mm, size_t ms, std::string s,
-            DataSource ds, std::string lo, std::string loc, std::string bak,
-            std::string f, KafkaSerde sd, ColumnProps cp, TimeSpec ts,
-            AccessSpec as, BucketInfo bi, Settings st)
-    : name{ std::move(n) },
-      max_mb{ mm },
-      max_seconds{ ms },
-      schema{ std::move(s) },
+  explicit TableSpec() {}
+  explicit TableSpec(std::string _name, size_t maxMb, size_t maxSeconds, std::string _schema,
+                     DataSource ds, std::string _loader, std::string _location, std::string _backup,
+                     DataFormat _format, CsvProps csvProps, JsonProps jsonProps, ThriftProps thriftProps,
+                     KafkaSerde _kafkaSerde, ColumnProps _columnProps, TimeSpec _timeSpec,
+                     AccessSpec _accessSpec, BucketInfo _bucketInfo, Settings _settings)
+    : name{ std::move(_name) },
+      max_mb{ maxMb },
+      max_seconds{ maxSeconds },
+      schema{ std::move(_schema) },
       source{ ds },
-      loader{ std::move(lo) },
-      location{ std::move(loc) },
-      backup{ std::move(bak) },
-      format{ std::move(f) },
-      serde{ std::move(sd) },
-      columnProps{ std::move(cp) },
-      timeSpec{ std::move(ts) },
-      accessSpec{ std::move(as) },
-      bucketInfo{ std::move(bi) },
-      settings{ std::move(st) } {}
+      loader{ std::move(_loader) },
+      location{ std::move(_location) },
+      backup{ std::move(_backup) },
+      format{ _format },
+      csv{ std::move(csvProps) },
+      json{ std::move(jsonProps) },
+      thrift{ std::move(thriftProps) },
+      kafkaSerde{ std::move(_kafkaSerde) },
+      columnProps{ std::move(_columnProps) },
+      timeSpec{ std::move(_timeSpec) },
+      accessSpec{ std::move(_accessSpec) },
+      bucketInfo{ std::move(_bucketInfo) },
+      settings{ std::move(_settings) } {}
+
+  // make it msgpack serializable
+  MSGPACK_DEFINE(name, max_mb, max_seconds, schema,
+                 source, loader, location, backup, format,
+                 csv, json, thrift, kafkaSerde, columnProps,
+                 timeSpec, accessSpec, bucketInfo, settings);
 
   inline std::string toString() const {
     // table name @ location - format: time
@@ -217,16 +229,18 @@ struct TableSpec {
 
     // if time column is provided by input data, we will remove it for final schema
     if (timeSpec.type == TimeType::COLUMN) {
-      schemaPtr->remove(timeSpec.colName);
+      schemaPtr->remove(timeSpec.column);
     }
 
     // build up a new table from this spec
     return std::make_shared<Table>(name, schemaPtr, columnProps, accessSpec);
   }
-};
 
-// define table spec pointer
-using TableSpecPtr = std::shared_ptr<TableSpec>;
+  // serialize a table spec into a string
+  static std::string serialize(const TableSpec&) noexcept;
+  // deserialize a table spec from a string
+  static TableSpecPtr deserialize(const std::string_view);
+};
 
 // Current hash and equal are based on table name only
 // There should not be duplicate table names in the system
@@ -245,6 +259,8 @@ public:
 };
 
 using TableSpecSet = nebula::common::unordered_set<TableSpecPtr, TableSpecHash, TableSpecEqual>;
+
+#undef READ_MEMBER
 
 } // namespace meta
 } // namespace nebula

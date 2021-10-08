@@ -18,16 +18,10 @@
 
 #include <fstream>
 #include <iostream>
-#include <rapidjson/document.h>
-#include <rapidjson/pointer.h>
+#include <rapidjson/istreamwrapper.h>
 #include <string>
 
-#include "RowParser.h"
-#include "common/Chars.h"
-#include "common/Conv.h"
-#include "common/Errors.h"
-#include "memory/FlatRow.h"
-#include "meta/Table.h"
+#include "JsonRow.h"
 #include "surface/DataSurface.h"
 
 /**
@@ -37,176 +31,29 @@
 namespace nebula {
 namespace storage {
 
-inline rapidjson::Value* locate(rapidjson::Document& doc, const std::string& path) {
-  return rapidjson::Pointer(path.c_str()).Get(doc);
-}
-
-// define column properties
-using fop = std::function<void(nebula::memory::FlatRow&, const std::string&, const rapidjson::Value*)>;
-struct ColumnProps {
-  // maybe empty - but storing parsed path if the name maps to a path
-  std::string path;
-
-  // action to convert data from json node to given storage (eg. FlatRow)
-  fop action;
-};
-
-// represent a reusable row object with single line content
-// we can always parse line for a row object
-class JsonRow final : public RowParser {
-
-public:
-  // to support flat data from nested structure in JSON, introduce "pathInName" variable
-  // if this is true, use name as path to match value otherwise use name itself
-  // currently we default to support path in name.
-  JsonRow(nebula::type::Schema schema, bool defaultNull = false)
-    : defaultNull_{ defaultNull }, hasTime_{ false } {
-
-// define how each column read and write to row object
-// if the provided value is string, we use safe_to to convert it to desired type without exception
-// other excpetions, we let it throw
-#define CASE_POP(K, F)                                                                                            \
-  case nebula::type::Kind::K: {                                                                                   \
-    using T = nebula::type::TypeTraits<nebula::type::Kind::K>;                                                    \
-    props_.emplace(name,                                                                                          \
-                   ColumnProps{ nebula::common::Chars::path(name.data(), name.size()),                            \
-                                [](nebula::memory::FlatRow& r, const std::string& n, const rapidjson::Value* v) { \
-                                  if (v == nullptr || v->IsNull()) {                                              \
-                                    r.write(n, nebula::type::TypeDetect<T::CppType>::value);                      \
-                                  } else if (v->IsString()) {                                                     \
-                                    r.write(n, nebula::common::safe_to<T::CppType>(v->GetString()));              \
-                                  } else {                                                                        \
-                                    r.write(n, (T::CppType)v->F());                                               \
-                                  }                                                                               \
-                                } });                                                                             \
-    break;                                                                                                        \
-  }
-
-    for (size_t i = 0; i < schema->size(); ++i) {
-      auto type = schema->childType(i);
-      const auto& name = type->name();
-      if (name == nebula::meta::Table::TIME_COLUMN) {
-        hasTime_ = true;
-      }
-
-      switch (type->k()) {
-        CASE_POP(BOOLEAN, GetBool)
-        CASE_POP(TINYINT, GetInt)
-        CASE_POP(SMALLINT, GetInt)
-        CASE_POP(INTEGER, GetInt)
-        CASE_POP(BIGINT, GetInt64)
-        CASE_POP(REAL, GetFloat)
-        CASE_POP(DOUBLE, GetDouble)
-      case nebula::type::Kind::VARCHAR:
-        props_.emplace(name,
-                       ColumnProps{ nebula::common::Chars::path(name.data(), name.size()),
-                                    [](nebula::memory::FlatRow& r, const std::string& n, const rapidjson::Value* v) {
-                                      // is null or is not expected string type (malformed data) - Nebula enforce types.
-                                      // we have chance to compatible with other types and convert them into string, such as numbers.
-                                      if (v == nullptr || v->IsNull() || !v->IsString()) {
-                                        r.write(n, "");
-                                      } else {
-                                        r.write(n, v->GetString(), v->GetStringLength());
-                                      }
-                                    } });
-        break;
-
-      default:
-        throw NException("Type not supported in Json Reader");
-      }
-    }
-  }
-
-  ~JsonRow() = default;
-
-public:
-  virtual inline bool hasTime() const noexcept override {
-    return hasTime_;
-  }
-
-  // parse a buffer with size into a reset row, call reset before passing row
-  virtual bool parse(void* buf, size_t size, nebula::memory::FlatRow& row) noexcept override {
-    // can not be a valid json if content smaller than 2
-    if (size < 2) {
-      return false;
-    }
-
-    auto ptr = static_cast<char*>(buf);
-
-    // (Worth A Note)
-    // we create a new doc object for each row, seems like it's not expensive
-    // but we can try make a reusable doc as member and use Clear method to release resources - not tested
-    // Previously, putting this as a member cause lots of memory leak as internal buffer not released.
-    rapidjson::Document doc;
-    auto& parsed = doc.Parse(ptr, size);
-    if (parsed.HasParseError()) {
-      LOG(WARNING) << "Error parsing json: " << parsed.GetParseError();
-      return false;
-    }
-
-    if (!doc.IsObject()) {
-      LOG(WARNING) << "Unexpected input - Not an JSON object.";
-      return false;
-    }
-
-    // iterate through all desired name
-    for (auto& column : props_) {
-      auto& name = column.first;
-      auto& prop = column.second;
-
-      // use the pointer to get value pointer by path
-      // https://rapidjson.org/md_doc_pointer.html
-      rapidjson::Value* node = locate(doc, prop.path);
-
-      // if not found the node or node has null value
-      if ((node == nullptr || node->IsNull()) && !defaultNull_) {
-        row.writeNull(name);
-        continue;
-      }
-
-      prop.action(row, name, node);
-    }
-
-    return true;
-  }
-
-  virtual void nullify(nebula::memory::FlatRow& row, size_t time) noexcept override {
-    // write everything a null if encoutering an invalid message
-    row.reset();
-    if (!hasTime()) {
-      row.write(nebula::meta::Table::TIME_COLUMN, time);
-    }
-
-    for (auto itr = props_.cbegin(); itr != props_.cend(); ++itr) {
-      row.writeNull(itr->first);
-    }
-  }
-
-private:
-  // use default value for null case
-  bool defaultNull_;
-  // flag to indicate if current schema has time column incldued
-  bool hasTime_;
-
-  // column writer lambda
-  nebula::common::unordered_map<std::string, ColumnProps> props_;
-};
-
-class JsonReader : public nebula::surface::RowCursor {
+// this reader will assume every line of given file is a row object
+// so it's called line json reader, means it will open the file
+// and read line by line to ingest each row
+class LineJsonReader : public nebula::surface::RowCursor {
   static constexpr size_t SLICE_SIZE = 1024;
 
 public:
-  JsonReader(const std::string& file, nebula::type::Schema schema, bool nullDefault = true)
+  LineJsonReader(
+    const std::string& file,
+    const nebula::meta::JsonProps& props,
+    nebula::type::Schema schema,
+    bool nullDefault = true)
     : nebula::surface::RowCursor(0),
       fstream_{ file },
-      json_{ schema, nullDefault },
+      json_{ schema, props.columnsMap, nullDefault },
       row_{ SLICE_SIZE } {
+
     // read first line to initialize cursor state
     if (std::getline(fstream_, line_)) {
       ++size_;
     }
   }
-  virtual ~JsonReader() = default;
+  virtual ~LineJsonReader() = default;
 
 public:
   // next row data of JsonRow
@@ -235,6 +82,81 @@ private:
   nebula::memory::FlatRow row_;
   std::string line_;
 };
+
+// Object json reader instead will parse the whole file as an JSON object
+// it is either an array, or it is an object
+class ObjectJsonReader : public nebula::surface::RowCursor {
+  static constexpr auto ROOT_ROWS = "[ROOT]";
+  static constexpr size_t SLICE_SIZE = 1024;
+
+public:
+  ObjectJsonReader(
+    const std::string& file,
+    const nebula::meta::JsonProps& props,
+    nebula::type::Schema schema,
+    bool nullDefault = true)
+    : nebula::surface::RowCursor(0),
+      json_{ schema, props.columnsMap, nullDefault },
+      row_{ SLICE_SIZE },
+      array_{ nullptr } {
+    const auto& rf = props.rowsField;
+    N_ENSURE(rf.size() > 0, "rows field has to be set.");
+
+    // parse the file into json object
+    std::ifstream ifs{ file };
+    rapidjson::IStreamWrapper isw(ifs);
+    if (doc_.ParseStream(isw).HasParseError()) {
+      throw NException("Failed to parse the json document.");
+    }
+
+    if (rf == ROOT_ROWS) {
+      array_ = &doc_;
+    } else {
+      auto root = doc_.GetObject();
+      array_ = locate(root, nebula::common::Chars::path(rf.data(), rf.size()));
+    }
+    N_ENSURE((array_ != nullptr && array_->IsArray()), "rows field should be array");
+
+    // size is array length
+    size_ = array_->GetArray().Size();
+  }
+  virtual ~ObjectJsonReader() = default;
+
+public:
+  // next row data of JsonRow
+  virtual const nebula::surface::RowData& next() override {
+    // set it up before returning to client to consume
+    row_.reset();
+    auto item = (*array_)[index_++].GetObject();
+    json_.fill(item, row_);
+    return row_;
+  }
+
+  virtual std::unique_ptr<nebula::surface::RowData> item(size_t) const override {
+    throw NException("stream-based JSON Reader does not support random access.");
+  }
+
+private:
+  JsonRow json_;
+  nebula::memory::FlatRow row_;
+
+  // json doc and the array pointer
+  rapidjson::Document doc_;
+  rapidjson::Value* array_;
+};
+
+std::unique_ptr<nebula::surface::RowCursor> makeJsonReader(
+  const std::string& file,
+  const nebula::meta::JsonProps& props,
+  nebula::type::Schema schema,
+  bool nullDefault = true) {
+  // empty rows field - every line of the file is a row object in json
+  if (props.rowsField.size() == 0) {
+    return std::make_unique<LineJsonReader>(file, props, schema, nullDefault);
+  } else {
+    return std::make_unique<ObjectJsonReader>(file, props, schema, nullDefault);
+  }
+}
 
 } // namespace storage
 } // namespace nebula

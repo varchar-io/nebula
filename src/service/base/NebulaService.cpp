@@ -355,75 +355,11 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     auto spec = task.spec<IngestSpec>();
 
     // create ingest task
-    auto table = spec->table();
-    const auto& time = table->timeSpec;
-
-    // serialize serde
-    auto mapSize = table->serde.cmap.size();
-    std::vector<flatbuffers::Offset<ColumnMap>> cmap;
-    cmap.reserve(mapSize);
-    for (auto& itr : table->serde.cmap) {
-      cmap.push_back(
-        CreateColumnMap(mb, mb.CreateString(itr.first), itr.second));
-    }
-    auto serde = CreateSerde(mb,
-                             mb.CreateString(table->serde.protocol),
-                             mb.CreateVector<flatbuffers::Offset<ColumnMap>>(cmap));
-
-    // serialize column properties
-    auto numCols = table->columnProps.size();
-    std::vector<flatbuffers::Offset<ColumnProp>> colProps;
-    colProps.reserve(numCols);
-    for (auto& itr : table->columnProps) {
-      auto& cp = itr.second;
-      // if the column has partition info, we will need to serialize it
-      flatbuffers::Offset<PartitionInfo> pi;
-      if (cp.partition.valid()) {
-        const auto& values = cp.partition.values;
-        std::vector<flatbuffers::Offset<flatbuffers::String>> fbValues;
-        fbValues.reserve(values.size());
-        for (auto& v : values) {
-          fbValues.emplace_back(mb.CreateString(v));
-        }
-
-        pi = CreatePartitionInfo(mb, mb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(fbValues), cp.partition.chunk);
-      }
-
-      colProps.push_back(
-        CreateColumnProp(mb, mb.CreateString(itr.first),
-                         cp.withBloomFilter,
-                         cp.withDict,
-                         cp.withCompress,
-                         mb.CreateString(cp.defaultValue),
-                         pi));
-    }
-    auto fbColProps = mb.CreateVector<flatbuffers::Offset<ColumnProp>>(colProps);
-
-    // serialize table settings
-    std::string settings;
-    if (!table->settings.empty()) {
-      std::stringstream ss;
-      msgpack::pack(ss, table->settings);
-      ss.seekg(0);
-      settings = ss.str();
-    }
+    auto strTableSpec = TableSpec::serialize(*spec->table());
 
     // serialize the ingest task
     auto it = CreateIngestTask(mb,
-                               mb.CreateString(table->name),
-                               table->max_seconds,
-                               mb.CreateString(table->loader),
-                               (int8_t)table->source,
-                               mb.CreateString(table->location),
-                               mb.CreateString(table->format),
-                               mb.CreateString(table->schema),
-                               mb.CreateString(settings),
-                               (int8_t)time.type,
-                               time.unixTimeValue,
-                               mb.CreateString(time.colName),
-                               mb.CreateString(time.pattern),
-                               serde,
-                               fbColProps,
+                               mb.CreateString(strTableSpec),
                                mb.CreateString(spec->version()),
                                mb.CreateString(spec->path()),
                                mb.CreateString(spec->domain()),
@@ -481,90 +417,8 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     auto it = ptr->ingest();
 
     // NOTE: here incurs string copy in IngestSpec constructor, better to avoid it
-    // build time spec
-    TimeSpec time{
-      (TimeType)it->time_type(),
-      it->time_value(),
-      it->time_column()->str(),
-      it->time_format()->str()
-    };
-
-    // build column properties
-    ColumnProps props;
-    auto colProps = it->column_props();
-    for (auto itr = colProps->begin(); itr != colProps->end(); ++itr) {
-      // adding all properties here
-      nebula::meta::PartitionInfo partInfo;
-      auto pi = itr->pi();
-      if (pi) {
-        partInfo.chunk = pi->chunk();
-        auto values = pi->values();
-        partInfo.values.reserve(values->size());
-        for (auto itr = values->begin(); itr != values->end(); ++itr) {
-          partInfo.values.emplace_back(itr->data(), itr->size());
-        }
-      }
-
-      props[itr->name()->str()] = Column{
-        itr->bf(),
-        itr->dict(),
-        itr->comp(),
-        itr->dv()->str(),
-        {},
-        std::move(partInfo)
-      };
-    }
-
-    // build access rules
-    // TODO(cao): currently we don't serde acccess spec to nodes
-    // because all access control happens at server right now.
-    // This behavior may change in the future when a dedicated node assigned to client for streaming.
-    AccessSpec as;
-
-    // TODO(cao): we don't need bucket info to nodes for now
-    nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
-
-    // build serde
-    auto serde = it->serde();
-    nebula::meta::KafkaSerde sd;
-    sd.protocol = serde->protocol()->str();
-    auto cmap = serde->column_map();
-    for (auto itr = cmap->begin(); itr != cmap->end(); ++itr) {
-      sd.cmap.emplace(itr->name()->str(), itr->index());
-    }
-
-    // TODO(cao): settings needs to be sync to all nodes as it may contain critical info
-    // such as SSL cert settings to enable ingester read data properly
-    // build key-value settings
-    std::unordered_map<std::string, std::string> settings;
-    auto s = it->settings();
-    if (s->size() > 0) {
-      msgpack::object_handle oh = msgpack::unpack(s->data(), s->size());
-      oh.get().convert(settings);
-    }
-
-    // build table spec
-    std::string tbName = it->name()->str();
-    std::string src = it->location()->str();
-    std::string bak = "";
-    auto table = std::make_shared<TableSpec>(std::move(tbName),
-                                             0,
-                                             it->max_seconds(),
-                                             it->schema()->str(),
-                                             (DataSource)it->source(),
-                                             it->loader()->str(),
-                                             std::move(src),
-                                             std::move(bak),
-                                             it->format()->str(),
-                                             std::move(sd),
-                                             std::move(props),
-                                             std::move(time),
-                                             std::move(as),
-                                             std::move(bi),
-                                             std::move(settings));
-
     auto is = std::make_shared<IngestSpec>(
-      table,
+      TableSpec::deserialize(it->table_spec()->str()),
       it->version()->str(),
       it->path()->str(),
       it->domain()->str(),

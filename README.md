@@ -67,16 +67,13 @@ seattle.calls:
   source: s3://nebula/seattle_calls.10k.tsv
   backup: s3://nebula/n202/
   format: csv
+  csv:
+    hasHeader: true
+    delimiter: ","
   time:
     type: column
     column: queue_time
     pattern: "%m/%d/%Y %H:%M:%S"
-  settings:
-    # csv delimiter - it defaults to tab key, so have to specify
-    # try to use tab rather than comma - nebula CSV reader may have bug if column value contains comma
-    # csv.delimiter: ","
-    # the data has header - it defaults to true hence can be ommited.
-    csv.header: true
 ```
 
 ## Realtime Data Analytics

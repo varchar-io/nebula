@@ -29,10 +29,10 @@ namespace storage {
 // Represents a reusable thrift object.
 class ThriftRow final : public RowParser {
 public:
-  ThriftRow(const nebula::common::unordered_map<std::string, uint32_t>& cmap)
+  ThriftRow(const std::unordered_map<std::string, uint32_t>& columnsMap)
     : hasTime_{ false } {
     // reverse mapping of name -> id
-    for (auto itr = cmap.begin(); itr != cmap.end(); ++itr) {
+    for (auto itr = columnsMap.begin(); itr != columnsMap.end(); ++itr) {
       fields_.emplace(itr->second, itr->first);
       if (itr->first == nebula::meta::Table::TIME_COLUMN) {
         hasTime_ = true;

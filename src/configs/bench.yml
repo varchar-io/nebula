@@ -33,6 +33,9 @@ tables:
     source: /home/shawncao/lineitem.tbl.1
     backup: s3://nebula/n109/
     format: csv
+    csv:
+      hasHeader: false
+      delimiter: "|"
     columns:
       l_shipinstruct:
         dict: true
@@ -46,6 +49,3 @@ tables:
       type: column
       column: l_shipdate
       pattern: "%Y-%m-%d"
-    settings:
-      csv.delimiter: "|"
-      csv.header: false

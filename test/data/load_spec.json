@@ -1,0 +1,24 @@
+{
+  "uid": "vJF50X8UIVXwKSohdiF0Ue4DF4C3",
+  "path": "https://api.polygon.io/v2/aggs/ticker/ZM/range/1/day/2019-01-01/2021-10-01?apiKey=s1_wUAuttSoXyAPdRoFzKfnWCWOGtqFv",
+  "schema": "ROW<v:DOUBLE,vw:DOUBLE,o:DOUBLE,c:DOUBLE,h:DOUBLE,l:DOUBLE,t:DOUBLE,n:DOUBLE>",
+  "format": "JSON",
+  "csv": {
+    "delimiter": "\t"
+  },
+  "json": {
+    "columnsMap": {
+      "n": "n",
+      "vw": "vw",
+      "v": "v",
+      "t": "t",
+      "l": "l",
+      "c": "c",
+      "h": "h",
+      "o": "o"
+    },
+    "rowsField": "results"
+  },
+  "token": "",
+  "tcol": ""
+}

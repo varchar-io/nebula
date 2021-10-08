@@ -32,20 +32,24 @@ namespace ingest {
 namespace test {
 
 using nebula::ingest::SpecRepo;
-using nebula::meta::Macro;
+using namespace nebula::meta;
 
 TEST(IngestTest, TestIngestSpec) {
-  nebula::meta::TimeSpec ts;
-  nebula::meta::AccessSpec as;
-  nebula::meta::ColumnProps cp;
-  nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
-  nebula::meta::KafkaSerde sd;
+  CsvProps csvProps;
+  JsonProps jsonProps;
+  ThriftProps thriftProps;
+  KafkaSerde kafkaSerde;
+  TimeSpec timeSpec;
+  AccessSpec accSpec;
+  ColumnProps colProps;
+  BucketInfo bucketInfo = BucketInfo::empty();
   std::unordered_map<std::string, std::string> settings;
-  auto table = std::make_shared<nebula::meta::TableSpec>(
-    "test", 1000, 10, "s3", nebula::meta::DataSource::S3,
-    "swap", "s3://test", "s3://bak", "csv",
-    std::move(sd), std::move(cp), std::move(ts),
-    std::move(as), std::move(bi), std::move(settings));
+  auto table = std::make_shared<TableSpec>(
+    "test", 1000, 10, "s3", DataSource::S3,
+    "swap", "s3://test", "s3://bak",
+    DataFormat::CSV, std::move(csvProps), std::move(jsonProps), std::move(thriftProps),
+    std::move(kafkaSerde), std::move(colProps), std::move(timeSpec),
+    std::move(accSpec), std::move(bucketInfo), std::move(settings));
   nebula::ingest::IngestSpec spec(table, "1.0", "nebula/v1.x", "nebula", 10, SpecState::NEW, 0);
   LOG(INFO) << "SPEC: " << spec.toString();
   EXPECT_EQ(spec.id(), "test@nebula/v1.x@10");
@@ -84,7 +88,7 @@ TEST(IngestTest, TestTransformerAddColumn) {
   pg_query_free_parse_result(transformer);
 }
 
-TEST(IngestTest, TestTableSpec) {
+TEST(IngestTest, TestTimePatternSpecGeneration) {
   nebula::ingest::SpecRepo sr;
 
   // load cluster info from sample config

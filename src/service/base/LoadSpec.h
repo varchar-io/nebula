@@ -21,6 +21,7 @@
 #include "common/Errors.h"
 #include "common/Evidence.h"
 #include "common/Format.h"
+#include "common/Hash.h"
 #include "meta/TableSpec.h"
 #include "storage/NFS.h"
 
@@ -31,6 +32,14 @@ namespace base {
 // extract more info from a load spec
 struct LoadSpec;
 void extract(LoadSpec&);
+
+#define READ_MEMBER(NAME, VAR, GETTER)    \
+  {                                       \
+    auto member = obj.FindMember(NAME);   \
+    if (member != obj.MemberEnd()) {      \
+      this->VAR = member->value.GETTER(); \
+    }                                     \
+  }
 
 // client side will send a load spec to load
 // the spec definition is parsed from LoadRequest.json in nebula.proto
@@ -52,12 +61,19 @@ struct LoadSpec {
   // data format - such as "csv"
   std::string format;
 
+  // csv props
+  meta::CsvProps csv;
+
+  // json props
+  meta::JsonProps json;
+
+  // thrift props
+  meta::ThriftProps thrift;
+
   // optional access token
   std::string token;
 
   // time spec of this load demand
-  std::string tcol;
-  std::string tpat;
   nebula::meta::TimeSpec timeSpec;
 
   // access spec of this sheet - only accessible to current user
@@ -75,30 +91,17 @@ struct LoadSpec {
     // root object
     auto obj = doc.GetObject();
 
-#define READ_MEMBER(NAME, VAR, GETTER)    \
-  {                                       \
-    auto member = obj.FindMember(NAME);   \
-    if (member != obj.MemberEnd()) {      \
-      this->VAR = member->value.GETTER(); \
-    }                                     \
-  }
-
     // object example:
     // {
     //     "path":      "s3://pinlogs/nebula/datahub/result_2216307_2746557.csv",
     //     "schema":    "ROW<name:string, vcpu:int, memory:int, cost_per_hour:bigint>"
     //     "format":    "csv"
-    //     "tcol":      "time"
-    //     "tpat":      "%m/%d/%Y %H:%M:%S"
+    //     "time":      { "column": "col-1", "pattern": "%m/%d/%Y %H:%M:%S" }
     // }
     READ_MEMBER("path", path, GetString)
     READ_MEMBER("schema", schema, GetString)
     READ_MEMBER("format", format, GetString)
     READ_MEMBER("token", token, GetString)
-
-    // time related
-    READ_MEMBER("tcol", tcol, GetString)
-    READ_MEMBER("tpat", tpat, GetString)
 
     N_ENSURE(path.size() > 0, "data path is required");
     N_ENSURE(schema.size() > 0, "data schema is required");
@@ -107,24 +110,38 @@ struct LoadSpec {
     // extract other info such as source, domain, etc.
     extract(*this);
 
+    // read csv props and/or json props from the object
+    {
+      auto member = obj.FindMember("csv");
+      if (member != obj.MemberEnd() && member->value.IsObject()) {
+        const auto& csvObj = member->value.GetObject();
+        this->csv.from(csvObj);
+      }
+    }
+    {
+      auto member = obj.FindMember("json");
+      if (member != obj.MemberEnd() && member->value.IsObject()) {
+        const auto& jsonObj = member->value.GetObject();
+        this->json.from(jsonObj);
+      }
+    }
+
+    // time definition
+    {
+      auto member = obj.FindMember("time");
+      if (member != obj.MemberEnd() && member->value.IsObject()) {
+        const auto& timeObj = member->value.GetObject();
+        this->timeSpec.from(timeObj);
+      } else {
+        // if time is not defined, use a static current time as its time
+        this->timeSpec.type = nebula::meta::TimeType::STATIC;
+        this->timeSpec.unixTimeValue = nebula::common::Evidence::unix_timestamp();
+      }
+    }
+
     // set access token if present through settings
     if (!token.empty()) {
       settings["token"] = token;
-    }
-
-    if (format == "csv") {
-      // overwrite delimeter from default [tab] to comma
-      this->settings["csv.delimiter"] = ",";
-    }
-
-    // TODO(cao): tcol and tpat will define how to get time column
-    if (tcol.length() > 0) {
-      this->timeSpec.type = nebula::meta::TimeType::COLUMN;
-      this->timeSpec.colName = tcol;
-      this->timeSpec.pattern = tpat;
-    } else {
-      this->timeSpec.type = nebula::meta::TimeType::STATIC;
-      this->timeSpec.unixTimeValue = nebula::common::Evidence::unix_timestamp();
     }
   }
 };
@@ -146,6 +163,8 @@ void extract(LoadSpec& spec) {
     }
   }
 }
+
+#undef READ_MEMBER
 
 } // namespace base
 } // namespace service
