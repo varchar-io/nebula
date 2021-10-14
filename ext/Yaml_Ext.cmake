@@ -6,6 +6,7 @@ include(ExternalProject)
 ExternalProject_Add(yaml
   PREFIX yaml
   GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+  GIT_TAG 0d9dbcfe8c0df699aed8ae050dddaca614178fb1
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   LOG_DOWNLOAD ON

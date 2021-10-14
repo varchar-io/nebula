@@ -56,6 +56,11 @@ It will take some time if it's first time to build, after build is done, you wil
 
 
 ### Docker images
+
+> Tip: for maintainer, before build images, make sure we have all __release__ binaries replaced.
+> If build using Google cloud machine, we can use scp to copy files, for example `gcloud compute scp vm1:~/nebula/build/NebulaServer ~/nebula/build/`
+> To push docker images to docker hub - run following steps on a linux box.
+
 We peoridically release all `3` nebula docker images to docker hub under the public name `columns`. They are:
 1. `columns/nebula.server`: Nebula server image (statically linked C++ binary).
 2. `columns/nebula.node`: Nebula node image (statically linked C++ binary).
@@ -70,7 +75,8 @@ Currently, Nebula supports two ways for server and nodes to discover each other:
 
 For details, please see [Nebula Discovery](basics/5-discovery.md)
 
-> Tip: (to Nebula maintainer), the docker hub account is associated with columns.ai@gmail.com, please use steps to release new images:
+> Tip: (to Nebula maintainer), the docker hub account is associated with columns.ai@gmail.com (username=columns,password=p...@w...), 
+> please use steps to release new images:
 > 1. Login: `sudo docker login` to log in before push new images.
 > 2. Build: after login, use `docker-compose` tool to build up all images locally.
 >    - cd `src/service`, where docker-compose.yaml is located.
