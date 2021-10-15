@@ -94,7 +94,7 @@ tables:
   #   schema: "ROW<service:string, host:string, tag:string, lang:string, stack:string>"
   #   data: kafka
   #   topic: <topic>
-  #   loader: Roll
+  #   loader: Streaming
   #   source: <brokers>
   #   backup: s3://nebula/n116/
   #   format: json
@@ -160,7 +160,7 @@ tables:
   #   schema: "ROW<userId:long, magicType:short, statusCode:byte, objectCount:int>"
   #   data: kafka
   #   topic: <topic>
-  #   loader: Roll
+  #   loader: Streaming
   #   source: <brokers>
   #   backup: s3://nebula/n105/
   #   format: thrift
@@ -194,7 +194,7 @@ tables:
   #   schema: "ROW<time:long, ct:int, actor_id:string, pid:long, app:byte, eventtype:string, owner:long, root_id:long, crated:long, version:short, slot:int>"
   #   data: kafka
   #   topic: <topic>
-  #   loader: Roll
+  #   loader: Streaming
   #   source: <brokers>
   #   backup: s3://nebula/n115/
   #   format: json

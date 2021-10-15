@@ -108,7 +108,7 @@ tables:
     schema: "ROW<userId:long, magicType:short, statusCode:byte, objectCount:int>"
     data: kafka
     topic: homefeed
-    loader: Roll
+    loader: Streaming
     source: kafkabroker.home.01
     backup: s3://nebula/n105/
     format: thrift

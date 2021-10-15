@@ -88,7 +88,7 @@ For example, this config section will ask Nebula to connect one Kafka topic for 
     schema: "ROW<service:string, host:string, tag:string, lang:string, stack:string>"
     data: kafka
     topic: <topic>
-    loader: Roll
+    loader: Streaming
     source: <brokers>
     backup: s3://nebula/n116/
     format: json

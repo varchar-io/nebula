@@ -254,7 +254,7 @@ To illustrate how to configure new data source in Nebula, here are some examples
     schema: "ROW<userId:long, type:short, statusCode:byte, objectCount:int>"
     data: kafka
     topic: <topic>
-    loader: Roll
+    loader: Streaming
     source: <brokers>
     backup: s3://nebula/n105/
     format: thrift

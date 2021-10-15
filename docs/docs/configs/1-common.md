@@ -142,7 +142,7 @@ tables:
   table-name-1:
     data: kafka
     topic: topic-1
-    loader: Roll
+    loader: Streaming
     source: <brokers>
     backup: s3://nebula/n116/
 ```
