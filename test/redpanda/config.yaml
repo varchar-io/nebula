@@ -1,0 +1,62 @@
+version: 1.0
+
+# server configs
+server:
+  # as node will treat server to run as a node
+  # if false, server will not load any data in itself.
+  # NOTE that, there are maybe missing functions to fully compatible for server as node.
+  # such as task execution may not be implemented.
+  anode: false
+
+  # no authentication configured
+  auth: false
+
+  # configure meta db as none
+  meta:
+    db: none
+
+  # discovery by service or config
+  discovery:
+    method: config
+
+# will be provided by enviroment
+nodes:
+  - node:
+      host: localhost
+      port: 9199
+
+tables:
+  nebula.test:
+    retention:
+      max-mb: 10000
+      max-hr: 240
+    schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+    data: custom
+    loader: NebulaTest
+    source: ""
+    backup: s3://nebula/n100/
+    format: none
+    time:
+      type: static
+      # get it from linux by "date +%s"
+      value: 1565994194
+
+  k.<TOPIC>:
+    retention:
+      max-mb: 200000
+      max-hr: 48
+    schema: "ROW<name:string, value:int>"
+    data: kafka
+    topic: <TOPIC>
+    loader: Streaming
+    source: <BROKERS>
+    backup: s3://nebula/n116/
+    format: json
+    columns:
+      name:
+        dict: true
+    time:
+      # kafka will inject a time column when specified provided
+      type: provided
+    settings:
+      batch: 200
