@@ -7,9 +7,10 @@ find_package(Threads REQUIRED)
 include(ExternalProject)
 SET(KAFKA_OPTS
   -DCMAKE_BUILD_TYPE=Release
+  -DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}
   -DRDKAFKA_BUILD_STATIC=1
   -DENABLE_LZ4_EXT=OFF
-  -DWITH_SSL=OFF
+  -DWITH_SSL=ON
   -DWITH_SASL=OFF)
 ExternalProject_Add(kafka
   PREFIX kafka
@@ -57,32 +58,3 @@ target_link_libraries(${KAFKA_LIBRARY}
   INTERFACE ${KC_LIBRARY})
 
 add_dependencies(${KAFKA_LIBRARY} kafka)
-
-# ######### I manually built librdkafka on my dev app
-# ######### So that I can use below build script
-# set(KC_INCLUDE_DIRS /usr/local/include/librdkafka)
-# set(KC_LIBRARY_PATH /usr/local/lib/librdkafka.a)
-# set(KC_LIBRARY libkafkac)
-# add_library(${KC_LIBRARY} UNKNOWN IMPORTED)
-# set_target_properties(${KC_LIBRARY} PROPERTIES
-#     "IMPORTED_LOCATION" "${KC_LIBRARY_PATH}"
-#     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-#     "INTERFACE_INCLUDE_DIRECTORIES" "${KC_INCLUDE_DIRS}")
-
-# target_link_libraries(${KC_LIBRARY} 
-#     INTERFACE ${OPENSSL_LIBRARY}
-#     INTERFACE ${CRYPTO_LIBRARY}
-#     INTERFACE ${ZSTD_LIBRARY}
-#     INTERFACE ${LZ4_LIBRARY})
-
-# set(KAFKA_INCLUDE_DIRS /usr/local/include/librdkafka)
-# set(KAFKA_LIBRARY_PATH /usr/local/lib/librdkafka++.a)
-# set(KAFKA_LIBRARY libkafka)
-# add_library(${KAFKA_LIBRARY} UNKNOWN IMPORTED)
-# set_target_properties(${KAFKA_LIBRARY} PROPERTIES
-#     "IMPORTED_LOCATION" "${KAFKA_LIBRARY_PATH}"
-#     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-#     "INTERFACE_INCLUDE_DIRECTORIES" "${KAFKA_INCLUDE_DIRS}")
-
-# target_link_libraries(${KAFKA_LIBRARY} 
-#     INTERFACE ${KC_LIBRARY})

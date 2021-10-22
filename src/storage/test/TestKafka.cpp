@@ -313,7 +313,8 @@ TEST(KafkaTest, DISABLED_TestLibKafkaConsumer) {
 
 TEST(KafkaTest, DISABLED_TestKafkaTopic) {
   nebula::meta::KafkaSerde serde;
-  nebula::storage::kafka::KafkaTopic topic(BROKERS, TOPIC, serde);
+  nebula::meta::Settings settings;
+  nebula::storage::kafka::KafkaTopic topic(BROKERS, TOPIC, serde, settings);
 
   // 10 hours ago
   auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 10;
@@ -327,7 +328,8 @@ TEST(KafkaTest, DISABLED_TestKafkaTopic) {
 
 TEST(KafkaTest, DISABLED_TestKafkaReader) {
   nebula::meta::KafkaSerde serde;
-  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, TOPIC, serde);
+  nebula::meta::Settings settings;
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, TOPIC, serde, settings);
 
   // 10 hours ago
   auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 10;
@@ -345,7 +347,7 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
   nebula::meta::TimeSpec ts;
   nebula::meta::AccessSpec as;
   nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
-  std::unordered_map<std::string, std::string> settings;
+  nebula::meta::Settings settings2;
   ts.type = nebula::meta::TimeType::CURRENT;
 
   auto table = std::make_shared<nebula::meta::TableSpec>(
@@ -353,7 +355,7 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
     nebula::meta::DataSource::KAFKA, "Roll", BROKERS, "",
     nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
     std::move(serde), std::move(cp), std::move(ts),
-    std::move(as), std::move(bi), std::move(settings));
+    std::move(as), std::move(bi), std::move(settings2));
 
   const auto& seg = segments.front();
   nebula::storage::kafka::KafkaReader reader(table, seg);
@@ -390,7 +392,8 @@ TEST(KafkaTest, TestKafkaSegmentSerde) {
 
 TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   nebula::meta::KafkaSerde serde;
-  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<brokers>", "<topic>", serde);
+  nebula::meta::Settings settings;
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<brokers>", "<topic>", serde, settings);
 
   // 10 hours ago
   auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 2;
@@ -413,7 +416,7 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   nebula::meta::TimeSpec ts;
   nebula::meta::AccessSpec as;
   nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
-  std::unordered_map<std::string, std::string> settings;
+  nebula::meta::Settings settings2;
   ts.type = nebula::meta::TimeType::CURRENT;
 
   auto table = std::make_shared<nebula::meta::TableSpec>(
@@ -421,7 +424,7 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
     nebula::meta::DataSource::KAFKA, "Roll", "<brokers>", "",
     nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
     std::move(serde), std::move(cp), std::move(ts),
-    std::move(as), std::move(bi), std::move(settings));
+    std::move(as), std::move(bi), std::move(settings2));
 
   auto count = 0;
   for (auto& seg : segments) {
@@ -455,9 +458,10 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
 
 TEST(KafkaTest, DISABLED_TestFetchConfig) {
   nebula::meta::KafkaSerde serde;
+  nebula::meta::Settings settings;
   serde.retention = 90000;
   serde.size = 60000;
-  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<broker>>", "<topic>", serde);
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<broker>>", "<topic>", serde, settings);
 
   // 1 hours ago
   auto oneHr = nebula::common::Evidence::unix_timestamp() - 3600 * 1;
