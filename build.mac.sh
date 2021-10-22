@@ -93,11 +93,24 @@ preq automake
   fi
 )
 
+# build type from env name, default to release
+BTYPE=${BUILD_TYPE}
+if [ "$BTYPE" == "" ]; then
+  BTYPE="Release"
+fi
+
+# flag to strip symbols
+SYM=0
+if [ "$BTYPE" == "Release" ]; then
+  SYM=1
+fi
+
 # execute cmake config with preset configs
 echo "enter password for sudo..."
 echo "-----------------------"
+echo "build type: $BTYPE"
 SSL_ROOT=$OPT_DIR/openssl
-sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DARM=1 -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
+sudo cmake .. -DCMAKE_BUILD_TYPE=$BTYPE -DARM=$IS_ARM -DSYM=$SYM -DPPROF=2 -DOPENSSL_ROOT_DIR=$SSL_ROOT
 
 # execute make
 sudo make -j$(sysctl -n hw.logicalcpu)

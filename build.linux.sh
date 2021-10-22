@@ -128,10 +128,24 @@ SSL_ROOT=/usr/local/openssl
   fi
 )
 
+# build type from env name, default to release
+# to run debug build, issue this `BUILD_TYPE=Debug ./build.sh` at nebula root
+BTYPE=${BUILD_TYPE}
+if [ "$BTYPE" == "" ]; then
+  BTYPE="Release"
+fi
+
+# flag to strip symbols
+SYM=0
+if [ "$BTYPE" == "Release" ]; then
+  SYM=1
+fi
+
 # run nebula cmake
 echo "enter password for sudo..."
 echo "-----------------------"
-sudo cmake .. -DCMAKE_BUILD_TYPE=Release -DSYM=1 -DPPROF=2 -DOPENSSL_ROOT_DIR=${SSL_ROOT}
+echo "build type: $BTYPE"
+sudo cmake .. -DCMAKE_BUILD_TYPE=$BTYPE -DSYM=$SYM -DPPROF=2 -DOPENSSL_ROOT_DIR=${SSL_ROOT}
 
 # execute make
 sudo make -j$(nproc)

@@ -63,6 +63,7 @@ public:
   KafkaTopic(const std::string& brokers,
              const std::string& topic,
              const nebula::meta::KafkaSerde& serde,
+             const std::unordered_map<std::string, std::string>& settings,
              size_t timeoutMs = 5000)
     : brokers_{ brokers },
       topic_{ topic },
@@ -70,7 +71,7 @@ public:
       timeoutMs_{ timeoutMs },
       conf_{ nullptr },
       tconf_{ nullptr } {
-    N_ENSURE(init(), "KafkaTopic Init Failure");
+    N_ENSURE(init(settings), "KafkaTopic Init Failure");
   }
 
   virtual ~KafkaTopic() = default;
@@ -92,7 +93,7 @@ public:
   }
 
 private:
-  bool init() noexcept;
+  bool init(const std::unordered_map<std::string, std::string>&) noexcept;
 
 private:
   std::string brokers_;

@@ -15,8 +15,7 @@
  */
 
 #include "KafkaProvider.h"
-
-#include "common/Chars.h"
+#include "KafkaConfig.h"
 
 /**
  * Provide common kafka handles creation.
@@ -25,7 +24,6 @@ namespace nebula {
 namespace storage {
 namespace kafka {
 
-using nebula::common::Chars;
 using nebula::common::unordered_map;
 
 // most likely the high memory consumption caused by this
@@ -39,8 +37,8 @@ std::unique_ptr<RdKafka::KafkaConsumer> KafkaProvider::getConsumer(
   const std::unordered_map<std::string, std::string>& settings) {
   // set up the kafka configurations
   std::string error;
-  auto conf = std::unique_ptr<RdKafka::Conf>(RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL));
-  auto tconf = std::unique_ptr<RdKafka::Conf>(RdKafka::Conf::create(RdKafka::Conf::CONF_TOPIC));
+
+  KafkaConfig config{ settings };
 
 #define SET_KEY_VALUE_CHECK(K, V)                         \
   if (conf->set(K, V, error) != RdKafka::Conf::CONF_OK) { \
@@ -49,16 +47,8 @@ std::unique_ptr<RdKafka::KafkaConsumer> KafkaProvider::getConsumer(
   }
 
   // for kafka - the configs are all go to consumers
-  constexpr std::string_view KAFKA_PFX = "kafka.";
-  constexpr auto KAFKA_PFX_LEN = KAFKA_PFX.size();
-  for (auto itr = settings.begin(); itr != settings.end(); ++itr) {
-    const auto& key = itr->first;
-    if (Chars::prefix(key.data(), key.size(), KAFKA_PFX.data(), KAFKA_PFX_LEN)) {
-      std::string realKey(key.data() + KAFKA_PFX_LEN, key.size() - KAFKA_PFX_LEN);
-      LOG(INFO) << "Set kafka config from user settings: " << realKey;
-      SET_KEY_VALUE_CHECK(realKey, itr->second);
-    }
-  }
+  auto& conf = config.globalConf;
+  auto& tconf = config.topicConf;
 
   // set brokers
   SET_KEY_VALUE_CHECK("metadata.broker.list", brokers)

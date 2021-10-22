@@ -15,6 +15,7 @@
  */
 
 #include "KafkaTopic.h"
+#include "KafkaConfig.h"
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
@@ -27,28 +28,26 @@
 namespace nebula {
 namespace storage {
 namespace kafka {
-bool KafkaTopic::init() noexcept {
+bool KafkaTopic::init(const std::unordered_map<std::string, std::string>& settings) noexcept {
   // set up the kafka configurations
-  std::string error;
-  conf_ = std::unique_ptr<RdKafka::Conf>(RdKafka::Conf::create(RdKafka::Conf::CONF_GLOBAL));
-  tconf_ = std::unique_ptr<RdKafka::Conf>(RdKafka::Conf::create(RdKafka::Conf::CONF_TOPIC));
 
-#define SET_KEY_VALUE_CHECK(K, V)                            \
-  if (conf_->set(#K, #V, error) != RdKafka::Conf::CONF_OK) { \
-    LOG(ERROR) << "Kafka: " << error;                        \
-    return false;                                            \
-  }
+  KafkaConfig config{ settings };
+  conf_ = std::move(config.globalConf);
+  tconf_ = std::move(config.topicConf);
 
   // set brokers
+  std::string error;
   conf_->set("metadata.broker.list", brokers_, error);
 
   // group Id is a must
-  SET_KEY_VALUE_CHECK(group.id, 0)
+  if (conf_->set("group.id", "0", error) != RdKafka::Conf::CONF_OK) {
+    LOG(ERROR) << "Failed to set group id: " << error;
+    return false;
+  }
 
   // set default topic config
   conf_->set("default_topic_conf", tconf_.get(), error);
 
-#undef SET_KEY_VALUE_CHECK
   return true;
 }
 
