@@ -30,10 +30,13 @@ namespace meta {
 // define data sources supported in Nebula:
 // NEBULA is a reserved type only used internally.
 // Any external reference will be treated as illegal (invalid)
+// Basically the same as each provider's protocol, s3://, gs://, abfs:// etc
+// S3: AWS S3, GS: Google cloud storage, 
 enum class DataSource {
   NEBULA,
   S3,
   GS,
+  ABFS,
   LOCAL,
   KAFKA,
   GSHEET,
@@ -127,6 +130,7 @@ struct DataSourceUtils {
     static const nebula::common::unordered_map<DataSource, std::string> SOURCE_PROTO = {
       { DataSource::S3, "s3" },
       { DataSource::GS, "gs" },
+      { DataSource::ABFS, "abfs" },
       { DataSource::LOCAL, "local" },
       { DataSource::HTTP, "http" }
     };

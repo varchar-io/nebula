@@ -82,7 +82,7 @@ struct LoadSpec {
   nebula::meta::AccessSpec accessSpec;
 
   // settings
-  nebula::meta::Settings settings;
+  nebula::type::Settings settings;
 
   // construct from the json object
   explicit LoadSpec(const rapidjson::Document& doc) {

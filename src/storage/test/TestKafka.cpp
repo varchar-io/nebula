@@ -313,7 +313,7 @@ TEST(KafkaTest, DISABLED_TestLibKafkaConsumer) {
 
 TEST(KafkaTest, DISABLED_TestKafkaTopic) {
   nebula::meta::KafkaSerde serde;
-  nebula::meta::Settings settings;
+  nebula::type::Settings settings;
   nebula::storage::kafka::KafkaTopic topic(BROKERS, TOPIC, serde, settings);
 
   // 10 hours ago
@@ -328,7 +328,7 @@ TEST(KafkaTest, DISABLED_TestKafkaTopic) {
 
 TEST(KafkaTest, DISABLED_TestKafkaReader) {
   nebula::meta::KafkaSerde serde;
-  nebula::meta::Settings settings;
+  nebula::type::Settings settings;
   auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, TOPIC, serde, settings);
 
   // 10 hours ago
@@ -347,7 +347,7 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
   nebula::meta::TimeSpec ts;
   nebula::meta::AccessSpec as;
   nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
-  nebula::meta::Settings settings2;
+  nebula::type::Settings settings2;
   ts.type = nebula::meta::TimeType::CURRENT;
 
   auto table = std::make_shared<nebula::meta::TableSpec>(
@@ -392,7 +392,7 @@ TEST(KafkaTest, TestKafkaSegmentSerde) {
 
 TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   nebula::meta::KafkaSerde serde;
-  nebula::meta::Settings settings;
+  nebula::type::Settings settings;
   auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<brokers>", "<topic>", serde, settings);
 
   // 10 hours ago
@@ -416,7 +416,7 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   nebula::meta::TimeSpec ts;
   nebula::meta::AccessSpec as;
   nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
-  nebula::meta::Settings settings2;
+  nebula::type::Settings settings2;
   ts.type = nebula::meta::TimeType::CURRENT;
 
   auto table = std::make_shared<nebula::meta::TableSpec>(
@@ -458,7 +458,7 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
 
 TEST(KafkaTest, DISABLED_TestFetchConfig) {
   nebula::meta::KafkaSerde serde;
-  nebula::meta::Settings settings;
+  nebula::type::Settings settings;
   serde.retention = 90000;
   serde.size = 60000;
   auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<broker>>", "<topic>", serde, settings);

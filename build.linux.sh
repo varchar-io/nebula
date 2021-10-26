@@ -42,6 +42,7 @@ aptGetInstallPackages=(
   "libbz2-dev"
   "libsnappy-dev"
   "liblzma-dev"
+  "libxml2-dev"
   "autoconf"
   "flex"
   "bison"

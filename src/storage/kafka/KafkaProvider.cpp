@@ -17,6 +17,8 @@
 #include "KafkaProvider.h"
 #include "KafkaConfig.h"
 
+#include "type/Serde.h"
+
 /**
  * Provide common kafka handles creation.
  */
@@ -25,6 +27,7 @@ namespace storage {
 namespace kafka {
 
 using nebula::common::unordered_map;
+using nebula::type::Settings;
 
 // most likely the high memory consumption caused by this
 // thread local collection to provide kafka consumer per broker string
@@ -33,8 +36,7 @@ using nebula::common::unordered_map;
 // Kafka consumer handle is expensive resource which is supposed to reuse
 // in the same thread.
 std::unique_ptr<RdKafka::KafkaConsumer> KafkaProvider::getConsumer(
-  const std::string& brokers,
-  const std::unordered_map<std::string, std::string>& settings) {
+  const std::string& brokers, const Settings& settings) {
   // set up the kafka configurations
   std::string error;
 

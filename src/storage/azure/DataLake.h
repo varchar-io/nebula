@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include <aws/core/Aws.h>
-#include <mutex>
+#include <azure/storage/files/datalake.hpp>
 
 #include "common/Errors.h"
 #include "storage/NFileSystem.h"
+#include "type/Serde.h"
 
 /**
  * A wrapper for interacting with Azure / Datalake
@@ -28,35 +28,27 @@
 namespace nebula {
 namespace storage {
 namespace azure {
-class Datalake : public NFileSystem {
+
+class DataLake : public NFileSystem {
 public:
-  Datalake(const std::string& bucket) : bucket_{ bucket } {}
-  virtual ~Datalake() = default;
+  DataLake(const std::string&, const nebula::type::Settings&);
+  virtual ~DataLake() = default;
 
 public:
   virtual std::vector<FileInfo> list(const std::string&) override;
-
-  void read(const std::string&, const std::string&);
+  virtual size_t read(const std::string&, char*, size_t) override;
+  virtual bool copy(const std::string&, const std::string&) override;
+  virtual bool sync(const std::string&, const std::string&, bool recursive = false) override;
 
   virtual size_t read(const std::string&, const size_t, const size_t, char*) override {
     throw NException("Not implemented");
   }
 
-  virtual size_t read(const std::string&, char*, size_t) override;
-
   virtual FileInfo info(const std::string&) override {
     throw NException("Not implemented");
   }
 
-  virtual bool copy(const std::string&, const std::string&) override {
-    throw NException("Not implemented");
-  }
-
   virtual std::string temp(bool = false) override {
-    throw NException("Not implemented");
-  }
-
-  virtual bool sync(const std::string&, const std::string&, bool recursive = false) override {
     throw NException("Not implemented");
   }
 
@@ -65,18 +57,15 @@ public:
   }
 
 private:
-  bool download(const std::string&, const std::string&) override {
-    throw NException("Not implemented");
-  }
-
-  bool upload(const std::string&, const std::string&) override {
-    throw NException("Not implemented");
-  }
-
-  void initDatalakeClients();
+  bool download(const std::string&, const std::string&);
+  bool upload(const std::string&, const std::string&);
 
 private:
   std::string bucket_;
+  std::string endpoint_;
+  std::string account_;
+  std::string secret_;
+  std::shared_ptr<Azure::Storage::Files::DataLake::DataLakeFileSystemClient> client_;
 };
 } // namespace azure
 } // namespace storage

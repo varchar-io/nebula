@@ -25,7 +25,7 @@
 namespace nebula {
 namespace storage {
 
-std::unique_ptr<NFileSystem> makeFS(const std::string& proto, const std::string& bucket) {
+std::unique_ptr<NFileSystem> makeFS(const std::string& proto, const std::string& bucket, const nebula::type::Settings& settings) {
   if (proto == "local") {
     return std::make_unique<nebula::storage::local::File>();
   }
@@ -36,6 +36,10 @@ std::unique_ptr<NFileSystem> makeFS(const std::string& proto, const std::string&
 
   if (proto == "gs") {
     return std::make_unique<nebula::storage::gcp::GCS>(bucket);
+  }
+
+  if (proto == "abfs") {
+    return std::make_unique<nebula::storage::azure::DataLake>(bucket, settings);
   }
 
   throw NException(fmt::format("unsupported file system: {0}", proto));

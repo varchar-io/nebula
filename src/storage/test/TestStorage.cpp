@@ -22,6 +22,7 @@
 
 #include "storage/NFS.h"
 #include "storage/aws/S3.h"
+#include "storage/azure/DataLake.h"
 #include "storage/local/File.h"
 
 namespace nebula {
@@ -240,6 +241,43 @@ TEST(StorageTest, DISABLED_TestGcsSync) {
   std::getline(in, v);
   in.close();
   EXPECT_EQ(v, content);
+}
+
+TEST(StorageTest, TestAzureDataLake) {
+  auto fs = nebula::storage::makeFS("ab", "<bucket>");
+  auto lfs = nebula::storage::makeFS("local");
+  auto remote = "nebula/trt";
+  // write a file to it
+  auto local1 = lfs->temp(true);
+  {
+    std::ofstream f1{ fmt::format("{0}/1", local1) };
+    f1 << "abc";
+    f1.close();
+  }
+
+  // sync it to s3://pinlogs/nebula/mdb
+  EXPECT_TRUE(fs->sync(local1, remote));
+
+  // list s3
+  {
+    auto files = fs->list(remote);
+    EXPECT_EQ(1, files.size());
+    EXPECT_EQ(fmt::format("{0}/1", remote), files.at(0).name);
+  }
+  // sync the s3 folder to local another folder
+  auto local2 = lfs->temp(true);
+  EXPECT_TRUE(fs->sync(remote, local2));
+
+  // list the new folder
+  {
+    auto files = lfs->list(local2);
+    EXPECT_EQ(1, files.size());
+    EXPECT_EQ("1", files.at(0).name);
+  }
+
+  LOG(INFO) << "Sync works for all: local1=" << local1
+            << ", remote=" << remote
+            << ", local2=" << local2;
 }
 
 } // namespace test
