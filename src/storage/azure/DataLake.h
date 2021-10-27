@@ -17,6 +17,7 @@
 #pragma once
 
 #include <azure/storage/files/datalake.hpp>
+#include <mutex>
 
 #include "common/Errors.h"
 #include "storage/NFileSystem.h"
@@ -37,7 +38,9 @@ public:
 public:
   virtual std::vector<FileInfo> list(const std::string&) override;
   virtual size_t read(const std::string&, char*, size_t) override;
+  // file level copy
   virtual bool copy(const std::string&, const std::string&) override;
+  // directory level copy
   virtual bool sync(const std::string&, const std::string&, bool recursive = false) override;
 
   virtual size_t read(const std::string&, const size_t, const size_t, char*) override {
@@ -66,6 +69,8 @@ private:
   std::string account_;
   std::string secret_;
   std::shared_ptr<Azure::Storage::Files::DataLake::DataLakeFileSystemClient> client_;
+
+  std::mutex mtx_;
 };
 } // namespace azure
 } // namespace storage

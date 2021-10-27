@@ -52,16 +52,16 @@ public:
     throw NException("Not implemented");
   }
 
-  // download a prefix to a local tmp file
+  // download a prefix to a local tmp file - `file to file` operation
   virtual bool copy(const std::string&, const std::string&) override;
+
+  // sync folder from s3 path (without bucket) to local path - `dir to dir` operation
+  virtual bool sync(const std::string&, const std::string&, bool recursive = false) override;
 
   // create temporary file or dir
   virtual std::string temp(bool = false) override {
     throw NException("Not implemented");
   }
-
-  // sync folder from s3 path (without bucket) to local path
-  virtual bool sync(const std::string&, const std::string&, bool recursive = false) override;
 
   // remove a s3 file or s3 prefix
   virtual void rm(const std::string&) override {
