@@ -127,7 +127,7 @@ void genSpecs4Swap(const std::string& version,
     auto sourceInfo = nebula::storage::parse(table->location);
 
     // making a s3 fs with given host
-    auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host);
+    auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host, table->settings);
 
     // list all objects/files from given path
     auto files = fs->list(sourceInfo.path);
@@ -149,7 +149,7 @@ void SpecRepo::genPatternSpec(const nebula::meta::PatternMacro macro,
   // right now
   const auto now = Evidence::now();
   const auto sourceInfo = nebula::storage::parse(table->location);
-  auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host);
+  auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host, table->settings);
 
   // moving step based on macro granularity
   const auto step = Macro::seconds(macro);

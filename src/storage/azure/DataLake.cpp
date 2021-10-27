@@ -96,23 +96,31 @@ std::vector<FileInfo> DataLake::list(const std::string& path) {
   auto dirClient = std::make_shared<DataLakeDirectoryClient>(
     client_->GetDirectoryClient(path));
 
-  // opts may contain continuation token since azure return maximum 5K results per request
-  ListPathsOptions opts;
-  while (true) {
-    auto res = dirClient->ListPaths(true, opts);
-    for (auto& pathItem : res.Paths) {
-      if (!pathItem.IsDirectory) {
-        fileInfos.emplace_back(false, 0, pathItem.FileSize, pathItem.Name, bucket_);
+  // azure datalake will throw if the path not exists
+  // different behavior from S3/GCS, wish there is a quick method like `Exists`
+  try {
+    // opts may contain continuation token since azure return maximum 5K results per request
+    ListPathsOptions opts;
+    while (true) {
+      auto res = dirClient->ListPaths(true, opts);
+      for (auto& pathItem : res.Paths) {
+        if (!pathItem.IsDirectory) {
+          fileInfos.emplace_back(false, 0, pathItem.FileSize, pathItem.Name, bucket_);
+        }
       }
-    }
 
-    // no more results
-    if (!res.NextPageToken.HasValue()) {
-      break;
-    }
+      // no more results
+      if (!res.NextPageToken.HasValue()) {
+        break;
+      }
 
-    // assign the continuation token for next page
-    opts.ContinuationToken = res.NextPageToken;
+      // assign the continuation token for next page
+      opts.ContinuationToken = res.NextPageToken;
+    }
+  } catch (Azure::Storage::StorageException& e) {
+    if (e.ErrorCode == "PathNotFound") {
+      VLOG(1) << "Path not found: " << path;
+    }
   }
 
   return fileInfos;

@@ -141,7 +141,7 @@ bool IngestSpec::work() noexcept {
 
 bool IngestSpec::load(BlockList& blocks) noexcept {
   // if domain is present - assume it's S3 file
-  auto fs = nebula::storage::makeFS(dsu::getProtocol(table_->source), domain_);
+  auto fs = nebula::storage::makeFS(dsu::getProtocol(table_->source), domain_, table_->settings);
 
   // id is the file path, copy it from s3 to a local folder
   auto local = nebula::storage::makeFS("local");

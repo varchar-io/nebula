@@ -121,6 +121,7 @@ struct DataSourceUtils {
   static bool isFileSystem(const DataSource& ds) {
     return ds == DataSource::S3
            || ds == DataSource::GS
+           || ds == DataSource::ABFS
            || ds == DataSource::LOCAL;
   }
 
@@ -146,6 +147,7 @@ struct DataSourceUtils {
   // Get data source entity from its name
   static DataSource from(const std::string& str) noexcept {
     SAME_STR_THEN_ITEM("s3", DataSource::S3)
+    SAME_STR_THEN_ITEM("abfs", DataSource::ABFS)
     SAME_STR_THEN_ITEM("gs", DataSource::GS)
     SAME_STR_THEN_ITEM("kafka", DataSource::KAFKA)
     SAME_STR_THEN_ITEM("local", DataSource::LOCAL)
