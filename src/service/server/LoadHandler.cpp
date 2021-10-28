@@ -249,19 +249,53 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
 
 // auto detect the schema if not provided
 LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::string& name) {
-  // get table name - needs to be unique
-  name = fmt::format("{0}{1}", BlockSignature::EPHEMERAL_TABLE_PREFIX, req->table());
+  const auto& table = req->table();
 
   // TTL in seconds
   const auto ttl = req->ttl();
 
-  // google sheet spec in json format.
+  // configuration in json format
   const auto& json = req->json();
+
   // by comparing the json value in table settings
   rapidjson::Document doc;
   if (doc.Parse(json.c_str()).HasParseError()) {
     throw NException(fmt::format("Error parsing load spec json: {0}", json));
   }
+
+  N_ENSURE(doc.IsObject(), "json object expected in google sheet spec.");
+
+  // TODO: update the spec to explicitly call it out
+  // Here - we allow client to add a new table definition in yaml format
+  // the same table definition format supported in cluster.yaml
+  // when ttl is 0, we trigger this use case.
+  if (ttl == 0) {
+    LOG(INFO) << "Accepting a new table definition in yaml: " << table;
+    std::string yaml = "";
+    const auto root = doc.GetObject();
+    auto member = root.FindMember("yaml");
+    if (member != root.MemberEnd()) {
+      yaml = member->value.GetString();
+    }
+
+    if (yaml.size() == 0) {
+      LOG(ERROR) << "Invalid yaml, expect `{\"yaml\": \"<table definition>\"}`";
+    } else {
+      // add a new table entry
+      auto& ci = ClusterInfo::singleton();
+      auto error = ci.addTable(table, yaml);
+      if (error.size() > 0) {
+        LOG(ERROR) << "Failed to add this new table: " << error;
+      }
+    }
+
+    // stop here for any request with TTL equals to 0
+    name = table;
+    return {};
+  }
+
+  // get table name - needs to be unique for all other ephmeral table
+  name = fmt::format("{0}{1}", BlockSignature::EPHEMERAL_TABLE_PREFIX, table);
 
   LoadSpec demand{ doc };
 

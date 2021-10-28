@@ -86,8 +86,6 @@ struct LoadSpec {
 
   // construct from the json object
   explicit LoadSpec(const rapidjson::Document& doc) {
-    N_ENSURE(doc.IsObject(), "json object expected in google sheet spec.");
-
     // root object
     auto obj = doc.GetObject();
 
