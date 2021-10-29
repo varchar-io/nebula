@@ -95,3 +95,31 @@ tables:
       type: macro
       # support granularity between DAILY, HOURLY, MINUTELY, SECONDLY
       pattern: HOURLY
+
+  azure.datalake:
+    # size and time may not be respected - ephemeral
+    retention:
+      max-mb: 10000
+      max-hr: 48
+    schema: "ROW<operator:string, atype:string, state:string, airport:string>"
+    data: abfs
+    loader: Roll
+    # parameterized data source for on-demand loading, all parameters are formed by {}
+    # this example template has these parameters {date}, {ds}, {ct}, {pf}, {et}, {bucket}
+    source: abfs://testevents/asdf
+    backup: s3://nebula/n200/
+    format: csv
+    columns:
+      atype:
+        dict: true
+      state:
+        dict: true
+      airport:
+        dict: true
+    time:
+      type: macro
+      pattern: daily
+    settings:
+      azure.storage.url: https://testnebula.dfs.core.windows.net
+      azure.storage.account: testnebula
+      azure.storage.secret: M6IaFj8M+eBmxi+V91DBxbey9OVnuN7XFROcfhW1OX6nojZ5Kv+icEToNqv2jtXPIiI7qxDbIBKrGnPLcu3Xxw==
