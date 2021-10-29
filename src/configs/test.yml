@@ -122,4 +122,4 @@ tables:
     settings:
       azure.storage.url: https://testnebula.dfs.core.windows.net
       azure.storage.account: testnebula
-      azure.storage.secret: M6IaFj8M+eBmxi+V91DBxbey9OVnuN7XFROcfhW1OX6nojZ5Kv+icEToNqv2jtXPIiI7qxDbIBKrGnPLcu3Xxw==
+      azure.storage.secret: insert_secret
