@@ -134,7 +134,7 @@ Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, Ta
   // the table is probably still in process if empty (schema not set yet)
   auto table = TableService::singleton()->query(tbl).table();
   if (table->empty()) {
-    return Status::UNKNOWN;
+    return Status(StatusCode::UNKNOWN, "probably in process");
   }
 
   auto bm = BlockManager::init();

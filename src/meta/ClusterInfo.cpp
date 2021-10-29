@@ -343,25 +343,30 @@ std::shared_ptr<TableSpec> loadTable(std::string name, const YAML::Node& td) {
   // (historical) convention removed that table name follows k.{topic}" for kafka
   // in fact, we allow multiple tables connecting to the same streaming topic
   // max-hr could be fractional value to help us get granularity to seconds
-  return std::make_shared<TableSpec>(
-    name,
-    retention["max-mb"].as<size_t>(),
-    retention["max-hr"].as<double>() * Evidence::HOUR_SECONDS,
-    td["schema"].as<std::string>(),
-    ds,
-    td["loader"].as<std::string>(),
-    td["source"].as<std::string>(),
-    td["backup"].as<std::string>(),
-    DataFormatUtils::from(td["format"].as<std::string>()),
-    asCsvProps(td["csv"]),
-    asJsonProps(td["json"]),
-    asThriftProps(td["thrift"]),
-    ,
-    asColumnProps(td["columns"]),
-    asTimeSpec(td["time"]),
-    asAccessRules(td["access"]),
-    asBucketInfo(td["bucket"]),
-    asSettings(td["settings"]));
+  try {
+    return std::make_shared<TableSpec>(
+      name,
+      retention["max-mb"].as<size_t>(),
+      retention["max-hr"].as<double>() * Evidence::HOUR_SECONDS,
+      td["schema"].as<std::string>(),
+      ds,
+      td["loader"].as<std::string>(),
+      td["source"].as<std::string>(),
+      td["backup"].as<std::string>(),
+      DataFormatUtils::from(td["format"].as<std::string>()),
+      asCsvProps(td["csv"]),
+      asJsonProps(td["json"]),
+      asThriftProps(td["thrift"]),
+      kafkaSerde,
+      asColumnProps(td["columns"]),
+      asTimeSpec(td["time"]),
+      asAccessRules(td["access"]),
+      asBucketInfo(td["bucket"]),
+      asSettings(td["settings"]));
+  } catch (std::exception& ex) {
+    LOG(ERROR) << "Error creating table spec: " << name << " - " << ex.what();
+    return nullptr;
+  }
 }
 
 inline void processTableDefinitions(
@@ -463,14 +468,19 @@ std::string ClusterInfo::addTable(const std::string& table, const std::string& y
     LOG(WARNING) << "Overwriting existing table: " << table;
   }
 
-  YAML::Node tableDef = YAML::Load(yaml);
-  if (tableDef.size() == 0) {
-    return "Invalid yaml for table definition";
-  }
+  try {
+    YAML::Node tableDef = YAML::Load(yaml);
+    if (tableDef.size() == 0) {
+      return "Invalid yaml for table definition";
+    }
 
-  // overwrite - emplace will not overwrite if key exists
-  runtimeTables_[table] = std::move(tableDef);
-  stateChanged_ = true;
+    // overwrite - emplace will not overwrite if key exists
+    runtimeTables_[table] = std::move(tableDef);
+    stateChanged_ = true;
+  } catch (std::exception& ex) {
+    // failed to parse the yaml text
+    LOG(ERROR) << "Failed to parse yaml: " << yaml;
+  }
   return {};
 }
 
