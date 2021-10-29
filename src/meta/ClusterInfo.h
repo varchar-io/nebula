@@ -78,6 +78,11 @@ public:
   }
 
 public:
+  // internal state changes that may require a reload
+  inline bool shouldReload() const noexcept {
+    return stateChanged_;
+  }
+
   // load cluster info from config file
   void load(const std::string&, CreateMetaDB);
 
@@ -87,6 +92,7 @@ public:
 
   // remove the table entry
   inline size_t removeTable(const std::string& table) noexcept {
+    stateChanged_ = true;
     return runtimeTables_.erase(table);
   }
 
@@ -134,6 +140,7 @@ private:
   ServerOptions server_;
   std::unique_ptr<MetaDb> db_;
   nebula::common::unordered_map<std::string, YAML::Node> runtimeTables_;
+  bool stateChanged_;
 };
 } // namespace meta
 } // namespace nebula

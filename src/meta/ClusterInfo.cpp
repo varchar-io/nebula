@@ -435,6 +435,7 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
 
   // swap with new table set
   std::swap(tables_, tableSet);
+  stateChanged_ = false;
 
   // if user mistakenly config things at top level
   // (I made mistake to place a new table the same level as "tables")
@@ -459,6 +460,7 @@ std::string ClusterInfo::addTable(const std::string& table, const std::string& y
 
   // overwrite - emplace will not overwrite if key exists
   runtimeTables_[table] = std::move(tableDef);
+  stateChanged_ = true;
   return {};
 }
 
