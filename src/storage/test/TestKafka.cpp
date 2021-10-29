@@ -313,8 +313,9 @@ TEST(KafkaTest, DISABLED_TestLibKafkaConsumer) {
 
 TEST(KafkaTest, DISABLED_TestKafkaTopic) {
   nebula::meta::KafkaSerde serde;
+  serde.topic = TOPIC;
   nebula::meta::Settings settings;
-  nebula::storage::kafka::KafkaTopic topic(BROKERS, TOPIC, serde, settings);
+  nebula::storage::kafka::KafkaTopic topic(BROKERS, serde, settings);
 
   // 10 hours ago
   auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 10;
@@ -328,8 +329,9 @@ TEST(KafkaTest, DISABLED_TestKafkaTopic) {
 
 TEST(KafkaTest, DISABLED_TestKafkaReader) {
   nebula::meta::KafkaSerde serde;
+  serde.topic = TOPIC;
   nebula::meta::Settings settings;
-  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, TOPIC, serde, settings);
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, serde, settings);
 
   // 10 hours ago
   auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 10;
@@ -393,7 +395,7 @@ TEST(KafkaTest, TestKafkaSegmentSerde) {
 TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   nebula::meta::KafkaSerde serde;
   nebula::meta::Settings settings;
-  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<brokers>", "<topic>", serde, settings);
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<brokers>", serde, settings);
 
   // 10 hours ago
   auto tenHr = nebula::common::Evidence::unix_timestamp() - 3600 * 2;
@@ -461,7 +463,7 @@ TEST(KafkaTest, DISABLED_TestFetchConfig) {
   nebula::meta::Settings settings;
   serde.retention = 90000;
   serde.size = 60000;
-  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<broker>>", "<topic>", serde, settings);
+  auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<broker>>", serde, settings);
 
   // 1 hours ago
   auto oneHr = nebula::common::Evidence::unix_timestamp() - 3600 * 1;

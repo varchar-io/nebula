@@ -201,6 +201,10 @@ public:
   static constexpr auto WINDOW_COLUMN = "_window_";
 
 public:
+  inline bool empty() const noexcept {
+    return schema_ == nullptr;
+  }
+
   virtual Schema schema() const {
     N_ENSURE_NOT_NULL(schema_, fmt::format("invalid table not found = {0}", name_));
     return schema_;

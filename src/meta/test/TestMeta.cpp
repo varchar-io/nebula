@@ -170,11 +170,12 @@ TEST(MetaTest, TestRuntimeTableDefinition) {
       max-hr: 24
     schema: "ROW<name:string, value:int>"
     data: kafka
-    topic: test2
     loader: Streaming
     source: broker:9092
     backup: s3://nebula/n116/
     format: json
+    kafka:
+      topic: test2
     columns:
       name:
         dict: true
@@ -200,11 +201,11 @@ TEST(MetaTest, TestRuntimeTableDefinition) {
   EXPECT_EQ(tables.size(), 4);
   for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
     LOG(INFO) << "TABLE: " << (*itr)->toString();
-    if ((*itr)->name == "test2") {
+    if ((*itr)->name == "k.test") {
       runtime = (*itr);
     }
   }
-  EXPECT_EQ(runtime->name, "test2");
+  EXPECT_EQ(runtime->name, "k.test");
   EXPECT_EQ(runtime->schema, "ROW<name:string, value:int>");
   EXPECT_EQ(runtime->loader, "Streaming");
   EXPECT_EQ(runtime->source, DataSource::KAFKA);

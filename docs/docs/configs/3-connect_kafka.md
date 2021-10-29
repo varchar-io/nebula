@@ -17,11 +17,12 @@ Also you need a DNS address to connect their brokers, usually with port 9092.
       max-hr: 24
     schema: "ROW<name:string, value:int>"
     data: kafka
-    topic: test2
     loader: Streaming
     source: <BROKER ADDRESS>
     backup: s3://nebula/n116/
     format: json
+    kafka:
+      topic: test2
     columns:
       name:
         dict: true

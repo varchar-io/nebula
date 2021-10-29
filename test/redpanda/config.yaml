@@ -47,11 +47,12 @@ tables:
       max-hr: 48
     schema: "ROW<name:string, value:int>"
     data: kafka
-    topic: <TOPIC>
     loader: Streaming
     source: <BROKERS>
     backup: s3://nebula/n116/
     format: json
+    kafka:
+      topic: <TOPIC>
     columns:
       name:
         dict: true

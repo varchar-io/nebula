@@ -141,10 +141,11 @@ another example, let's look at how Kafka works
 tables:
   table-name-1:
     data: kafka
-    topic: topic-1
     loader: Streaming
     source: <brokers>
     backup: s3://nebula/n116/
+    kafka:
+      topic: topic-1
 ```
 in this case, `source` is used to place Kafka broker list that Nebula could connect to fetch data from `topic-1`.
 

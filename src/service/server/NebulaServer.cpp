@@ -131,7 +131,12 @@ Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, Ta
     return Status::CANCELLED;
   }
 
+  // the table is probably still in process if empty (schema not set yet)
   auto table = TableService::singleton()->query(tbl).table();
+  if (table->empty()) {
+    return Status::UNKNOWN;
+  }
+
   auto bm = BlockManager::init();
   // query the table's state
   auto metrics = bm->metrics(table->name());
