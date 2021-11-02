@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <yaml-cpp/yaml.h>
-
 #include "ClusterInfo.h"
+
 #include "type/Serde.h"
 
 namespace YAML {
@@ -91,6 +90,7 @@ namespace meta {
 
 using nebula::common::Evidence;
 using nebula::common::unordered_map;
+using nebula::common::unordered_set;
 using nebula::type::TypeSerializer;
 
 AccessType asAccessType(const std::string& name) {
@@ -247,21 +247,25 @@ std::unordered_map<std::string, Column> asColumnProps(const YAML::Node& node) {
   return props;
 }
 
-KafkaSerde asSerde(const YAML::Node& node) {
-  KafkaSerde serde;
+KafkaSerde asKafka(const YAML::Node& node) {
+  KafkaSerde kafka;
   if (node) {
     // kafka topic retention time
     auto retention = node["topic-retention"];
     if (retention) {
-      serde.retention = retention.as<uint64_t>();
+      kafka.retention = retention.as<uint64_t>();
     }
+
     auto size = node["size"];
     if (size) {
-      serde.size = size.as<uint64_t>();
+      kafka.size = size.as<uint64_t>();
     }
+
+    // topic is a must to have
+    kafka.topic = node["topic"].as<std::string>();
   }
 
-  return serde;
+  return kafka;
 }
 
 CsvProps asCsvProps(const YAML::Node& node) {
@@ -318,6 +322,76 @@ BucketInfo asBucketInfo(const YAML::Node& node) {
   return BucketInfo::empty();
 }
 
+// load table from a given table definition section
+// td = table definition
+std::shared_ptr<TableSpec> loadTable(std::string name, const YAML::Node& td) {
+  auto ds = DataSourceUtils::from(td["data"].as<std::string>());
+  if (ds == DataSource::NEBULA) {
+    return nullptr;
+  }
+
+  // hour table level retention.max-hr as single way to ingest and evict data
+  const auto retention = td["retention"];
+
+  // kafka requires topic to be set in "kafka section"
+  auto kafkaSerde = asKafka(td["kafka"]);
+  if (ds == DataSource::KAFKA && kafkaSerde.topic.size() == 0) {
+    LOG(WARNING) << "Kafka data requrires topic to be set";
+    return nullptr;
+  }
+
+  // (historical) convention removed that table name follows k.{topic}" for kafka
+  // in fact, we allow multiple tables connecting to the same streaming topic
+  // max-hr could be fractional value to help us get granularity to seconds
+  try {
+    return std::make_shared<TableSpec>(
+      name,
+      retention["max-mb"].as<size_t>(),
+      retention["max-hr"].as<double>() * Evidence::HOUR_SECONDS,
+      td["schema"].as<std::string>(),
+      ds,
+      td["loader"].as<std::string>(),
+      td["source"].as<std::string>(),
+      td["backup"].as<std::string>(),
+      DataFormatUtils::from(td["format"].as<std::string>()),
+      asCsvProps(td["csv"]),
+      asJsonProps(td["json"]),
+      asThriftProps(td["thrift"]),
+      kafkaSerde,
+      asColumnProps(td["columns"]),
+      asTimeSpec(td["time"]),
+      asAccessRules(td["access"]),
+      asBucketInfo(td["bucket"]),
+      asSettings(td["settings"]));
+  } catch (std::exception& ex) {
+    LOG(ERROR) << "Error creating table spec: " << name << " - " << ex.what();
+    return nullptr;
+  }
+}
+
+inline void processTableDefinitions(
+  const unordered_map<std::string, YAML::Node>& defs,
+  unordered_set<std::string>& names,
+  TableSpecSet& tables) noexcept {
+  // loading all dynamic table definitions from service calls
+  for (auto it = defs.begin(); it != defs.end(); ++it) {
+    const auto& name = it->first;
+    if (names.find(name) != names.end()) {
+      LOG(WARNING) << "Skip the same table name already defined: " << name;
+      continue;
+    }
+
+    // put the name in
+    names.emplace(name);
+
+    // max-hr could be fractional value to help us get granularity to seconds
+    auto tsp = loadTable(name, it->second);
+    if (tsp) {
+      tables.emplace(tsp);
+    }
+  }
+}
+
 void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
 
   YAML::Node config = YAML::LoadFile(file);
@@ -361,49 +435,22 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
   // load all table specs
   const auto& tables = config["tables"];
   topLevels++;
+
+  // avoid duplicate table name definition
   TableSpecSet tableSet;
+  unordered_set<std::string> nameSet;
+  unordered_map<std::string, YAML::Node> configTables;
   for (YAML::const_iterator it = tables.begin(); it != tables.end(); ++it) {
-    std::string name = it->first.as<std::string>();
-
-    // table definition
-    const auto& td = it->second;
-    auto ds = DataSourceUtils::from(td["data"].as<std::string>());
-
-    // TODO(cao): sorry but we have a hard rule here,
-    // every Kafka table will be named as "k.{topic_name}"
-    // we may want to turn this into an extra field in table rather than name.
-    if (ds == DataSource::KAFKA) {
-      // here we want topic name as table name
-      name = td["topic"].as<std::string>();
-    }
-
-    // hour table level retention.max-hr as single way to ingest and evict data
-    const auto retention = td["retention"];
-
-    // max-hr could be fractional value to help us get granularity to seconds
-    tableSet.emplace(std::make_shared<TableSpec>(
-      name,
-      retention["max-mb"].as<size_t>(),
-      retention["max-hr"].as<double>() * Evidence::HOUR_SECONDS,
-      td["schema"].as<std::string>(),
-      ds,
-      td["loader"].as<std::string>(),
-      td["source"].as<std::string>(),
-      td["backup"].as<std::string>(),
-      DataFormatUtils::from(td["format"].as<std::string>()),
-      asCsvProps(td["csv"]),
-      asJsonProps(td["json"]),
-      asThriftProps(td["thrift"]),
-      asSerde(td["serde"]),
-      asColumnProps(td["columns"]),
-      asTimeSpec(td["time"]),
-      asAccessRules(td["access"]),
-      asBucketInfo(td["bucket"]),
-      asSettings(td["settings"])));
+    configTables.emplace(it->first.as<std::string>(), std::move(it->second));
   }
+
+  // load tables from config first and then runtime tables
+  processTableDefinitions(configTables, nameSet, tableSet);
+  processTableDefinitions(runtimeTables_, nameSet, tableSet);
 
   // swap with new table set
   std::swap(tables_, tableSet);
+  stateChanged_ = false;
 
   // if user mistakenly config things at top level
   // (I made mistake to place a new table the same level as "tables")
@@ -411,6 +458,30 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
   if (config.size() > topLevels) {
     throw NException("Un-recoganized config at the top level");
   }
+}
+
+// add table definition - note that this will overwrite existing entry keyed by table
+// so make sure table name is unique
+std::string ClusterInfo::addTable(const std::string& table, const std::string& yaml) {
+  auto itr = runtimeTables_.find(table);
+  if (itr != runtimeTables_.end()) {
+    LOG(WARNING) << "Overwriting existing table: " << table;
+  }
+
+  try {
+    YAML::Node tableDef = YAML::Load(yaml);
+    if (tableDef.size() == 0) {
+      return "Invalid yaml for table definition";
+    }
+
+    // overwrite - emplace will not overwrite if key exists
+    runtimeTables_[table] = std::move(tableDef);
+    stateChanged_ = true;
+  } catch (std::exception& ex) {
+    // failed to parse the yaml text
+    LOG(ERROR) << "Failed to parse yaml: " << yaml;
+  }
+  return {};
 }
 
 } // namespace meta

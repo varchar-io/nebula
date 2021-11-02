@@ -81,7 +81,7 @@ private:
 // build the subscription pipeline
 void KafkaReader::init() {
   // properties
-  const auto& topic = table_->name;
+  const auto& topic = table_->kafkaSerde.topic;
 
   // subscribe is designed for group balance, we use assign directly
   LOG(INFO) << "Consume " << table_->location << "/" << topic << ":" << segment_.id();

@@ -68,7 +68,8 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
   }
 
   // figure out partition count
-  auto topic = std::unique_ptr<RdKafka::Topic>(RdKafka::Topic::create(consumer.get(), topic_, tconf_.get(), error));
+  auto topic = std::unique_ptr<RdKafka::Topic>(
+    RdKafka::Topic::create(consumer.get(), serde_.topic, tconf_.get(), error));
   if (!topic) {
     LOG(ERROR) << "Kafka: " << error;
     return segments;
@@ -108,7 +109,7 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
   for (auto part : pids) {
     // create partition pointing to a specific time stamp
     auto p = std::unique_ptr<RdKafka::TopicPartition>(
-      RdKafka::TopicPartition::create(topic_, part, timeMs));
+      RdKafka::TopicPartition::create(serde_.topic, part, timeMs));
     std::vector<RdKafka::TopicPartition*> ps{ p.get() };
     if (consumer->assign(ps) != RdKafka::ERR_NO_ERROR) {
       LOG(ERROR) << "Kafka: partition assignment failed.";
@@ -127,7 +128,7 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
     int64_t lowOffset = -1;
     int64_t highOffset = -1;
     if (consumer->query_watermark_offsets(
-          topic_, part, &lowOffset, &highOffset, timeoutMs_)
+          serde_.topic, part, &lowOffset, &highOffset, timeoutMs_)
         != RdKafka::ERR_NO_ERROR) {
       LOG(ERROR) << "Kafka: failed to query watermark offsets.";
       continue;
@@ -158,7 +159,7 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
     if (start >= end) {
       LOG(WARNING) << "No segments to produce: batch=" << width
                    << ", start-off=" << startOffset << ", low-off=" << lowOffset << ", high-off=" << highOffset
-                   << ", partition=" << part << ", topic=" << topic_;
+                   << ", partition=" << part << ", topic=" << serde_.topic;
     }
 
     // Here places an interesting case, because end=(highOffset/width),

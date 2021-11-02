@@ -151,6 +151,70 @@ TEST(MetaTest, TestClusterConfigLoad) {
   LOG(INFO) << "key1=" << test->settings.at("key1");
 }
 
+TEST(MetaTest, TestRuntimeTableDefinition) {
+  auto yamlFile = "configs/test.yml";
+  auto& clusterInfo = nebula::meta::ClusterInfo::singleton();
+
+  // invalid
+  auto error = clusterInfo.addTable("k.test", "");
+  EXPECT_TRUE(error.size() > 0);
+  LOG(ERROR) << "Error adding table: " << error;
+
+  // as long as there is one element, it will be treated as valid
+  error = clusterInfo.addTable("k.test", "data: xyz");
+  EXPECT_TRUE(error.size() == 0);
+
+  auto yamlTableDef = R"(
+    retention:
+      max-mb: 20000
+      max-hr: 24
+    schema: "ROW<name:string, value:int>"
+    data: kafka
+    loader: Streaming
+    source: broker:9092
+    backup: s3://nebula/n116/
+    format: json
+    kafka:
+      topic: test2
+    columns:
+      name:
+        dict: true
+    time:
+      # kafka will inject a time column when specified provided
+      type: provided
+    settings:
+      batch: 100
+      kafka.timeout: 100
+    )";
+  error = clusterInfo.addTable("k.test", yamlTableDef);
+  EXPECT_EQ(error.size(), 0);
+
+  // add some runtime table into it and make sure it loads
+  clusterInfo.load(yamlFile, [](const nebula::meta::MetaConf&) {
+    return std::unique_ptr<nebula::meta::MetaDb>(new nebula::meta::VoidDb());
+  });
+
+  // make sure we have table that we just added in the runtime
+  // in addition to the ones loaded from static config
+  const auto& tables = clusterInfo.tables();
+  nebula::meta::TableSpecPtr runtime = nullptr;
+  EXPECT_EQ(tables.size(), 4);
+  for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
+    LOG(INFO) << "TABLE: " << (*itr)->toString();
+    if ((*itr)->name == "k.test") {
+      runtime = (*itr);
+    }
+  }
+  EXPECT_EQ(runtime->name, "k.test");
+  EXPECT_EQ(runtime->schema, "ROW<name:string, value:int>");
+  EXPECT_EQ(runtime->loader, "Streaming");
+  EXPECT_EQ(runtime->source, DataSource::KAFKA);
+  EXPECT_EQ(runtime->format, DataFormat::JSON);
+  EXPECT_EQ(runtime->settings.size(), 2);
+  EXPECT_EQ(runtime->settings.at("batch"), "100");
+  EXPECT_EQ(runtime->settings.at("kafka.timeout"), "100");
+}
+
 TEST(MetaTest, TestAccessRules) {
   auto schema = nebula::type::TypeSerializer::from(
     "ROW<_time_: bigint, id:int, event:string, email:string, fund:bigint>");
