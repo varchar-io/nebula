@@ -28,7 +28,7 @@ tables:
       max-mb: 10000
       max-hr: 240
     schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
-    data: custom
+    data: local
     loader: NebulaTest
     source: ""
     backup: s3://nebula/n100/

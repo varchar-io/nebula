@@ -31,7 +31,7 @@ TEST(MetaTest, TestTableSpecSerde) {
   CsvProps csvProps{ true, "sep" };
   JsonProps jsonProps{ "rows", { { "col1", "field1" } } };
   ThriftProps thriftProps{ "binary", { { "col1", 1 } } };
-  KafkaSerde kafkaSerde{ 1, 2 };
+  KafkaSerde kafkaSerde{ 1, 2, "topic" };
   ColumnProps columnProps{ { "c1", Column{} } };
   TimeSpec timeSpec{ TimeType::STATIC, 123, "ct", "xyz" };
   AccessSpec accessSpec{
@@ -70,6 +70,7 @@ TEST(MetaTest, TestTableSpecSerde) {
   EXPECT_EQ(spec2.thrift.columnsMap.at("col1"), 1);
   EXPECT_EQ(spec2.kafkaSerde.retention, 1);
   EXPECT_EQ(spec2.kafkaSerde.size, 2);
+  EXPECT_EQ(spec2.kafkaSerde.topic, "topic");
   EXPECT_EQ(spec2.columnProps.size(), 1);
   EXPECT_EQ(spec2.columnProps.at("c1").withBloomFilter, false);
   EXPECT_EQ(spec2.timeSpec.type, TimeType::STATIC);

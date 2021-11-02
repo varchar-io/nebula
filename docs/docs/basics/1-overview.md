@@ -253,15 +253,16 @@ To illustrate how to configure new data source in Nebula, here are some examples
     max-hr: 12
     schema: "ROW<userId:long, type:short, statusCode:byte, objectCount:int>"
     data: kafka
-    topic: <topic>
     loader: Streaming
     source: <brokers>
     backup: s3://nebula/n105/
     format: thrift
-    serde:
+    kafka:
+      topic: <topic>
       retention: 90000
+    thrift:
       protocol: binary
-      cmap:
+      columnsMap:
         _time_: 1
         userId: 3001
         type: 3003

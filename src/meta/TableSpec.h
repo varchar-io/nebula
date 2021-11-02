@@ -76,8 +76,11 @@ struct KafkaSerde {
   // size of each ingestion batch
   uint64_t size = 0;
 
+  // kafka topic
+  std::string topic;
+
   // make it msgpack serializable
-  MSGPACK_DEFINE(retention, size);
+  MSGPACK_DEFINE(retention, size, topic);
 };
 
 // format related props
