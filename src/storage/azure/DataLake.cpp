@@ -67,33 +67,28 @@ PathHttpHeaders GetInterestingHttpHeaders() {
 static constexpr auto KEY_ENDPOINT = "azure.storage.url";
 static constexpr auto KEY_ACCOUNT = "azure.storage.account";
 static constexpr auto KEY_SECRET = "azure.storage.secret";
-static constexpr auto KEY_SECRET_ENV_VAR = "azure.storage.secret_env_var";
 
 // azure data lake bucket is like a long host, for example
 // `<file_system>2@<account_name>3.dfs.core.windows.net`
 DataLake::DataLake(const std::string& bucket, const nebula::type::Settings& settings)
   : bucket_{ bucket } {
-#define KEY_OF_IF_PRESENT(K, M)  \
-  {                              \
-    auto itr = settings.find(K); \
-    if (itr != settings.end()) { \
-      M = itr->second;           \
-    }                            \
+#define KEY_OF_IF_PRESENT(K, M)       \
+  {                                   \
+    char const* tmp = std::getenv(K); \
+    if (tmp) {                        \
+      M = std::string(tmp);           \
+    } else {                          \
+      auto itr = settings.find(K);    \
+      if (itr != settings.end()) {    \
+        M = itr->second;              \
+      }                               \
+    }                                 \
   }
 
   KEY_OF_IF_PRESENT(KEY_ENDPOINT, endpoint_)
   KEY_OF_IF_PRESENT(KEY_ACCOUNT, account_)
   KEY_OF_IF_PRESENT(KEY_SECRET, secret_)
 #undef KEY_OF_IF_PRESENT
-
-  // if KEY_SECRET_ENV_VAR is set, then use that to read secret
-  auto itr = settings.find(KEY_SECRET_ENV_VAR);
-  if (itr != settings.end()) {
-    char const* secret = std::getenv(itr->second.c_str());
-    if (secret) {
-      secret_ = std::string(secret);
-    }
-  }
 
   // build a client from given parameters
   auto sharedKeyCredential = std::make_shared<StorageSharedKeyCredential>(account_, secret_);
