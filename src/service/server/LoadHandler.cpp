@@ -56,12 +56,12 @@ using nebula::meta::JsonProps;
 using nebula::meta::KafkaSerde;
 using nebula::meta::Macro;
 using nebula::meta::NNode;
-using nebula::meta::Settings;
 using nebula::meta::TableSpec;
 using nebula::meta::TableSpecPtr;
 using nebula::meta::ThriftProps;
 using nebula::service::base::GoogleSheet;
 using nebula::service::base::LoadSpec;
+using nebula::type::Settings;
 
 LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, std::string& name) {
   // get request content

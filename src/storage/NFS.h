@@ -21,8 +21,10 @@
 
 #include "NFileSystem.h"
 #include "aws/S3.h"
+#include "azure/DataLake.h"
 #include "gcp/GCS.h"
 #include "local/File.h"
+#include "type/Serde.h"
 
 /**
  * Define a file system interface to provide common data access.
@@ -30,7 +32,11 @@
 namespace nebula {
 namespace storage {
 
-std::unique_ptr<NFileSystem> makeFS(const std::string&, const std::string& = "");
+// create nebula compatible file system from parameters
+// 1. protocol: s3, gs, abfs, local
+// 2. bucket: if the file system supports it, such as s3/gs, otherwise leave it as empty
+// 3. settings: key-value in string types to pass around access info such as credential
+std::unique_ptr<NFileSystem> makeFS(const std::string&, const std::string& = "", const nebula::type::Settings& = {});
 
 // Customized nebula URI info after parsing
 struct UriInfo {

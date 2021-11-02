@@ -16,54 +16,45 @@
 
 #pragma once
 
-#include <aws/core/Aws.h>
+#include <azure/storage/files/datalake.hpp>
 #include <mutex>
 
 #include "common/Errors.h"
 #include "storage/NFileSystem.h"
+#include "type/Serde.h"
 
 /**
- * A wrapper for interacting with AWS / S3
+ * A wrapper for interacting with Azure / Datalake
  */
 namespace nebula {
 namespace storage {
-namespace aws {
-class S3 : public NFileSystem {
+namespace azure {
+
+class DataLake : public NFileSystem {
 public:
-  S3(const std::string& bucket) : bucket_{ bucket } {}
-  virtual ~S3() = default;
+  DataLake(const std::string&, const nebula::type::Settings&);
+  virtual ~DataLake() = default;
 
 public:
-  // list prefix or objects under the given prefix
-  // if obj is true, it will return all objects (max 1K) under given prefix at any level
-  // otherwise it will only return sub-prefixes one level down under current prefix
-  // TODO(cao): not supporting pagination yet, current one time fetch max keys at 1K
   virtual std::vector<FileInfo> list(const std::string&) override;
-  void read(const std::string&, const std::string&);
-  // read a file/object at given offset and length into buffer address provided
+  virtual size_t read(const std::string&, char*, size_t) override;
+  // file level copy
+  virtual bool copy(const std::string&, const std::string&) override;
+  // directory level copy
+  virtual bool sync(const std::string&, const std::string&, bool recursive = false) override;
+
   virtual size_t read(const std::string&, const size_t, const size_t, char*) override {
     throw NException("Not implemented");
   }
-
-  // read a file/object fully into a memory buffer
-  virtual size_t read(const std::string&, char*, size_t) override;
 
   virtual FileInfo info(const std::string&) override {
     throw NException("Not implemented");
   }
 
-  // download a prefix to a local tmp file - `file to file` operation
-  virtual bool copy(const std::string&, const std::string&) override;
-
-  // sync folder from s3 path (without bucket) to local path - `dir to dir` operation
-  virtual bool sync(const std::string&, const std::string&, bool recursive = false) override;
-
-  // create temporary file or dir
   virtual std::string temp(bool = false) override {
     throw NException("Not implemented");
   }
 
-  // remove a s3 file or s3 prefix
   virtual void rm(const std::string&) override {
     throw NException("Not implemented");
   }
@@ -74,11 +65,13 @@ private:
 
 private:
   std::string bucket_;
+  std::string endpoint_;
+  std::string account_;
+  std::string secret_;
+  std::shared_ptr<Azure::Storage::Files::DataLake::DataLakeFileSystemClient> client_;
 
-  // TODO(cao): client configuration retry?
-  // S3 will crash you if requests concurrently, likely rate limit is implemented.
-  std::mutex s3s_;
+  std::mutex mtx_;
 };
-} // namespace aws
+} // namespace azure
 } // namespace storage
 } // namespace nebula

@@ -300,6 +300,9 @@ include(ext/Cuckoo_Ext.cmake)
 # include AWS external project
 include(ext/Aws_Ext.cmake)
 
+# include AZURE SDK project
+include(ext/Azure_Ext.cmake)
+
 # include AWS external project
 include(ext/Gcp_Ext.cmake)
 

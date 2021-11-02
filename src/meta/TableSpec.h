@@ -83,9 +83,6 @@ struct KafkaSerde {
   MSGPACK_DEFINE(retention, size, topic);
 };
 
-// key-value settings in both string types
-using Settings = std::unordered_map<std::string, std::string>;
-
 // format related props
 struct CsvProps {
   // indicating if first row is header
@@ -184,14 +181,14 @@ struct TableSpec {
   // bucket info
   BucketInfo bucketInfo;
   // settings spec just get list of key-values
-  Settings settings;
+  nebula::type::Settings settings;
 
   explicit TableSpec() {}
   explicit TableSpec(std::string _name, size_t maxMb, size_t maxSeconds, std::string _schema,
                      DataSource ds, std::string _loader, std::string _location, std::string _backup,
                      DataFormat _format, CsvProps csvProps, JsonProps jsonProps, ThriftProps thriftProps,
                      KafkaSerde _kafkaSerde, ColumnProps _columnProps, TimeSpec _timeSpec,
-                     AccessSpec _accessSpec, BucketInfo _bucketInfo, Settings _settings)
+                     AccessSpec _accessSpec, BucketInfo _bucketInfo, nebula::type::Settings _settings)
     : name{ std::move(_name) },
       max_mb{ maxMb },
       max_seconds{ maxSeconds },

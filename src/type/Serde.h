@@ -21,6 +21,10 @@
 
 namespace nebula {
 namespace type {
+
+// key-value settings in both string types
+using Settings = std::unordered_map<std::string, std::string>;
+
 /*
  * 
  * A type tree serializer

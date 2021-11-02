@@ -8,6 +8,7 @@ add_library(${NEBULA_STORAGE} STATIC
     ${NEBULA_SRC}/storage/ParquetReader.cpp
     ${NEBULA_SRC}/storage/ThriftReader.cpp
     ${NEBULA_SRC}/storage/aws/S3.cpp
+    ${NEBULA_SRC}/storage/azure/DataLake.cpp
     ${NEBULA_SRC}/storage/gcp/GCS.cpp
     ${NEBULA_SRC}/storage/http/Http.cpp
     ${NEBULA_SRC}/storage/kafka/KafkaProvider.cpp
@@ -21,6 +22,7 @@ target_link_libraries(${NEBULA_STORAGE}
     PUBLIC ${PARQUET_LIBRARY}
     PUBLIC ${ARROW_LIBRARY}
     PUBLIC ${AWS_LIBRARY}
+    PUBLIC ${AZURE_LIBRARY}
     PUBLIC ${GCS_LIBRARY}
     PUBLIC ${KAFKA_LIBRARY}
     PUBLIC ${JSON_LIBRARY}

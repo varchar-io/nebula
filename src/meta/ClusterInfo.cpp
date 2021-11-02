@@ -91,6 +91,7 @@ namespace meta {
 using nebula::common::Evidence;
 using nebula::common::unordered_map;
 using nebula::common::unordered_set;
+using nebula::type::Settings;
 using nebula::type::TypeSerializer;
 
 AccessType asAccessType(const std::string& name) {
@@ -147,19 +148,16 @@ std::vector<AccessRule> asAccessRules(const YAML::Node& node) {
 //    k1:v1
 //    ...
 //    kn:vn
-std::unordered_map<std::string, std::string> asSettings(const YAML::Node& node) {
+Settings asSettings(const YAML::Node& node) {
+  Settings settings;
   if (node) {
-    std::unordered_map<std::string, std::string> settings;
     // for all access type
     for (YAML::const_iterator it = node.begin(); it != node.end(); ++it) {
       settings.emplace(it->first.as<std::string>(), it->second.as<std::string>());
     }
-
-    return settings;
   }
 
-  // no rules defined
-  return std::unordered_map<std::string, std::string>();
+  return settings;
 }
 
 TimeSpec asTimeSpec(const YAML::Node& node) {

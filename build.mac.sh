@@ -81,6 +81,9 @@ preq icu4c
 # perf tools build using automake
 preq automake
 
+# azure sdk requires libxml2
+preq libxml2
+
 
 # build and install gflags - brew has only dylib
 (

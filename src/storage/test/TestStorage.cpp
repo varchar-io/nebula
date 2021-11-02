@@ -20,8 +20,10 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "common/Chars.h"
 #include "storage/NFS.h"
 #include "storage/aws/S3.h"
+#include "storage/azure/DataLake.h"
 #include "storage/local/File.h"
 
 namespace nebula {
@@ -240,6 +242,68 @@ TEST(StorageTest, DISABLED_TestGcsSync) {
   std::getline(in, v);
   in.close();
   EXPECT_EQ(v, content);
+}
+
+// This test will fail unless replacing <secret> with the correct working secret
+// that I removed from source code since it's a public source code.
+// to run this test:
+// replace the URL, bucket/container, user name and secret with your company's settings
+// and remove "DISABLED_" from the test name to enable it
+TEST(StorageTest, DISABLED_TestAzureDataLake) {
+  // make a new file system pointing to an azure data lake
+  // note: a container is required, in this case, it's "test"
+  // file system url will be composed by `{url}/{bucket}`, so please put tail "/" in url
+  auto fs = nebula::storage::makeFS(
+    "abfs", "test",
+    { { "azure.storage.url", "https://nebula1.dfs.core.windows.net" },
+      { "azure.storage.account", "nebula1" },
+      { "azure.storage.secret", "<secret>" } });
+
+  // write a file to a local temp file
+  auto lfs = nebula::storage::makeFS("local");
+  auto remote = "nebula/trt";
+  auto local1 = lfs->temp(true);
+  {
+    std::ofstream f1{ fmt::format("{0}/1", local1) };
+    f1 << "abc";
+    f1.close();
+  }
+
+  // sync it to abfs://pinlogs/nebula/mdb
+  EXPECT_TRUE(fs->sync(local1, remote));
+
+  // list azure path
+  {
+    auto files = fs->list(remote);
+    EXPECT_EQ(1, files.size());
+    EXPECT_EQ(fmt::format("{0}/1", remote), files.at(0).name);
+  }
+  // sync the s3 folder to local another folder
+  auto local2 = lfs->temp(true);
+  EXPECT_TRUE(fs->sync(remote, local2));
+
+  // list the new folder
+  {
+    auto files = lfs->list(local2);
+    EXPECT_EQ(1, files.size());
+    auto f = files.at(0).name;
+    EXPECT_EQ("1", nebula::common::Chars::last(f));
+
+    std::ifstream fi{ f };
+    std::string content;
+    fi >> content;
+    fi.close();
+    EXPECT_EQ(content, "abc");
+  }
+
+  {
+    // just read the file into a buffer using its read api
+    auto f = fmt::format("{0}/1", remote);
+    char buf[10];
+    auto size = fs->read(f, buf, 10);
+    EXPECT_EQ(size, 3);
+    EXPECT_EQ(std::string(buf, size), "abc");
+  }
 }
 
 } // namespace test
