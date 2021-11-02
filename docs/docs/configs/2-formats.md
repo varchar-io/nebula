@@ -107,11 +107,12 @@ tables:
       max-hr: 12
     schema: "ROW<userId:long, magicType:short, statusCode:byte, objectCount:int>"
     data: kafka
-    topic: homefeed
     loader: Streaming
     source: kafkabroker.home.01
     backup: s3://nebula/n105/
     format: thrift
+    kafka:
+      topic: homefeed
     thrift:
       protocol: binary    
       columnsMap:

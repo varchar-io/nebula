@@ -61,12 +61,10 @@ struct KafkaSegment {
 class KafkaTopic {
 public:
   KafkaTopic(const std::string& brokers,
-             const std::string& topic,
              const nebula::meta::KafkaSerde& serde,
              const std::unordered_map<std::string, std::string>& settings,
              size_t timeoutMs = 5000)
     : brokers_{ brokers },
-      topic_{ topic },
       serde_{ serde },
       timeoutMs_{ timeoutMs },
       conf_{ nullptr },
@@ -85,7 +83,7 @@ public:
   }
 
   inline const std::string& topic() const {
-    return topic_;
+    return serde_.topic;
   }
 
   inline size_t timeoutMs() const {
@@ -97,7 +95,6 @@ private:
 
 private:
   std::string brokers_;
-  std::string topic_;
   nebula::meta::KafkaSerde serde_;
   size_t timeoutMs_;
 

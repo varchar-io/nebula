@@ -17,6 +17,7 @@
 #pragma once
 
 #include <mutex>
+#include <yaml-cpp/yaml.h>
 
 #include "MetaDb.h"
 #include "NodeManager.h"
@@ -77,7 +78,23 @@ public:
   }
 
 public:
+  // internal state changes that may require a reload
+  inline bool shouldReload() const noexcept {
+    return stateChanged_;
+  }
+
+  // load cluster info from config file
   void load(const std::string&, CreateMetaDB);
+
+  // table name and its yaml definition content
+  // should move to metadata server in future
+  std::string addTable(const std::string&, const std::string&);
+
+  // remove the table entry
+  inline size_t removeTable(const std::string& table) noexcept {
+    stateChanged_ = true;
+    return runtimeTables_.erase(table);
+  }
 
   inline const std::vector<NNode> nodes() const {
     return nodeManager_->nodes();
@@ -122,6 +139,8 @@ private:
   std::string version_;
   ServerOptions server_;
   std::unique_ptr<MetaDb> db_;
+  nebula::common::unordered_map<std::string, YAML::Node> runtimeTables_;
+  bool stateChanged_;
 };
 } // namespace meta
 } // namespace nebula

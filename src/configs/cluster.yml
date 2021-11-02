@@ -93,11 +93,12 @@ tables:
   #     max-hr: 48
   #   schema: "ROW<service:string, host:string, tag:string, lang:string, stack:string>"
   #   data: kafka
-  #   topic: <topic>
   #   loader: Streaming
   #   source: <brokers>
   #   backup: s3://nebula/n116/
   #   format: json
+  #   kafka:
+  #     topic: <topic>
   #   columns:
   #     service:
   #       dict: true
@@ -159,16 +160,16 @@ tables:
   #   # TODO(cao): in the future, we can have separate thrift schema
   #   schema: "ROW<userId:long, magicType:short, statusCode:byte, objectCount:int>"
   #   data: kafka
-  #   topic: <topic>
   #   loader: Streaming
   #   source: <brokers>
   #   backup: s3://nebula/n105/
   #   format: thrift
-  #   serde:
+  #   kafka:
+  #     topic: <topic>
   #     topic-retention: 90000
+  #   thrift:
   #     protocol: binary
-  #     cmap:
-  #       # TODO(cao): this temporary hack to work around nested thrift definition
+  #     columnsMap:
   #       # we're using 1K to separate two levels asssuming no thrift definition has more than 1K fields
   #       # in reverse order, such as 1003 => (field 3 -> field 1)
   #       _time_: 1
@@ -193,11 +194,12 @@ tables:
   #     max-hr: 1
   #   schema: "ROW<time:long, ct:int, actor_id:string, pid:long, app:byte, eventtype:string, owner:long, root_id:long, crated:long, version:short, slot:int>"
   #   data: kafka
-  #   topic: <topic>
   #   loader: Streaming
   #   source: <brokers>
   #   backup: s3://nebula/n115/
   #   format: json
+  #   kafka:
+  #     topic: <topic>
   #   columns:
   #     pid:
   #       bloom_filter: true

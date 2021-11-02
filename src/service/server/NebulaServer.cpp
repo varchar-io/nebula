@@ -131,7 +131,12 @@ Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, Ta
     return Status::CANCELLED;
   }
 
+  // the table is probably still in process if empty (schema not set yet)
   auto table = TableService::singleton()->query(tbl).table();
+  if (table->empty()) {
+    return Status(StatusCode::UNKNOWN, "probably in process");
+  }
+
   auto bm = BlockManager::init();
   // query the table's state
   auto metrics = bm->metrics(table->name());
@@ -544,14 +549,14 @@ void RunServer() {
         sign = fmt::format("{0}_{1}", size, nebula::common::Hasher::hash64(data.get(), size));
       }
 
-      if (sign != confSignature) {
+      auto& ci = nebula::meta::ClusterInfo::singleton();
+      if (sign != confSignature || ci.shouldReload()) {
         LOG(INFO) << "Loading nebula cluster config: " << conf;
 
         // update the sign
         confSignature = sign;
 
         // load the new conf
-        auto& ci = nebula::meta::ClusterInfo::singleton();
         ci.load(conf, nebula::service::base::createMetaDB);
 
         // TODO(cao) - how to support table schema/column props evolution?
