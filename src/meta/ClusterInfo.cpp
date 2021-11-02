@@ -90,7 +90,6 @@ namespace meta {
 
 using nebula::common::Evidence;
 using nebula::common::unordered_map;
-using nebula::type::Settings;
 using nebula::common::unordered_set;
 using nebula::type::Settings;
 using nebula::type::TypeSerializer;
