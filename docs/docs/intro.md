@@ -57,9 +57,14 @@ It will take some time if it's first time to build, after build is done, you wil
 
 ### Docker images
 
-> Tip: for maintainer, before build images, make sure we have all __release__ binaries replaced.
+> Tip: `run.sh` supports run local demo without docker images as we copied latest binaries in the source tree `~/nebula/test/bin/`
 > If build using Google cloud machine, we can use scp to copy files, for example `gcloud compute scp vm1:~/nebula/build/NebulaServer ~/nebula/build/`
-> To push docker images to docker hub - run following steps on a linux box.
+
+Currently, Nebula supports two ways for server and nodes to discover each other:
+1. Confgiure node list in cluster config file (e.g. `cluster.yml`) if the node list is static fixed.
+2. Configure server to be a fixed server (unchanged IP address), and pass the address to all nodes.
+
+For details, please see [Nebula Discovery](basics/5-discovery.md)
 
 We peoridically release all `3` nebula docker images to docker hub under the public name `columns`. They are:
 1. `columns/nebula.server`: Nebula server image (statically linked C++ binary).
@@ -69,12 +74,7 @@ We peoridically release all `3` nebula docker images to docker hub under the pub
 Please check the timestamp and commit hash to see what changes included from Nebula master repo.
 Feel free to use `docker pull` to download them from [docker hub](https://hub.docker.com/u/columns).
 
-Currently, Nebula supports two ways for server and nodes to discover each other:
-1. Confgiure node list in cluster config file (e.g. `cluster.yml`) if the node list is static fixed.
-2. Configure server to be a fixed server (unchanged IP address), and pass the address to all nodes.
-
-For details, please see [Nebula Discovery](basics/5-discovery.md)
-
+To push docker images to docker hub - run following steps on a linux box.
 > Tip: (to Nebula maintainer), the docker hub account is associated with columns.ai@gmail.com (username=columns,password=p...@w...), 
 > please use steps to release new images:
 > 1. Login: `sudo docker login` to log in before push new images.
@@ -86,6 +86,8 @@ For details, please see [Nebula Discovery](basics/5-discovery.md)
 >    - sudo docker tag nebula/server columns/nebula.server && sudo docker push columns/nebula.server
 >    - sudo docker tag nebula/node columns/nebula.node && sudo docker push columns/nebula.node
 
+Latest version (> 2.0) of `docker-compose` is required to support "platform" tag. 
+If necessary, follow [this](https://stackoverflow.com/questions/49839028/how-to-upgrade-docker-compose-to-latest-version) to reinstall it.
 
 ### Kubernetes
 
