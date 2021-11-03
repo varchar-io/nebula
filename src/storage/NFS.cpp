@@ -38,7 +38,7 @@ std::unique_ptr<NFileSystem> makeFS(const std::string& proto, const std::string&
     return std::make_unique<nebula::storage::gcp::GCS>(bucket);
   }
 
-  if (proto == "abfs") {
+  if (proto == "abfs" || proto == "abfss") {
     return std::make_unique<nebula::storage::azure::DataLake>(bucket, settings);
   }
 
