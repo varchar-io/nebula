@@ -1349,6 +1349,9 @@ TEST(CommonTest, TestConv) {
 
   auto x = 33;
   EXPECT_EQ(safe_to<std::string>(x), "33");
+
+  std::string_view view2 = "1635981342161.291";
+  EXPECT_EQ(safe_to<int64_t>(view2), 1635981342161);
 }
 
 static char const* header_name() { return "If-Match"; }
@@ -1431,6 +1434,19 @@ TEST(FormatTest, TestUnformat) {
   std::string fstr{ "123,456.789" };
   nebula::common::unformat<float>(fstr);
   EXPECT_EQ(fstr, "123456.789");
+
+  // test one integer value
+  {
+    std::string istr{ "123,456.789" };
+    nebula::common::unformat<int32_t>(istr);
+    EXPECT_EQ(istr, "123456");
+  }
+  // test one integer value
+  {
+    std::string istr{ ".789" };
+    nebula::common::unformat<int32_t>(istr);
+    EXPECT_EQ(istr, "");
+  }
 }
 
 TEST(FormatTest, TestSheetColumnName) {

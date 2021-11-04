@@ -107,7 +107,7 @@ std::vector<FileInfo> DataLake::list(const std::string& path) {
     // opts may contain continuation token since azure return maximum 5K results per request
     ListPathsOptions opts;
     while (true) {
-      auto res = dirClient->ListPaths(true, opts);
+      auto res = dirClient->ListPaths(false, opts);
       for (auto& pathItem : res.Paths) {
         if (!pathItem.IsDirectory) {
           fileInfos.emplace_back(false, 0, pathItem.FileSize, pathItem.Name, bucket_);
@@ -125,6 +125,8 @@ std::vector<FileInfo> DataLake::list(const std::string& path) {
   } catch (Azure::Storage::StorageException& e) {
     if (e.ErrorCode == "PathNotFound") {
       VLOG(1) << "Path not found: " << path;
+    } else {
+      LOG(ERROR) << "Azure storage exception: " << e.ErrorCode;
     }
   }
 

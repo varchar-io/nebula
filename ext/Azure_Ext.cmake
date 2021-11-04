@@ -21,8 +21,8 @@ include(ExternalProject)
 # azure sdk
 ExternalProject_Add(azure
   PREFIX azure
-  GIT_REPOSITORY https://github.com/Azure/azure-sdk-for-cpp.git
-  GIT_TAG azure-storage-files-datalake_12.2.0
+  GIT_REPOSITORY https://github.com/varchar-io/azure-sdk-for-cpp.git
+  GIT_TAG patch-nebula
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   CMAKE_ARGS ${AZURE_CMAKE_BUILD_OPTIONS}
