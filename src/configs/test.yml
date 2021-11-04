@@ -96,30 +96,31 @@ tables:
       # support granularity between DAILY, HOURLY, MINUTELY, SECONDLY
       pattern: HOURLY
 
-#   azure.datalake:
-#     # size and time may not be respected - ephemeral
-#     retention:
-#       max-mb: 10000
-#       max-hr: 48
-#     schema: "ROW<operator:string, atype:string, state:string, airport:string>"
-#     data: abfs
-#     loader: Roll
-#     # parameterized data source for on-demand loading, all parameters are formed by {}
-#     # this example template has these parameters {date}, {ds}, {ct}, {pf}, {et}, {bucket}
-#     source: abfs://testevents/asdf
-#     backup: s3://nebula/n200/
-#     format: csv
-#     columns:
-#       atype:
-#         dict: true
-#       state:
-#         dict: true
-#       airport:
-#         dict: true
-#     time:
-#       type: macro
-#       pattern: daily
-#     settings:
-#       azure.storage.url: https://testnebula.dfs.core.windows.net
-#       azure.storage.account: testnebula
-#       azure.storage.secret: insert_secret
+  # azure.datalake:
+  #   retention:
+  #     max-mb: 10000
+  #     max-hr: 48
+  #   schema: "ROW<company_id:string, timestamp:bigint, timeuuid:string, event:string, user_id:string, value:string, metadata:string>"
+  #   data: abfs
+  #   loader: Swap
+  #   source: abfs://testevents/raw_events
+  #   backup: s3://nebula/fake
+  #   format: csv
+  #   csv:
+  #     hasHeader: false
+  #     delimiter: ","
+  #   columns:
+  #     company_id:
+  #       bloom_filter: true
+  #     event:
+  #       dict: true
+  #     user_id:
+  #       bloom_filter: true
+  #   time:
+  #     type: column
+  #     column: timestamp
+  #     pattern: UNIXTIME_MS
+  #   settings:
+  #     azure.storage.url: https://testnebula.dfs.core.windows.net
+  #     azure.storage.account: testnebula
+  #     azure.storage.secret: <insert_secret_here>

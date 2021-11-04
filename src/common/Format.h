@@ -115,6 +115,17 @@ static inline void unformat(std::string& input) {
     size_t r = 0, w = 0;
     for (size_t size = input.size(); r < size; ++r) {
       auto ch = input.at(r);
+
+      if constexpr (std::is_integral_v<T>) {
+        // dot means end
+        if (ch == '.') {
+          ++r;
+          break;
+        }
+      }
+
+      // treat comma and space as format - remove them
+      // we may want to leverage localization provider to handle this
       if (ch != ',' && ch != ' ') {
         if (w != r) {
           input.at(w) = input.at(r);

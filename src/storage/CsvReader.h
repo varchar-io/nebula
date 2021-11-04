@@ -16,12 +16,10 @@
 
 #pragma once
 
-#include <folly/Conv.h>
-#include <folly/String.h>
 #include <fstream>
 #include <iostream>
-#include <string>
 
+#include "common/Conv.h"
 #include "common/Errors.h"
 #include "common/Format.h"
 #include "common/Hash.h"
@@ -44,16 +42,12 @@ public:
     return false;
   }
 
-#define CONV_TYPE_INDEX(TYPE, FUNC)                        \
-  TYPE FUNC(const std::string& field) const override {     \
-    auto index = columnLookup_(field);                     \
-    try {                                                  \
-      auto& v = const_cast<std::string&>(data_.at(index)); \
-      nebula::common::unformat<TYPE>(v);                   \
-      return folly::to<TYPE>(v);                           \
-    } catch (std::exception & ex) {                        \
-      return TYPE();                                       \
-    }                                                      \
+#define CONV_TYPE_INDEX(TYPE, FUNC)                      \
+  TYPE FUNC(const std::string& field) const override {   \
+    auto index = columnLookup_(field);                   \
+    auto& v = const_cast<std::string&>(data_.at(index)); \
+    nebula::common::unformat<TYPE>(v);                   \
+    return nebula::common::safe_to<TYPE>(v);             \
   }
 
   CONV_TYPE_INDEX(bool, readBool)
