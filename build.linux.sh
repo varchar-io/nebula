@@ -17,9 +17,12 @@ BUILD_DIR=$ROOT/build
 # enter into nebula build folder
 mkdir -p $BUILD_DIR && cd $BUILD_DIR
 
+# before everything else, do apt update for a new imaged os
+sudo apt update
+
 # on a complete new system -
 # before everything starts - need at least c compiler
-sudo apt install -y build-essential libssl-dev cmake libboost-all-dev
+sudo apt install -y build-essential libssl-dev cmake libboost-all-dev docker-compose
 
 # packages could be installed by apt install
 aptGetInstallPackages=(
