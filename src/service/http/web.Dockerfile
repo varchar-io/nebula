@@ -10,7 +10,7 @@ WORKDIR /etc/web/nebula
 # RUN npm config set package-lock false
 # RUN npm install --save --production
 # A way to support native addon build as well after clean to keep image size small
-RUN apk add --no-cache --virtual .build-deps alpine-sdk python \
+RUN apk add --no-cache --virtual .build-deps alpine-sdk python3 \
     && npm install --production --silent \
     && apk del .build-deps
 
