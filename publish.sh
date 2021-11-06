@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 # publish docker images to https://hub.docker.com/u/columns
 # it prompts for user name and password.
 # run this `publish.sh` only after `build.sh` succeeds
@@ -10,6 +10,9 @@ ROOT=$(git rev-parse --show-toplevel)
 echo 'Make sure you have run `build.sh` successfully before this!'
 echo 'Enter username (columns) and password to continue...'
 sudo docker login
+
+# to support latest syntax, we need latest docker-compose
+$ROOT/deploy/install-latest-docker-compose.sh
 
 # go to docker-compose folder
 cd $ROOT/src/service
