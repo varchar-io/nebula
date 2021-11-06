@@ -12,7 +12,7 @@ echo 'Enter username (columns) and password to continue...'
 sudo docker login
 
 # to support latest syntax, we need latest docker-compose
-$ROOT/deploy/install-latest-docker-compose.sh
+sudo $ROOT/deploy/install-latest-docker-compose.sh
 
 # go to docker-compose folder
 cd $ROOT/src/service
