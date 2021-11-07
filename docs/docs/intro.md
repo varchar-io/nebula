@@ -74,7 +74,7 @@ We peoridically release all `3` nebula docker images to docker hub under the pub
 Please check the timestamp and commit hash to see what changes included from Nebula master repo.
 Feel free to use `docker pull` to download them from [docker hub](https://hub.docker.com/u/columns).
 
-To push docker images to docker hub - run following steps on a linux box.
+To push docker images to docker hub - run following steps on a linux box. Or just execute the steps through `publish.sh` script.
 > Tip: (to Nebula maintainer), the docker hub account is associated with columns.ai@gmail.com (username=columns,password=p...@w...), 
 > please use steps to release new images:
 > 1. Login: `sudo docker login` to log in before push new images.

@@ -40,10 +40,17 @@ If you consider adopting Nebula, feel free to shoot me email at [email](mailto:c
 
 # Get Started
 ## Run It!
+### Prebuilt binaries
 - clone the repo: `git clone https://github.com/varchar-io/nebula.git`
 - run run.sh in source root: `cd nebula && ./run.sh`
 - explore nebula UI in browser: `http://localhost:8088`
 
+### Kubernetes
+Deploy a single node k8s cluster on your local box.
+Assume your current kubectl points to the cluster, just run:
+- apply: `kubectl apply -f deploy/k8s/nebula.yaml`.
+- forward: `kubectl port-forward nebula/server 8088:8088`
+- explore: `http://localhost:8088`
 
 ## Build Source
 Please refer [Developer Guide](./dev.md) for building nebula from source code.
