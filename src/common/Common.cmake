@@ -7,6 +7,7 @@ add_library(${NEBULA_COMMON} STATIC
     ${NEBULA_SRC}/common/Memory.cpp
     ${NEBULA_SRC}/common/Int128.cpp)
 target_link_libraries(${NEBULA_COMMON}
+    PUBLIC ${DATE_LIBRARY}
     PUBLIC ${FMT_LIBRARY}
     PUBLIC ${XXH_LIBRARY}
     PUBLIC ${FOLLY_LIBRARY})

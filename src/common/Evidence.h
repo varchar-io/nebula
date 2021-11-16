@@ -19,6 +19,7 @@
 #include <chrono>
 #include <cmath>
 #include <ctime>
+#include <date/date.h>
 #include <functional>
 #include <glog/logging.h>
 #include <iomanip>
@@ -126,19 +127,15 @@ public: /** only static methods */
 
   // given date time string and parsing pattern, return GMT unix time stamp
   static size_t time(const std::string_view datetime, const std::string& pattern) {
-    std::tm t = {};
-
-    // set buffer to it - can we avoid constructing std::string here?
+    date::sys_time<std::chrono::microseconds> tp;
     std::istringstream value(datetime.data());
-    value >> std::get_time(&t, pattern.c_str());
+    value >> date::parse(pattern, tp);
     if (value.fail()) {
       LOG(ERROR) << "Failed to parse time: " << datetime;
       return 0;
     }
 
-    // convert this time into GMT based unixtime stamp
-    // return timegm(&t);
-    return my_timegm(&t);
+    return seconds(tp);
   }
 
   inline static std::time_t now() {

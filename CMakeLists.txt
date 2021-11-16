@@ -251,6 +251,9 @@ include(ext/PGQuery_Ext.cmake)
 # add dependency of compression
 include(ext/Compression_Ext.cmake)
 
+# include date
+include(ext/Date_Ext.cmake)
+
 # add dependency of compression
 include(ext/Level_Ext.cmake)
 

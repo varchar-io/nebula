@@ -206,7 +206,7 @@ void genKafkaSpec(const std::string& version,
   auto itr = settings.find(S_BATCH);
   if (itr != settings.end()) {
     batch = folly::to<size_t>(itr->second);
-    LOG(INFO) << "Table " << table->name << " overwrite batch size as " << batch;
+    VLOG(1) << "Table " << table->name << " overwrite batch size as " << batch;
   }
 
   // turn these segments into ingestion spec

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <date/date.h>
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
@@ -231,6 +232,23 @@ TEST(CommonTest, TestSliceWrite) {
 
 TEST(CommonTest, TestTimeParsing) {
   LOG(INFO) << "2019-04-01 = " << Evidence::time("2019-04-01", "%Y-%m-%d");
+  // support ISO time string - common in web/js world, easy to support
+  // JS: `new Date().toISOString()`
+  // case 1: 2021-11-16T20:07:28.595Z
+  // case 2: 2021-11-11T04:08:23-08:00
+  // FORMATS:
+  //    "%F": standard date, such as 2021-01-01, equals to "%Y-%m-%d"
+  //    "%T": standard time, such as "15:25:30" or "15:25:30.818", equals to "%H:%M:%S"
+  //    "%I": AM/PM sensitive hour, such as "01 pm", need working with "%p"
+  //    "%p": for "am/pm"
+  //    "%z": timezone, such as "-0500", "+0800"
+  {
+    auto time1 = Evidence::time("2021-11-16T20:07:28.595Z", "%FT%T");
+    date::sys_time<std::chrono::milliseconds> tp;
+    std::istringstream("2021-11-16T20:07:28.595Z") >> date::parse("%FT%TZ", tp);
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
+    LOG(INFO) << "time1: " << time1 << ", date.parse: " << ms;
+  }
 
   {
     auto time1 = Evidence::time("2019-04-01 23:23:45", "%Y-%m-%d %H:%M:%S");
@@ -248,10 +266,23 @@ TEST(CommonTest, TestTimeParsing) {
 
   // time pattern with AM/PM
   {
-    auto time1 = Evidence::time("07/20/2013 14:33:47 PM", "%m/%d/%Y %H:%M:%S");
+    auto time1 = Evidence::time("07/20/2013 04:33:47 PM", "%m/%d/%Y %I:%M:%S %p");
+    EXPECT_TRUE(time1 > 0);
     LOG(INFO) << "time1: " << time1;
     auto time2 = Evidence::time("ENDANGERED", "%m/%d/%Y %H:%M:%S");
     LOG(INFO) << "time2: " << time2;
+    EXPECT_EQ(time2, 0);
+  }
+
+  // with timezone
+  {
+    auto time1 = Evidence::time("2021-11-11T04:08:23-09:00", "%FT%T%z");
+    EXPECT_TRUE(time1 > 0);
+    LOG(INFO) << "time1: " << time1;
+    auto time2 = Evidence::time("2021-11-11T13:08:23.059Z", "%FT%T");
+    EXPECT_TRUE(time2 > 0);
+    LOG(INFO) << "time2: " << time2;
+    EXPECT_EQ(time1, time2);
   }
 }
 
@@ -1350,8 +1381,9 @@ TEST(CommonTest, TestConv) {
   auto x = 33;
   EXPECT_EQ(safe_to<std::string>(x), "33");
 
-  std::string_view view2 = "1635981342161.291";
-  EXPECT_EQ(safe_to<int64_t>(view2), 1635981342161);
+  std::string str = "1635981342161.291";
+  nebula::common::unformat<int64_t>(str);
+  EXPECT_EQ(safe_to<int64_t>(str), 1635981342161);
 }
 
 static char const* header_name() { return "If-Match"; }
