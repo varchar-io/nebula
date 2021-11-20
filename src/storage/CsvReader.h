@@ -32,6 +32,10 @@
 namespace nebula {
 namespace storage {
 
+// used for skipping unused rows (head + meta)
+class DevNull {};
+std::istream& operator>>(std::istream&, DevNull&);
+
 class CsvRow : public nebula::surface::RowData {
 public:
   CsvRow(char delimiter) : delimiter_{ delimiter } {}
@@ -129,8 +133,14 @@ public:
     });
 
     // if data has header and header was not consumed yet (to build schema), we have to skip the first row
+    DevNull devnull;
     if (csv.hasHeader && !headerRead) {
-      fstream_ >> row_;
+      fstream_ >> devnull;
+    }
+
+    // if data has meta in the second row, skip it too
+    if (csv.hasMeta) {
+      fstream_ >> devnull;
     }
 
     // read one row

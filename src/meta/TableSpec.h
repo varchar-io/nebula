@@ -87,20 +87,23 @@ struct KafkaSerde {
 struct CsvProps {
   // indicating if first row is header
   bool hasHeader;
+  // indicating if second row is meta
+  bool hasMeta;
   // only first letter is used
   std::string delimiter;
 
-  CsvProps(bool h = true, std::string d = ",")
-    : hasHeader{ h }, delimiter{ std::move(d) } {}
+  CsvProps(bool h = true, bool m = false, std::string d = ",")
+    : hasHeader{ h }, hasMeta{ m }, delimiter{ std::move(d) } {}
 
   // materialize csv props from json settings
   void from(const rapidjson::GenericObject<true, rapidjson::Value>& obj) {
     READ_MEMBER("hasHeader", hasHeader, GetBool);
+    READ_MEMBER("hasMeta", hasMeta, GetBool);
     READ_MEMBER("delimiter", delimiter, GetString);
   }
 
   // make it msgpack serializable
-  MSGPACK_DEFINE(hasHeader, delimiter);
+  MSGPACK_DEFINE(hasHeader, hasMeta, delimiter);
 };
 
 struct JsonProps {

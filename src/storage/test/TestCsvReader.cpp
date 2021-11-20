@@ -157,7 +157,7 @@ TEST(CsvTest, TestException) {
 }
 
 TEST(CsvTest, TestComplexRealCsv) {
-  nebula::meta::CsvProps csv{ true, "," };
+  nebula::meta::CsvProps csv{ true, false, "," };
   nebula::storage::CsvReader reader("test/data/test.csv", csv, {});
   auto lines = 0;
   while (reader.hasNext()) {
@@ -171,7 +171,7 @@ TEST(CsvTest, TestComplexRealCsv) {
 }
 
 TEST(CsvTest, TestCsvExportedFromGSheet) {
-  nebula::meta::CsvProps csv{ true, "," };
+  nebula::meta::CsvProps csv{ true, false, "," };
   nebula::storage::CsvReader reader("test/data/birthrate.csv", csv, {});
   auto lines = 0;
   while (reader.hasNext()) {
@@ -180,6 +180,18 @@ TEST(CsvTest, TestCsvExportedFromGSheet) {
   }
 
   EXPECT_EQ(lines, 267);
+}
+
+TEST(CsvTest, TestCsvWithMeta) {
+  nebula::meta::CsvProps csv{ true, true, "," };
+  nebula::storage::CsvReader reader("test/data/meta.csv", csv, {});
+  auto lines = 0;
+  while (reader.hasNext()) {
+    auto& r = reader.next();
+    LOG(INFO) << "Row: " << ++lines << ", id: " << r.readString("GEO_ID");
+  }
+
+  EXPECT_EQ(lines, 8);
 }
 
 TEST(CsvTest, TestParseFormattedNumber) {

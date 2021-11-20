@@ -270,6 +270,7 @@ CsvProps asCsvProps(const YAML::Node& node) {
   CsvProps csv;
   if (node) {
     csv.hasHeader = node["hasHeader"].as<bool>();
+    csv.hasMeta = node["hasMeta"].as<bool>();
     csv.delimiter = node["delimiter"].as<std::string>();
   }
   return csv;

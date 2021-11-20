@@ -141,5 +141,14 @@ std::istream& operator>>(std::istream& str, CsvRow& data) {
   return str;
 }
 
+std::istream& operator>>(std::istream& is, DevNull&) {
+  char ch = 0;
+  while (!is.eof() && ch != LF) {
+    is.read(&ch, 1);
+  }
+
+  return is;
+}
+
 } // namespace storage
 } // namespace nebula
