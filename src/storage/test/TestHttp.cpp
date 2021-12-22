@@ -51,11 +51,12 @@ TEST(HttpTest, TestBasicDownload) {
   EXPECT_EQ(info.size, 476920);
 }
 
-TEST(HttpTest, TestReadGoogleSheets) {
-  auto url = "https://sheets.googleapis.com/v4/spreadsheets/10FP5MEDG-iGtWO8y4Wd6dyKSHcETg4sKCkBFf8DvqFQ/values:batchGet?majorDimension=COLUMNS&ranges=A%3AZ&key=AIzaSyDdDCIglhCzcSz6lXEoq9qNekfL4C7Jx2A";
+// disable this test and remove the api key and access token from public source.
+TEST(HttpTest, DISABLED_TestReadGoogleSheets) {
+  auto url = "https://sheets.googleapis.com/v4/spreadsheets/10FP5MEDG-iGtWO8y4Wd6dyKSHcETg4sKCkBFf8DvqFQ/values:batchGet?majorDimension=COLUMNS&ranges=A%3AZ&key=<api_key>";
   nebula::storage::http::HttpService http;
   std::vector<std::string> headers{
-    "Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjUxMDM2YWYyZDgzOWE4NDJhZjQzY2VjZmJiZDU4YWYxYTc1OGVlYTIiLCJ0eXAiOiJKV1QifQ.eyJuYW1lIjoiU2hhd24gQ2FvIiwicGljdHVyZSI6Imh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9hLS9BT2gxNEdnSXZIOTR5MURIa2pzWnNRaVFpQkpUUHdMTVZZT0cweXl3YTNLLVAtcyIsImlzcyI6Imh0dHBzOi8vc2VjdXJldG9rZW4uZ29vZ2xlLmNvbS9uZWJ1bGEtY29tIiwiYXVkIjoibmVidWxhLWNvbSIsImF1dGhfdGltZSI6MTU5ODQ3MTk2NSwidXNlcl9pZCI6Ilp3UVZMdHp3eFNVb3RsRE5vYmlOZmd5bTlIeDIiLCJzdWIiOiJad1FWTHR6d3hTVW90bEROb2JpTmZneW05SHgyIiwiaWF0IjoxNTk4NzY2NDAxLCJleHAiOjE1OTg3NzAwMDEsImVtYWlsIjoiY2FveGh1YUBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZmlyZWJhc2UiOnsiaWRlbnRpdGllcyI6eyJnb29nbGUuY29tIjpbIjEwODE0MDY3MTQ0NDA4ODI1MDY4MCJdLCJlbWFpbCI6WyJjYW94aHVhQGdtYWlsLmNvbSJdfSwic2lnbl9pbl9wcm92aWRlciI6Imdvb2dsZS5jb20ifX0.dfk0rNdCK8C8UoYGhdUxbeecuDxKDXDfotApvK_W6rySfyhfHu8OadEJAZTq6HbSCWlcWcrGIU-2MAWyOECBjdVu3YsLnNGAXY0_NLNkOFwK1c-WH_dQM6lweKSNT9GpoxymmaIRhIZs0zN1bM8mYMqekTwm8X_tQbO2ttWjazYrlYx0gIgo09TG3Twx0e88j_IyKFAnq7c82_vr09kuoL94G_pUsNQrtmoPWvrBNJdQyl6D34MZN54s8YY-4jkH7xNq235gNojiGcRlPNX14ewspGNzekDIV2GL2JMGVZeXRadBqFPgDM7er_ZDDpv84Df1DVJJ0e5MW-Mpt8j11Q",
+    "Authorization: Bearer <access token>",
     "Accept: application/json"
   };
   auto json = http.readJson(url, headers);
