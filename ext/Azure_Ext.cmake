@@ -13,7 +13,7 @@ SET(AZURE_CMAKE_BUILD_OPTIONS
   -DBUILD_PERFORMANCE_TESTS=OFF
   -DBUILD_STORAGE_SAMPLES=ON
   -DCPP_STANDARD=17
-  -DCMAKE_BUILD_TYPE=Release)
+  -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE})
 
 # https://cmake.org/cmake/help/latest/module/ExternalProject.html
 include(ExternalProject)

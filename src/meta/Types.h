@@ -31,7 +31,7 @@ namespace meta {
 // NEBULA is a reserved type only used internally.
 // Any external reference will be treated as illegal (invalid)
 // Basically the same as each provider's protocol, s3://, gs://, abfs:// etc
-// S3: AWS S3, GS: Google cloud storage, 
+// S3: AWS S3, GS: Google cloud storage,
 enum class DataSource {
   NEBULA,
   S3,
@@ -40,7 +40,8 @@ enum class DataSource {
   LOCAL,
   KAFKA,
   GSHEET,
-  HTTP
+  HTTP,
+  ROCKSET
 };
 
 // type of time source to fill time column
@@ -150,6 +151,7 @@ struct DataSourceUtils {
     SAME_STR_THEN_ITEM("abfs", DataSource::ABFS)
     SAME_STR_THEN_ITEM("gs", DataSource::GS)
     SAME_STR_THEN_ITEM("kafka", DataSource::KAFKA)
+    SAME_STR_THEN_ITEM("rockset", DataSource::ROCKSET)
     SAME_STR_THEN_ITEM("local", DataSource::LOCAL)
     SAME_STR_THEN_ITEM("http", DataSource::HTTP)
     SAME_STR_THEN_ITEM("https", DataSource::HTTP)

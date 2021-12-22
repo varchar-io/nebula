@@ -1,18 +1,18 @@
 /*
-  * Copyright 2017-present varchar.io
-  *
-  * Licensed under the Apache License, Version 2.0 (the "License");
-  * you may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at
-  *
-  *   http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing, software
-  * distributed under the License is distributed on an "AS IS" BASIS,
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  */
+ * Copyright 2017-present varchar.io
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <fmt/format.h>
 #include <glog/logging.h>
@@ -330,6 +330,7 @@ TEST(KafkaTest, DISABLED_TestKafkaTopic) {
 TEST(KafkaTest, DISABLED_TestKafkaReader) {
   nebula::meta::KafkaSerde serde;
   serde.topic = TOPIC;
+  nebula::meta::RocksetSerde rockset;
   nebula::type::Settings settings;
   auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>(BROKERS, serde, settings);
 
@@ -356,7 +357,7 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
     TOPIC, 1000, 100, "ROW<id:string, referer:string, country:string>",
     nebula::meta::DataSource::KAFKA, "Roll", BROKERS, "",
     nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
-    std::move(serde), std::move(cp), std::move(ts),
+    std::move(serde), std::move(rockset), std::move(cp), std::move(ts),
     std::move(as), std::move(bi), std::move(settings2));
 
   const auto& seg = segments.front();
@@ -394,6 +395,7 @@ TEST(KafkaTest, TestKafkaSegmentSerde) {
 
 TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   nebula::meta::KafkaSerde serde;
+  nebula::meta::RocksetSerde rockset;
   nebula::type::Settings settings;
   auto topic = std::make_unique<nebula::storage::kafka::KafkaTopic>("<brokers>", serde, settings);
 
@@ -425,7 +427,7 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
     "<topic>", 1000, 100, "ROW<userId:long, magicType:short, statusCode:byte, count:int, error:string>",
     nebula::meta::DataSource::KAFKA, "Roll", "<brokers>", "",
     nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
-    std::move(serde), std::move(cp), std::move(ts),
+    std::move(serde), std::move(rockset), std::move(cp), std::move(ts),
     std::move(as), std::move(bi), std::move(settings2));
 
   auto count = 0;

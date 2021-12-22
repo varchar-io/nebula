@@ -24,11 +24,11 @@
 #include "type/Type.h"
 
 /**
- * Define nebula table and system metadata 
+ * Define nebula table and system metadata
  * which manages what data segments are loaded in memory for each table
  * This meta data can persist and sync with external DB system such as MYSQL or RocksDB
  * (A KV store is necessary for Nebula to manage all metadata)
- * 
+ *
  * (Also - Is this responsibility of zookeeper?)
  */
 namespace nebula {
@@ -81,6 +81,18 @@ struct KafkaSerde {
 
   // make it msgpack serializable
   MSGPACK_DEFINE(retention, size, topic);
+};
+
+// serde info for some data format, such as thrift
+struct RocksetSerde {
+  // interval time for data slice
+  uint32_t interval;
+
+  // API key to access the given URL for final data
+  std::string apiKey;
+
+  // make it msgpack serializable
+  MSGPACK_DEFINE(interval, apiKey);
 };
 
 // format related props
@@ -175,6 +187,8 @@ struct TableSpec {
   ThriftProps thrift;
   // Serde of the data
   KafkaSerde kafkaSerde;
+  // serde of rockset data
+  RocksetSerde rocksetSerde;
   // column properties
   ColumnProps columnProps;
   // time spec to generate time value
@@ -190,7 +204,8 @@ struct TableSpec {
   explicit TableSpec(std::string _name, size_t maxMb, size_t maxSeconds, std::string _schema,
                      DataSource ds, std::string _loader, std::string _location, std::string _backup,
                      DataFormat _format, CsvProps csvProps, JsonProps jsonProps, ThriftProps thriftProps,
-                     KafkaSerde _kafkaSerde, ColumnProps _columnProps, TimeSpec _timeSpec,
+                     KafkaSerde _kafkaSerde, RocksetSerde _rocksetSerde,
+                     ColumnProps _columnProps, TimeSpec _timeSpec,
                      AccessSpec _accessSpec, BucketInfo _bucketInfo, nebula::type::Settings _settings)
     : name{ std::move(_name) },
       max_mb{ maxMb },
@@ -205,6 +220,7 @@ struct TableSpec {
       json{ std::move(jsonProps) },
       thrift{ std::move(thriftProps) },
       kafkaSerde{ std::move(_kafkaSerde) },
+      rocksetSerde{ std::move(_rocksetSerde) },
       columnProps{ std::move(_columnProps) },
       timeSpec{ std::move(_timeSpec) },
       accessSpec{ std::move(_accessSpec) },
@@ -214,8 +230,8 @@ struct TableSpec {
   // make it msgpack serializable
   MSGPACK_DEFINE(name, max_mb, max_seconds, schema,
                  source, loader, location, backup, format,
-                 csv, json, thrift, kafkaSerde, columnProps,
-                 timeSpec, accessSpec, bucketInfo, settings);
+                 csv, json, thrift, kafkaSerde, rocksetSerde,
+                 columnProps, timeSpec, accessSpec, bucketInfo, settings);
 
   inline std::string toString() const {
     // table name @ location - format: time

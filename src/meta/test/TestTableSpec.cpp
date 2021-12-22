@@ -32,6 +32,7 @@ TEST(MetaTest, TestTableSpecSerde) {
   JsonProps jsonProps{ "rows", { { "col1", "field1" } } };
   ThriftProps thriftProps{ "binary", { { "col1", 1 } } };
   KafkaSerde kafkaSerde{ 1, 2, "topic" };
+  RocksetSerde rocksetSerde{ 5, "key" };
   ColumnProps columnProps{ { "c1", Column{} } };
   TimeSpec timeSpec{ TimeType::STATIC, 123, "ct", "xyz" };
   AccessSpec accessSpec{
@@ -43,7 +44,8 @@ TEST(MetaTest, TestTableSpecSerde) {
     "abc", 1, 2, "ROW<id:bigint>", DataSource::S3,
     "Roll", "s3://nebula", "s3://backup",
     DataFormat::JSON, std::move(csvProps), std::move(jsonProps), std::move(thriftProps),
-    std::move(kafkaSerde), std::move(columnProps), std::move(timeSpec),
+    std::move(kafkaSerde), std::move(rocksetSerde),
+    std::move(columnProps), std::move(timeSpec),
     std::move(accessSpec), std::move(bucketInfo), std::move(settings)
   };
   auto str = TableSpec::serialize(spec);
@@ -71,6 +73,8 @@ TEST(MetaTest, TestTableSpecSerde) {
   EXPECT_EQ(spec2.kafkaSerde.retention, 1);
   EXPECT_EQ(spec2.kafkaSerde.size, 2);
   EXPECT_EQ(spec2.kafkaSerde.topic, "topic");
+  EXPECT_EQ(spec2.rocksetSerde.apiKey, "key");
+  EXPECT_EQ(spec2.rocksetSerde.interval, 5);
   EXPECT_EQ(spec2.columnProps.size(), 1);
   EXPECT_EQ(spec2.columnProps.at("c1").withBloomFilter, false);
   EXPECT_EQ(spec2.timeSpec.type, TimeType::STATIC);

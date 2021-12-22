@@ -192,6 +192,38 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
                << DataSourceUtils::getProtocol(table->source);
 }
 
+void genRocksetSpec(const std::string& version,
+                    const TableSpecPtr& table,
+                    std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
+  // produce consistent spec for the time slice, use watermark to store the beginning of the time
+  // contract: we provide data start_time and end_time as posted data (UTC time)
+  const size_t now = Evidence::now();
+  const size_t earliest = now - table->max_seconds;
+  const size_t currentHour = Evidence::hour(now);
+  const size_t interval = table->rocksetSerde.interval;
+
+  // lambda to add a new spec
+  auto add = [&specs, &table, &version](auto watermark) {
+    // const auto id = fmt::format("{0}-{1}", watermark, interval);
+    specs.push_back(std::make_shared<IngestSpec>(
+      table, version, table->location, "rockset", watermark, SpecState::NEW, watermark));
+  };
+
+  // going back from hour start
+  size_t watermark = currentHour - interval;
+  while (watermark > earliest) {
+    add(watermark);
+    watermark -= interval;
+  }
+
+  // going forward from hour start
+  watermark = currentHour;
+  while (watermark + interval < now) {
+    add(watermark);
+    watermark += interval;
+  }
+}
+
 void genKafkaSpec(const std::string& version,
                   const TableSpecPtr& table,
                   std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
@@ -269,6 +301,12 @@ void SpecRepo::process(
 
   if (table->source == DataSource::KAFKA) {
     genKafkaSpec(version, table, specs);
+    return;
+  }
+
+  // generate time slice api to load data from rockset api
+  if (table->source == DataSource::ROCKSET) {
+    genRocksetSpec(version, table, specs);
     return;
   }
 

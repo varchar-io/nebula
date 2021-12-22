@@ -28,13 +28,13 @@
 /**
  * A ingest spec is generated from table setting based on its ingestion type.
  * To ensure system not act on the same data source, every spec should be identifiable.
- * 
+ *
  * Such as swap table can be identified by file name + file modify time.
  * Roll table needs to provide rolling date as its identfier.
- * 
- * In the long run, every single data source needs to be identified by a version. 
- * A version should be a source of truth to check if a data is different or not. 
- * 
+ *
+ * In the long run, every single data source needs to be identified by a version.
+ * A version should be a source of truth to check if a data is different or not.
+ *
  * This principle should apply in nebula as well.
  */
 namespace nebula {
@@ -152,11 +152,16 @@ private:
   // load kafka
   bool loadKafka() noexcept;
 
+  // load rockset data
+  bool loadRockset() noexcept;
+
   // load google sheet
-  bool loadGSheet(nebula::execution::io::BlockList& blocks) noexcept;
+  bool loadGSheet(nebula::execution::io::BlockList&) noexcept;
 
   // load an http resource
-  bool loadHttp(nebula::execution::io::BlockList& blocks) noexcept;
+  bool loadHttp(nebula::execution::io::BlockList&,
+                std::vector<std::string> = {},
+                std::string_view = "") noexcept;
 
   // load current spec as blocks
   bool load(nebula::execution::io::BlockList&) noexcept;

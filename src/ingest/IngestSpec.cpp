@@ -135,6 +135,10 @@ bool IngestSpec::work() noexcept {
     return this->loadKafka();
   }
 
+  if (DataSource::ROCKSET == table_->source) {
+    return this->loadRockset();
+  }
+
   // can not hanlde other loader type yet
   return false;
 }
@@ -248,7 +252,9 @@ bool IngestSpec::loadApi() noexcept {
 // TODO(cao): refactor it to reuse similar flow as `load`
 // the only difference is one is downlaod data from HTTP
 // while the other is from cloud storage.
-bool IngestSpec::loadHttp(BlockList& blocks) noexcept {
+bool IngestSpec::loadHttp(BlockList& blocks,
+                          std::vector<std::string> headers,
+                          std::string_view data) noexcept {
   // id is the file path, copy it from s3 to a local folder
   auto local = nebula::storage::makeFS("local");
   auto tmpFile = local->temp();
@@ -257,9 +263,6 @@ bool IngestSpec::loadHttp(BlockList& blocks) noexcept {
   HttpService http;
   const auto& url = this->path();
 
-  // read access token from table settings
-  std::vector<std::string> headers;
-
   // set access token if present
   auto& token = this->table_->settings["token"];
   if (!token.empty()) {
@@ -267,7 +270,7 @@ bool IngestSpec::loadHttp(BlockList& blocks) noexcept {
   }
 
   // the sheet content in this json objects
-  if (!http.download(url, headers, tmpFile)) {
+  if (!http.download(url, headers, data, tmpFile)) {
     LOG(WARNING) << "Failed to download to local: " << path_;
     return false;
   }
@@ -341,6 +344,40 @@ bool IngestSpec::loadGSheet(BlockList& blocks) noexcept {
 
   TimeRow timeRow(table_->timeSpec, watermark_);
   return build(tb, reader, blocks, FLAGS_NBLOCK_MAX_ROWS, id_, timeRow);
+}
+
+bool IngestSpec::loadRockset() noexcept {
+  // get a table definition
+  auto table = table_->to();
+
+  // enroll the table in case it is the first time
+  TableService::singleton()->enroll(table);
+
+  // load all blocks
+  BlockList blocks;
+  const auto& serde = table_->rocksetSerde;
+  std::vector<std::string> headers{
+    "Content-Type: application/json",
+    fmt::format("Authorization: ApiKey {0}", serde.apiKey)
+  };
+  auto dataFormat =
+    "{{\"parameters\": ["
+    "{{\"type\": \"string\", \"value\": \"{0}\", \"name\": \"start_time\"}},"
+    "{{\"type\": \"string\", \"value\": \"{1}\", \"name\": \"end_time\"}}"
+    "]}}";
+  auto data = fmt::format(dataFormat,
+                          Evidence::fmt_iso8601(this->watermark_),
+                          Evidence::fmt_iso8601(this->watermark_ + serde.interval));
+
+  if (this->loadHttp(blocks, std::move(headers), data)) {
+    auto bm = BlockManager::init();
+    // move all new blocks in
+    bm->add(blocks);
+    return true;
+  }
+
+  // rockset use HTTP rest api to load data but, we need to send
+  return false;
 }
 
 // current is a kafka spec

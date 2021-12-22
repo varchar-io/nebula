@@ -24,7 +24,7 @@
 
 /**
  * An data exchange channel through HTTP.
- * Keep in mind: 
+ * Keep in mind:
  *  This adds one option of data source coming from HTTP(S) service.
  *  It will follow the way how we consume data from file system or real time data store.
  */
@@ -117,6 +117,7 @@ static size_t write(void* ptr, size_t size, size_t nmemb, void* stream) {
 // follow https://curl.se/libcurl/c/url2file.html
 bool HttpService::download(const std::string& url,
                            const std::vector<std::string>& headers,
+                           const std::string_view post,
                            const std::string& local) const {
   // set the URL and perform
   LOG(INFO) << "Download file from " << url
@@ -126,6 +127,12 @@ bool HttpService::download(const std::string& url,
 
   // if custom headers are present - set them
   SET_HTTP_HEADERS
+
+  // if we have data to post, then post it
+  if (post.size() > 0) {
+    curl_easy_setopt(curl_, CURLOPT_POSTFIELDSIZE, post.size());
+    curl_easy_setopt(curl_, CURLOPT_POSTFIELDS, post.data());
+  }
 
   // no need progress
   curl_easy_setopt(curl_, CURLOPT_NOPROGRESS, 1L);

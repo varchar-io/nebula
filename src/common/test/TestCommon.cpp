@@ -248,6 +248,10 @@ TEST(CommonTest, TestTimeParsing) {
     std::istringstream("2021-11-16T20:07:28.595Z") >> date::parse("%FT%TZ", tp);
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
     LOG(INFO) << "time1: " << time1 << ", date.parse: " << ms;
+
+    // 6 digit microseconds
+    auto time2 = Evidence::time("2021-12-21T02:07:19.875000Z", "%FT%T");
+    LOG(INFO) << "time2: " << time2;
   }
 
   {
@@ -283,6 +287,12 @@ TEST(CommonTest, TestTimeParsing) {
     EXPECT_TRUE(time2 > 0);
     LOG(INFO) << "time2: " << time2;
     EXPECT_EQ(time1, time2);
+  }
+
+  // test hour level time value
+  {
+    auto time1 = Evidence::hour(Evidence::now());
+    LOG(INFO) << "time1: " << time1;
   }
 }
 
@@ -346,6 +356,9 @@ TEST(CommonTest, TestTimeFormatting) {
   // shortcuts are resulting in the same
   EXPECT_EQ(Evidence::fmt_ymd_dash(time), Evidence::format(time, "%F"));
   EXPECT_EQ(Evidence::fmt_mdy2_slash(time), Evidence::format(time, "%D"));
+
+  // format unix time in seconds to timestamp value
+  LOG(INFO) << "ISO8601: " << Evidence::fmt_iso8601(time);
 }
 
 TEST(CommonTest, TestRand) {
@@ -1494,6 +1507,19 @@ TEST(FormatTest, TestSheetColumnName) {
   EXPECT_EQ(nebula::common::sheetColName(27), "AA");
   EXPECT_EQ(nebula::common::sheetColName(52), "AZ");
   EXPECT_EQ(nebula::common::sheetColName(77), "BY");
+}
+
+TEST(FormatTest, TestFormatComplexString) {
+  auto dataTemplate =
+    "{{\"parameters\": ["
+    "{{\"name\": \"start_time\", \"value\": \"{0}\"}},"
+    "{{\"name\": \"end_time\", \"value\": \"{1}\"}}"
+    "]}}";
+  auto s1 = Evidence::fmt_iso8601(0);
+  auto s2 = Evidence::fmt_iso8601(1800);
+  LOG(INFO) << "parameters: s1=" << s1 << ", s2=" << s2;
+  auto data = fmt::format(dataTemplate, s1, s2);
+  LOG(INFO) << "formatted data: " << data;
 }
 
 } // namespace test

@@ -266,6 +266,46 @@ KafkaSerde asKafka(const YAML::Node& node) {
   return kafka;
 }
 
+RocksetSerde asRockset(const YAML::Node& node) {
+  RocksetSerde rockset;
+  if (node) {
+    // kafka topic retention time
+    auto apiKey = node["apiKey"];
+    if (apiKey) {
+      rockset.apiKey = apiKey.as<std::string>();
+    }
+
+    auto interval = node["interval"];
+    auto v = 0;
+    if (interval) {
+      v = interval.as<uint32_t>();
+    }
+
+    // interval should be minutes [1, 2, 5, 10, 15, 20, 30] from settings
+    // it doesn't make sense to have interval larger than 1-hour
+    if (v == 0) {
+      v = 1;
+    } else if (v > 2 && v < 5) {
+      v = 5;
+    } else if (v > 5 && v < 10) {
+      v = 10;
+    } else if (v > 10 && v < 15) {
+      v = 15;
+    } else if (v > 15 && v < 20) {
+      v = 20;
+    } else if (v > 20 && v < 30) {
+      v = 30;
+    } else if (v > 30) {
+      v = 30;
+    }
+
+    // the value is guranteed to fall the boundary within any hour
+    rockset.interval = v * 60;
+  }
+
+  return rockset;
+}
+
 CsvProps asCsvProps(const YAML::Node& node) {
   CsvProps csv;
   if (node) {
@@ -339,6 +379,13 @@ std::shared_ptr<TableSpec> loadTable(std::string name, const YAML::Node& td) {
     return nullptr;
   }
 
+  // kafka requires topic to be set in "kafka section"
+  auto rocksetSerde = asRockset(td["rockset"]);
+  if (ds == DataSource::ROCKSET && rocksetSerde.apiKey.size() == 0) {
+    LOG(WARNING) << "Rockset data requrires api key to be set";
+    return nullptr;
+  }
+
   // (historical) convention removed that table name follows k.{topic}" for kafka
   // in fact, we allow multiple tables connecting to the same streaming topic
   // max-hr could be fractional value to help us get granularity to seconds
@@ -357,6 +404,7 @@ std::shared_ptr<TableSpec> loadTable(std::string name, const YAML::Node& td) {
       asJsonProps(td["json"]),
       asThriftProps(td["thrift"]),
       kafkaSerde,
+      rocksetSerde,
       asColumnProps(td["columns"]),
       asTimeSpec(td["time"]),
       asAccessRules(td["access"]),

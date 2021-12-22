@@ -96,6 +96,26 @@ tables:
       # support granularity between DAILY, HOURLY, MINUTELY, SECONDLY
       pattern: HOURLY
 
+  # rockset.test:
+  #   retention:
+  #     max-mb: 10000
+  #     max-hr: 48
+  #   schema: "ROW<_event_time:string, original_language:string, overview:string, vote_average:real, vote_count:integer, revenue:bigint, runtime:short, popularity:real, release_date:string, title:string>"
+  #   data: rockset
+  #   loader: Streaming
+  #   source: https://api.rs2.usw2.rockset.com/v1/orgs/self/ws/commons/lambdas/selectall/tags/latest
+  #   backup: s3://nebula/n100/
+  #   format: json
+  #   rockset:
+  #     apiKey: <API_KEY>
+  #     interval: 900
+  #   json:
+  #     rowsField: results
+  #   time:
+  #     type: column
+  #     column: _event_time
+  #     pattern: "%FT%T"
+
   # azure.datalake:
   #   retention:
   #     max-mb: 10000

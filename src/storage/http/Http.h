@@ -26,7 +26,7 @@
 
 /**
  * An data exchange channel through HTTP.
- * Keep in mind: 
+ * Keep in mind:
  *  This adds one option of data source coming from HTTP(S) service.
  *  It will follow the way how we consume data from file system or real time data store.
  */
@@ -46,7 +46,11 @@ public:
   std::string readJson(const std::string&, const std::vector<std::string>&) const;
 
   // download a data file from given URL into a local file
-  bool download(const std::string&, const std::vector<std::string>&, const std::string&) const;
+  bool download(
+    const std::string&,
+    const std::vector<std::string>&,
+    const std::string_view,
+    const std::string&) const;
 
 private:
   CURL* curl_;

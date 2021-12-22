@@ -56,6 +56,7 @@ using nebula::meta::JsonProps;
 using nebula::meta::KafkaSerde;
 using nebula::meta::Macro;
 using nebula::meta::NNode;
+using nebula::meta::RocksetSerde;
 using nebula::meta::TableSpec;
 using nebula::meta::TableSpecPtr;
 using nebula::meta::ThriftProps;
@@ -107,6 +108,7 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
     tmp->json,
     tmp->thrift,
     tmp->kafkaSerde,
+    tmp->rocksetSerde,
     tmp->columnProps,
     tmp->timeSpec,
     tmp->accessSpec,
@@ -200,8 +202,6 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
   GoogleSheet sheet{ doc };
 
   // build a table spec
-  KafkaSerde serde;
-  ColumnProps props;
   auto tbSpec = std::make_shared<TableSpec>(
     name,
     GoogleSheet::MAX_SIZE_MB,
@@ -215,8 +215,9 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
     CsvProps{},
     JsonProps{},
     ThriftProps{},
-    serde,
-    props,
+    KafkaSerde{},
+    RocksetSerde{},
+    ColumnProps{},
     sheet.timeSpec,
     sheet.accessSpec,
     BucketInfo::empty(),
@@ -306,8 +307,6 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
     return {};
   }
 
-  KafkaSerde serde;
-  ColumnProps props;
   auto tbSpec = std::make_shared<TableSpec>(
     name,
     LoadSpec::MAX_SIZE_MB,
@@ -321,8 +320,9 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
     demand.csv,
     demand.json,
     demand.thrift,
-    serde,
-    props,
+    KafkaSerde{},
+    RocksetSerde{},
+    ColumnProps{},
     demand.timeSpec,
     demand.accessSpec,
     BucketInfo::empty(),

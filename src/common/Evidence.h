@@ -151,6 +151,15 @@ public: /** only static methods */
     return time - delta;
   }
 
+  // given a date time value, stripe time out to date granularity
+  // such as value of (2019-05-15 23:01:34) => value of (2019-05-15 23:00:00)
+  static std::time_t hour(std::time_t time) {
+    auto tm = std::gmtime(&time);
+    // caculate how much seconds to stripe
+    auto delta = tm->tm_min * 60 + tm->tm_sec;
+    return time - delta;
+  }
+
   static std::string format(const std::time_t& time, const std::string& fmt, bool gmt = true) {
     constexpr auto MAX = 64;
     std::string output(MAX, '\0');
@@ -210,6 +219,10 @@ public: /** only static methods */
 
   inline static std::string fmt_second(const std::time_t& time, bool gmt = true) {
     return format(time, "%S", gmt);
+  }
+
+  inline static std::string fmt_iso8601(const std::time_t& time) {
+    return format(time, "%FT%TZ", true);
   }
   // rand in a range [min, max] inclusively
   template <typename T = int>

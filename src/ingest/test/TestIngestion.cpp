@@ -39,6 +39,7 @@ TEST(IngestTest, TestIngestSpec) {
   JsonProps jsonProps;
   ThriftProps thriftProps;
   KafkaSerde kafkaSerde;
+  RocksetSerde rocksetSerde;
   TimeSpec timeSpec;
   AccessSpec accSpec;
   ColumnProps colProps;
@@ -48,7 +49,8 @@ TEST(IngestTest, TestIngestSpec) {
     "test", 1000, 10, "s3", DataSource::S3,
     "swap", "s3://test", "s3://bak",
     DataFormat::CSV, std::move(csvProps), std::move(jsonProps), std::move(thriftProps),
-    std::move(kafkaSerde), std::move(colProps), std::move(timeSpec),
+    std::move(kafkaSerde), std::move(rocksetSerde),
+    std::move(colProps), std::move(timeSpec),
     std::move(accSpec), std::move(bucketInfo), std::move(settings));
   nebula::ingest::IngestSpec spec(table, "1.0", "nebula/v1.x", "nebula", 10, SpecState::NEW, 0);
   LOG(INFO) << "SPEC: " << spec.toString();
@@ -82,7 +84,7 @@ TEST(IngestTest, TestSpecGeneration) {
 }
 
 TEST(IngestTest, TestTransformerAddColumn) {
-  //schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+  // schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
   auto transformer = pg_query_parse("SELECT id, event, items, flag, value, to_unixtime(now) from nebula.test");
   LOG(INFO) << transformer.parse_tree;
   pg_query_free_parse_result(transformer);
