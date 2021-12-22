@@ -108,7 +108,7 @@ tables:
   #   format: json
   #   rockset:
   #     apiKey: <API_KEY>
-  #     interval: 900
+  #     interval: 15
   #   json:
   #     rowsField: results
   #   time:
