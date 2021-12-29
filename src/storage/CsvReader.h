@@ -27,7 +27,7 @@
 #include "surface/DataSurface.h"
 
 /**
- * A CSV file reader, with or without header for schema 
+ * A CSV file reader, with or without header for schema
  */
 namespace nebula {
 namespace storage {
@@ -109,22 +109,41 @@ public:
   CsvReader(const std::string& file, const nebula::meta::CsvProps& csv, const std::vector<std::string>& columns)
     : nebula::surface::RowCursor(0), fstream_{ file }, row_{ csv.delimiter.at(0) }, cacheRow_{ csv.delimiter.at(0) } {
 
+    // a few scenarios need to be handled
+    // 1. schema provided
+    // 1.a: csv has header - let's match column index to column name by reading header.
+    // 1.b: csv has no header - let's assuming the schema is sequential columns of the csv file
+    // 2. schema not provided:
+    // 2.a: csv has header - we need to read headers to use them as the schema.
+    // 2.b: csv has no header - fail, don't know how to process schema
     LOG(INFO) << "Reading a delimiter separated file: " << file << " by " << csv.delimiter;
-    bool headerRead = false;
-    // if the schema is given
-    if (columns.size() > 0) {
+    // scenario 1.b: if the schema is given, has no header
+    if (!csv.hasHeader) {
+      // 2.b - don't know how to handle
+      if (columns.size() == 0) {
+        throw NException("Can't figure out schema without header");
+      }
+
+      // 1.b - has schema
       for (size_t i = 0, size = columns.size(); i < size; ++i) {
         columns_[columns.at(i)] = i;
       }
-    } else if (row_.readNext(fstream_)) {
-      headerRead = true;
-      // parse the header as column list
-      N_ENSURE(csv.hasHeader, "Header must be present if schema not provided.");
-
-      // row_ has headers - build the name-index mapping
+    } else {
+      // read the header
+      N_ENSURE(row_.readNext(fstream_), "Failed to read csv header unexpectedly.");
       const auto& raw = row_.rawData();
       for (size_t i = 0, size = raw.size(); i < size; ++i) {
-        columns_[raw.at(i)] = i;
+        auto name = nebula::common::normalize(raw.at(i));
+        // 2.a - no schema provided, current column saved from header
+        // 1.a - column in schema, records its position
+        if (columns.size() == 0 || std::find(columns.begin(), columns.end(), name) != columns.end()) {
+          columns_[name] = i;
+        }
+      }
+
+      // if schema is provided, we want to make sure all columns are found
+      if (columns.size() > 0) {
+        N_ENSURE(columns_.size() == columns.size(), "every column should be found.");
       }
     }
 
@@ -134,10 +153,6 @@ public:
 
     // if data has header and header was not consumed yet (to build schema), we have to skip the first row
     DevNull devnull;
-    if (csv.hasHeader && !headerRead) {
-      fstream_ >> devnull;
-    }
-
     // if data has meta in the second row, skip it too
     if (csv.hasMeta) {
       fstream_ >> devnull;
