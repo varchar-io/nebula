@@ -252,12 +252,18 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
     return Status::CANCELLED;
   }
 
+  // assign nebula node to each spec
+  auto& nodes = ClusterInfo::singleton().nodes();
+  auto ri = Evidence::rand<size_t>(0, nodes.size() - 1);
+
   // now we have a list of specs, let's assign nodes to these ingest specs and send to each node
   auto& threadPool = pool();
   auto connector = std::make_shared<node::RemoteNodeConnector>(nullptr);
   std::vector<folly::Future<TaskState>> futures;
   futures.reserve(specs.size());
   for (auto spec : specs) {
+    // assign a nebula node randomly to it
+    spec->setAffinity(nodes.at(ri()));
     auto promise = std::make_shared<folly::Promise<TaskState>>();
 
     // pass values since we reutrn the whole lambda - don't reference temporary things

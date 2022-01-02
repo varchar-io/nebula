@@ -18,9 +18,9 @@
 #include "type/Serde.h"
 
 /**
- * 
+ *
  * Define table meta data service provider for nebula execution runtime.
- * 
+ *
  */
 namespace nebula {
 namespace execution {

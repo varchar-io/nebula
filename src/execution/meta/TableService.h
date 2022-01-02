@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <mutex>
 #include <vector>
 
 #include "common/Evidence.h"
@@ -27,9 +28,9 @@
 #include "meta/TestTable.h"
 
 /**
- * 
+ *
  * Define table meta data service provider for nebula execution runtime.
- * 
+ *
  */
 namespace nebula {
 namespace execution {
@@ -72,12 +73,17 @@ public:
   // TODO(cao) - currently the data source of table definition is from system configs
   // this system wide truth is not good for schema evolution.
   // e.g. what about if different data blocks loaded in different time has different schema?
-  void enroll(const nebula::meta::TablePtr& tp, size_t stl = 0) {
-    // no need a lock
+  bool enroll(const nebula::meta::TablePtr& tp, size_t stl = 0) {
+    // simultaneous requests may enroll the same table
+    std::lock_guard<std::mutex> lock(lock_);
     const auto& tn = tp->name();
     if (tables_.find(tn) == tables_.end()) {
       tables_[tn] = std::make_unique<nebula::meta::TableRegistry>(tp, stl);
+      return true;
     }
+
+    // already existing
+    return false;
   }
 
   inline void unenroll(const std::string& name) {
@@ -110,6 +116,7 @@ public:
 private:
   // preset is a list of preload table before meta service functions
   nebula::common::unordered_map<std::string, std::unique_ptr<nebula::meta::TableRegistry>> tables_;
+  std::mutex lock_;
 };
 } // namespace meta
 } // namespace execution
