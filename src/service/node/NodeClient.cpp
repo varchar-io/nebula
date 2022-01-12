@@ -116,7 +116,7 @@ folly::Future<RowCursorPtr> NodeClient::execute(const PlanPtr plan) {
       return;
     }
 
-    LOG(ERROR) << "Node failure: " << status.error_message();
+    LOG(ERROR) << "Node failure: " << status.error_message() << ". Node: " << addr;
     // else return empty result set
     p->setValue(EmptyRowCursor::instance());
   });

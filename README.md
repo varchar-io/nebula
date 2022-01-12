@@ -56,6 +56,9 @@ Assume your current kubectl points to the cluster, just run:
 Please refer [Developer Guide](./dev.md) for building nebula from source code.
 Welcome to become a contributor.
 
+# Nebula birdeye view
+![Overview](./test/nebula-overview.svg)
+
 # Use Cases
 ## Static Data Analytics
 Configure your data source from a permanent storage (file system) and run analytics on it. 
