@@ -168,6 +168,32 @@ public:
     return str;
   }
 
+  static inline std::vector<std::string> enumeratePathsWithCustomMacros(const std::string& input, const std::unordered_map<std::string, std::vector<std::string>>& macroValues, int macroIndex = 0) {
+    if (macroIndex == macroValues.size()) {
+      return std::vector<std::string>({input});
+    }
+    auto it = macroValues.begin();
+    std::advance(it, macroIndex);
+    std::vector<std::string> results, nextSteps;
+    const auto toReplace = std::regex(std::format("\\{{}\\}", it->first()), std::regex_constants::icase);
+    if (std::regex_match(input, toReplace)) {
+      for (const auto& replacementVal : it->second()) {
+        nextSteps.emplace_back(std::regex_replace(input, toReplace, replacementVal));
+      }
+    } else {
+      nextSteps.emplace_back(input);
+    }
+
+    for (const auto& nextStep : nextSteps) {
+      const auto& nextStepResults = enumeratePathsWithCustomMacros(nextStep, macroValues, macroIndex + 1);
+      for (const auto& result : nextStepResults) {
+        results.emplace_back(result);
+      }
+    }
+
+    return results;
+  }
+
   // extract pattern used in a given path
   // for example, "s3://nebula/dt={DATE}/dt={HOUR} -> HOURLY"
   static inline PatternMacro extract(const std::string& input) {

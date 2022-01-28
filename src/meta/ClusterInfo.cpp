@@ -499,6 +499,19 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
   std::swap(tables_, tableSet);
   stateChanged_ = false;
 
+  // load user defined macros
+  const auto& pathMacros = config["path_macros"];
+  topLevels++;
+  for (YAML::const_iterator it = pathMacros.begin(); it != pathMacros.end(); ++it) {
+    // loading all dynamic table definitions from service calls
+    const auto& macroName = it->first;
+    if (macroValues_.find(macroName) != macroValues_.end()) {
+      LOG(WARNING) << "Skip the same macro name already defined: " << macroName;
+      continue;
+    }
+
+  }
+
   // if user mistakenly config things at top level
   // (I made mistake to place a new table the same level as "tables")
   // let's fail this case as mis-config [version, server, nodes, tables]

@@ -112,6 +112,10 @@ public:
     return server_;
   }
 
+  inline const std::unordered_map<std::string, std::vector<std::string>>& macroValues() const {
+    return macroValues_;
+  }
+
   inline MetaDb& db() const {
     return *db_;
   }
@@ -141,6 +145,7 @@ private:
   std::unique_ptr<MetaDb> db_;
   nebula::common::unordered_map<std::string, YAML::Node> runtimeTables_;
   bool stateChanged_;
+  std::unordered_map<std::string, std::vector<std::string>> macroValues_;
 };
 } // namespace meta
 } // namespace nebula
