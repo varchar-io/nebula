@@ -66,12 +66,11 @@ void SpecRepo::refresh(const ClusterInfo& ci) noexcept {
   // if data is newer (e.g file size + timestamp), we should mark it as replacement.
   std::vector<std::shared_ptr<IngestSpec>> specs;
   const auto& tableSpecs = ci.tables();
-  const auto& macroValues = ci.macroValues();
 
   // generate a version all spec to be made during this batch: {config version}_{current unix timestamp}
   const auto version = fmt::format("{0}.{1}", ci.version(), Evidence::unix_timestamp());
   for (auto itr = tableSpecs.cbegin(); itr != tableSpecs.cend(); ++itr) {
-    process(version, *itr, macroValues, specs);
+    process(version, *itr, specs);
   }
 
   // process all specs to mark their status
@@ -122,7 +121,6 @@ void genSpecPerFile(const TableSpecPtr& table,
 //  2. each file name will be used as identifier and timestamp will distinguish different data
 void genSpecs4Swap(const std::string& version,
                    const TableSpecPtr& table,
-                   const std::unordered_map<std::string, std::vector<std::string>>& macroValues,
                    std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   if (dsu::isFileSystem(table->source)) {
     // parse location to get protocol, domain/bucket, path
@@ -132,8 +130,8 @@ void genSpecs4Swap(const std::string& version,
     auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host, table->settings);
 
     // list all objects/files from given paths
-    const auto& enumeratedPaths = Macro::enumeratePathsWithCustomMacros(sourceInfo.path, macroValues);
-    for (const auto path : enumeratedPaths) {
+    const auto& enumeratedPaths = Macro::enumeratePathsWithCustomMacros(sourceInfo.path, table->macroValues);
+    for (const auto& path : enumeratedPaths) {
       auto files = fs->list(path);
       genSpecPerFile(table, version, files, specs, 0);
     }
@@ -149,7 +147,6 @@ void SpecRepo::genPatternSpec(const nebula::meta::PatternMacro macro,
                               const size_t maxSeconds,
                               const std::string& version,
                               const TableSpecPtr& table,
-                              const std::unordered_map<std::string, std::vector<std::string>>& macroValues,
                               std::vector<std::shared_ptr<IngestSpec>>& specs) {
 
   // right now
@@ -161,7 +158,7 @@ void SpecRepo::genPatternSpec(const nebula::meta::PatternMacro macro,
   const auto step = Macro::seconds(macro);
 
   // fill in custom macros
-  auto enumeratedPathTemplates = Macro::enumeratePathsWithCustomMacros(pathTemplate, macroValues);
+  auto enumeratedPathTemplates = Macro::enumeratePathsWithCustomMacros(pathTemplate, table->macroValues);
 
   // from now going back step by step until exceeding maxSeconds
   size_t count = 0;
@@ -181,7 +178,6 @@ void SpecRepo::genPatternSpec(const nebula::meta::PatternMacro macro,
 
 void SpecRepo::genSpecs4Roll(const std::string& version,
                              const TableSpecPtr& table,
-                             const std::unordered_map<std::string, std::vector<std::string>>& macroValues,
                              std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   if (dsu::isFileSystem(table->source)) {
     // parse location to get protocol, domain/bucket, path
@@ -196,7 +192,6 @@ void SpecRepo::genSpecs4Roll(const std::string& version,
                    table->max_seconds,
                    version,
                    table,
-                   macroValues,
                    specs);
     return;
   }
@@ -283,7 +278,6 @@ void genKafkaSpec(const std::string& version,
 void SpecRepo::process(
   const std::string& version,
   const TableSpecPtr& table,
-  const std::unordered_map<std::string, std::vector<std::string>>& macroValues,
   std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept {
   // specialized loader handling - nebula test set identified by static time provided
   if (table->loader == "NebulaTest") {
@@ -298,12 +292,12 @@ void SpecRepo::process(
   // 2. roll data clustered by time
   if (dsu::isFileSystem(table->source)) {
     if (table->loader == "Swap") {
-      genSpecs4Swap(version, table, macroValues, specs);
+      genSpecs4Swap(version, table, specs);
       return;
     }
 
     if (table->loader == "Roll") {
-      genSpecs4Roll(version, table, macroValues, specs);
+      genSpecs4Roll(version, table, specs);
       return;
     }
 

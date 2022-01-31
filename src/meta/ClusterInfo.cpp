@@ -306,6 +306,28 @@ RocksetSerde asRockset(const YAML::Node& node) {
   return rockset;
 }
 
+std::map<std::string, std::vector<std::string>> asMacroValues(const YAML::Node& node) {
+  std::map<std::string, std::vector<std::string>> macroValues;
+  if (node && node.IsMap()) {
+    for (YAML::const_iterator macro_it = node.begin(); macro_it != node.end(); ++macro_it) {
+      if (!macro_it->second.IsSequence()) {
+        continue;
+      }
+      const auto macroName = macro_it->first.as<std::string>();
+      if (macroValues.find(macroName) != macroValues.end()) {
+        LOG(WARNING) << "Skip the same macro name already defined: " << macroName;
+        continue;
+      }
+      std::vector<std::string> valuesForMacro;
+      for (YAML::const_iterator value_it = macro_it->second.begin(); value_it != macro_it->second.end(); ++value_it) {
+        valuesForMacro.push_back(value_it->as<std::string>());
+      }
+      macroValues.emplace(macroName, valuesForMacro);
+    }
+  }
+  return macroValues;
+}
+
 CsvProps asCsvProps(const YAML::Node& node) {
   CsvProps csv;
   if (node) {
@@ -409,7 +431,8 @@ std::shared_ptr<TableSpec> loadTable(std::string name, const YAML::Node& td) {
       asTimeSpec(td["time"]),
       asAccessRules(td["access"]),
       asBucketInfo(td["bucket"]),
-      asSettings(td["settings"]));
+      asSettings(td["settings"]),
+      asMacroValues(td["path_macros"]));
   } catch (std::exception& ex) {
     LOG(ERROR) << "Error creating table spec: " << name << " - " << ex.what();
     return nullptr;
@@ -498,19 +521,6 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
   // swap with new table set
   std::swap(tables_, tableSet);
   stateChanged_ = false;
-
-  // load user defined macros
-  const auto& pathMacros = config["path_macros"];
-  topLevels++;
-  for (YAML::const_iterator it = pathMacros.begin(); it != pathMacros.end(); ++it) {
-    // loading all dynamic table definitions from service calls
-    const auto& macroName = it->first;
-    if (macroValues_.find(macroName) != macroValues_.end()) {
-      LOG(WARNING) << "Skip the same macro name already defined: " << macroName;
-      continue;
-    }
-
-  }
 
   // if user mistakenly config things at top level
   // (I made mistake to place a new table the same level as "tables")

@@ -114,7 +114,8 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
     tmp->timeSpec,
     tmp->accessSpec,
     tmp->bucketInfo,
-    tmp->settings);
+    tmp->settings,
+    tmp->macroValues);
 
   // must enroll this new dataset to make it visible to client
   if (!TableService::singleton()->enroll(tbSpec->to(), ttl)) {
@@ -224,7 +225,8 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
     sheet.timeSpec,
     sheet.accessSpec,
     BucketInfo::empty(),
-    sheet.settings);
+    sheet.settings,
+    std::map<std::string, std::vector<std::string>>());
 
   // pattern must be present in settings
   if (!TableService::singleton()->enroll(tbSpec->to(), ttl)) {
@@ -321,7 +323,8 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
     demand.timeSpec,
     demand.accessSpec,
     BucketInfo::empty(),
-    demand.settings);
+    demand.settings,
+    std::map<std::string, std::vector<std::string>>());
 
   // if table still alive - failed to register the table
   if (!TableService::singleton()->enroll(tbSpec->to(), ttl)) {
