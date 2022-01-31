@@ -294,6 +294,13 @@ TEST(CommonTest, TestTimeParsing) {
     auto time1 = Evidence::hour(Evidence::now());
     LOG(INFO) << "time1: " << time1;
   }
+
+  // test short form of date
+  {
+    auto time1 = Evidence::time("1/20/22", "%m/%d/%y");
+    auto string1 = Evidence::format(time1, "%Y-%m-%d");
+    LOG(INFO) << "time1=" << time1 << ", string1=" << string1;
+  }
 }
 
 TEST(CommonTest, Test0AndOverflow) {

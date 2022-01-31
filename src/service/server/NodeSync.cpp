@@ -166,7 +166,9 @@ void NodeSync::sync(
         // but what if it keeps failing? we need counter for it
         else if (state == TaskState::FAILED || state == TaskState::QUEUE) {
           // TODO(cao) - post process for case if this task failed?
-          LOG(WARNING) << "Task " << t.signature() << " state: " << (char)state;
+          LOG(WARNING) << "Task state: " << (char)state
+                       << " at node: " << sp->affinity().toString()
+                       << " | " << t.signature();
         }
       }
     }
