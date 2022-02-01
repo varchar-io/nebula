@@ -199,6 +199,8 @@ struct TableSpec {
   BucketInfo bucketInfo;
   // settings spec just get list of key-values
   nebula::type::Settings settings;
+  // user defined macros
+  std::map<std::string, std::vector<std::string>> macroValues;
 
   explicit TableSpec() {}
   explicit TableSpec(std::string _name, size_t maxMb, size_t maxSeconds, std::string _schema,
@@ -206,7 +208,7 @@ struct TableSpec {
                      DataFormat _format, CsvProps csvProps, JsonProps jsonProps, ThriftProps thriftProps,
                      KafkaSerde _kafkaSerde, RocksetSerde _rocksetSerde,
                      ColumnProps _columnProps, TimeSpec _timeSpec,
-                     AccessSpec _accessSpec, BucketInfo _bucketInfo, nebula::type::Settings _settings)
+                     AccessSpec _accessSpec, BucketInfo _bucketInfo, nebula::type::Settings _settings, std::map<std::string, std::vector<std::string>> _macroValues)
     : name{ std::move(_name) },
       max_mb{ maxMb },
       max_seconds{ maxSeconds },
@@ -225,7 +227,8 @@ struct TableSpec {
       timeSpec{ std::move(_timeSpec) },
       accessSpec{ std::move(_accessSpec) },
       bucketInfo{ std::move(_bucketInfo) },
-      settings{ std::move(_settings) } {}
+      settings{ std::move(_settings) },
+      macroValues{ std::move(_macroValues) } {}
 
   // make it msgpack serializable
   MSGPACK_DEFINE(name, max_mb, max_seconds, schema,

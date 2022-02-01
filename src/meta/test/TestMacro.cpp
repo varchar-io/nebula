@@ -139,6 +139,73 @@ TEST(MacroTest, TestWatermark) {
   EXPECT_EQ(wms.at(1), 1577844000);
 }
 
+TEST(MacroTest, TestCustomMacros1) {
+  const auto path = "{a}/{b}/{c}";
+  const std::map<std::string, std::vector<std::string>> macroValues = {
+    {"a", {"1", "2"}},
+    {"b", {"3", "4"}},
+    {"c", {"5", "6"}},
+  };
+  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+  const std::vector<std::string> expectedPaths = {
+    "1/3/5",
+    "1/3/6",
+    "1/4/5",
+    "1/4/6",
+    "2/3/5",
+    "2/3/6",
+    "2/4/5",
+    "2/4/6"
+  };
+
+  EXPECT_EQ(paths.size(), 8);
+  for (const auto& expectedPath : expectedPaths) {
+   EXPECT_NE(std::find(paths.begin(), paths.end(), expectedPath), paths.end()); 
+  }
+}
+
+TEST(MacroTest, TestCustomMacros2) {
+  const auto path = "{a}/{b}";
+  const std::map<std::string, std::vector<std::string>> macroValues = {
+    {"a", {"1"}},
+    {"b", {"2", "3"}},
+  };
+  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+  const std::vector<std::string> expectedPaths = {"1/2", "1/3"};
+
+  EXPECT_EQ(paths.size(), 2);
+  for (const auto& expectedPath : expectedPaths) {
+   EXPECT_NE(std::find(paths.begin(), paths.end(), expectedPath), paths.end()); 
+  }
+}
+
+TEST(MacroTest, TestCustomMacros3) {
+  const auto path = "a/b";
+  const std::map<std::string, std::vector<std::string>> macroValues = {
+    {"c", {"1", "2", "3"}}
+  };
+  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+
+  EXPECT_EQ(paths.size(), 1);
+  EXPECT_EQ(paths[0], "a/b");
+}
+
+TEST(MacroTest, TestCustomMacros4) {
+  const auto path = "a/{b}";
+  const std::map<std::string, std::vector<std::string>> macroValues = {
+    {"a", {"1", "2"}},
+    {"b", {"1", "2"}}
+  };
+  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+
+  const std::vector<std::string> expectedPaths = {"a/1", "a/2"};
+
+  EXPECT_EQ(paths.size(), 2);
+  for (const auto& expectedPath : expectedPaths) {
+   EXPECT_NE(std::find(paths.begin(), paths.end(), expectedPath), paths.end()); 
+  }
+}
+
 } // namespace test
 } // namespace meta
 } // namespace nebula
