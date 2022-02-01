@@ -160,11 +160,11 @@ void SpecRepo::genPatternSpec(const nebula::meta::PatternMacro macro,
   // fill in custom macros
   auto enumeratedPathTemplates = Macro::enumeratePathsWithCustomMacros(pathTemplate, table->macroValues);
 
+  for (const auto& pathWithoutTime : enumeratedPathTemplates) {
   // from now going back step by step until exceeding maxSeconds
-  size_t count = 0;
-  while (count < maxSeconds) {
-    const auto watermark = now - count;
-    for (const auto& pathWithoutTime : enumeratedPathTemplates) {
+    size_t count = 0;
+    while (count < maxSeconds) {
+      const auto watermark = now - count;
       // populate the file paths for given time point
       const auto path = Macro::materialize(macro, pathWithoutTime, watermark);
 

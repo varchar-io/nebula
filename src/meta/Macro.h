@@ -170,6 +170,7 @@ public:
   }
 
   static inline std::vector<std::string> enumeratePathsWithCustomMacros(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues, int macroIndex = 0) {
+    LOG(INFO) << "ritvikm " << input << " " << macroIndex;
     auto it = macroValues.begin();
     std::advance(it, macroIndex);
     if (it == macroValues.end()) {

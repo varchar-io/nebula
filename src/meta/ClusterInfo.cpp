@@ -432,7 +432,7 @@ std::shared_ptr<TableSpec> loadTable(std::string name, const YAML::Node& td) {
       asAccessRules(td["access"]),
       asBucketInfo(td["bucket"]),
       asSettings(td["settings"]),
-      asMacroValues(td["path_macros"]));
+      asMacroValues(td["macros"]));
   } catch (std::exception& ex) {
     LOG(ERROR) << "Error creating table spec: " << name << " - " << ex.what();
     return nullptr;
