@@ -169,27 +169,40 @@ public:
     return str;
   }
 
-  static inline std::vector<std::string> enumeratePathsWithCustomMacros(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues, int macroIndex = 0) {
-    LOG(INFO) << "ritvikm " << input << " " << macroIndex;
-    auto it = macroValues.begin();
-    std::advance(it, macroIndex);
-    if (it == macroValues.end()) {
-      return std::vector<std::string>({input});
-    }
-    std::vector<std::string> results, nextSteps;
-    const auto searchString = nebula::common::format("{{s}}", {{"s", it->first}});
-    if (input.find(searchString) != std::string::npos) {
-      for (const auto& replacementVal : it->second) {
-        nextSteps.emplace_back(nebula::common::format(input, {{it->first, replacementVal}}));
+  static inline const std::map<std::string, std::vector<std::string>> filteredMacroValuesMap(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
+    std::map<std::string, std::vector<std::string>> filteredMacroValues;
+    for (auto it = macroValues.begin(); it != macroValues.end(); ++it) {
+      const auto searchString = nebula::common::format("{{s}}", {{"s", it->first}});
+      if (input.find(searchString) != std::string::npos) {
+        filteredMacroValues.emplace(it->first, it->second);
       }
-    } else {
-      nextSteps.emplace_back(input);
     }
-    for (const auto& nextStep : nextSteps) {
-      const auto& nextStepResults = enumeratePathsWithCustomMacros(nextStep, macroValues, macroIndex + 1);
-      for (const auto& result : nextStepResults) {
-        results.emplace_back(result);
+    return filteredMacroValues;
+  }
+
+  static inline const std::vector<nebula::common::unordered_map<std::string_view, std::string_view>> enumerateMacroCombinations(const std::map<std::string, std::vector<std::string>>& filteredMacroValues) {
+    std::vector<nebula::common::unordered_map<std::string_view, std::string_view>> macroCombinations;
+    for (auto it = filteredMacroValues.begin(); it != filteredMacroValues.end(); ++it) {
+      std::vector<nebula::common::unordered_map<std::string_view, std::string_view>> newMacroCombinations;
+      for (const auto& combination : macroCombinations) {
+        for (const auto& val : it->second) {
+          // intentional copy
+          auto newCombination = combination;
+          newCombination.emplace(it->first, val);
+          newMacroCombinations.emplace_back(newCombination);
+        }
       }
+      macroCombinations = newMacroCombinations;
+    }
+    return macroCombinations;
+  }
+
+  static inline const std::vector<std::string> enumeratePathsWithCustomMacros(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
+    std::vector<std::string> results;
+    const auto& filteredMacroValues = Macro::filteredMacroValuesMap(input, macroValues);
+    const auto& macroCombinations = Macro::enumerateMacroCombinations(filteredMacroValues);
+    for (const auto& macroCombination : macroCombinations) {
+      results.emplace_back(nebula::common::format(input, macroCombination));
     }
     return results;
   }

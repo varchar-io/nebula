@@ -39,7 +39,7 @@ namespace common {
 // auto text = nebula::common::format("I will go to {p} to do {x}", {{"p", "place"}, {"x", "something"}});
 // supporting max result size as 1024, expect exception if overflowing.
 template <size_t x = 0>
-std::string format(std::string_view fmtstr, unordered_map<std::string_view, std::string_view> macros) {
+std::string format(const std::string_view fmtstr, const unordered_map<std::string_view, std::string_view> macros) {
   // support only MAX TEXT length for final resul, throw exception if not meet the expectation
   static constexpr auto MAX_TEXT = 1024;
   char buffer[MAX_TEXT];
