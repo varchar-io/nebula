@@ -190,6 +190,22 @@ TEST(MacroTest, TestCustomMacros3) {
   EXPECT_EQ(paths[0], "a/b");
 }
 
+TEST(MacroTest, TestCustomMacros4) {
+  const auto path = "a/{b}";
+  const std::map<std::string, std::vector<std::string>> macroValues = {
+    {"a", {"1", "2"}},
+    {"b", {"1", "2"}}
+  };
+  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+
+  const std::vector<std::string> expectedPaths = {"a/1", "a/2"};
+
+  EXPECT_EQ(paths.size(), 2);
+  for (const auto& expectedPath : expectedPaths) {
+   EXPECT_NE(std::find(paths.begin(), paths.end(), expectedPath), paths.end()); 
+  }
+}
+
 } // namespace test
 } // namespace meta
 } // namespace nebula

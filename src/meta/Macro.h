@@ -172,7 +172,7 @@ public:
   static inline const std::map<std::string, std::vector<std::string>> filteredMacroValuesMap(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
     std::map<std::string, std::vector<std::string>> filteredMacroValues;
     for (auto it = macroValues.begin(); it != macroValues.end(); ++it) {
-      const auto searchString = nebula::common::format("{{s}}", {{"s", it->first}});
+      const auto searchString = fmt::format("{{{}}}", it->first);
       if (input.find(searchString) != std::string::npos) {
         filteredMacroValues.emplace(it->first, it->second);
       }
@@ -183,6 +183,13 @@ public:
   static inline const std::vector<nebula::common::unordered_map<std::string_view, std::string_view>> enumerateMacroCombinations(const std::map<std::string, std::vector<std::string>>& filteredMacroValues) {
     std::vector<nebula::common::unordered_map<std::string_view, std::string_view>> macroCombinations;
     for (auto it = filteredMacroValues.begin(); it != filteredMacroValues.end(); ++it) {
+      if (it == filteredMacroValues.begin()) {
+        for (const auto& val : it->second) {
+          nebula::common::unordered_map<std::string_view, std::string_view> newCombination = {{it->first, val}};
+          macroCombinations.emplace_back(newCombination);
+        }
+        continue;
+      }
       std::vector<nebula::common::unordered_map<std::string_view, std::string_view>> newMacroCombinations;
       for (const auto& combination : macroCombinations) {
         for (const auto& val : it->second) {
@@ -201,8 +208,11 @@ public:
     std::vector<std::string> results;
     const auto& filteredMacroValues = Macro::filteredMacroValuesMap(input, macroValues);
     const auto& macroCombinations = Macro::enumerateMacroCombinations(filteredMacroValues);
+    if (macroCombinations.size() == 0) {
+      return {input};
+    }
     for (const auto& macroCombination : macroCombinations) {
-      results.emplace_back(nebula::common::format(input, macroCombination));
+      results.push_back(nebula::common::format(input, macroCombination));
     }
     return results;
   }
