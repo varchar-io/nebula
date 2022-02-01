@@ -179,6 +179,17 @@ TEST(MacroTest, TestCustomMacros2) {
   }
 }
 
+TEST(MacroTest, TestCustomMacros3) {
+  const auto path = "a/b";
+  const std::map<std::string, std::vector<std::string>> macroValues = {
+    {"c", {"1", "2", "3"}}
+  };
+  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+
+  EXPECT_EQ(paths.size(), 1);
+  EXPECT_EQ(paths[0], "a/b");
+}
+
 } // namespace test
 } // namespace meta
 } // namespace nebula
