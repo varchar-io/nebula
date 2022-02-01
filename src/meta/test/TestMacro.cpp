@@ -139,7 +139,7 @@ TEST(MacroTest, TestWatermark) {
   EXPECT_EQ(wms.at(1), 1577844000);
 }
 
-TEST(MacroTest, TestCustomMacros) {
+TEST(MacroTest, TestCustomMacros1) {
   const auto path = "{a}/{b}/{c}";
   const std::map<std::string, std::vector<std::string>> macroValues = {
     {"a", {"1", "2"}},
@@ -159,6 +159,21 @@ TEST(MacroTest, TestCustomMacros) {
   };
 
   EXPECT_EQ(paths.size(), 8);
+  for (const auto& expectedPath : expectedPaths) {
+   EXPECT_NE(std::find(paths.begin(), paths.end(), expectedPath), paths.end()); 
+  }
+}
+
+TEST(MacroTest, TestCustomMacros2) {
+  const auto path = "{a}/{b}";
+  const std::map<std::string, std::vector<std::string>> macroValues = {
+    {"a", {"1"}},
+    {"b", {"2", "3"}},
+  };
+  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+  const std::vector<std::string> expectedPaths = {"1/2", "1/3"};
+
+  EXPECT_EQ(paths.size(), 2);
   for (const auto& expectedPath : expectedPaths) {
    EXPECT_NE(std::find(paths.begin(), paths.end(), expectedPath), paths.end()); 
   }
