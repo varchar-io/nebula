@@ -29,9 +29,9 @@
 #include "type/Type.h"
 
 /**
- * A Column Vector formatted data reader. 
- * On top of this, we can have a file reader interface to load data from given file. 
- * 
+ * A Column Vector formatted data reader.
+ * On top of this, we can have a file reader interface to load data from given file.
+ *
  * Most of the case, the data is built / setup in memory already.
  * The data looks like below
  * [
@@ -171,6 +171,7 @@ public:
     // we need to find out the max rows of each column vector
     size_t maxRows = 0;
     LOG(INFO) << "Load data with schema=" << nebula::type::TypeSerializer::to(schema);
+    std::vector<std::string> columns;
     for (ST i = 0; i < numColumns; ++i) {
       auto columnVector = values[i].GetArray();
       auto numRows = columnVector.Size();
@@ -179,20 +180,28 @@ public:
           maxRows = numRows;
         }
 
-        // if header is inline, use it to search column definition
-        // otherwise, we will use the column by index
-        auto node = schema->childType(i);
-        if (!headless) {
-          auto name = nebula::common::normalize(getTitle(columnVector[0]));
-          node = schema->find(name);
-          if (!node) {
-            LOG(WARNING) << "Name not found in schema:" << name << "|";
-          }
-        }
+        // record the column name
+        columns.emplace_back(nebula::common::normalize(getTitle(columnVector[0])));
+      }
+    }
 
-        if (node) {
-          row_.push(node, std::move(columnVector));
+    // dedup column names
+    dedup(columns);
+
+    for (ST i = 0; i < numColumns; ++i) {
+      // if header is inline, use it to search column definition
+      // otherwise, we will use the column by index
+      auto node = schema->childType(i);
+      if (!headless && i < columns.size()) {
+        auto name = columns.at(i);
+        node = schema->find(name);
+        if (!node) {
+          LOG(WARNING) << "Name not found in schema:" << name << "|";
         }
+      }
+
+      if (node) {
+        row_.push(node, values[i].GetArray());
       }
     }
 

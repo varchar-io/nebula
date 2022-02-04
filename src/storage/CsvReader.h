@@ -19,6 +19,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "SchemaHelper.h"
 #include "common/Conv.h"
 #include "common/Errors.h"
 #include "common/Format.h"
@@ -117,6 +118,9 @@ public:
     // 2.a: csv has header - we need to read headers to use them as the schema.
     // 2.b: csv has no header - fail, don't know how to process schema
     LOG(INFO) << "Reading a delimiter separated file: " << file << " by " << csv.delimiter;
+    std::vector<std::string> names;
+    const auto hasSchema = columns.size() > 0;
+
     // scenario 1.b: if the schema is given, has no header
     if (!csv.hasHeader) {
       // 2.b - don't know how to handle
@@ -124,26 +128,28 @@ public:
         throw NException("Can't figure out schema without header");
       }
 
-      // 1.b - has schema
-      for (size_t i = 0, size = columns.size(); i < size; ++i) {
-        columns_[columns.at(i)] = i;
-      }
+      // schema names provided
+      names = columns;
     } else {
       // read the header
       N_ENSURE(row_.readNext(fstream_), "Failed to read csv header unexpectedly.");
+
+      // extract all names
       const auto& raw = row_.rawData();
       for (size_t i = 0, size = raw.size(); i < size; ++i) {
-        auto name = nebula::common::normalize(raw.at(i));
-        // 2.a - no schema provided, current column saved from header
-        // 1.a - column in schema, records its position
-        if (columns.size() == 0 || std::find(columns.begin(), columns.end(), name) != columns.end()) {
-          columns_[name] = i;
-        }
+        names.emplace_back(nebula::common::normalize(raw.at(i)));
       }
 
-      // if schema is provided, we want to make sure all columns are found
-      if (columns.size() > 0) {
-        N_ENSURE(columns_.size() == columns.size(), "every column should be found.");
+      // dedup column names
+      dedup(names);
+    }
+
+    // build the name to index map
+    for (size_t i = 0, size = names.size(); i < size; ++i) {
+      const auto name = names.at(i);
+      // notes: columns could be partial of all data and it should be already deduped
+      if (!hasSchema || std::find(columns.begin(), columns.end(), name) != columns.end()) {
+        columns_[name] = i;
       }
     }
 

@@ -176,7 +176,7 @@ TEST(CsvTest, TestCsvExportedFromGSheet) {
   auto lines = 0;
   while (reader.hasNext()) {
     auto& r = reader.next();
-    LOG(INFO) << "Row: " << ++lines << ", first column: " << r.readString("Country Name");
+    LOG(INFO) << "Row: " << ++lines << ", first column: " << r.readString("country_name");
   }
 
   EXPECT_EQ(lines, 267);
@@ -188,7 +188,7 @@ TEST(CsvTest, TestCsvWithMeta) {
   auto lines = 0;
   while (reader.hasNext()) {
     auto& r = reader.next();
-    LOG(INFO) << "Row: " << ++lines << ", id: " << r.readString("GEO_ID");
+    LOG(INFO) << "Row: " << ++lines << ", id: " << r.readString("geo_id");
   }
 
   EXPECT_EQ(lines, 8);

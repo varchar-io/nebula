@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 #include <rapidjson/document.h>
 
+#include "storage/SchemaHelper.h"
 #include "storage/VectorReader.h"
 #include "type/Serde.h"
 
@@ -191,6 +192,30 @@ TEST(StorageTest, TestVectorReaderTypeConversion) {
 
   // no more rows
   EXPECT_FALSE(vectorReader.hasNext());
+}
+
+TEST(StorageTest, TestNameDedup) {
+  {
+    std::vector<std::string> names = { "abc", "def", "xyz" };
+    const auto expectation = names;
+    dedup(names);
+    EXPECT_EQ(names, expectation);
+    LOG(INFO) << "NAMES-0: " << names[0];
+  }
+  {
+    std::vector<std::string> names = { "abc", "abc", "xyz", "abc" };
+    const std::vector<std::string> expectation = { "abc", "abc_1", "xyz", "abc_2" };
+    dedup(names);
+    EXPECT_EQ(names, expectation);
+    LOG(INFO) << "NAME-1: " << names[1];
+  }
+  {
+    std::vector<std::string> names = { "abc", "xyz", "xyz", "abc", "dedup" };
+    const std::vector<std::string> expectation = { "abc", "xyz", "xyz_1", "abc_1", "dedup" };
+    dedup(names);
+    EXPECT_EQ(names, expectation);
+    LOG(INFO) << "NAME-2: " << names[2];
+  }
 }
 
 } // namespace test
