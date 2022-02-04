@@ -10,6 +10,7 @@ SET(LEVELDB_OPTS
 ExternalProject_Add(leveldb
   PREFIX leveldb
   GIT_REPOSITORY https://github.com/google/leveldb.git
+  GIT_TAG main
   CMAKE_ARGS ${LEVELDB_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
