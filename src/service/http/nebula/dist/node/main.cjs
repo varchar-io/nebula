@@ -92,6 +92,7 @@
 /**
  * @fileoverview
  * @enhanceable
+ * @suppress {missingRequire} reports error on implicit type usages.
  * @suppress {messageConventions} JS Compiler reports an error if a variable or
  *     field starts with 'MSG_' and isn't a translatable message.
  * @public
@@ -1890,12 +1891,16 @@ proto.nebula.service.Predicate.deserializeBinaryFromReader = function(msg, reade
       msg.addValue(value);
       break;
     case 4:
-      var value = /** @type {!Array<string>} */ (reader.readPackedInt64String());
-      msg.setNValueList(value);
+      var values = /** @type {!Array<string>} */ (reader.isDelimited() ? reader.readPackedInt64String() : [reader.readInt64String()]);
+      for (var i = 0; i < values.length; i++) {
+        msg.addNValue(values[i]);
+      }
       break;
     case 5:
-      var value = /** @type {!Array<number>} */ (reader.readPackedDouble());
-      msg.setDValueList(value);
+      var values = /** @type {!Array<number>} */ (reader.isDelimited() ? reader.readPackedDouble() : [reader.readDouble()]);
+      for (var i = 0; i < values.length; i++) {
+        msg.addDValue(values[i]);
+      }
       break;
     case 6:
       var value = /** @type {!Uint8Array} */ (reader.readBytes());
@@ -5039,7 +5044,8 @@ proto.nebula.service.LoadError = {
   MISSING_BUCKET_VALUE: 3,
   ANAUTHORIZED: 4,
   EMPTY_RESULT: 5,
-  NOT_SUPPORTED: 6
+  NOT_SUPPORTED: 6,
+  IN_LOADING: 7
 };
 
 /**
