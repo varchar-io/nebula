@@ -212,7 +212,11 @@ public:
       return {input};
     }
     for (const auto& macroCombination : macroCombinations) {
-      results.push_back(nebula::common::format(input, macroCombination));
+      results.push_back(nebula::common::format(
+        input,
+        macroCombination,
+        true /* allowMissingMacro - allow missing macros for time macros */
+      ));
     }
     return results;
   }

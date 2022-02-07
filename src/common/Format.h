@@ -39,7 +39,7 @@ namespace common {
 // auto text = nebula::common::format("I will go to {p} to do {x}", {{"p", "place"}, {"x", "something"}});
 // supporting max result size as 1024, expect exception if overflowing.
 template <size_t x = 0>
-std::string format(const std::string_view fmtstr, const unordered_map<std::string_view, std::string_view> macros) {
+std::string format(const std::string_view fmtstr, const unordered_map<std::string_view, std::string_view> macros, bool allowMissingMacro = false) {
   // support only MAX TEXT length for final resul, throw exception if not meet the expectation
   static constexpr auto MAX_TEXT = 1024;
   char buffer[MAX_TEXT];
@@ -62,10 +62,20 @@ std::string format(const std::string_view fmtstr, const unordered_map<std::strin
         // looking for the token and memcopy its value into buffer
         auto found = macros.find(token);
         if (found == macros.end()) {
-          LOG(INFO) << "Token not found: " << token;
-          throw NException(fmt::format("token not found for fmt string: {0}.", token));
+          if (allowMissingMacro) {
+            // copy macro with start/end back into buffer
+            buffer[bufferPos++] = TOKEN_START;
+            const auto size = token.size();
+            std::memcpy(buffer + bufferPos, token.data(), size);
+            bufferPos += size;
+            buffer[bufferPos++] = TOKEN_END;
+            tokenStart = SIZE_T_LIMIT;
+            continue;
+          } else {
+            LOG(ERROR) << "Token not found: " << token;
+            throw NException(fmt::format("token not found for fmt string: {0}.", token));
+          }
         }
-
         // copy the value into buffer
         const auto& value = found->second;
         const auto size = value.size();

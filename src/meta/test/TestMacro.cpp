@@ -191,14 +191,14 @@ TEST(MacroTest, TestCustomMacros3) {
 }
 
 TEST(MacroTest, TestCustomMacros4) {
-  const auto path = "a/{b}";
+  const auto path = "a/{b}/{c}/{def}";
   const std::map<std::string, std::vector<std::string>> macroValues = {
     {"a", {"1", "2"}},
     {"b", {"1", "2"}}
   };
   const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
 
-  const std::vector<std::string> expectedPaths = {"a/1", "a/2"};
+  const std::vector<std::string> expectedPaths = {"a/1/{c}/{def}", "a/2/{c}/{def}"};
 
   EXPECT_EQ(paths.size(), 2);
   for (const auto& expectedPath : expectedPaths) {
