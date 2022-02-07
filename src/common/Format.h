@@ -72,7 +72,7 @@ std::string format(const std::string_view fmtstr, const unordered_map<std::strin
             tokenStart = SIZE_T_LIMIT;
             continue;
           } else {
-            LOG(INFO) << "Token not found: " << token;
+            LOG(ERROR) << "Token not found: " << token;
             throw NException(fmt::format("token not found for fmt string: {0}.", token));
           }
         }
@@ -96,9 +96,7 @@ std::string format(const std::string_view fmtstr, const unordered_map<std::strin
   }
 
   // when the loop is done, tokenStart has to be 0 to indicate all tokens are replaced
-  if (!allowMissingMacro) {
   N_ENSURE_EQ(tokenStart, SIZE_T_LIMIT, "some open token not replaced - wrong format string.");
-  }
   N_ENSURE(bufferPos < MAX_TEXT, "format string is too long.");
 
   return std::string(buffer, bufferPos);
