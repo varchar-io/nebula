@@ -40,7 +40,15 @@ constexpr ull operator"" _MB(ull no) {
   return no * (1024_KB);
 }
 
+using Azure::Storage::Blobs::BlobContainerClient;
+using Azure::Storage::Blobs::BlockBlobClient;
+using Azure::Storage::Blobs::ListBlobsOptions;
+using Azure::Storage::Blobs::UploadBlockBlobFromOptions;
+using Azure::Storage::Blobs::Models::BlobHttpHeaders;
+using Azure::Storage::Blobs::Models::BlobType;
+
 using Azure::Storage::StorageSharedKeyCredential;
+using Azure::Storage::Files::DataLake::DataLakeClientOptions;
 using Azure::Storage::Files::DataLake::DataLakeDirectoryClient;
 using Azure::Storage::Files::DataLake::DataLakeFileClient;
 using Azure::Storage::Files::DataLake::DataLakeFileSystemClient;
@@ -49,9 +57,23 @@ using Azure::Storage::Files::DataLake::ListPathsOptions;
 using Azure::Storage::Files::DataLake::UploadFileFromOptions;
 using Azure::Storage::Files::DataLake::Models::PathHttpHeaders;
 
-PathHttpHeaders GetInterestingHttpHeaders() {
+PathHttpHeaders GetPathHttpHeaders() {
   static PathHttpHeaders result = []() {
     PathHttpHeaders ret;
+    ret.CacheControl = "no-cache";
+    ret.ContentDisposition = "attachment";
+    ret.ContentEncoding = "deflate";
+    ret.ContentLanguage = "en-US";
+    ret.ContentType = "application/octet-stream";
+    return ret;
+  }();
+
+  return result;
+}
+
+BlobHttpHeaders GetBlobHttpHeaders() {
+  static BlobHttpHeaders result = []() {
+    BlobHttpHeaders ret;
     ret.CacheControl = "no-cache";
     ret.ContentDisposition = "attachment";
     ret.ContentEncoding = "deflate";
@@ -92,14 +114,22 @@ DataLake::DataLake(const std::string& bucket, const nebula::type::Settings& sett
 
   // build a client from given parameters
   auto sharedKeyCredential = std::make_shared<StorageSharedKeyCredential>(account_, secret_);
-  client_ = std::make_shared<DataLakeFileSystemClient>(
-    fmt::format("{0}/{1}", endpoint_, bucket_), sharedKeyCredential);
+  if (endpoint_.find(".blob.") >= 0) {
+    blobClient_ = std::make_shared<BlobContainerClient>(
+      fmt::format("{0}/{1}", endpoint_, bucket_), sharedKeyCredential);
+  } else {
+    client_ = std::make_shared<DataLakeFileSystemClient>(
+      fmt::format("{0}/{1}", endpoint_, bucket_), sharedKeyCredential);
+  }
 }
 
-std::vector<FileInfo> DataLake::list(const std::string& path) {
+std::vector<FileInfo> listFiles(
+  std::shared_ptr<DataLakeFileSystemClient> client,
+  const std::string& bucket,
+  const std::string& path) {
   std::vector<FileInfo> fileInfos;
   auto dirClient = std::make_shared<DataLakeDirectoryClient>(
-    client_->GetDirectoryClient(path));
+    client->GetDirectoryClient(path));
 
   // azure datalake will throw if the path not exists
   // different behavior from S3/GCS, wish there is a quick method like `Exists`
@@ -110,7 +140,7 @@ std::vector<FileInfo> DataLake::list(const std::string& path) {
       auto res = dirClient->ListPaths(false, opts);
       for (auto& pathItem : res.Paths) {
         if (!pathItem.IsDirectory) {
-          fileInfos.emplace_back(false, 0, pathItem.FileSize, pathItem.Name, bucket_);
+          fileInfos.emplace_back(false, 0, pathItem.FileSize, pathItem.Name, bucket);
         }
       }
 
@@ -133,14 +163,89 @@ std::vector<FileInfo> DataLake::list(const std::string& path) {
   return fileInfos;
 }
 
-size_t DataLake::read(const std::string& remote, char* buf, size_t size) {
+// as convention: consistency with data lake file system API
+// path should not end up with "/" as we don't handle that case
+std::vector<FileInfo> listBlobs(
+  std::shared_ptr<BlobContainerClient> client,
+  const std::string& bucket,
+  const std::string& path) {
+  std::vector<FileInfo> fileInfos;
+
+  // azure datalake will throw if the path not exists
+  // different behavior from S3/GCS, wish there is a quick method like `Exists`
+  try {
+    // opts may contain continuation token since azure return maximum 5K results per request
+    ListBlobsOptions opts;
+    opts.Prefix = path + "/";
+
+    while (true) {
+      auto res = client->ListBlobs(opts);
+      for (auto& blobItem : res.Blobs) {
+        if (blobItem.BlobType == BlobType::BlockBlob) {
+          fileInfos.emplace_back(false, 0, blobItem.BlobSize, blobItem.Name, bucket);
+        }
+      }
+
+      // no more results
+      if (!res.NextPageToken.HasValue()) {
+        break;
+      }
+
+      // assign the continuation token for next page
+      opts.ContinuationToken = res.NextPageToken;
+    }
+  } catch (Azure::Storage::StorageException& e) {
+    if (e.ErrorCode == "PathNotFound") {
+      VLOG(1) << "Path not found: " << path;
+    } else {
+      LOG(ERROR) << "Azure storage exception: " << e.ErrorCode;
+    }
+  }
+
+  return fileInfos;
+}
+
+std::vector<FileInfo> DataLake::list(const std::string& path) {
+  if (this->blobClient_) {
+    return listBlobs(this->blobClient_, this->bucket_, path);
+  } else {
+    return listFiles(this->client_, this->bucket_, path);
+  }
+}
+
+size_t readFile(
+  const std::shared_ptr<DataLakeFileSystemClient> client,
+  const std::string& remote,
+  char* buf,
+  size_t size) {
   // get file client pointing to the remote file path
-  auto fileClient = client_->GetFileClient(remote);
+  auto fileClient = client->GetFileClient(remote);
   auto dataLakeClient = std::make_shared<DataLakeFileClient>(fileClient);
 
   // do the download
   auto res = dataLakeClient->DownloadTo((uint8_t*)buf, size);
   return res.Value.FileSize;
+}
+
+size_t readBlob(
+  const std::shared_ptr<BlobContainerClient> client,
+  const std::string& remote,
+  char* buf,
+  size_t size) {
+  // get file client pointing to the remote file path
+  auto bbc = client->GetBlockBlobClient(remote);
+
+  // do the download
+  auto res = bbc.DownloadTo((uint8_t*)buf, size);
+  return res.Value.BlobSize;
+}
+
+size_t DataLake::read(const std::string& remote, char* buf, size_t size) {
+  if (this->client_) {
+    return readFile(this->client_, remote, buf, size);
+  } else {
+    return readBlob(this->blobClient_, remote, buf, size);
+  }
 }
 
 bool uploadFile(const std::shared_ptr<DataLakeFileSystemClient> client,
@@ -155,7 +260,7 @@ bool uploadFile(const std::shared_ptr<DataLakeFileSystemClient> client,
   // options.TransferOptions.Concurrency = concurrency;
   UploadFileFromOptions options;
   options.TransferOptions.ChunkSize = 1_MB;
-  options.HttpHeaders = GetInterestingHttpHeaders();
+  options.HttpHeaders = GetPathHttpHeaders();
 
   // do the upload
   auto res = dataLakeClient->UploadFrom(local, options);
@@ -176,6 +281,19 @@ bool downloadFile(const std::shared_ptr<DataLakeFileSystemClient> client,
 
   VLOG(1) << "Success: download " << remote << " to " << local;
   return res.Value.FileSize > 0;
+}
+
+bool downloadFile(const std::shared_ptr<BlobContainerClient> client,
+                  const std::string& remote,
+                  const std::string& local) {
+  // get file client pointing to the remote file path
+  auto bbc = client->GetBlockBlobClient(remote);
+
+  // do the download
+  auto res = bbc.DownloadTo(local);
+
+  VLOG(1) << "Success: download " << remote << " to " << local;
+  return res.Value.BlobSize > 0;
 }
 
 inline bool DataLake::copy(const std::string& from, const std::string& to) {
@@ -230,7 +348,16 @@ bool DataLake::download(const std::string& remote, const std::string& local) {
     if (!f.isDir) {
       // get file name
       auto nameOnly = nebula::common::Chars::last(f.name);
-      if (!downloadFile(client_, f.name, fmt::format("{0}/{1}", local, nameOnly))) {
+      auto localFile = fmt::format("{0}/{1}", local, nameOnly);
+      auto result = false;
+      if (this->blobClient_) {
+        result = downloadFile(this->blobClient_, f.name, localFile);
+      } else {
+        result = downloadFile(this->client_, f.name, localFile);
+      }
+
+      // check download result
+      if (!result) {
         LOG(WARNING) << "Failed to download: file=" << f.name;
         return false;
       }
@@ -238,6 +365,26 @@ bool DataLake::download(const std::string& remote, const std::string& local) {
   }
 
   return true;
+}
+
+bool uploadFile(const std::shared_ptr<BlobContainerClient> client,
+                const std::string& remote,
+                const std::string& local) {
+
+  // create a block blob client
+  auto bbc = client->GetBlockBlobClient(remote);
+
+  // configure file upload options
+  // options.TransferOptions.Concurrency = concurrency;
+  UploadBlockBlobFromOptions options;
+  options.TransferOptions.ChunkSize = 1_MB;
+  options.HttpHeaders = GetBlobHttpHeaders();
+
+  // do the upload
+  auto res = bbc.UploadFrom(local, options);
+
+  VLOG(1) << "Success: upload " << local << " to key=" << remote;
+  return res.Value.ETag.HasValue();
 }
 
 bool DataLake::upload(const std::string& local, const std::string& azure) {
@@ -258,9 +405,17 @@ bool DataLake::upload(const std::string& local, const std::string& azure) {
     if (!f.isDir) {
       // f.name will be full path from local, we need to
       auto nameOnly = nebula::common::Chars::last(f.name);
-      if (!uploadFile(this->client_,
-                      fmt::format("{0}/{1}", azure, nameOnly),
-                      fmt::format("{0}/{1}", local, nameOnly))) {
+      auto remotePath = fmt::format("{0}/{1}", azure, nameOnly);
+      auto localPath = fmt::format("{0}/{1}", local, nameOnly);
+      auto result = false;
+      if (this->blobClient_) {
+        result = uploadFile(this->blobClient_, remotePath, localPath);
+      } else {
+        result = uploadFile(this->client_, remotePath, localPath);
+      }
+
+      // check upload result
+      if (!result) {
         LOG(WARNING) << "Failed to upload: file=" << nameOnly;
         return false;
       }

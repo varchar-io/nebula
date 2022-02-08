@@ -249,19 +249,19 @@ TEST(StorageTest, DISABLED_TestGcsSync) {
 // to run this test:
 // replace the URL, bucket/container, user name and secret with your company's settings
 // and remove "DISABLED_" from the test name to enable it
-TEST(StorageTest, DISABLED_TestAzureDataLake) {
+TEST(StorageTest, TestAzureDataLake) {
   // make a new file system pointing to an azure data lake
   // note: a container is required, in this case, it's "test"
   // file system url will be composed by `{url}/{bucket}`, so please put tail "/" in url
   auto fs = nebula::storage::makeFS(
-    "abfs", "test",
-    { { "azure.storage.url", "https://nebula1.dfs.core.windows.net" },
-      { "azure.storage.account", "nebula1" },
-      { "azure.storage.secret", "<secret>" } });
+    "abfs", "deltalake",
+    { { "azure.storage.url", "https://nebulatest2.blob.core.windows.net" },
+      { "azure.storage.account", "nebulatest2" },
+      { "azure.storage.secret", "<NOT_TELLING_YOU>" } });
 
   // write a file to a local temp file
   auto lfs = nebula::storage::makeFS("local");
-  auto remote = "nebula/trt";
+  auto remote = "nebula2/trt";
   auto local1 = lfs->temp(true);
   {
     std::ofstream f1{ fmt::format("{0}/1", local1) };

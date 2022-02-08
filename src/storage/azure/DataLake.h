@@ -69,6 +69,7 @@ private:
   std::string account_;
   std::string secret_;
   std::shared_ptr<Azure::Storage::Files::DataLake::DataLakeFileSystemClient> client_;
+  std::shared_ptr<Azure::Storage::Blobs::BlobContainerClient> blobClient_;
 
   std::mutex mtx_;
 };
