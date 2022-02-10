@@ -114,7 +114,7 @@ DataLake::DataLake(const std::string& bucket, const nebula::type::Settings& sett
 
   // build a client from given parameters
   auto sharedKeyCredential = std::make_shared<StorageSharedKeyCredential>(account_, secret_);
-  if (endpoint_.find(".blob.") >= 0) {
+  if (endpoint_.find(".blob.") != std::string::npos) {
     blobClient_ = std::make_shared<BlobContainerClient>(
       fmt::format("{0}/{1}", endpoint_, bucket_), sharedKeyCredential);
   } else {
