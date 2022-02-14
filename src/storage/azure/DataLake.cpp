@@ -130,7 +130,6 @@ std::vector<FileInfo> listFiles(
   std::vector<FileInfo> fileInfos;
   auto dirClient = std::make_shared<DataLakeDirectoryClient>(
     client->GetDirectoryClient(path));
-
   // azure datalake will throw if the path not exists
   // different behavior from S3/GCS, wish there is a quick method like `Exists`
   try {
@@ -170,14 +169,12 @@ std::vector<FileInfo> listBlobs(
   const std::string& bucket,
   const std::string& path) {
   std::vector<FileInfo> fileInfos;
-
   // azure datalake will throw if the path not exists
   // different behavior from S3/GCS, wish there is a quick method like `Exists`
   try {
     // opts may contain continuation token since azure return maximum 5K results per request
     ListBlobsOptions opts;
     opts.Prefix = path + "/";
-
     while (true) {
       auto res = client->ListBlobs(opts);
       for (auto& blobItem : res.Blobs) {
@@ -283,26 +280,56 @@ bool downloadFile(const std::shared_ptr<DataLakeFileSystemClient> client,
   return res.Value.FileSize > 0;
 }
 
-bool downloadFile(const std::shared_ptr<BlobContainerClient> client,
-                  const std::string& remote,
-                  const std::string& local) {
-  // get file client pointing to the remote file path
+bool uploadBlob(const std::shared_ptr<BlobContainerClient> client,
+                const std::string& remote,
+                const std::string& local) {
+
+  // create a block blob client
   auto bbc = client->GetBlockBlobClient(remote);
 
-  // do the download
-  auto res = bbc.DownloadTo(local);
+  // configure file upload options
+  UploadBlockBlobFromOptions options;
+  options.TransferOptions.ChunkSize = 1_MB;
+  options.HttpHeaders = GetBlobHttpHeaders();
 
-  VLOG(1) << "Success: download " << remote << " to " << local;
-  return res.Value.BlobSize > 0;
+  // do the upload
+  auto res = bbc.UploadFrom(local, options);
+
+  VLOG(1) << "Success: upload " << local << " to key=" << remote;
+  return res.Value.ETag.HasValue();
+}
+
+bool downloadBlob(const std::shared_ptr<BlobContainerClient> client,
+                  const std::string& remote,
+                  const std::string& local) {
+  try {
+    // get file client pointing to the remote file path
+    auto bbc = client->GetBlockBlobClient(remote);
+
+    // do the download
+    auto res = bbc.DownloadTo(local);
+
+    VLOG(1) << "Success: download " << remote << " to " << local;
+    return res.Value.BlobSize > 0;
+  } catch (std::exception& e) {
+    LOG(ERROR) << "Azure storage exception: " << e.what();
+    return false;
+  }
 }
 
 inline bool DataLake::copy(const std::string& from, const std::string& to) {
   std::lock_guard<std::mutex> lock(mtx_);
 
   if (from.at(0) == '/') {
-    return uploadFile(this->client_, to, from);
+    if (this->client_) {
+      return uploadFile(this->client_, to, from);
+    }
+    return uploadBlob(this->blobClient_, to, from);
   } else if (to.at(0) == '/') {
-    return downloadFile(this->client_, from, to);
+    if (this->client_) {
+      return downloadFile(this->client_, from, to);
+    }
+    return downloadBlob(this->blobClient_, from, to);
   }
 
   // only support copy between local and remote
@@ -351,7 +378,7 @@ bool DataLake::download(const std::string& remote, const std::string& local) {
       auto localFile = fmt::format("{0}/{1}", local, nameOnly);
       auto result = false;
       if (this->blobClient_) {
-        result = downloadFile(this->blobClient_, f.name, localFile);
+        result = downloadBlob(this->blobClient_, f.name, localFile);
       } else {
         result = downloadFile(this->client_, f.name, localFile);
       }
@@ -365,26 +392,6 @@ bool DataLake::download(const std::string& remote, const std::string& local) {
   }
 
   return true;
-}
-
-bool uploadFile(const std::shared_ptr<BlobContainerClient> client,
-                const std::string& remote,
-                const std::string& local) {
-
-  // create a block blob client
-  auto bbc = client->GetBlockBlobClient(remote);
-
-  // configure file upload options
-  // options.TransferOptions.Concurrency = concurrency;
-  UploadBlockBlobFromOptions options;
-  options.TransferOptions.ChunkSize = 1_MB;
-  options.HttpHeaders = GetBlobHttpHeaders();
-
-  // do the upload
-  auto res = bbc.UploadFrom(local, options);
-
-  VLOG(1) << "Success: upload " << local << " to key=" << remote;
-  return res.Value.ETag.HasValue();
 }
 
 bool DataLake::upload(const std::string& local, const std::string& azure) {
@@ -409,7 +416,7 @@ bool DataLake::upload(const std::string& local, const std::string& azure) {
       auto localPath = fmt::format("{0}/{1}", local, nameOnly);
       auto result = false;
       if (this->blobClient_) {
-        result = uploadFile(this->blobClient_, remotePath, localPath);
+        result = uploadBlob(this->blobClient_, remotePath, localPath);
       } else {
         result = uploadFile(this->client_, remotePath, localPath);
       }

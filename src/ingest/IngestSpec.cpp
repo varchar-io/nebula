@@ -499,7 +499,13 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   size_t bRows = FLAGS_NBLOCK_MAX_ROWS;
   OVERWRITE_IF_EXISTS(bRows, BATCH_SIZE, [](auto& s) { return folly::to<size_t>(s); })
 
-  return build(table, *source, blocks, bRows, id_, timeRow);
+  try {
+    return build(table, *source, blocks, bRows, id_, timeRow);
+  } catch (const std::exception& exp) {
+    LOG(ERROR) << "Exception in reading blocks for " << table_->toString()
+               << " watermark " << watermark_ << ", exception: " << exp.what();
+    return false;
+  }
 }
 
 #undef OVERWRITE_IF_EXISTS
