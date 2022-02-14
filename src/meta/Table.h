@@ -115,12 +115,14 @@ struct Column {
                   bool d = false,
                   bool c = false,
                   const std::string& dv = "",
+                  const std::string& fm = "",
                   std::vector<AccessRule> rls = {},
                   PartitionInfo pi = {})
     : withBloomFilter{ bf },
       withDict{ d },
       withCompress{ c },
       defaultValue{ dv },
+      fromMacro{ fm },
       rules{ std::move(rls) },
       partition{ std::move(pi) } {}
 
@@ -137,6 +139,11 @@ struct Column {
   // empty means no default value,
   // with saying that, we're not support string type with empty stirng as default value
   std::string defaultValue;
+
+  // specify if this column comes from a macro in the source
+  // empty means no, otherwise we use the value put in the source string as the value for
+  // for the row
+  std::string fromMacro;
 
   // access rules
   std::vector<AccessRule> rules;

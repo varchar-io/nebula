@@ -207,6 +207,9 @@ Column col(const YAML::Node& settings) {
   std::string dv;
   EVAL_SETTING(default_value, dv, std::string)
 
+  std::string fm;
+  EVAL_SETTING(from_macro, fm, std::string)
+
   // if access spec defined
   const auto& access = settings["access"];
   AccessSpec as;
@@ -227,7 +230,7 @@ Column col(const YAML::Node& settings) {
     pi.chunk = chunk ? chunk.as<size_t>() : 1;
   }
 
-  return Column{ bf, d, c, std::move(dv), std::move(as), std::move(pi) };
+  return Column{ bf, d, c, std::move(dv), std::move(fm), std::move(as), std::move(pi) };
 
 #undef EVAL_SETTING
 }
