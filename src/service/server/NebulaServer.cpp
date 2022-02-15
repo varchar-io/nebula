@@ -557,7 +557,8 @@ void RunServer() {
 
       auto& ci = nebula::meta::ClusterInfo::singleton();
       if (sign != confSignature || ci.shouldReload()) {
-        LOG(INFO) << "Loading nebula cluster config: " << conf;
+        LOG(INFO) << "Loading nebula cluster config: " << conf << ", old sign: " << confSignature
+                  << ", new sign: " << sign << ", size: " << fi.size;
 
         // update the sign
         confSignature = sign;

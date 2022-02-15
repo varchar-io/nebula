@@ -95,7 +95,8 @@ void genSpecPerFile(const TableSpecPtr& table,
                     const std::string& version,
                     const std::vector<FileInfo>& files,
                     std::vector<std::shared_ptr<IngestSpec>>& specs,
-                    size_t watermark) noexcept {
+                    size_t watermark,
+                    nebula::common::unordered_map<std::string, std::string> macroCombination) noexcept {
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
     if (!itr->isDir) {
       // we do not generate empty files
@@ -107,7 +108,7 @@ void genSpecPerFile(const TableSpecPtr& table,
       // generate a ingest spec from given file info
       // use name as its identifier
       auto spec = std::make_shared<IngestSpec>(
-        table, version, itr->name, itr->domain, itr->size, SpecState::NEW, watermark);
+        table, version, itr->name, itr->domain, itr->size, SpecState::NEW, watermark, macroCombination);
 
       // push to the repo
       specs.push_back(spec);
@@ -130,10 +131,10 @@ void genSpecs4Swap(const std::string& version,
     auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host, table->settings);
 
     // list all objects/files from given paths
-    const auto& enumeratedPaths = Macro::enumeratePathsWithCustomMacros(sourceInfo.path, table->macroValues);
-    for (const auto& path : enumeratedPaths) {
-      auto files = fs->list(path);
-      genSpecPerFile(table, version, files, specs, 0);
+    const auto& enumeratedPathsWithCombinations = Macro::enumeratePathsWithCustomMacros(sourceInfo.path, table->macroValues);
+    for (const auto& pathWithCombination : enumeratedPathsWithCombinations) {
+      auto files = fs->list(pathWithCombination.first);
+      genSpecPerFile(table, version, files, specs, 0, pathWithCombination.second);
     }
     return;
   }
@@ -158,18 +159,17 @@ void SpecRepo::genPatternSpec(const nebula::meta::PatternMacro macro,
   const auto step = Macro::seconds(macro);
 
   // fill in custom macros
-  auto enumeratedPathTemplates = Macro::enumeratePathsWithCustomMacros(pathTemplate, table->macroValues);
+  auto enumeratedPathsWithCombinations = Macro::enumeratePathsWithCustomMacros(pathTemplate, table->macroValues);
 
-  for (const auto& pathWithoutTime : enumeratedPathTemplates) {
+  for (const auto& pathWithoutTimeWithMacroCombination : enumeratedPathsWithCombinations) {
   // from now going back step by step until exceeding maxSeconds
     size_t count = 0;
     while (count < maxSeconds) {
       const auto watermark = now - count;
       // populate the file paths for given time point
-      const auto path = Macro::materialize(macro, pathWithoutTime, watermark);
-
+      const auto path = Macro::materialize(macro, pathWithoutTimeWithMacroCombination.first, watermark);
       // list files in the path and generate spec perf file from it
-      genSpecPerFile(table, version, fs->list(path), specs, watermark);
+      genSpecPerFile(table, version, fs->list(path), specs, watermark, pathWithoutTimeWithMacroCombination.second);
 
       count += step;
     }

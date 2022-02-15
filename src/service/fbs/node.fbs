@@ -91,6 +91,12 @@ table IngestTask {
   size: uint64;
   state: byte;
   date: uint64;
+  macrosAndValues: [MacroAndValue];
+}
+
+table MacroAndValue {
+  macro: string;
+  value: string;
 }
 
 table Spec {

@@ -308,7 +308,7 @@ public:
   }
 
   // remove a field by specified name
-  void remove(const std::string& name) {
+  void remove(const std::string_view name) {
     N_ENSURE(KIND == Kind::STRUCT, "only support working on row type");
 
     // build a field name to data node
