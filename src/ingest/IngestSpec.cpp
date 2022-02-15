@@ -499,7 +499,16 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   size_t bRows = FLAGS_NBLOCK_MAX_ROWS;
   OVERWRITE_IF_EXISTS(bRows, BATCH_SIZE, [](auto& s) { return folly::to<size_t>(s); })
 
-  return build(table, *source, blocks, bRows, id_, timeRow);
+  // TODO: this try-catch may end up partial reading some spec, it may or may not generate a data block which
+  // has a risk to become orphan losing tracking. Find a way to improve it by making this transactional or
+  // better monitoring this type of failure.
+  try {
+    return build(table, *source, blocks, bRows, id_, timeRow);
+  } catch (const std::exception& exp) {
+    LOG(ERROR) << "Exception in reading blocks for " << table_->toString()
+               << " watermark " << watermark_ << ", exception: " << exp.what();
+    return false;
+  }
 }
 
 #undef OVERWRITE_IF_EXISTS

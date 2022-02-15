@@ -100,17 +100,15 @@ size_t File::read(const std::string& file, char* buf, size_t size) {
 }
 
 std::string File::temp(bool dir) {
-  char f[] = "/tmp/nebula.XXXXXX";
   if (dir) {
+    char f[] = "/tmp/nebula.XXXXXX";
     auto ret = mkdtemp(f);
     N_ENSURE(ret != NULL, "Failed to create temp dir");
     return ret;
   }
 
   // temp file
-  auto ret = mkstemp(f);
-  N_ENSURE(ret != -1, "Failed to create temp file");
-  return f;
+  return std::tmpnam(nullptr);
 }
 
 bool File::sync(const std::string& from, const std::string& to, bool recursive) {
