@@ -21,8 +21,8 @@
 
 #include "common/Chars.h"
 #include "common/Evidence.h"
-#include "common/Hash.h"
 #include "common/Format.h"
+#include "common/Hash.h"
 
 /**
  * Define macro supported in Nebula.
@@ -185,7 +185,7 @@ public:
     for (auto it = filteredMacroValues.begin(); it != filteredMacroValues.end(); ++it) {
       if (it == filteredMacroValues.begin()) {
         for (const auto& val : it->second) {
-          nebula::common::unordered_map<std::string_view, std::string_view> newCombination = {{it->first, val}};
+          nebula::common::unordered_map<std::string_view, std::string_view> newCombination = { { it->first, val } };
           macroCombinations.emplace_back(newCombination);
         }
         continue;
@@ -204,19 +204,32 @@ public:
     return macroCombinations;
   }
 
-  static inline const std::vector<std::string> enumeratePathsWithCustomMacros(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
-    std::vector<std::string> results;
+  static inline const std::vector<std::pair<std::string, nebula::common::unordered_map<std::string, std::string>>>
+      enumeratePathsWithCustomMacros(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
+    std::vector<std::pair<std::string, nebula::common::unordered_map<std::string, std::string>>> results;
     const auto& filteredMacroValues = Macro::filteredMacroValuesMap(input, macroValues);
     const auto& macroCombinations = Macro::enumerateMacroCombinations(filteredMacroValues);
     if (macroCombinations.size() == 0) {
-      return {input};
-    }
-    for (const auto& macroCombination : macroCombinations) {
-      results.push_back(nebula::common::format(
+      return { std::make_pair(
         input,
-        macroCombination,
-        true /* allowMissingMacro - allow missing macros for time macros */
-      ));
+        nebula::common::unordered_map<std::string, std::string>())
+      };
+    }
+    for (const auto macroCombination : macroCombinations) {
+      // need to manually copy to make string out of string_view
+      nebula::common::unordered_map<std::string, std::string> stringMacroCombinations;
+      for (const auto& p : macroCombination) {
+        stringMacroCombinations.emplace(p.first, p.second);
+      }
+      results.push_back(
+        std::make_pair(
+          nebula::common::format(
+            input,
+            macroCombination,
+            true /* allowMissingMacro - allow missing macros for time macros */
+          ),
+          stringMacroCombinations)
+        );
     }
     return results;
   }

@@ -347,7 +347,7 @@ bool IngestSpec::loadGSheet(BlockList& blocks) noexcept {
   auto tb = table_->to();
   TableService::singleton()->enroll(tb);
 
-  TimeRow timeRow(table_->timeSpec, watermark_);
+  TimeRow timeRow(table_->timeSpec, watermark_, macroCombinations_);
   return build(tb, reader, blocks, FLAGS_NBLOCK_MAX_ROWS, id_, timeRow);
 }
 
@@ -396,7 +396,7 @@ bool IngestSpec::loadKafka() noexcept {
   KafkaReader reader(table_, std::move(segment));
 
   // time function
-  TimeRow timeRow(table_->timeSpec, watermark_);
+  TimeRow timeRow(table_->timeSpec, watermark_, macroCombinations_);
 
   // get a table definition
   auto table = table_->to();
@@ -457,11 +457,6 @@ bool IngestSpec::loadKafka() noexcept {
   }
 
 bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
-  // TODO(cao) - support column selection in ingestion and expand time column
-  // to other columns for simple transformation
-  // but right now, we're expecting the same schema of data
-  // based on time spec, we need to replace or append time column
-  TimeRow timeRow(table_->timeSpec, watermark_);
   auto table = table_->to();
 
   // enroll the table in case it is the first time
@@ -472,6 +467,19 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 
   // get table schema and create a table
   const auto schema = TypeSerializer::from(table_->schema);
+
+  // remove columns that are expected from macro from the schema
+  nebula::common::unordered_map<std::string, std::string> colToMacroValue;
+  for (const auto& colNameAndMacro : table->getColumnNameToMacroMapping()) {
+    schema->remove(colNameAndMacro.first);
+    colToMacroValue.emplace(colNameAndMacro.first, macroCombinations_.at(colNameAndMacro.second));
+  }
+
+  // TODO(cao) - support column selection in ingestion and expand time column
+  // to other columns for simple transformation
+  // but right now, we're expecting the same schema of data
+  // based on time spec, we need to replace or append time column
+  TimeRow timeRow(table_->timeSpec, watermark_, colToMacroValue);
 
   // list all columns describing the current file
   std::vector<std::string> columns;

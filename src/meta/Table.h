@@ -152,7 +152,7 @@ struct Column {
   PartitionInfo partition;
 
   // make it serializable with msgpack
-  MSGPACK_DEFINE(withBloomFilter, withDict, withCompress, defaultValue, rules, partition)
+  MSGPACK_DEFINE(withBloomFilter, withDict, withCompress, defaultValue, fromMacro, rules, partition)
 };
 
 using ColumnProps = std::unordered_map<std::string, Column>;
@@ -249,6 +249,17 @@ public:
       AccessType,
       const nebula::common::unordered_set<std::string>&,
       const std::string& col = "") const;
+  
+  inline const std::vector<std::pair<std::string, std::string>> getColumnNameToMacroMapping() {
+    std::vector<std::pair<std::string, std::string>> columnNameAndMacro;
+    for (const auto& cp : columns_) {
+      LOG(INFO) << cp.first << " " << cp.second.fromMacro;
+      if (!cp.second.fromMacro.empty()) {
+        columnNameAndMacro.emplace_back(std::make_pair(cp.first, cp.second.fromMacro));
+      }
+    }
+    return columnNameAndMacro;
+  }
 
 protected:
   // table name is global unique, but it can be organized by some namespace style naming convention

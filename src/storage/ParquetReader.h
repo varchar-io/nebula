@@ -104,6 +104,7 @@ public:
           PTYPE_CONV_CASE_VALIDATION(FLOAT, REAL)
           PTYPE_CONV_CASE_VALIDATION(DOUBLE, DOUBLE)
           PTYPE_CONV_CASE_VALIDATION(BYTE_ARRAY, VARCHAR)
+          PTYPE_CONV_CASE_VALIDATION(FIXED_LEN_BYTE_ARRAY, DOUBLE)
         default: throw NException("unsupported type");
         }
       }
