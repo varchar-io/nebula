@@ -249,7 +249,7 @@ TEST(StorageTest, DISABLED_TestGcsSync) {
 // to run this test:
 // replace the URL, bucket/container, user name and secret with your company's settings
 // and remove "DISABLED_" from the test name to enable it
-TEST(StorageTest, TestAzureDataLake) {
+TEST(StorageTest, DISABLED_TestAzureDataLake) {
   // make a new file system pointing to an azure data lake
   // note: a container is required, in this case, it's "test"
   // file system url will be composed by `{url}/{bucket}`, so please put tail "/" in url
