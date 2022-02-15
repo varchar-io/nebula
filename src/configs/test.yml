@@ -144,3 +144,29 @@ tables:
   #     azure.storage.url: https://testnebula.dfs.core.windows.net
   #     azure.storage.account: testnebula
   #     azure.storage.secret: <insert_secret_here>
+
+  # An exmaple of using macro in source template and extract them into partition columns
+  # expect we could test this out after the work is done, and document this example afterwards.
+  # macro.test:
+  #   retention:
+  #     max-mb: 10000
+  #     max-hr: 48
+  #   schema: "ROW<part:string, name:string>"
+  #   data: local
+  #   loader: Roll
+  #   source: "file:///tmp/%7Bpart%7D/test.csv"
+  #   backup: s3://nebula/n100/
+  #   format: csv
+  #   csv:
+  #     hasHeader: true
+  #     delimiter: ","
+  #   macros:
+  #     part: ["macro-part1", "macro-part2"]
+  #   columns:
+  #     part:
+  #       partition:
+  #         values: ["macro-part1", "macro-part2"]
+  #         chunk: 1
+  #       macro: part
+  #   time:
+  #     type: current
