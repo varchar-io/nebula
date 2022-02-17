@@ -41,6 +41,10 @@ TEST(LoadSpecTest, TestLoadSpecDeserialization) {
   for (auto& itr : cm) {
     EXPECT_EQ(itr.first, itr.second);
   }
+
+  // verify header is loaded
+  EXPECT_EQ(spec.headers.size(), 1);
+  EXPECT_EQ(spec.headers.at(0), "header: abc");
 }
 
 } // namespace test

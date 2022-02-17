@@ -269,6 +269,11 @@ bool IngestSpec::loadHttp(BlockList& blocks,
     headers.push_back(fmt::format("Authorization: Bearer {0}", token));
   }
 
+  // if there are some preset headers, pass them into the same object
+  for (auto& header : this->table_->headers) {
+    headers.push_back(header);
+  }
+
   // the sheet content in this json objects
   if (!http.download(url, headers, data, tmpFile)) {
     LOG(WARNING) << "Failed to download to local: " << path_;

@@ -91,7 +91,13 @@ public:
       // if the name has mapped path (a.b)
       auto path = name;
       if (columnsMap.size() > 0) {
-        auto found = columnsMap.find(name);
+        // we don't use direct find, instead case insensitive
+        // auto found = columnsMap.find(name);
+        auto found = std::find_if(columnsMap.begin(),
+                                  columnsMap.end(),
+                                  [&name](const auto& vt) {
+                                    return nebula::common::Chars::same(vt.first, name);
+                                  });
         if (found != columnsMap.end()) {
           path = found->second;
           LOG(INFO) << "path=" << path << " for name=" << name;

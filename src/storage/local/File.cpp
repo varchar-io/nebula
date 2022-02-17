@@ -99,16 +99,28 @@ size_t File::read(const std::string& file, char* buf, size_t size) {
   return bytes;
 }
 
+constexpr char TEMPLATE[] = "/tmp/nebula.XXXXXX";
 std::string File::temp(bool dir) {
+  constexpr auto SIZE = sizeof(TEMPLATE);
+  char f[SIZE];
+  std::memcpy(f, TEMPLATE, SIZE);
+
   if (dir) {
-    char f[] = "/tmp/nebula.XXXXXX";
-    auto ret = mkdtemp(f);
-    N_ENSURE(ret != NULL, "Failed to create temp dir");
+    // temp directory, failed at NULL
+    char* ret = NULL;
+    while ((ret = mkdtemp(f)) == NULL) {
+      std::memcpy(f, TEMPLATE, SIZE);
+    }
+
     return ret;
   }
 
-  // temp file
-  return std::tmpnam(nullptr);
+  // temp file - failed at -1
+  auto ret = -1;
+  while ((ret = mkstemp(f)) == -1) {
+    std::memcpy(f, TEMPLATE, SIZE);
+  }
+  return f;
 }
 
 bool File::sync(const std::string& from, const std::string& to, bool recursive) {

@@ -149,6 +149,11 @@ TEST(MetaTest, TestClusterConfigLoad) {
   EXPECT_EQ(test->settings.at("key1"), "value1");
   EXPECT_EQ(test->settings.at("key2"), "value2");
   LOG(INFO) << "key1=" << test->settings.at("key1");
+
+  // test the test table has headers loaded correctly
+  EXPECT_EQ(test->headers.size(), 2);
+  EXPECT_EQ(test->headers.at(0), "header1: 1");
+  EXPECT_EQ(test->headers.at(1), "header2: 2");
 }
 
 TEST(MetaTest, TestRuntimeTableDefinition) {

@@ -201,6 +201,8 @@ struct TableSpec {
   nebula::type::Settings settings;
   // user defined macros
   std::map<std::string, std::vector<std::string>> macroValues;
+  // user specified headers - implicit for http but applicable to any service.
+  std::vector<std::string> headers;
 
   explicit TableSpec() {}
   explicit TableSpec(std::string _name, size_t maxMb, size_t maxSeconds, std::string _schema,
@@ -208,7 +210,8 @@ struct TableSpec {
                      DataFormat _format, CsvProps csvProps, JsonProps jsonProps, ThriftProps thriftProps,
                      KafkaSerde _kafkaSerde, RocksetSerde _rocksetSerde,
                      ColumnProps _columnProps, TimeSpec _timeSpec,
-                     AccessSpec _accessSpec, BucketInfo _bucketInfo, nebula::type::Settings _settings, std::map<std::string, std::vector<std::string>> _macroValues)
+                     AccessSpec _accessSpec, BucketInfo _bucketInfo, nebula::type::Settings _settings,
+                     std::map<std::string, std::vector<std::string>> _macroValues, std::vector<std::string> _headers)
     : name{ std::move(_name) },
       max_mb{ maxMb },
       max_seconds{ maxSeconds },
@@ -228,13 +231,15 @@ struct TableSpec {
       accessSpec{ std::move(_accessSpec) },
       bucketInfo{ std::move(_bucketInfo) },
       settings{ std::move(_settings) },
-      macroValues{ std::move(_macroValues) } {}
+      macroValues{ std::move(_macroValues) },
+      headers{ std::move(_headers) } {}
 
   // make it msgpack serializable
   MSGPACK_DEFINE(name, max_mb, max_seconds, schema,
                  source, loader, location, backup, format,
                  csv, json, thrift, kafkaSerde, rocksetSerde,
-                 columnProps, timeSpec, accessSpec, bucketInfo, settings);
+                 columnProps, timeSpec, accessSpec, bucketInfo, settings,
+                 macroValues, headers);
 
   inline std::string toString() const {
     // table name @ location - format: time

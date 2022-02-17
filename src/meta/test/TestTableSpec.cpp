@@ -41,13 +41,15 @@ TEST(MetaTest, TestTableSpecSerde) {
   BucketInfo bucketInfo = BucketInfo::empty();
   std::unordered_map<std::string, std::string> settings{ { "key1", "value1" }, { "key2", "value2" } };
   std::map<std::string, std::vector<std::string>> macroValues{};
+  std::vector<std::string> headers;
   TableSpec spec{
     "abc", 1, 2, "ROW<id:bigint>", DataSource::S3,
     "Roll", "s3://nebula", "s3://backup",
     DataFormat::JSON, std::move(csvProps), std::move(jsonProps), std::move(thriftProps),
     std::move(kafkaSerde), std::move(rocksetSerde),
     std::move(columnProps), std::move(timeSpec),
-    std::move(accessSpec), std::move(bucketInfo), std::move(settings), std::move(macroValues)
+    std::move(accessSpec), std::move(bucketInfo), std::move(settings),
+    std::move(macroValues), std::move(headers)
   };
   auto str = TableSpec::serialize(spec);
 

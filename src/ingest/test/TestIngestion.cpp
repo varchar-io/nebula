@@ -46,13 +46,15 @@ TEST(IngestTest, TestIngestSpec) {
   BucketInfo bucketInfo = BucketInfo::empty();
   std::unordered_map<std::string, std::string> settings;
   std::map<std::string, std::vector<std::string>> macroValues;
+  std::vector<std::string> headers;
   auto table = std::make_shared<TableSpec>(
     "test", 1000, 10, "s3", DataSource::S3,
     "swap", "s3://test", "s3://bak",
     DataFormat::CSV, std::move(csvProps), std::move(jsonProps), std::move(thriftProps),
     std::move(kafkaSerde), std::move(rocksetSerde),
     std::move(colProps), std::move(timeSpec),
-    std::move(accSpec), std::move(bucketInfo), std::move(settings), std::move(macroValues));
+    std::move(accSpec), std::move(bucketInfo), std::move(settings),
+    std::move(macroValues), std::move(headers));
   nebula::ingest::IngestSpec spec(table, "1.0", "nebula/v1.x", "nebula", 10, SpecState::NEW, 0);
   LOG(INFO) << "SPEC: " << spec.toString();
   EXPECT_EQ(spec.id(), "test@nebula/v1.x@10");

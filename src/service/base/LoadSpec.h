@@ -84,6 +84,9 @@ struct LoadSpec {
   // settings
   nebula::type::Settings settings;
 
+  // headers
+  std::vector<std::string> headers;
+
   // construct from the json object
   explicit LoadSpec(const rapidjson::Document& doc) {
     // root object
@@ -140,6 +143,17 @@ struct LoadSpec {
     // set access token if present through settings
     if (!token.empty()) {
       settings["token"] = token;
+    }
+
+    // headers definition
+    {
+      auto member = obj.FindMember("headers");
+      if (member != obj.MemberEnd() && member->value.IsArray()) {
+        const auto& list = member->value.GetArray();
+        for (size_t i = 0; i < list.Size(); ++i) {
+          headers.emplace_back(list[i].GetString());
+        }
+      }
     }
   }
 };

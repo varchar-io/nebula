@@ -33,6 +33,7 @@ tables:
     source: ""
     backup: s3://nebula/n100/
     format: none
+    headers: ["header1: 1", "header2: 2"]
     settings:
       key1: value1
       key2: value2

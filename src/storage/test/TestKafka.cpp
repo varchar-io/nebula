@@ -352,6 +352,7 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
   nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
   nebula::type::Settings settings2;
   std::map<std::string, std::vector<std::string>> macroValues;
+  std::vector<std::string> headers;
   ts.type = nebula::meta::TimeType::CURRENT;
 
   auto table = std::make_shared<nebula::meta::TableSpec>(
@@ -359,7 +360,8 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
     nebula::meta::DataSource::KAFKA, "Roll", BROKERS, "",
     nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
     std::move(serde), std::move(rockset), std::move(cp), std::move(ts),
-    std::move(as), std::move(bi), std::move(settings2), std::move(macroValues));
+    std::move(as), std::move(bi), std::move(settings2),
+    std::move(macroValues), std::move(headers));
 
   const auto& seg = segments.front();
   nebula::storage::kafka::KafkaReader reader(table, seg);
@@ -423,6 +425,7 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
   nebula::meta::BucketInfo bi = nebula::meta::BucketInfo::empty();
   nebula::type::Settings settings2;
   std::map<std::string, std::vector<std::string>> macroValues;
+  std::vector<std::string> headers;
   ts.type = nebula::meta::TimeType::CURRENT;
 
   auto table = std::make_shared<nebula::meta::TableSpec>(
@@ -430,7 +433,8 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
     nebula::meta::DataSource::KAFKA, "Roll", "<brokers>", "",
     nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
     std::move(serde), std::move(rockset), std::move(cp), std::move(ts),
-    std::move(as), std::move(bi), std::move(settings2), std::move(macroValues));
+    std::move(as), std::move(bi), std::move(settings2),
+    std::move(macroValues), std::move(headers));
 
   auto count = 0;
   for (auto& seg : segments) {

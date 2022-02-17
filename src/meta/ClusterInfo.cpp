@@ -306,6 +306,15 @@ RocksetSerde asRockset(const YAML::Node& node) {
   return rockset;
 }
 
+// support top-level macro definitions for each table spec
+// such as
+//  #   macros:
+//  #     part: ["macro-part1", "macro-part2"]
+//  or differnet ways for list value
+//  #   macros:
+//  #     part:
+//  #       - "macro-part1"
+//  #       - "macro-part2"
 std::map<std::string, std::vector<std::string>> asMacroValues(const YAML::Node& node) {
   std::map<std::string, std::vector<std::string>> macroValues;
   if (node && node.IsMap()) {
@@ -326,6 +335,25 @@ std::map<std::string, std::vector<std::string>> asMacroValues(const YAML::Node& 
     }
   }
   return macroValues;
+}
+
+// allow users to specify service headers (mostly http)
+// for example:
+//  #   headers: ['abc', "xyz"]
+// or
+//  #   headers:
+//  #     - "abc"
+//  #     - "xyz"
+std::vector<std::string> asHeaders(const YAML::Node& node) {
+  std::vector<std::string> headers;
+  if (node) {
+    // for all access type
+    for (YAML::const_iterator it = node.begin(); it != node.end(); ++it) {
+      headers.emplace_back(it->as<std::string>());
+    }
+  }
+
+  return headers;
 }
 
 CsvProps asCsvProps(const YAML::Node& node) {
@@ -432,7 +460,8 @@ std::shared_ptr<TableSpec> loadTable(std::string name, const YAML::Node& td) {
       asAccessRules(td["access"]),
       asBucketInfo(td["bucket"]),
       asSettings(td["settings"]),
-      asMacroValues(td["macros"]));
+      asMacroValues(td["macros"]),
+      asHeaders(td["headers"]));
   } catch (std::exception& ex) {
     LOG(ERROR) << "Error creating table spec: " << name << " - " << ex.what();
     return nullptr;

@@ -20,5 +20,6 @@
     "rowsField": "results"
   },
   "token": "",
-  "tcol": ""
+  "tcol": "",
+  "headers": ["header: abc"]
 }
