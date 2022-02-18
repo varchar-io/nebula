@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <azure/storage/common/storage_exception.hpp>
 #include <azure/storage/files/datalake.hpp>
 #include <mutex>
 
