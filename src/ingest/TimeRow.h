@@ -53,8 +53,7 @@ public:
   TRANSFER(std::unique_ptr<nebula::surface::MapData>, readMap)
 
   bool isNull(const std::string& field) const override {
-    if (N_UNLIKELY(field == nebula::meta::Table::TIME_COLUMN)) {
-      // timestamp in string 2016-07-15 14:38:03
+    if (N_UNLIKELY(field == nebula::meta::Table::TIME_COLUMN) || macroCombinations_.contains(field)) {
       return false;
     }
 

@@ -253,7 +253,6 @@ public:
   inline const std::vector<std::pair<std::string, std::string>> getColumnNameToMacroMapping() {
     std::vector<std::pair<std::string, std::string>> columnNameAndMacro;
     for (const auto& cp : columns_) {
-      LOG(INFO) << cp.first << " " << cp.second.fromMacro;
       if (!cp.second.fromMacro.empty()) {
         columnNameAndMacro.emplace_back(std::make_pair(cp.first, cp.second.fromMacro));
       }
