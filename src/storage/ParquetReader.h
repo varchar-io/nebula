@@ -28,6 +28,32 @@
 #include "surface/DataSurface.h"
 #include "type/Type.h"
 
+namespace {
+  bool validateTypeConversion(parquet::Type::type parquetType, nebula::type::Kind nebulaType) {
+    switch (parquetType) {
+      case parquet::Type::type::BOOLEAN:
+        return nebula::type::ConvertibleFrom<nebula::type::Kind::BOOLEAN>::convertibleFrom(nebulaType);
+      case parquet::Type::type::INT32:
+        return nebula::type::ConvertibleFrom<nebula::type::Kind::INTEGER>::convertibleFrom(nebulaType);
+      case parquet::Type::type::INT64:
+        return nebula::type::ConvertibleFrom<nebula::type::Kind::BIGINT>::convertibleFrom(nebulaType);
+      case parquet::Type::type::FLOAT:
+        return nebula::type::ConvertibleFrom<nebula::type::Kind::REAL>::convertibleFrom(nebulaType);
+      case parquet::Type::type::DOUBLE:
+        return nebula::type::ConvertibleFrom<nebula::type::Kind::DOUBLE>::convertibleFrom(nebulaType);
+      case parquet::Type::type::BYTE_ARRAY:
+        return (
+          nebula::type::ConvertibleFrom<nebula::type::Kind::VARCHAR>::convertibleFrom(nebulaType)
+          || nebula::type::ConvertibleFrom<nebula::type::Kind::DOUBLE>::convertibleFrom(nebulaType)
+        );
+      default:
+        throw NException(fmt::format("unsupported type parquet type {0}", parquetType));
+    }
+    // will never reach this
+    return false;
+  }
+}
+
 /**
  * Parquet reader to read a local parquet file and produce Nebula Rows
  */
@@ -63,16 +89,6 @@ public:
     // set total rows as
     size_ = this->meta_->num_rows();
 
-#define PTYPE_CONV_CASE_VALIDATION(PT, NT)                                                               \
-  case parquet::Type::type::PT: {                                                                        \
-    this->columns_[cname] = { i, kind, nullptr };                                                        \
-    auto typeSafetyCheck = nebula::type::ConvertibleFrom<nebula::type::Kind::NT>::convertibleFrom(kind); \
-    if (!typeSafetyCheck) {                                                                              \
-      throw NException(fmt::format("Type mismatch from {0} to {1}.", kind, nebula::type::Kind::NT));     \
-    }                                                                                                    \
-    break;                                                                                               \
-  }
-
     // TODO(cao) - note that, schema is a tree we need comprehensive conversion
     // But here, we only support plain schema.
     // build up name to index mapping with validation
@@ -84,77 +100,23 @@ public:
       const auto lt = cd->physical_type();
 
       auto kind = nebula::type::Kind::INVALID;
-      schema_->onChild(cname, [&kind](const nebula::type::TypeNode& node) {
+      schema_->onChild(cname, [&kind, &cname](const nebula::type::TypeNode& node) {
         // found a node
         kind = node->k();
       });
-
       // if this column is in requested schema
       if (kind != nebula::type::Kind::INVALID) {
-        found++;
         // ensure the type is supported
-        switch (lt) {
-          PTYPE_CONV_CASE_VALIDATION(BOOLEAN, BOOLEAN)
-          PTYPE_CONV_CASE_VALIDATION(INT32, INTEGER)
-          PTYPE_CONV_CASE_VALIDATION(INT64, BIGINT)
-          PTYPE_CONV_CASE_VALIDATION(FLOAT, REAL)
-          PTYPE_CONV_CASE_VALIDATION(DOUBLE, DOUBLE)
-          PTYPE_CONV_CASE_VALIDATION(BYTE_ARRAY, VARCHAR)
-          PTYPE_CONV_CASE_VALIDATION(FIXED_LEN_BYTE_ARRAY, DOUBLE)
-        default: throw NException("unsupported type");
+        if (!validateTypeConversion(lt, kind)) {
+          throw NException(fmt::format("unsupported type conversion, physical type {0} to nebula type {1}", lt, kind));
         }
+        this->columns_[cname] = { i, kind, nullptr };
+        found++;
       }
     }
 
     // every node should be validated
     N_ENSURE(found == schema_->size(), "every node in desired schema should be present");
-
-#undef PTYPE_CONV_CASE_VALIDATION
-  }
-
-  ParquetReader(const std::string& file)
-    : ParquetReader(file, nullptr) {
-// build up schema with all columns
-// TODO(cao) - use tree visitor to convert schema tree
-// right now, here we only support single plain schema struct[primitive,...]
-// with limited types of Parquet::Type as
-// BOOLEAN = 0,
-// INT32 = 1,
-// INT64 = 2,
-// FLOAT = 4,
-// DOUBLE = 5,
-// BYTE_ARRAY = 6
-#define PTYPE_CONV_CASE(PT, NT)                                     \
-  case parquet::Type::type::PT: {                                   \
-    this->columns_[cname] = { i, nebula::type::NT::kind, nullptr }; \
-    nodes.push_back(nebula::type::NT::createTree(cd->name()));      \
-    break;                                                          \
-  }
-
-    const auto* schema = this->meta_->schema();
-    std::vector<nebula::type::TreeNode> nodes;
-    for (size_t i = 0, size = schema->num_columns(); i < size; ++i) {
-      // column description
-      auto cd = schema->Column(i);
-      std::string cname(cd->name());
-      const auto lt = cd->physical_type();
-
-      switch (lt) {
-        PTYPE_CONV_CASE(BOOLEAN, BoolType)
-        PTYPE_CONV_CASE(INT32, IntType)
-        PTYPE_CONV_CASE(INT64, LongType)
-        PTYPE_CONV_CASE(FLOAT, FloatType)
-        PTYPE_CONV_CASE(DOUBLE, DoubleType)
-        PTYPE_CONV_CASE(BYTE_ARRAY, StringType)
-      default:
-        break;
-      }
-    }
-
-#undef PTYPE_CONV_CASE
-    // row name indicating this schema is from parquet
-    this->schema_ = std::static_pointer_cast<nebula::type::RowType>(
-      nebula::type::RowType::create("parquet", nodes));
   }
 
   virtual ~ParquetReader() = default;

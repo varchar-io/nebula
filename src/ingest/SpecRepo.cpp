@@ -96,7 +96,7 @@ void genSpecPerFile(const TableSpecPtr& table,
                     const std::vector<FileInfo>& files,
                     std::vector<std::shared_ptr<IngestSpec>>& specs,
                     size_t watermark,
-                    nebula::common::unordered_map<std::string, std::string> macroCombination) noexcept {
+                    const nebula::common::unordered_map<std::string, std::string>& macroCombination) noexcept {
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
     if (!itr->isDir) {
       // we do not generate empty files

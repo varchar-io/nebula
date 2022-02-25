@@ -137,7 +137,7 @@ public:
     return watermark_;
   }
 
-  inline nebula::common::unordered_map<std::string, std::string> macroCombinations() const {
+  inline const nebula::common::unordered_map<std::string, std::string>& macroCombinations() const {
     return macroCombinations_;
   }
 
