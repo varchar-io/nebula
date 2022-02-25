@@ -91,11 +91,11 @@ table IngestTask {
   size: uint64;
   state: byte;
   date: uint64;
-  macrosAndValues: [MacroAndValue];
+  macrosAndValues: [KeyValue];
 }
 
-table MacroAndValue {
-  macro: string;
+table KeyValue {
+  key: string;
   value: string;
 }
 

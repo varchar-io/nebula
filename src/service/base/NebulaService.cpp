@@ -344,19 +344,18 @@ RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>
   return std::make_shared<FlatRowCursor>(std::move(fb));
 }
 
-flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<nebula::service::MacroAndValue>>> serializeMacrosAndValues(flatbuffers::grpc::MessageBuilder& mb, const nebula::common::unordered_map<std::string, std::string>& macroCombinations) {
-  std::vector<flatbuffers::Offset<nebula::service::MacroAndValue>> macrosAndValues;
+flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<nebula::service::KeyValue>>> serializeMacrosAndValues(flatbuffers::grpc::MessageBuilder& mb, const nebula::common::unordered_map<std::string, std::string>& macroCombinations) {
+  std::vector<flatbuffers::Offset<nebula::service::KeyValue>> macrosAndValues;
   for (const auto& colNameAndMacro : macroCombinations) {
-    macrosAndValues.emplace_back(CreateMacroAndValue(mb, mb.CreateString(colNameAndMacro.first), mb.CreateString(colNameAndMacro.second)));
+    macrosAndValues.emplace_back(CreateKeyValue(mb, mb.CreateString(colNameAndMacro.first), mb.CreateString(colNameAndMacro.second)));
   }
-  return mb.CreateVector<flatbuffers::Offset<MacroAndValue>>(macrosAndValues);
+  return mb.CreateVector<flatbuffers::Offset<KeyValue>>(macrosAndValues);
 }
 
-nebula::common::unordered_map<std::string, std::string> deserializeMacrosAndValues(const flatbuffers::Vector<flatbuffers::Offset<nebula::service::MacroAndValue>>* macrosAndValues) {
+nebula::common::unordered_map<std::string, std::string> deserializeMacrosAndValues(const flatbuffers::Vector<flatbuffers::Offset<nebula::service::KeyValue>>* macrosAndValues) {
   nebula::common::unordered_map<std::string, std::string> macroCombinations;
-  // auto macrosAndValuesPtr = macrosAndValues->GetRoot();
   for (const auto& macroAndValue : *macrosAndValues) {
-    macroCombinations.emplace(macroAndValue->macro()->str(), macroAndValue->value()->str());
+    macroCombinations.emplace(macroAndValue->key()->str(), macroAndValue->value()->str());
   }
   return macroCombinations;
 }

@@ -72,7 +72,7 @@ public:
 
   // read from macro combinations if present there
   std::string_view readString(const std::string& field) const override {
-    if (macroCombinations_.contains(field)) {
+    if (N_UNLIKELY(macroCombinations_.contains(field))) {
       return macroCombinations_.at(field);
     }
     return row_->readString(field);

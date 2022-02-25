@@ -479,7 +479,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   // to other columns for simple transformation
   // but right now, we're expecting the same schema of data
   // based on time spec, we need to replace or append time column
-  TimeRow timeRow(table_->timeSpec, watermark_, colToMacroValue);
+  TimeRow timeRow(table_->timeSpec, watermark_, std::move(colToMacroValue));
 
   // list all columns describing the current file
   std::vector<std::string> columns;
