@@ -546,6 +546,29 @@ TEST(ParquetTest, DISABLED_TestRichPinParquet) {
   LOG(INFO) << "Total rows: " << reader.size();
 }
 
+TEST(ParquetTest, TestReadStatsigFile) {
+  auto localFile = "test/data/statsig.snappy.parquet";
+  auto schema = TypeSerializer::from("ROW<user_id:string, metric_name: string,  name: string, rule_id: string>");
+  ParquetReader reader(localFile, schema);
+  auto rows = 0;
+  auto toString = [](const RowData& row) -> std::string {
+    return fmt::format(
+      "user_id={0}, metric_name={1}, name={2}, rule_id={3}",
+      row.isNull("user_id") ? "NULL" : folly::to<std::string>(row.readString("user_id")),
+      row.isNull("metric_name") ? "NULL" : folly::to<std::string>(row.readString("metric_name")),
+      row.isNull("name") ? "NULL" : row.readString("name"),
+      row.isNull("rule_id") ? "NULL" : row.readString("rule_id"));
+  };
+
+  LOG(INFO) << "Total rows: " << reader.size();
+  while (reader.hasNext()) {
+    const auto& r = reader.next();
+    LOG(INFO) << "ROW" << rows++ << ": " << toString(r);
+  }
+
+  EXPECT_EQ(rows, reader.size());
+}
+
 } // namespace test
 } // namespace storage
 } // namespace nebula
