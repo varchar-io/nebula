@@ -546,27 +546,127 @@ TEST(ParquetTest, DISABLED_TestRichPinParquet) {
   LOG(INFO) << "Total rows: " << reader.size();
 }
 
-TEST(ParquetTest, TestReadStatsigFile) {
-  auto localFile = "test/data/statsig.snappy.parquet";
-  auto schema = TypeSerializer::from("ROW<user_id:string, metric_name: string,  name: string, rule_id: string>");
+TEST(ParquetTest, DISABLED_TestReadStatsigFile) {
+  auto localFile = "/tmp/statsig.snappy.parquet";
+  auto schema = TypeSerializer::from("ROW<user_id:string, metric_name: string,  name: string, rule_id: string, value: double, calculation:double>");
   ParquetReader reader(localFile, schema);
   auto rows = 0;
   auto toString = [](const RowData& row) -> std::string {
     return fmt::format(
-      "user_id={0}, metric_name={1}, name={2}, rule_id={3}",
+      "user_id={0}, metric_name={1}, name={2}, rule_id={3}, value={4}, calculation={5}",
       row.isNull("user_id") ? "NULL" : folly::to<std::string>(row.readString("user_id")),
       row.isNull("metric_name") ? "NULL" : folly::to<std::string>(row.readString("metric_name")),
       row.isNull("name") ? "NULL" : row.readString("name"),
-      row.isNull("rule_id") ? "NULL" : row.readString("rule_id"));
+      row.isNull("rule_id") ? "NULL" : row.readString("rule_id"),
+      row.isNull("value") ? 0 : row.readDouble("value"),
+      row.isNull("calculation") ? 0 : row.readDouble("calculation"));
   };
 
   LOG(INFO) << "Total rows: " << reader.size();
   while (reader.hasNext()) {
     const auto& r = reader.next();
-    LOG(INFO) << "ROW" << rows++ << ": " << toString(r);
+    if (rows++ % 100 == 0) {
+      LOG(INFO) << "ROW" << rows << ": " << toString(r);
+    }
   }
 
   EXPECT_EQ(rows, reader.size());
+}
+
+void writeFakeFile() {
+  const auto file = "fake.parquet";
+  const size_t rows = 10;
+  // Create a local file output stream instance.
+  using FileClass = ::arrow::io::FileOutputStream;
+  arrow::Result<std::shared_ptr<FileClass>> result = FileClass::Open(file);
+  PARQUET_THROW_NOT_OK(result.status());
+  std::shared_ptr<FileClass> out_file = result.ValueOrDie();
+
+  // Setup the parquet schema
+  parquet::schema::NodeVector fields;
+  fields.push_back(PrimitiveNode::Make("name", Repetition::REQUIRED, Type::BYTE_ARRAY, parquet::ConvertedType::NONE));
+  fields.push_back(PrimitiveNode::Make("isMale", Repetition::REQUIRED, Type::BOOLEAN, parquet::ConvertedType::NONE));
+  fields.push_back(PrimitiveNode::Make("age", Repetition::REQUIRED, Type::INT32, parquet::ConvertedType::NONE));
+  fields.push_back(PrimitiveNode::Make("score", Repetition::REQUIRED, Type::BYTE_ARRAY, parquet::ConvertedType::NONE));
+  std::shared_ptr<GroupNode> schema = std::static_pointer_cast<GroupNode>(GroupNode::Make("schema", Repetition::REQUIRED, fields));
+
+  // Add writer properties
+  parquet::WriterProperties::Builder builder;
+  builder.compression(parquet::Compression::GZIP);
+  std::shared_ptr<parquet::WriterProperties> props = builder.build();
+
+  // Create a ParquetFileWriter instance
+  std::shared_ptr<parquet::ParquetFileWriter> file_writer = parquet::ParquetFileWriter::Open(out_file, schema, props);
+
+  // Append a BufferedRowGroup to keep the RowGroup open until a certain size
+  parquet::RowGroupWriter* rg_writer = file_writer->AppendBufferedRowGroup();
+  for (size_t i = 0; i < rows; i++) {
+    int col_id = 0;
+    // write name
+    {
+      parquet::ByteArrayWriter* name_writer = static_cast<parquet::ByteArrayWriter*>(rg_writer->column(col_id));
+      parquet::ByteArray value;
+      const char* name = "parquet";
+      value.ptr = reinterpret_cast<const uint8_t*>(name);
+      value.len = 7;
+      int16_t definition_level = 1;
+      name_writer->WriteBatch(1, &definition_level, nullptr, &value);
+    }
+
+    // write isMale
+    {
+      col_id++;
+      parquet::BoolWriter* bool_writer = static_cast<parquet::BoolWriter*>(rg_writer->column(col_id));
+      bool bool_value = ((i % 2) == 0) ? true : false;
+      bool_writer->WriteBatch(1, nullptr, nullptr, &bool_value);
+    }
+
+    // write age
+    {
+      col_id++;
+      parquet::Int32Writer* int32_writer = static_cast<parquet::Int32Writer*>(rg_writer->column(col_id));
+      int32_t int32_value = i;
+      int32_writer->WriteBatch(1, nullptr, nullptr, &int32_value);
+    }
+
+    // write score as a string
+    {
+      col_id++;
+      parquet::ByteArrayWriter* score_writer = static_cast<parquet::ByteArrayWriter*>(rg_writer->column(col_id));
+      parquet::ByteArray value;
+      const char* score = "123.45";
+      value.ptr = reinterpret_cast<const uint8_t*>(score);
+      value.len = 6;
+      int16_t definition_level = 1;
+      score_writer->WriteBatch(1, &definition_level, nullptr, &value);
+    }
+  }
+
+  // Close the RowGroupWriter
+  rg_writer->Close();
+  // Close the ParquetFileWriter
+  file_writer->Close();
+
+  // Write the bytes to file
+  EXPECT_TRUE((out_file)->Close().ok());
+}
+
+TEST(ParquetTest, TestTypeConversion) {
+  writeFakeFile();
+  auto localFile = "fake.parquet";
+  auto schema = TypeSerializer::from("ROW<name:string, isMale:boolean,  age:int, score:double>");
+  ParquetReader reader(localFile, schema);
+  auto rows = 0;
+  LOG(INFO) << "Total rows: " << reader.size();
+  while (reader.hasNext()) {
+    const auto& r = reader.next();
+    EXPECT_EQ(r.readString("name"), "parquet");
+    EXPECT_EQ(r.readBool("isMale"), rows % 2 == 0);
+    EXPECT_EQ(r.readInt("age"), rows++);
+    EXPECT_EQ(r.readDouble("score"), 123.45);
+  }
+
+  EXPECT_EQ(rows, 10);
 }
 
 } // namespace test

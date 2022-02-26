@@ -15,6 +15,8 @@
  */
 
 #include "ParquetReader.h"
+
+#include "common/Conv.h"
 #include "common/Likely.h"
 
 /**
@@ -23,8 +25,36 @@
 namespace nebula {
 namespace storage {
 
+using nebula::memory::FlatRow;
 using nebula::surface::RowData;
 using nebula::type::Kind;
+
+// write value as target type defined
+// since user schema may be different from file schema.
+template <class T>
+void writeAsKind(Kind kind, FlatRow& row, const std::string& name, const T& value) {
+#define KIND_CONVERT(K)                                                          \
+  case Kind::K: {                                                                \
+    using TargetType = nebula::type::TypeTraits<nebula::type::Kind::K>::CppType; \
+    row.write(name, nebula::common::safe_to<TargetType>(value));                 \
+    break;                                                                       \
+  }
+
+  switch (kind) {
+    KIND_CONVERT(BOOLEAN)
+    KIND_CONVERT(TINYINT)
+    KIND_CONVERT(SMALLINT)
+    KIND_CONVERT(INTEGER)
+    KIND_CONVERT(BIGINT)
+    KIND_CONVERT(REAL)
+    KIND_CONVERT(DOUBLE)
+  default:
+    // other types not supported - write NULL instead
+    row.writeNull(name);
+  }
+
+#undef KIND_CONVERT
+}
 
 const RowData& ParquetReader::next() {
   // TODO build a flat row out of a reader
@@ -50,7 +80,11 @@ const RowData& ParquetReader::next() {
     if (vread == 0) {                                          \
       row_.writeNull(name);                                    \
     } else {                                                   \
-      row_.write(name, value);                                 \
+      if (info.kind == Kind::K) {                              \
+        row_.write(name, value);                               \
+      } else {                                                 \
+        writeAsKind(info.kind, row_, name, value);             \
+      }                                                        \
     }                                                          \
     break;                                                     \
   }
@@ -65,7 +99,7 @@ const RowData& ParquetReader::next() {
     int16_t defLevel;
 
     // bool, int, long, float, double, string
-    switch (info.kind) {
+    switch (info.realKind) {
       TRANSFER_FROM_PARQUET(bool, BOOLEAN, BoolReader)
       // a bit obsecure: use int32 reader and data type to read SMALL int
       TRANSFER_FROM_PARQUET(int32_t, TINYINT, Int32Reader)
@@ -81,7 +115,12 @@ const RowData& ParquetReader::next() {
       if (vread == 0) {
         row_.writeNull(name);
       } else {
-        row_.write(name, std::string((const char*)value.ptr, (size_t)value.len));
+        std::string str((const char*)value.ptr, (size_t)value.len);
+        if (info.kind == Kind::VARCHAR) {
+          row_.write(name, str);
+        } else {
+          writeAsKind(info.kind, row_, name, str);
+        }
       }
       break;
     }

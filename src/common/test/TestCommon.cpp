@@ -1404,6 +1404,9 @@ TEST(CommonTest, TestConv) {
   std::string str = "1635981342161.291";
   nebula::common::unformat<int64_t>(str);
   EXPECT_EQ(safe_to<int64_t>(str), 1635981342161);
+
+  const char* rawStr = "134.23";
+  EXPECT_NEAR(safe_to<float>(rawStr), 134.23, 1);
 }
 
 static char const* header_name() { return "If-Match"; }

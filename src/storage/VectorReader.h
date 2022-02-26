@@ -20,6 +20,7 @@
 #include <glog/logging.h>
 #include <rapidjson/document.h>
 
+#include "common/Conv.h"
 #include "common/Cursor.h"
 #include "common/Format.h"
 #include "common/Hash.h"
@@ -27,7 +28,6 @@
 #include "surface/DataSurface.h"
 #include "type/Serde.h"
 #include "type/Type.h"
-
 /**
  * A Column Vector formatted data reader.
  * On top of this, we can have a file reader interface to load data from given file.
@@ -129,11 +129,7 @@ private:
 
     // try to convert from its string value
     // use default value if conversion failed
-    try {
-      return folly::to<T>(value.GetString());
-    } catch (std::exception& ex) {
-      return T();
-    }
+    return nebula::common::safe_to<T>(value.GetString());
   }
 
   inline size_t index() const {
