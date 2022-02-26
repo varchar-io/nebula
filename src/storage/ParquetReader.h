@@ -41,6 +41,8 @@ namespace storage {
 struct ColumnInfo {
   size_t columnIndex;
   nebula::type::Kind kind;
+  // the data type/kind that lives in parquet file
+  nebula::type::Kind realKind;
   std::shared_ptr<parquet::ColumnReader> reader;
 };
 
@@ -63,16 +65,19 @@ public:
     // set total rows as
     size_ = this->meta_->num_rows();
 
-#define PTYPE_CONV_CASE_VALIDATION(PT, NT)                                                               \
-  case parquet::Type::type::PT: {                                                                        \
-    this->columns_[cname] = { i, kind, nullptr };                                                        \
-    auto typeSafetyCheck = nebula::type::ConvertibleFrom<nebula::type::Kind::NT>::convertibleFrom(kind); \
-    if (!typeSafetyCheck) {                                                                              \
-      throw NException(fmt::format("Type mismatch from {0} to {1}.", kind, nebula::type::Kind::NT));     \
-    }                                                                                                    \
-    break;                                                                                               \
+// TODO(cao): by default - we allow unsafe type conversion, introduce a flag to allow user turn it off
+#define PTYPE_CONV_CASE_VALIDATION(PT, NT)                                                                \
+  case parquet::Type::type::PT: {                                                                         \
+    this->columns_[cname] = { i, kind, nebula::type::Kind::NT, nullptr };                                 \
+    auto typeConvertible = nebula::type::ConvertibleFrom<nebula::type::Kind::NT>::convertibleFrom(kind);  \
+    auto valueConvertible = nebula::type::ValueFrom<nebula::type::Kind::NT>::convertibleFrom(kind);       \
+    if (!typeConvertible && !valueConvertible) {                                                          \
+      throw NException(fmt::format("Can't convert type from {0} to {1}.", nebula::type::Kind::NT, kind)); \
+    }                                                                                                     \
+    break;                                                                                                \
   }
 
+    // refer `./Parquet.md` for the type info
     // TODO(cao) - note that, schema is a tree we need comprehensive conversion
     // But here, we only support plain schema.
     // build up name to index mapping with validation
@@ -81,8 +86,7 @@ public:
     for (size_t i = 0, size = ps->num_columns(); i < size; ++i) {
       auto cd = ps->Column(i);
       std::string cname(cd->name());
-      const auto lt = cd->physical_type();
-
+      const auto pt = cd->physical_type();
       auto kind = nebula::type::Kind::INVALID;
       schema_->onChild(cname, [&kind](const nebula::type::TypeNode& node) {
         // found a node
@@ -93,7 +97,7 @@ public:
       if (kind != nebula::type::Kind::INVALID) {
         found++;
         // ensure the type is supported
-        switch (lt) {
+        switch (pt) {
           PTYPE_CONV_CASE_VALIDATION(BOOLEAN, BOOLEAN)
           PTYPE_CONV_CASE_VALIDATION(INT32, INTEGER)
           PTYPE_CONV_CASE_VALIDATION(INT64, BIGINT)
@@ -105,8 +109,9 @@ public:
       }
     }
 
+    // TODO(cao): not sure why some file has duplicate names which ends up found is larger
     // every node should be validated
-    N_ENSURE(found == schema_->size(), "every node in desired schema should be present");
+    N_ENSURE(found >= schema_->size(), "every node in desired schema should be present");
 
 #undef PTYPE_CONV_CASE_VALIDATION
   }
@@ -123,11 +128,11 @@ public:
 // FLOAT = 4,
 // DOUBLE = 5,
 // BYTE_ARRAY = 6
-#define PTYPE_CONV_CASE(PT, NT)                                     \
-  case parquet::Type::type::PT: {                                   \
-    this->columns_[cname] = { i, nebula::type::NT::kind, nullptr }; \
-    nodes.push_back(nebula::type::NT::createTree(cd->name()));      \
-    break;                                                          \
+#define PTYPE_CONV_CASE(PT, NT)                                                             \
+  case parquet::Type::type::PT: {                                                           \
+    this->columns_[cname] = { i, nebula::type::NT::kind, nebula::type::NT::kind, nullptr }; \
+    nodes.push_back(nebula::type::NT::createTree(cd->name()));                              \
+    break;                                                                                  \
   }
 
     const auto* schema = this->meta_->schema();
@@ -136,9 +141,9 @@ public:
       // column description
       auto cd = schema->Column(i);
       std::string cname(cd->name());
-      const auto lt = cd->physical_type();
+      const auto pt = cd->physical_type();
 
-      switch (lt) {
+      switch (pt) {
         PTYPE_CONV_CASE(BOOLEAN, BoolType)
         PTYPE_CONV_CASE(INT32, IntType)
         PTYPE_CONV_CASE(INT64, LongType)

@@ -267,15 +267,15 @@ TEST(VectorTest, CxxVersion) {
 }
 
 /*
-* To build a heterogenous container, we have choices
-* - static fixed size: 
-* -- std::tuple
-* -- variadic template parameter pack
-* - dynamic sized: 
-* -- std::any of an existing contianer such as vector (any_cast)
-* -- std::variant with known type set std::variant<T1, T2...>
-* this test is on tuple - the pattern comes from cpppatterns.com
-*/
+ * To build a heterogenous container, we have choices
+ * - static fixed size:
+ * -- std::tuple
+ * -- variadic template parameter pack
+ * - dynamic sized:
+ * -- std::any of an existing contianer such as vector (any_cast)
+ * -- std::variant with known type set std::variant<T1, T2...>
+ * this test is on tuple - the pattern comes from cpppatterns.com
+ */
 template <typename F, typename Tuple, size_t... S>
 decltype(auto) apply_tuple_impl(F&& fn, Tuple&& t, std::index_sequence<S...>) {
   return std::forward<F>(fn)(std::get<S>(std::forward<Tuple>(t))...);
@@ -406,6 +406,33 @@ TEST(TypeTest, TestConvertibility) {
   EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::MAP>::convertibleFrom(Kind::MAP));
   EXPECT_FALSE(nebula::type::ConvertibleFrom<Kind::STRUCT>::convertibleFrom(Kind::BOOLEAN));
   EXPECT_TRUE(nebula::type::ConvertibleFrom<Kind::STRUCT>::convertibleFrom(Kind::STRUCT));
+}
+
+// Also called unsafe convertibility (user takes the responsibility) -
+// - usually incurs functions like 'toString' or 'parseFrom'
+// NOTE: this check doesn't include the safe convertible check
+TEST(TypeTest, TestValueConvertibility) {
+// do two tests in each pass, one false and one true
+#define TEST_COMBINATION(F, T1, T2)                                          \
+  EXPECT_FALSE(nebula::type::ValueFrom<Kind::F>::convertibleFrom(Kind::T1)); \
+  EXPECT_TRUE(nebula::type::ValueFrom<Kind::F>::convertibleFrom(Kind::T2));
+
+  TEST_COMBINATION(BOOLEAN, INTEGER, VARCHAR)
+  TEST_COMBINATION(TINYINT, STRUCT, VARCHAR)
+  TEST_COMBINATION(SMALLINT, BOOLEAN, VARCHAR)
+  TEST_COMBINATION(INTEGER, BIGINT, VARCHAR)
+  TEST_COMBINATION(BIGINT, SMALLINT, VARCHAR)
+  TEST_COMBINATION(REAL, DOUBLE, VARCHAR)
+  TEST_COMBINATION(DOUBLE, DOUBLE, VARCHAR)
+  TEST_COMBINATION(VARCHAR, VARCHAR, BOOLEAN)
+  TEST_COMBINATION(VARCHAR, MAP, TINYINT)
+  TEST_COMBINATION(VARCHAR, ARRAY, SMALLINT)
+  TEST_COMBINATION(VARCHAR, INVALID, INTEGER)
+  TEST_COMBINATION(VARCHAR, INVALID, BIGINT)
+  TEST_COMBINATION(VARCHAR, INVALID, REAL)
+  TEST_COMBINATION(VARCHAR, INVALID, DOUBLE)
+
+#undef TEST_COMBINATION
 }
 
 TEST(TypeTest, TestSchemaWithInt128) {

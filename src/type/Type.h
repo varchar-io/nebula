@@ -83,9 +83,9 @@ using Schema = std::shared_ptr<RowType>;
 // using BinaryType = VarbinaryType;
 // using TimestampType = Type<Kind::TIMESTAMP>;
 
-/* 
+/*
 Every type kind has different traits
-- Kind const value 
+- Kind const value
 - is primitive or compound type
 - type value width: 0-variable length
 - type name literals
@@ -418,6 +418,71 @@ struct ConvertibleFrom {
 };
 
 #undef DYNAMIC_CONVERTIBILITY_CHECK
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// define if a typed value can be unsafely converted to another type
+// this is additional behavior on top of TypeConvertible which is safe
+// examples: string to all primitives or all the primitives to string
+// we usually use `toString` or `parse` methods to support these conversions
+template <Kind from, Kind to>
+struct ValueConvertible {
+  static constexpr bool convertible = false;
+};
+
+#define DEFINE_VALUE_CONVERTIBILITY(FROM, TO, ANSWER) \
+  template <>                                         \
+  struct ValueConvertible<Kind::FROM, Kind::TO> {     \
+    static constexpr bool convertible = ANSWER;       \
+  };
+
+// define all value conversion allowed for `toString`
+DEFINE_VALUE_CONVERTIBILITY(BOOLEAN, VARCHAR, true)
+DEFINE_VALUE_CONVERTIBILITY(TINYINT, VARCHAR, true)
+DEFINE_VALUE_CONVERTIBILITY(SMALLINT, VARCHAR, true)
+DEFINE_VALUE_CONVERTIBILITY(INTEGER, VARCHAR, true)
+DEFINE_VALUE_CONVERTIBILITY(BIGINT, VARCHAR, true)
+DEFINE_VALUE_CONVERTIBILITY(REAL, VARCHAR, true)
+DEFINE_VALUE_CONVERTIBILITY(DOUBLE, VARCHAR, true)
+
+// reversely all value conversions allowed for parse
+DEFINE_VALUE_CONVERTIBILITY(VARCHAR, BOOLEAN, true)
+DEFINE_VALUE_CONVERTIBILITY(VARCHAR, TINYINT, true)
+DEFINE_VALUE_CONVERTIBILITY(VARCHAR, SMALLINT, true)
+DEFINE_VALUE_CONVERTIBILITY(VARCHAR, INTEGER, true)
+DEFINE_VALUE_CONVERTIBILITY(VARCHAR, BIGINT, true)
+DEFINE_VALUE_CONVERTIBILITY(VARCHAR, REAL, true)
+DEFINE_VALUE_CONVERTIBILITY(VARCHAR, DOUBLE, true)
+
+#undef DEFINE_VALUE_CONVERTIBILITY
+
+// define a utility method to check if we can convert values unsafely
+#define VALUE_CONVERTIBILITY_CHECK(FROM)                  \
+  case Kind::FROM: {                                      \
+    return ValueConvertible<Kind::FROM, TO>::convertible; \
+  }
+
+template <Kind TO>
+struct ValueFrom {
+  static bool convertibleFrom(Kind kind) {
+    switch (kind) {
+      VALUE_CONVERTIBILITY_CHECK(BOOLEAN)
+      VALUE_CONVERTIBILITY_CHECK(TINYINT)
+      VALUE_CONVERTIBILITY_CHECK(SMALLINT)
+      VALUE_CONVERTIBILITY_CHECK(INTEGER)
+      VALUE_CONVERTIBILITY_CHECK(BIGINT)
+      VALUE_CONVERTIBILITY_CHECK(REAL)
+      VALUE_CONVERTIBILITY_CHECK(DOUBLE)
+      VALUE_CONVERTIBILITY_CHECK(INT128)
+      VALUE_CONVERTIBILITY_CHECK(VARCHAR)
+      VALUE_CONVERTIBILITY_CHECK(ARRAY)
+      VALUE_CONVERTIBILITY_CHECK(MAP)
+      VALUE_CONVERTIBILITY_CHECK(STRUCT)
+    default: return false;
+    }
+  }
+};
+
+#undef VALUE_CONVERTIBILITY_CHECK
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename T>
