@@ -65,7 +65,8 @@ public:
     const std::string& domain,
     size_t size,
     SpecState state,
-    size_t watermark)
+    size_t watermark,
+    nebula::common::unordered_map<std::string, std::string> macroCombinations = nebula::common::unordered_map<std::string, std::string>())
     : table_{ table },
       version_{ version },
       path_{ path },
@@ -73,6 +74,7 @@ public:
       size_{ size },
       state_{ state },
       watermark_{ watermark },
+      macroCombinations_{ macroCombinations },
       node_{ nebula::meta::NNode::invalid() },
       id_{ fmt::format("{0}@{1}@{2}", table_->name, path_, size_) } {}
   virtual ~IngestSpec() = default;
@@ -135,6 +137,10 @@ public:
     return watermark_;
   }
 
+  inline const nebula::common::unordered_map<std::string, std::string>& macroCombinations() const {
+    return macroCombinations_;
+  }
+
   // do the work based on current spec
   // it may have missing field since most likely data is after deserialized
   bool work() noexcept;
@@ -179,6 +185,8 @@ private:
   SpecState state_;
   // macro watermark in unix time stamp
   size_t watermark_;
+
+  nebula::common::unordered_map<std::string, std::string> macroCombinations_;
 
   // node info if the spec has affinity on a node
   nebula::meta::NNode node_;

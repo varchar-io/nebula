@@ -344,6 +344,22 @@ RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>
   return std::make_shared<FlatRowCursor>(std::move(fb));
 }
 
+flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<nebula::service::KeyValue>>> serializeMacrosAndValues(flatbuffers::grpc::MessageBuilder& mb, const nebula::common::unordered_map<std::string, std::string>& macroCombinations) {
+  std::vector<flatbuffers::Offset<nebula::service::KeyValue>> macrosAndValues;
+  for (const auto& colNameAndMacro : macroCombinations) {
+    macrosAndValues.emplace_back(CreateKeyValue(mb, mb.CreateString(colNameAndMacro.first), mb.CreateString(colNameAndMacro.second)));
+  }
+  return mb.CreateVector<flatbuffers::Offset<KeyValue>>(macrosAndValues);
+}
+
+nebula::common::unordered_map<std::string, std::string> deserializeMacrosAndValues(const flatbuffers::Vector<flatbuffers::Offset<nebula::service::KeyValue>>* macrosAndValues) {
+  nebula::common::unordered_map<std::string, std::string> macroCombinations;
+  for (const auto& macroAndValue : *macrosAndValues) {
+    macroCombinations.emplace(macroAndValue->key()->str(), macroAndValue->value()->str());
+  }
+  return macroCombinations;
+}
+
 // serialize a ingest spec into a task spec to be sent over
 flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
   flatbuffers::grpc::MessageBuilder mb;
@@ -365,7 +381,8 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
                                mb.CreateString(spec->domain()),
                                spec->size(),
                                (int8_t)spec->state(),
-                               spec->watermark());
+                               spec->watermark(),
+                               serializeMacrosAndValues(mb, spec->macroCombinations()));
 
     // create task spec
     auto ts = CreateTaskSpec(mb, type, sync, it);
@@ -424,7 +441,8 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
       it->domain()->str(),
       it->size(),
       (SpecState)it->state(),
-      it->date());
+      it->date(),
+      deserializeMacrosAndValues(it->macrosAndValues()));
 
     return Task(type, is, sync);
   }

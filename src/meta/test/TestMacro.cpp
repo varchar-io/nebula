@@ -160,7 +160,12 @@ TEST(MacroTest, TestCustomMacros1) {
 
   EXPECT_EQ(paths.size(), 8);
   for (const auto& expectedPath : expectedPaths) {
-   EXPECT_NE(std::find(paths.begin(), paths.end(), expectedPath), paths.end()); 
+   EXPECT_NE(
+    std::find_if(
+      paths.begin(),
+      paths.end(),
+      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string_view, std::string_view>>& element){ return path.first == expectedPath;}),
+    paths.end()); 
   }
 }
 
@@ -175,7 +180,12 @@ TEST(MacroTest, TestCustomMacros2) {
 
   EXPECT_EQ(paths.size(), 2);
   for (const auto& expectedPath : expectedPaths) {
-   EXPECT_NE(std::find(paths.begin(), paths.end(), expectedPath), paths.end()); 
+   EXPECT_NE(
+    std::find_if(
+      paths.begin(),
+      paths.end(),
+      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string_view, std::string_view>>& element){ return path.first == expectedPath;}),
+    paths.end()); 
   }
 }
 
@@ -187,7 +197,7 @@ TEST(MacroTest, TestCustomMacros3) {
   const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
 
   EXPECT_EQ(paths.size(), 1);
-  EXPECT_EQ(paths[0], "a/b");
+  EXPECT_EQ(paths[0].first, "a/b");
 }
 
 TEST(MacroTest, TestCustomMacros4) {
@@ -202,7 +212,12 @@ TEST(MacroTest, TestCustomMacros4) {
 
   EXPECT_EQ(paths.size(), 2);
   for (const auto& expectedPath : expectedPaths) {
-   EXPECT_NE(std::find(paths.begin(), paths.end(), expectedPath), paths.end()); 
+   EXPECT_NE(
+    std::find_if(
+      paths.begin(),
+      paths.end(),
+      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string_view, std::string_view>>& element){ return path.first == expectedPath;}),
+    paths.end()); 
   }
 }
 
