@@ -54,12 +54,13 @@ TEST(IngestTest, TestIngestSpec) {
     std::move(kafkaSerde), std::move(rocksetSerde),
     std::move(colProps), std::move(timeSpec),
     std::move(accSpec), std::move(bucketInfo), std::move(settings),
-    std::move(macroValues), std::move(headers));
-  nebula::ingest::IngestSpec spec(table, "1.0", "nebula/v1.x", "nebula", 10, SpecState::NEW, 0);
+    std::move(macroValues), std::move(headers), -1);
+  nebula::ingest::IngestSpec spec(table, "1.0", {"nebula/v1.x"}, "nebula", 10, SpecState::NEW, 0);
   LOG(INFO) << "SPEC: " << spec.toString();
   EXPECT_EQ(spec.id(), "test@nebula/v1.x@10");
   EXPECT_EQ(spec.size(), 10);
-  EXPECT_EQ(spec.path(), "nebula/v1.x");
+  EXPECT_EQ(spec.paths()[0], "nebula/v1.x");
+  EXPECT_EQ(spec.paths().size(), 1);
   EXPECT_EQ(spec.domain(), "nebula");
   EXPECT_EQ(spec.table()->name, "test");
   EXPECT_EQ(spec.version(), "1.0");

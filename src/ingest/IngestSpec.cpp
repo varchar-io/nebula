@@ -154,8 +154,8 @@ bool IngestSpec::load(BlockList& blocks) noexcept {
   auto tmpFile = local->temp();
 
   // there might be S3 error which returns tmpFile as empty
-  if (!fs->copy(path_, tmpFile)) {
-    LOG(WARNING) << "Failed to copy file to local: " << path_;
+  if (!fs->copy(paths_[0], tmpFile)) {
+    LOG(WARNING) << "Failed to copy file to local: " << paths_[0];
     return false;
   }
 
@@ -263,7 +263,7 @@ bool IngestSpec::loadHttp(BlockList& blocks,
 
   // download the HTTP file to local as temp file
   HttpService http;
-  const auto& url = this->path();
+  const auto& url = this->paths()[0];
 
   // set access token if present
   auto& token = this->table_->settings["token"];
@@ -278,7 +278,7 @@ bool IngestSpec::loadHttp(BlockList& blocks,
 
   // the sheet content in this json objects
   if (!http.download(url, headers, data, tmpFile)) {
-    LOG(WARNING) << "Failed to download to local: " << path_;
+    LOG(WARNING) << "Failed to download to local: " << url;
     return false;
   }
 
@@ -298,7 +298,7 @@ bool IngestSpec::loadHttp(BlockList& blocks,
 
 bool IngestSpec::loadGSheet(BlockList& blocks) noexcept {
   HttpService http;
-  const auto& url = this->path();
+  const auto& url = this->paths()[0];
 
   // read access token from table settings
   std::vector<std::string> headers{
@@ -394,7 +394,7 @@ bool IngestSpec::loadKafka() noexcept {
 #endif
   // build up the segment to consume
   // note that: Kafka path is composed by this pattern: "{partition}_{offset}_{size}"
-  auto segment = KafkaSegment::from(path_);
+  auto segment = KafkaSegment::from(paths_[0]);
   KafkaReader reader(table_, std::move(segment));
 
   // time function
