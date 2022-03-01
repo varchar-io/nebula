@@ -96,6 +96,13 @@ class Macro {
     { PatternMacro::MINUTELY, 1 }
   };
 
+  static inline const std::vector<PatternMacro> ALL_TIME_MACROS{
+    PatternMacro::DAILY,
+    PatternMacro::HOURLY,
+    PatternMacro::MINUTELY,
+    PatternMacro::SECONDLY
+  };
+
 public:
   // seconds of granularity for given macro
   static inline size_t seconds(PatternMacro macro) {
@@ -125,6 +132,41 @@ public:
     return watermark;
   }
 
+  static inline bool isTimeMacroString(const std::string& str) {
+    return (MACRO_MAP.find(str) != MACRO_MAP.end());
+  }
+
+  static inline std::string getTimeStringForMacroString(const std::string& str, const std::time_t& watermark) {
+    return getTimeStringForMacro(MACRO_MAP.at(str), watermark);
+  }
+
+  static inline std::string getTimeStringForMacro(PatternMacro macro, const std::time_t& watermark, const std::string& defaultStr="") {
+    switch (macro) {
+      case PatternMacro::TIMESTAMP: {
+        return std::to_string(watermark);
+      }
+      case PatternMacro::DAILY: {
+        return nebula::common::Evidence::fmt_ymd_dash(watermark);
+      }
+      case PatternMacro::HOURLY: {
+        return nebula::common::Evidence::fmt_hour(watermark);
+      }
+      case PatternMacro::MINUTELY: {
+        return nebula::common::Evidence::fmt_minute(watermark);
+      }
+      case PatternMacro::SECONDLY: {
+        return nebula::common::Evidence::fmt_second(watermark);
+      }
+      default: {
+        return defaultStr;
+      }
+    }
+  }
+
+  static inline std::string replaceTimeMacro(PatternMacro macro, const std::string& str, const std::time_t& watermark) {
+    return std::regex_replace(str, MACRO_REGEX.at(macro), getTimeStringForMacro(macro, watermark));
+  }
+
   // materialize a template with all macros based on the provided watermark
   // e.g
   // "s3://nebula/{DATE}" -> "2020-12-20"
@@ -134,35 +176,14 @@ public:
     if (macro == PatternMacro::INVALID) {
       return holder;
     }
-
     if (macro == PatternMacro::TIMESTAMP) {
-      return std::regex_replace(holder, MACRO_REGEX.at(macro), std::to_string(watermark));
+      return replaceTimeMacro(macro, holder, watermark);
     }
-
-    // other time requires precedence
     auto str = holder;
-    if (macro >= PatternMacro::DAILY) {
-      str = std::regex_replace(str,
-                               MACRO_REGEX.at(PatternMacro::DAILY),
-                               nebula::common::Evidence::fmt_ymd_dash(watermark));
-    }
-
-    if (macro >= PatternMacro::HOURLY) {
-      str = std::regex_replace(str,
-                               MACRO_REGEX.at(PatternMacro::HOURLY),
-                               nebula::common::Evidence::fmt_hour(watermark));
-    }
-
-    if (macro >= PatternMacro::MINUTELY) {
-      str = std::regex_replace(str,
-                               MACRO_REGEX.at(PatternMacro::MINUTELY),
-                               nebula::common::Evidence::fmt_minute(watermark));
-    }
-
-    if (macro >= PatternMacro::SECONDLY) {
-      str = std::regex_replace(str,
-                               MACRO_REGEX.at(PatternMacro::SECONDLY),
-                               nebula::common::Evidence::fmt_second(watermark));
+    for (const auto& macroToCheck : ALL_TIME_MACROS) {
+      if (macro >= macroToCheck) {
+        str = replaceTimeMacro(macroToCheck, str, watermark);
+      }
     }
 
     // we have finish replacing all macros

@@ -24,6 +24,7 @@
 #include "common/Evidence.h"
 #include "execution/BlockManager.h"
 #include "execution/meta/TableService.h"
+#include "meta/Macro.h"
 #include "meta/TestTable.h"
 #include "storage/CsvReader.h"
 #include "storage/JsonReader.h"
@@ -59,6 +60,7 @@ using nebula::meta::BessType;
 using nebula::meta::BlockSignature;
 using nebula::meta::DataFormat;
 using nebula::meta::DataSource;
+using nebula::meta::Macro;
 using nebula::meta::Table;
 using nebula::meta::TablePtr;
 using nebula::meta::TableSpecPtr;
@@ -472,7 +474,13 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   nebula::common::unordered_map<std::string, std::string> colToMacroValue;
   for (const auto& colNameAndMacro : table->getColumnNameToMacroMapping()) {
     schema->remove(colNameAndMacro.first);
-    colToMacroValue.emplace(colNameAndMacro.first, macroCombinations_.at(colNameAndMacro.second));
+    if (Macro::isTimeMacroString(colNameAndMacro.second)) {
+      // if time macro get value from watermark_
+      colToMacroValue.emplace(colNameAndMacro.first, Macro::getTimeStringForMacroString(colNameAndMacro.second, watermark_));
+    } else {
+      // else get macro value from macro mapping
+      colToMacroValue.emplace(colNameAndMacro.first, macroCombinations_.at(colNameAndMacro.second));
+    }
   }
 
   // TODO(cao) - support column selection in ingestion and expand time column
