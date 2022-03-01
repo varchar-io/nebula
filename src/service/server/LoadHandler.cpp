@@ -201,7 +201,9 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
   // by comparing the json value in table settings
   rapidjson::Document doc;
   if (doc.Parse(json.c_str()).HasParseError()) {
-    throw NException(fmt::format("Error parsing google sheet json: {0}", json));
+    LOG(WARNING) << fmt::format("Error parsing google sheet json: {0}", json);
+    err = LoadError::PARSE_ERROR;
+    return {};
   }
 
   GoogleSheet sheet{ doc };
