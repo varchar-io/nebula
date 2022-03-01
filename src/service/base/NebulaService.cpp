@@ -360,6 +360,24 @@ nebula::common::unordered_map<std::string, std::string> deserializeMacrosAndValu
   return macroCombinations;
 }
 
+flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> serializeStringVector(flatbuffers::grpc::MessageBuilder& mb, const std::vector<std::string>& values) {
+  std::vector<flatbuffers::Offset<flatbuffers::String>> serValues;
+  serValues.reserve(values.size());
+  for (const auto& value : values) {
+    serValues.emplace_back(mb.CreateString(value));
+  }
+  return mb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(serValues);
+}
+
+std::vector<std::string> deserializeStringVector(const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>* values) {
+  std::vector<std::string> deserValues;
+  deserValues.reserve(values->size());
+  for (const auto& value : *values) {
+    deserValues.emplace_back(value->str());
+  }
+  return deserValues;
+}
+
 // serialize a ingest spec into a task spec to be sent over
 flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
   flatbuffers::grpc::MessageBuilder mb;
@@ -377,7 +395,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     auto it = CreateIngestTask(mb,
                                mb.CreateString(strTableSpec),
                                mb.CreateString(spec->version()),
-                               mb.CreateString(spec->path()),
+                               serializeStringVector(mb, spec->paths()),
                                mb.CreateString(spec->domain()),
                                spec->size(),
                                (int8_t)spec->state(),
@@ -437,7 +455,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     auto is = std::make_shared<IngestSpec>(
       TableSpec::deserialize(it->table_spec()->str()),
       it->version()->str(),
-      it->path()->str(),
+      deserializeStringVector(it->paths()),
       it->domain()->str(),
       it->size(),
       (SpecState)it->state(),

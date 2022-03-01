@@ -464,7 +464,8 @@ std::shared_ptr<TableSpec> loadTable(std::string name, const YAML::Node& td) {
       asBucketInfo(td["bucket"]),
       asSettings(td["settings"]),
       asMacroValues(td["macros"]),
-      asHeaders(td["headers"]));
+      asHeaders(td["headers"]),
+      (td["optimal-block-size"] ? td["optimal-block-size"].as<size_t>() : -1));
   } catch (std::exception& ex) {
     LOG(ERROR) << "Error creating table spec: " << name << " - " << ex.what();
     return nullptr;

@@ -87,6 +87,8 @@ struct LoadSpec {
   // headers
   std::vector<std::string> headers;
 
+  size_t optimalBlockSize;
+
   // construct from the json object
   explicit LoadSpec(const rapidjson::Document& doc) {
     // root object
@@ -153,6 +155,16 @@ struct LoadSpec {
         for (size_t i = 0; i < list.Size(); ++i) {
           headers.emplace_back(list[i].GetString());
         }
+      }
+    }
+
+    // optimal block size definition
+    {
+      auto member = obj.FindMember("optimal-block-size");
+      if (member != obj.MemberEnd() && member->value.IsInt()) {
+        optimalBlockSize = member->value.GetInt();
+      } else {
+        optimalBlockSize = -1;
       }
     }
   }
