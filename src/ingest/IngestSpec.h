@@ -173,7 +173,7 @@ private:
   bool load(nebula::execution::io::BlockList&) noexcept;
 
   // ingest a given local file (usually tmp file) into a list of blocks
-  bool ingest(const std::string&, nebula::execution::io::BlockList&) noexcept;
+  bool ingest(const std::vector<std::string>&, nebula::execution::io::BlockList&) noexcept;
 
 private:
   nebula::meta::TableSpecPtr table_;
