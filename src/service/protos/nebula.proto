@@ -275,6 +275,7 @@ enum LoadError {
   EMPTY_RESULT = 5;
   NOT_SUPPORTED = 6;
   IN_LOADING = 7;
+  PARSE_ERROR = 8;
 }
 
 // load command response
