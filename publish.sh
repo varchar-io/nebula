@@ -25,3 +25,5 @@ sudo docker tag nebula/node columns/nebula.node && sudo docker push columns/nebu
 
 echo 'Images are ready: [columns/nebula.web, columns/nebula.server, columns/nebula.node]'
 echo 'DONE!'
+
+cd $ROOT
