@@ -89,6 +89,7 @@ const jsonContentType = "application/json";
 const AuthHeader = "authorization";
 const UserHeader = "x-forwarded-user";
 const GroupHeader = "x-forwarded-groups";
+const SecretHeader = "x-secret";
 
 /**
  * List all apis
@@ -112,6 +113,7 @@ const userInfo = (q, h) => {
         info.authorization = h[AuthHeader] || "NONE";
         info.user = h[UserHeader];
         info.groups = h[GroupHeader];
+        info.secret = h[SecretHeader] || "";
     }
 
     return info;

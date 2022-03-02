@@ -59,7 +59,22 @@ struct convert<nebula::meta::ServerOptions> {
     }
 
     so.anode = node["anode"].as<bool>();
+
     so.authRequired = node["auth"].as<bool>();
+    // populate secret based auth groups
+    auto secrets = node["secrets"];
+    if (secrets) {
+      for (const auto& secret : secrets) {
+        auto secretEnvVar = secret["secret_env_var"];
+        auto secretGroup = secret["group"];
+        if (secretEnvVar && secretGroup) {
+          if (const char* secret = std::getenv(secretEnvVar.as<std::string>().c_str())) {
+            so.secretToGroup.emplace(secret, secretGroup.as<std::string>());
+          }
+        }
+      }
+    }
+
     // parse meta conf if presents
     so.metaConf = node["meta"].as<nebula::meta::MetaConf>();
 

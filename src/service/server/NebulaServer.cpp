@@ -203,6 +203,7 @@ std::unique_ptr<QueryContext> buildQueryContext(ServerContext* ctx) {
   // fetch user info keys, refer userInfo definition in node.js serving http traffic
   // auth, authorization, user, groups
   std::string user{ "unauth" };
+  std::string secret{ "" };
   nebula::common::unordered_set<std::string> groups;
   auto itr = metadata.find("nebula-auth");
   if (itr != metadata.end() && itr->second == "1") {
@@ -211,13 +212,18 @@ std::unique_ptr<QueryContext> buildQueryContext(ServerContext* ctx) {
       user = std::string(u->second.data(), u->second.size());
     }
 
+    auto s = metadata.find("nebula-secret");
+    if (s != metadata.end()) {
+      secret = std::string(u->second.data(), u->second.size());
+    }
+
     auto g = metadata.find("nebula-groups");
     if (g != metadata.end()) {
       groups = Chars::split(g->second.data(), g->second.size());
     }
   }
 
-  return std::make_unique<QueryContext>(user, std::move(groups));
+  return std::make_unique<QueryContext>(user, std::move(groups), std::move(secret));
 }
 
 Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadResponse* reply) {

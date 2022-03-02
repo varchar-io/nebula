@@ -60,11 +60,15 @@ struct QueryStats {
 
 class QueryContext {
 public:
-  QueryContext(const std::string& user, nebula::common::unordered_set<std::string> groups)
+  QueryContext(const std::string& user, nebula::common::unordered_set<std::string> groups, std::string secret)
     : user_{ user },
       groups_{ std::move(groups) },
       error_{ Error::NONE },
-      stats_{} {}
+      stats_{} {
+    if (nebula::meta::ClusterInfo::singleton().server().secretToGroup.contains(secret)) {
+      groups_.insert(nebula::meta::ClusterInfo::singleton().server().secretToGroup.at(secret));
+    }
+  }
 
   inline bool isAuth() const {
     // any authorized uesr will have at least one group regardless what the name is
@@ -98,12 +102,12 @@ public:
 
   inline static std::unique_ptr<QueryContext> def() {
     return std::make_unique<QueryContext>(
-      "nebula", nebula::common::unordered_set<std::string>{ "nebula-users" });
+      "nebula", nebula::common::unordered_set<std::string>{ "nebula-users" }, "");
   }
 
   inline static std::unique_ptr<QueryContext> create(
-    std::string user, std::initializer_list<std::string> groups) {
-    return std::make_unique<QueryContext>(std::move(user), std::move(groups));
+    std::string user, std::initializer_list<std::string> groups, std::string secret) {
+    return std::make_unique<QueryContext>(std::move(user), std::move(groups), std::move(secret));
   }
 
 private:

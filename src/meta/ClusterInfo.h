@@ -58,6 +58,7 @@ struct ServerOptions {
   bool authRequired;
   MetaConf metaConf;
   Discovery discovery;
+  nebula::common::unordered_map<std::string, std::string> secretToGroup;
 };
 
 class ClusterInfo {
