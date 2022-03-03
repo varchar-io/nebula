@@ -171,3 +171,15 @@ tables:
   #       macro: part
   #   time:
   #     type: current
+  oom.test:
+    retention:
+      max-mb: 10000
+      max-hr: 48
+    schema: "ROW<user_id:string, value: string,  event: string, metadata: string>"
+    data: local
+    loader: Swap
+    source: "file:///tmp/oom.snappy.parquet"
+    backup: s3://nebula/n100/
+    format: parquet
+    time:
+      type: current
