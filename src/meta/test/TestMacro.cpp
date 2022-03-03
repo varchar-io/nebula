@@ -21,8 +21,8 @@
 #include "rapidjson/document.h"
 
 #include "common/Errors.h"
-#include "meta/Macro.h"
 #include "common/Params.h"
+#include "meta/Macro.h"
 
 namespace nebula {
 namespace meta {
@@ -142,9 +142,9 @@ TEST(MacroTest, TestWatermark) {
 TEST(MacroTest, TestCustomMacros1) {
   const auto path = "{a}/{b}/{c}";
   const std::map<std::string, std::vector<std::string>> macroValues = {
-    {"a", {"1", "2"}},
-    {"b", {"3", "4"}},
-    {"c", {"5", "6"}},
+    { "a", { "1", "2" } },
+    { "b", { "3", "4" } },
+    { "c", { "5", "6" } },
   };
   const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
   const std::vector<std::string> expectedPaths = {
@@ -160,39 +160,39 @@ TEST(MacroTest, TestCustomMacros1) {
 
   EXPECT_EQ(paths.size(), 8);
   for (const auto& expectedPath : expectedPaths) {
-   EXPECT_NE(
-    std::find_if(
-      paths.begin(),
-      paths.end(),
-      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string_view, std::string_view>>& element){ return path.first == expectedPath;}),
-    paths.end()); 
+    EXPECT_NE(
+      std::find_if(
+        paths.begin(),
+        paths.end(),
+        [&expectedPath](const auto& element) { return element.first == expectedPath; }),
+      paths.end());
   }
 }
 
 TEST(MacroTest, TestCustomMacros2) {
   const auto path = "{a}/{b}";
   const std::map<std::string, std::vector<std::string>> macroValues = {
-    {"a", {"1"}},
-    {"b", {"2", "3"}},
+    { "a", { "1" } },
+    { "b", { "2", "3" } },
   };
   const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
-  const std::vector<std::string> expectedPaths = {"1/2", "1/3"};
+  const std::vector<std::string> expectedPaths = { "1/2", "1/3" };
 
   EXPECT_EQ(paths.size(), 2);
   for (const auto& expectedPath : expectedPaths) {
-   EXPECT_NE(
-    std::find_if(
-      paths.begin(),
-      paths.end(),
-      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string_view, std::string_view>>& element){ return path.first == expectedPath;}),
-    paths.end()); 
+    EXPECT_NE(
+      std::find_if(
+        paths.begin(),
+        paths.end(),
+        [&expectedPath](const auto& element) { return element.first == expectedPath; }),
+      paths.end());
   }
 }
 
 TEST(MacroTest, TestCustomMacros3) {
   const auto path = "a/b";
   const std::map<std::string, std::vector<std::string>> macroValues = {
-    {"c", {"1", "2", "3"}}
+    { "c", { "1", "2", "3" } }
   };
   const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
 
@@ -203,21 +203,21 @@ TEST(MacroTest, TestCustomMacros3) {
 TEST(MacroTest, TestCustomMacros4) {
   const auto path = "a/{b}/{c}/{def}";
   const std::map<std::string, std::vector<std::string>> macroValues = {
-    {"a", {"1", "2"}},
-    {"b", {"1", "2"}}
+    { "a", { "1", "2" } },
+    { "b", { "1", "2" } }
   };
   const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
 
-  const std::vector<std::string> expectedPaths = {"a/1/{c}/{def}", "a/2/{c}/{def}"};
+  const std::vector<std::string> expectedPaths = { "a/1/{c}/{def}", "a/2/{c}/{def}" };
 
   EXPECT_EQ(paths.size(), 2);
   for (const auto& expectedPath : expectedPaths) {
-   EXPECT_NE(
-    std::find_if(
-      paths.begin(),
-      paths.end(),
-      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string_view, std::string_view>>& element){ return path.first == expectedPath;}),
-    paths.end()); 
+    EXPECT_NE(
+      std::find_if(
+        paths.begin(),
+        paths.end(),
+        [&expectedPath](const auto& element) { return element.first == expectedPath; }),
+      paths.end());
   }
 }
 

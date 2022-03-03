@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include "common/Hash.h"
+
 /**
  * Defines an input parameter as key-value list, everything encoded in string.
  * The parameter is used for macro replacement purpose.

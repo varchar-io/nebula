@@ -231,13 +231,16 @@ TEST(MetaTest, TestAccessRules) {
     false,
     false,
     "*@*",
+    "",
     { AccessRule{ AccessType::READ, { "pii_sg" }, ActionType::MASK } }
   };
+
   columnProps["fund"] = Column{
     false,
     false,
     false,
     "0",
+    "",
     { AccessRule{ AccessType::READ, { "pii_sg" }, ActionType::DENY } }
   };
 
