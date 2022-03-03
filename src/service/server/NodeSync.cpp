@@ -143,7 +143,7 @@ void NodeSync::sync(
   // what if we don't have active nodes?
   if (nodes.size() == 0) {
     for (const auto& node : clusterNodes) {
-      LOG(INFO) << "Node State Check: node=" << node.toString() << ", state=" << node.state;
+      LOG(INFO) << "Node State Check: node=" << node.toString() << ", state=" << (int)node.state;
     }
   }
 
