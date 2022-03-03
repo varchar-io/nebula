@@ -164,7 +164,7 @@ TEST(MacroTest, TestCustomMacros1) {
     std::find_if(
       paths.begin(),
       paths.end(),
-      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string_view, std::string_view>>& element){ return path.first == expectedPath;}),
+      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string, std::string>>& element){ return element.first == expectedPath;}),
     paths.end()); 
   }
 }
@@ -184,7 +184,7 @@ TEST(MacroTest, TestCustomMacros2) {
     std::find_if(
       paths.begin(),
       paths.end(),
-      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string_view, std::string_view>>& element){ return path.first == expectedPath;}),
+      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string, std::string>>& element){ return element.first == expectedPath;}),
     paths.end()); 
   }
 }
@@ -216,7 +216,7 @@ TEST(MacroTest, TestCustomMacros4) {
     std::find_if(
       paths.begin(),
       paths.end(),
-      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string_view, std::string_view>>& element){ return path.first == expectedPath;}),
+      [&expectedPath](const std::pair<std::string, nebula::common::unordered_map<std::string, std::string>>& element){ return element.first == expectedPath;}),
     paths.end()); 
   }
 }
