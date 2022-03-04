@@ -135,6 +135,21 @@ void NodeSync::sync(
   std::sort(nodes.begin(), nodes.end(), [](auto& n1, auto& n2) {
     return n1.size < n2.size;
   });
+
+  // do status check before spec assignment
+  const auto numSpecs = specRepo.specs().size();
+  const auto numActiveNodes = nodes.size();
+  if (numSpecs == 0 || numActiveNodes == 0) {
+    LOG(WARNING) << "No-Sync: num-specs=" << numSpecs << ", num-active-nodes=" << numActiveNodes;
+    // what if we don't have active nodes?
+    if (numActiveNodes == 0) {
+      for (const auto& node : clusterNodes) {
+        LOG(INFO) << "Node State Check: node=" << node.toString() << ", state=" << (int)node.state;
+      }
+    }
+  }
+
+  // assign all specs to available nodes
   specRepo.assign(nodes);
 
   // iterate over all specs, if it needs to be process, process it
