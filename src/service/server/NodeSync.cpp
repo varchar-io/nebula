@@ -136,16 +136,21 @@ void NodeSync::sync(
     return n1.size < n2.size;
   });
 
-  // assign all specs to available nodes
-  LOG(INFO) << "Sync: num-specs=" << specRepo.specs().size() << ", num-active-nodes=" << nodes.size();
-  specRepo.assign(nodes);
-
-  // what if we don't have active nodes?
-  if (nodes.size() == 0) {
-    for (const auto& node : clusterNodes) {
-      LOG(INFO) << "Node State Check: node=" << node.toString() << ", state=" << (int)node.state;
+  // do status check before spec assignment
+  const auto numSpecs = specRepo.specs().size();
+  const auto numActiveNodes = nodes.size();
+  if (numSpecs == 0 || numActiveNodes == 0) {
+    LOG(WARNING) << "No-Sync: num-specs=" << numSpecs << ", num-active-nodes=" << numActiveNodes;
+    // what if we don't have active nodes?
+    if (numActiveNodes == 0) {
+      for (const auto& node : clusterNodes) {
+        LOG(INFO) << "Node State Check: node=" << node.toString() << ", state=" << (int)node.state;
+      }
     }
   }
+
+  // assign all specs to available nodes
+  specRepo.assign(nodes);
 
   // iterate over all specs, if it needs to be process, process it
   auto taskNotified = 0;
