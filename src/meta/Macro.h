@@ -226,17 +226,17 @@ public:
   }
 
   static inline const std::vector<std::pair<std::string, nebula::common::unordered_map<std::string, std::string>>>
-      enumeratePathsWithCustomMacros(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
+    enumeratePathsWithCustomMacros(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
     std::vector<std::pair<std::string, nebula::common::unordered_map<std::string, std::string>>> results;
     const auto& filteredMacroValues = Macro::filteredMacroValuesMap(input, macroValues);
     const auto& macroCombinations = Macro::enumerateMacroCombinations(filteredMacroValues);
     if (macroCombinations.size() == 0) {
       return { std::make_pair(
         input,
-        nebula::common::unordered_map<std::string, std::string>())
-      };
+        nebula::common::unordered_map<std::string, std::string>()) };
     }
-    for (const auto macroCombination : macroCombinations) {
+
+    for (const auto& macroCombination : macroCombinations) {
       // need to manually copy to make string out of string_view
       nebula::common::unordered_map<std::string, std::string> stringMacroCombinations;
       for (const auto& p : macroCombination) {
@@ -247,10 +247,9 @@ public:
           nebula::common::format(
             input,
             macroCombination,
-            true /* allowMissingMacro - allow missing macros for time macros */
-          ),
-          stringMacroCombinations)
-        );
+            // allow missing macros for time macros
+            true),
+          stringMacroCombinations));
     }
     return results;
   }

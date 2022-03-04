@@ -18,8 +18,8 @@
 
 #include <glog/logging.h>
 
-#include "NNode.h"
 #include "common/Evidence.h"
+#include "meta/NNode.h"
 
 namespace nebula {
 namespace meta {
@@ -72,17 +72,19 @@ public:
   virtual void mark(const std::string& node, NState state = NState::BAD) override {
     for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
       if (node == itr->toString()) {
-        // same as std::unordered_set.extract
         itr->state = state;
-        nodes_.erase(itr);
-        LOG(WARNING) << "Removing a node as it's marked as bad.";
+        if (state == NState::BAD) {
+          nodes_.erase(itr);
+          LOG(WARNING) << "Removing a node as it's marked as bad.";
+        }
         break;
       }
     }
   }
 
   virtual void update(const NNode&) override {
-    throw NException("update is not supported in static node manager.");
+    // Do nothing as config mode doesn't accept node registration
+    LOG(WARNING) << "Config mode does not update node list.";
   }
 
 private:
@@ -100,30 +102,39 @@ public:
 public:
   virtual std::vector<NNode> nodes() const override {
     std::vector<NNode> nodes;
-    nodes.reserve(map_.size());
+    nodes.reserve(nodes_.size());
     const auto now = nebula::common::Evidence::unix_timestamp();
-    for (auto itr = map_.begin(); itr != map_.end(); ++itr) {
+    for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
       auto ping = itr->second.lastPing;
       if (now - ping <= HEALTHY_TIME) {
         nodes.push_back(itr->first);
       } else {
-        VLOG(1) << "Seeing a node " << itr->first.server << " with last ping=" << ping;
+        LOG(WARNING) << "Seeing an unhealthy node " << itr->first.toString() << " with last ping at " << ping;
       }
     }
 
     return nodes;
   }
 
-  virtual void mark(const std::string&, NState = NState::BAD) override {
-    // DO NOTHING
+  virtual void mark(const std::string& node, NState state = NState::BAD) override {
+    for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
+      if (node == itr->first.toString()) {
+        // only care about bad node and clean it up
+        if (state == NState::BAD) {
+          nodes_.erase(itr);
+          LOG(WARNING) << "Removing a node as it's marked as bad.";
+        }
+        break;
+      }
+    }
   }
 
   virtual void update(const NNode& node) override {
-    map_[node] = { nebula::common::Evidence::unix_timestamp() };
+    nodes_[node] = { nebula::common::Evidence::unix_timestamp() };
   }
 
 private:
-  NNodeMap map_;
+  NNodeMap nodes_;
 };
 
 } // namespace meta
