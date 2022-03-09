@@ -232,7 +232,7 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
     sheet.settings,
     std::map<std::string, std::vector<std::string>>(),
     std::vector<std::string>(),
-    -1);
+    0);
 
   // pattern must be present in settings
   if (!TableService::singleton()->enroll(tbSpec->to(), ttl)) {

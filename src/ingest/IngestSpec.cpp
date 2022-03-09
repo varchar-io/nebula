@@ -518,6 +518,8 @@ bool IngestSpec::ingest(const std::vector<std::string>& files, BlockList& blocks
 
   std::vector<std::unique_ptr<RowCursor>> sources;
 
+  // TODO: introduce a flag to fail whole spec when bad file hit
+  // ISSUE: https://github.com/varchar-io/nebula/issues/175
   // init cursors for all files
   for (const auto& file : files) {
     std::unique_ptr<RowCursor> source = nullptr;

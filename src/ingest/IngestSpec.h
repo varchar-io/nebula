@@ -58,6 +58,8 @@ enum class SpecState : char {
 // a ingest spec defines a task specification to ingest some data
 class IngestSpec : public nebula::common::Identifiable {
 public:
+  // TODO: build consistent identifier for list of paths
+  // ISSUE: https://github.com/varchar-io/nebula/issues/176
   IngestSpec(
     nebula::meta::TableSpecPtr table,
     const std::string& version,
