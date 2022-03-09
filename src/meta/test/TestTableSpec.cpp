@@ -49,7 +49,7 @@ TEST(MetaTest, TestTableSpecSerde) {
     std::move(kafkaSerde), std::move(rocksetSerde),
     std::move(columnProps), std::move(timeSpec),
     std::move(accessSpec), std::move(bucketInfo), std::move(settings),
-    std::move(macroValues), std::move(headers)
+    std::move(macroValues), std::move(headers), 0
   };
   auto str = TableSpec::serialize(spec);
 
