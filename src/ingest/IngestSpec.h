@@ -58,10 +58,12 @@ enum class SpecState : char {
 // a ingest spec defines a task specification to ingest some data
 class IngestSpec : public nebula::common::Identifiable {
 public:
+  // TODO: build consistent identifier for list of paths
+  // ISSUE: https://github.com/varchar-io/nebula/issues/176
   IngestSpec(
     nebula::meta::TableSpecPtr table,
     const std::string& version,
-    const std::string& path,
+    const std::vector<std::string>& paths,
     const std::string& domain,
     size_t size,
     SpecState state,
@@ -69,18 +71,18 @@ public:
     nebula::common::unordered_map<std::string, std::string> macroCombinations = nebula::common::unordered_map<std::string, std::string>())
     : table_{ table },
       version_{ version },
-      path_{ path },
+      paths_{ paths },
       domain_{ domain },
       size_{ size },
       state_{ state },
       watermark_{ watermark },
       macroCombinations_{ macroCombinations },
       node_{ nebula::meta::NNode::invalid() },
-      id_{ fmt::format("{0}@{1}@{2}", table_->name, path_, size_) } {}
+      id_{ fmt::format("{0}@{1}@{2}", table_->name, paths_[0], size_) } {}
   virtual ~IngestSpec() = default;
 
   inline std::string toString() const {
-    return fmt::format("[IS {0} - {1}]", version_, path_);
+    return fmt::format("[IS {0} - {1}]", version_, paths_[0]);
   }
 
   inline virtual const std::string& id() const override {
@@ -129,8 +131,8 @@ public:
     return domain_;
   }
 
-  inline const std::string& path() const {
-    return path_;
+  inline const std::vector<std::string>& paths() const {
+    return paths_;
   }
   // watermark provides hints data is complete before this given timestamp
   inline size_t watermark() const {
@@ -173,12 +175,12 @@ private:
   bool load(nebula::execution::io::BlockList&) noexcept;
 
   // ingest a given local file (usually tmp file) into a list of blocks
-  bool ingest(const std::string&, nebula::execution::io::BlockList&) noexcept;
+  bool ingest(const std::vector<std::string>&, nebula::execution::io::BlockList&) noexcept;
 
 private:
   nebula::meta::TableSpecPtr table_;
   std::string version_;
-  std::string path_;
+  std::vector<std::string> paths_;
   // could be s3 bucket or other protocol
   std::string domain_;
   size_t size_;

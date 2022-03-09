@@ -86,7 +86,7 @@ table IngestTask {
 
   // ingest spec itself
   version: string;
-  path: string;
+  paths: [string];
   domain: string;
   size: uint64;
   state: byte;

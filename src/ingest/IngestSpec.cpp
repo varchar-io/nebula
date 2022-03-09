@@ -87,7 +87,7 @@ static constexpr auto LOADER_API = "Api";
 static constexpr auto BATCH_SIZE = "batch";
 
 // build blocks from a row cursor source
-bool build(TablePtr, RowCursor&, BlockList&,
+bool build(TablePtr, std::vector<std::unique_ptr<RowCursor>>, BlockList&,
            size_t, const std::string&, TimeRow&) noexcept;
 
 // load some nebula test data into current process
@@ -148,25 +148,32 @@ bool IngestSpec::work() noexcept {
 bool IngestSpec::load(BlockList& blocks) noexcept {
   // if domain is present - assume it's S3 file
   auto fs = nebula::storage::makeFS(dsu::getProtocol(table_->source), domain_, table_->settings);
+  auto localFs = nebula::storage::makeFS("local");
 
-  // id is the file path, copy it from s3 to a local folder
-  auto local = nebula::storage::makeFS("local");
-  auto tmpFile = local->temp();
+  std::vector<std::string> tmpFiles;
+  tmpFiles.reserve(paths_.size());
+  for (const auto& path : paths_) {
+    // id is the file path, copy it from s3 to a local folder
+    auto tmpFile = localFs->temp();
 
-  // there might be S3 error which returns tmpFile as empty
-  if (!fs->copy(path_, tmpFile)) {
-    LOG(WARNING) << "Failed to copy file to local: " << path_;
-    return false;
+    // there might be S3 error which returns tmpFile as empty
+    if (!fs->copy(path, tmpFile)) {
+      LOG(WARNING) << "Failed to copy file to local: " << path;
+      continue;
+    }
+    tmpFiles.emplace_back(tmpFile);
   }
 
   // check if data blocks with the same ingest ID exists
   // since it is a swap loader, we will remove those blocks
-  bool result = this->ingest(tmpFile, blocks);
+  bool result = this->ingest(tmpFiles, blocks);
 
   // NOTE: assuming tmp file is created by mkstemp API
   // we unlink it for os to recycle it (linux), ignoring the result
   // https://stackoverflow.com/questions/32445579/when-a-file-created-with-mkstemp-is-deleted
-  unlink(tmpFile.c_str());
+  for (const auto& tmpFile : tmpFiles) {
+    unlink(tmpFile.c_str());
+  }
 
   // swap each of the blocks into block manager
   // as long as they share the same table / spec
@@ -263,7 +270,10 @@ bool IngestSpec::loadHttp(BlockList& blocks,
 
   // download the HTTP file to local as temp file
   HttpService http;
-  const auto& url = this->path();
+  if (this->paths().size() != 1) {
+    LOG(WARNING) << "Http spec expects exactly one path, got " << this->paths().size();
+  }
+  const auto& url = this->paths()[0];
 
   // set access token if present
   auto& token = this->table_->settings["token"];
@@ -278,13 +288,13 @@ bool IngestSpec::loadHttp(BlockList& blocks,
 
   // the sheet content in this json objects
   if (!http.download(url, headers, data, tmpFile)) {
-    LOG(WARNING) << "Failed to download to local: " << path_;
+    LOG(WARNING) << "Failed to download to local: " << url;
     return false;
   }
 
   // check if data blocks with the same ingest ID exists
   // since it is a swap loader, we will remove those blocks
-  bool result = this->ingest(tmpFile, blocks);
+  bool result = this->ingest({tmpFile}, blocks);
 
   // NOTE: assuming tmp file is created by mkstemp API
   // we unlink it for os to recycle it (linux), ignoring the result
@@ -298,7 +308,10 @@ bool IngestSpec::loadHttp(BlockList& blocks,
 
 bool IngestSpec::loadGSheet(BlockList& blocks) noexcept {
   HttpService http;
-  const auto& url = this->path();
+  if (this->paths().size() != 1) {
+    LOG(WARNING) << "GSheet spec expects exactly one path, got " << this->paths().size();
+  }
+  const auto& url = this->paths()[0];
 
   // read access token from table settings
   std::vector<std::string> headers{
@@ -345,12 +358,15 @@ bool IngestSpec::loadGSheet(BlockList& blocks) noexcept {
   const auto schema = TypeSerializer::from(table_->schema);
 
   // size() will have total number of rows for current spec
-  JsonVectorReader reader(schema, values, this->size());
+  std::vector<std::unique_ptr<RowCursor>> sources;
+  std::unique_ptr<RowCursor> source = nullptr;
+  source = std::make_unique<JsonVectorReader>(schema, values, this->size());
+  sources.push_back(std::move(source));
   auto tb = table_->to();
   TableService::singleton()->enroll(tb);
 
   TimeRow timeRow(table_->timeSpec, watermark_, macroCombinations_);
-  return build(tb, reader, blocks, FLAGS_NBLOCK_MAX_ROWS, id_, timeRow);
+  return build(tb, std::move(sources), blocks, FLAGS_NBLOCK_MAX_ROWS, id_, timeRow);
 }
 
 bool IngestSpec::loadRockset() noexcept {
@@ -392,9 +408,12 @@ bool IngestSpec::loadKafka() noexcept {
 #ifdef PPROF
   HeapProfilerStart("/tmp/heap_ingest_kafka.out");
 #endif
+  if (paths_.size() != 1) {
+    LOG(WARNING) << "Kafka spec expects exactly one path, got " << paths_.size();
+  }
   // build up the segment to consume
   // note that: Kafka path is composed by this pattern: "{partition}_{offset}_{size}"
-  auto segment = KafkaSegment::from(path_);
+  auto segment = KafkaSegment::from(paths_[0]);
   KafkaReader reader(table_, std::move(segment));
 
   // time function
@@ -458,14 +477,14 @@ bool IngestSpec::loadKafka() noexcept {
     }                                       \
   }
 
-bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
+bool IngestSpec::ingest(const std::vector<std::string>& files, BlockList& blocks) noexcept {
   auto table = table_->to();
 
   // enroll the table in case it is the first time
   TableService::singleton()->enroll(table);
 
   // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
-  LOG(INFO) << "Ingesting from " << file;
+  LOG(INFO) << "Ingesting from file batch starting with " << files[0];
 
   // get table schema and create a table
   const auto schema = TypeSerializer::from(table_->schema);
@@ -497,24 +516,32 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
     columns.push_back(type->name());
   }
 
-  // depends on the type
-  std::unique_ptr<RowCursor> source = nullptr;
-  try {
-    if (table_->format == DataFormat::CSV) {
-      source = std::make_unique<CsvReader>(file, table_->csv, columns);
-    } else if (table_->format == DataFormat::JSON) {
-      source = makeJsonReader(file, table_->json, schema);
-    } else if (table_->format == DataFormat::PARQUET) {
-      // schema is modified with time column, we need original schema here
-      source = std::make_unique<ParquetReader>(file, schema);
-    } else {
-      LOG(ERROR) << "Supported data formats: csv, json, parquet.";
-      return false;
+  std::vector<std::unique_ptr<RowCursor>> sources;
+
+  // TODO: introduce a flag to fail whole spec when bad file hit
+  // ISSUE: https://github.com/varchar-io/nebula/issues/175
+  // init cursors for all files
+  for (const auto& file : files) {
+    std::unique_ptr<RowCursor> source = nullptr;
+    try {
+      if (table_->format == DataFormat::CSV) {
+        source = std::make_unique<CsvReader>(file, table_->csv, columns);
+      } else if (table_->format == DataFormat::JSON) {
+        source = makeJsonReader(file, table_->json, schema);
+      } else if (table_->format == DataFormat::PARQUET) {
+        // schema is modified with time column, we need original schema here
+        source = std::make_unique<ParquetReader>(file, schema);
+      } else {
+        LOG(ERROR) << "Supported data formats: csv, json, parquet.";
+        continue;
+      }
+    } catch (const std::exception& exp) {
+        LOG(ERROR) << "Exception in creating reader for table " << table_->toString() << ", file: " << file << ", exception: " << exp.what();
+      continue;
     }
-  } catch (const std::exception& exp) {
-    LOG(ERROR) << "Exception in creating reader for " << table_->toString() << ", exception: " << exp.what();
-    return false;
+    sources.push_back(std::move(source));
   }
+
 
   // limit at 1b on single host
   size_t bRows = FLAGS_NBLOCK_MAX_ROWS;
@@ -524,7 +551,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
   // has a risk to become orphan losing tracking. Find a way to improve it by making this transactional or
   // better monitoring this type of failure.
   try {
-    return build(table, *source, blocks, bRows, id_, timeRow);
+    return build(table, std::move(sources), blocks, bRows, id_, timeRow);
   } catch (const std::exception& exp) {
     LOG(ERROR) << "Exception in reading blocks for " << table_->toString()
                << " watermark " << watermark_ << ", exception: " << exp.what();
@@ -537,7 +564,7 @@ bool IngestSpec::ingest(const std::string& file, BlockList& blocks) noexcept {
 // ingest a row cursor into block list
 bool build(
   TablePtr table,
-  RowCursor& cursor,
+  std::vector<std::unique_ptr<RowCursor>> cursors,
   BlockList& blocks,
   size_t bRows,
   const std::string& spec,
@@ -572,48 +599,50 @@ bool build(
   auto pod = table->pod();
 
   size_t blockId = 0;
-  while (cursor.hasNext()) {
-    auto& r = cursor.next();
-    const auto& row = timeRow.set(&r);
+  for (auto& cursor : cursors) {
+    while (cursor->hasNext()) {
+      auto& r = cursor->next();
+      const auto& row = timeRow.set(&r);
 
-    // for non-partitioned, all batch's pid will be 0
-    size_t pid = 0;
-    BessType bess = -1;
-    if (pod) {
-      pid = pod->pod(row, bess);
+      // for non-partitioned, all batch's pid will be 0
+      size_t pid = 0;
+      BessType bess = -1;
+      if (pod) {
+        pid = pod->pod(row, bess);
+      }
+
+      // get the batch
+      auto batch = batches[pid];
+      if (batch == nullptr) {
+        batch = std::make_shared<Batch>(*table, bRows, pid);
+        batches[pid] = batch;
+      }
+
+      // if this is already full
+      if (batch->getRows() >= bRows) {
+        // move it to the manager and erase it from the map
+        blocks.push_front(makeBlock(blockId++, batch));
+
+        // make a new batch
+        batch = std::make_shared<Batch>(*table, bRows, pid);
+        batches[pid] = batch;
+        range = { std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
+      }
+
+      // update time range before adding the row to the batch
+      // get time column value
+      size_t time = row.readLong(Table::TIME_COLUMN);
+      if (time < range.first) {
+        range.first = time;
+      }
+
+      if (time > range.second) {
+        range.second = time;
+      }
+
+      // add a new entry
+      batch->add(row, bess);
     }
-
-    // get the batch
-    auto batch = batches[pid];
-    if (batch == nullptr) {
-      batch = std::make_shared<Batch>(*table, bRows, pid);
-      batches[pid] = batch;
-    }
-
-    // if this is already full
-    if (batch->getRows() >= bRows) {
-      // move it to the manager and erase it from the map
-      blocks.push_front(makeBlock(blockId++, batch));
-
-      // make a new batch
-      batch = std::make_shared<Batch>(*table, bRows, pid);
-      batches[pid] = batch;
-      range = { std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
-    }
-
-    // update time range before adding the row to the batch
-    // get time column value
-    size_t time = row.readLong(Table::TIME_COLUMN);
-    if (time < range.first) {
-      range.first = time;
-    }
-
-    if (time > range.second) {
-      range.second = time;
-    }
-
-    // add a new entry
-    batch->add(row, bess);
   }
 
   // move all blocks in map into block manager

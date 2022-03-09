@@ -361,7 +361,7 @@ TEST(KafkaTest, DISABLED_TestKafkaReader) {
     nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
     std::move(serde), std::move(rockset), std::move(cp), std::move(ts),
     std::move(as), std::move(bi), std::move(settings2),
-    std::move(macroValues), std::move(headers));
+    std::move(macroValues), std::move(headers), 0);
 
   const auto& seg = segments.front();
   nebula::storage::kafka::KafkaReader reader(table, seg);
@@ -434,7 +434,7 @@ TEST(KafkaTest, DISABLED_TestSimpleNestedSchema) {
     nebula::meta::DataFormat::THRIFT, std::move(csv), std::move(json), std::move(thrift),
     std::move(serde), std::move(rockset), std::move(cp), std::move(ts),
     std::move(as), std::move(bi), std::move(settings2),
-    std::move(macroValues), std::move(headers));
+    std::move(macroValues), std::move(headers), 0);
 
   auto count = 0;
   for (auto& seg : segments) {
