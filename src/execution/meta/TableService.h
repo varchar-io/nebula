@@ -30,6 +30,8 @@
 /**
  *
  * Define table meta data service provider for nebula execution runtime.
+ * A Table Service will connect with external meta data persistent store
+ * Or raft-based service store (Nebula Server will use raft to manage state).
  *
  */
 namespace nebula {

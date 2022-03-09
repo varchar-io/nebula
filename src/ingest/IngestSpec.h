@@ -21,7 +21,6 @@
 #include <mutex>
 
 #include "common/Task.h"
-#include "execution/io/BlockLoader.h"
 #include "meta/NNode.h"
 #include "meta/TableSpec.h"
 

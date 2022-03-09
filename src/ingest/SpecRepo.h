@@ -16,26 +16,25 @@
 
 #pragma once
 
-#include <meta/TableSpec.h>
-
 #include "IngestSpec.h"
+
 #include "common/Hash.h"
 #include "meta/ClusterInfo.h"
 #include "meta/Macro.h"
 #include "meta/TableSpec.h"
 
 /**
- * Based on current cluster settings. 
+ * Based on current cluster settings.
  * Generate ingestion spec list for each table.
- * 
+ *
  * A spec repo is held by a nebula serve which holds the truth of all data knowledge.
  * We usually run a SpecRepo gen methods periodically.
- * 
+ *
  * Every spec will be check against current data store to indicate if a spec needs to be ingested.
  * Server will ask a node to ingest the spec. So spec state usually transits like
  *    "new" -> "assigned" -> "done"
- * 
- * A spec may produce multiple data blocks, if anything failing in the middle, 
+ *
+ * A spec may produce multiple data blocks, if anything failing in the middle,
  * the data node will clean them up and tell server it doesn't finish the task. Server will re-assign later.
  */
 namespace nebula {
@@ -79,7 +78,7 @@ private:
 
   void genSpecs4Roll(const std::string& version,
                      const meta::TableSpecPtr& table,
-                     std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept;
+                     std::vector<SpecPtr>& specs) noexcept;
 
 private:
   nebula::common::unordered_map<std::string, SpecPtr> specs_;
