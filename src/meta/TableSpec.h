@@ -203,6 +203,8 @@ struct TableSpec {
   std::map<std::string, std::vector<std::string>> macroValues;
   // user specified headers - implicit for http but applicable to any service.
   std::vector<std::string> headers;
+  // optimal block size, used to combine files into blocks that are as close to this size as possible without going over
+  size_t optimalBlockSize;
 
   explicit TableSpec() {}
   explicit TableSpec(std::string _name, size_t maxMb, size_t maxSeconds, std::string _schema,
@@ -211,7 +213,8 @@ struct TableSpec {
                      KafkaSerde _kafkaSerde, RocksetSerde _rocksetSerde,
                      ColumnProps _columnProps, TimeSpec _timeSpec,
                      AccessSpec _accessSpec, BucketInfo _bucketInfo, nebula::type::Settings _settings,
-                     std::map<std::string, std::vector<std::string>> _macroValues, std::vector<std::string> _headers)
+                     std::map<std::string, std::vector<std::string>> _macroValues, std::vector<std::string> _headers,
+                     size_t _optimalBlockSize)
     : name{ std::move(_name) },
       max_mb{ maxMb },
       max_seconds{ maxSeconds },
@@ -232,7 +235,8 @@ struct TableSpec {
       bucketInfo{ std::move(_bucketInfo) },
       settings{ std::move(_settings) },
       macroValues{ std::move(_macroValues) },
-      headers{ std::move(_headers) } {}
+      headers{ std::move(_headers) },
+      optimalBlockSize{ _optimalBlockSize } {}
 
   // make it msgpack serializable
   MSGPACK_DEFINE(name, max_mb, max_seconds, schema,

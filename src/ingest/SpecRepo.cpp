@@ -90,6 +90,8 @@ std::string buildIdentityByTime(const TimeSpec& time) {
   }
 }
 
+// void genSpecForBatch()
+
 // this method is to generate one spec per file
 void genSpecPerFile(const TableSpecPtr& table,
                     const std::string& version,
@@ -97,22 +99,35 @@ void genSpecPerFile(const TableSpecPtr& table,
                     std::vector<std::shared_ptr<IngestSpec>>& specs,
                     size_t watermark,
                     const nebula::common::unordered_map<std::string, std::string>& macroCombination) noexcept {
+  std::vector<std::string> pathBatch;
+  size_t batchSize = 0;
+  std::string domain;
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
-    if (!itr->isDir) {
-      // we do not generate empty files
-      if (itr->size == 0) {
-        VLOG(1) << "Skip an empty file to scan: " << itr->name;
-        continue;
-      }
-
-      // generate a ingest spec from given file info
-      // use name as its identifier
-      auto spec = std::make_shared<IngestSpec>(
-        table, version, itr->name, itr->domain, itr->size, SpecState::NEW, watermark, macroCombination);
-
-      // push to the repo
-      specs.push_back(spec);
+    if (itr->isDir) {
+      VLOG(1) << "Skipping directory: " << itr->name;
+      continue;
     }
+    if (itr->size == 0) {
+      VLOG(1) << "Skip an empty file to scan: " << itr->name;
+      continue;
+    }
+    if (domain.empty()) {
+      domain = itr->domain;
+    }
+    pathBatch.push_back(itr->name);
+    batchSize += itr->size;
+    if (batchSize >= table->optimalBlockSize) {
+      // push batch and start a new one
+      specs.push_back(std::make_shared<IngestSpec>(
+        table, version, pathBatch, domain, batchSize, SpecState::NEW, watermark, macroCombination));
+      pathBatch.clear();
+      batchSize = 0;
+    }
+  }
+  // push the final batch in case it didn't fit evenly
+  if (!pathBatch.empty()) {
+    specs.push_back(std::make_shared<IngestSpec>(
+      table, version, pathBatch, domain, batchSize, SpecState::NEW, watermark, macroCombination));
   }
 }
 
@@ -214,7 +229,7 @@ void genRocksetSpec(const std::string& version,
   auto add = [&specs, &table, &version](auto watermark) {
     // const auto id = fmt::format("{0}-{1}", watermark, interval);
     specs.push_back(std::make_shared<IngestSpec>(
-      table, version, table->location, "rockset", watermark, SpecState::NEW, watermark));
+      table, version, std::vector<std::string>({table->location}), "rockset", watermark, SpecState::NEW, watermark));
   };
 
   // going back from hour start
@@ -254,7 +269,7 @@ void genKafkaSpec(const std::string& version,
     // turn these segments into ingestion spec
     for (auto itr = segments.cbegin(), end = segments.cend(); itr != end; ++itr) {
       specs.push_back(std::make_shared<IngestSpec>(
-        table, version, itr->id(), "kafka", itr->size, SpecState::NEW, 0));
+        table, version, std::vector<std::string>({itr->id()}), "kafka", itr->size, SpecState::NEW, 0));
     }
   };
 
@@ -283,7 +298,7 @@ void SpecRepo::process(
   if (table->loader == "NebulaTest") {
     // single spec for nebula test loader
     specs.push_back(std::make_shared<IngestSpec>(
-      table, version, buildIdentityByTime(table->timeSpec), table->name, 0, SpecState::NEW, 0));
+      table, version, std::vector<std::string>({buildIdentityByTime(table->timeSpec)}), table->name, 0, SpecState::NEW, 0));
     return;
   }
 
