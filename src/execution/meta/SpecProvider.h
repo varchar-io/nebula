@@ -37,18 +37,27 @@
  *
  */
 
-#include "Spec.h"
-#include "meta/TableSpec.h"
+#include "meta/DataSpec.h"
+#include "meta/Macro.h"
 
 namespace nebula {
 namespace execution {
 namespace meta {
 
 class SpecProvider {
+public:
   // generate specs for given table at the function execution time
   // if no spec to generate, return empty vector, do not throw
-  virtual std::vector<SpecPtr> generate(const std::string&, const nebula::meta::TableSpecPtr&) noexcept = 0;
+  std::vector<nebula::meta::SpecPtr> generate(const std::string&, const nebula::meta::TableSpecPtr&) noexcept;
 };
+
+// declare it in header for unit testing
+void genPatternSpec(const nebula::meta::PatternMacro,
+                    const std::string&,
+                    const size_t,
+                    const std::string&,
+                    const nebula::meta::TableSpecPtr&,
+                    std::vector<nebula::meta::SpecPtr>&);
 
 } // namespace meta
 } // namespace execution

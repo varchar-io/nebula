@@ -41,15 +41,6 @@ namespace nebula {
 namespace ingest {
 
 class SpecRepo {
-  using SpecPtr = std::shared_ptr<IngestSpec>;
-
-public:
-  // parse pattern string and generate ingest spec
-  static void genPatternSpec(
-    const nebula::meta::PatternMacro, const std::string&,
-    const size_t, const std::string&, const nebula::meta::TableSpecPtr&,
-    std::vector<std::shared_ptr<IngestSpec>>&);
-
 public:
   SpecRepo() = default;
   virtual ~SpecRepo() = default;
@@ -70,18 +61,11 @@ public:
   bool confirm(const std::string& spec, const nebula::meta::NNode& node) noexcept;
 
 private:
-  // process a table spec and generate all specs into the given specs container
-  void process(const std::string&, const nebula::meta::TableSpecPtr&, std::vector<SpecPtr>&) noexcept;
-
   // update the snapshot of new spec list into spec repo
-  void update(const std::vector<SpecPtr>&) noexcept;
-
-  void genSpecs4Roll(const std::string& version,
-                     const meta::TableSpecPtr& table,
-                     std::vector<SpecPtr>& specs) noexcept;
+  void update(const std::vector<nebula::meta::SpecPtr>&) noexcept;
 
 private:
-  nebula::common::unordered_map<std::string, SpecPtr> specs_;
+  nebula::common::unordered_map<std::string, nebula::meta::SpecPtr> specs_;
 };
 
 } // namespace ingest

@@ -15,6 +15,8 @@ set(HOME_DIR $ENV{HOME})
 # it will duplicate all the module's strucutre, hence here we choose to expose whole SRC
 include_directories(include ${NEBULA_SRC})
 
+# OSX SDK version
+set(CMAKE_OSX_DEPLOYMENT_TARGET 12)
 # set compiler features - use C++ 17 and above
 # Valid values after CMake 3.8 for CMAKE_CXX_STANDARD are 98, 11 and 14, with 17
 # set_property(GLOBAL PROPERTY CXX_STANDARD 17)
@@ -374,11 +376,11 @@ include(src/memory/Memory.cmake)
 # build data storage - clound providers
 include(src/storage/Storage.cmake)
 
-# build data ingestion
-include(src/ingest/Ingest.cmake)
-
 # build meta module
 include(src/execution/Execution.cmake)
+
+# build data ingestion
+include(src/ingest/Ingest.cmake)
 
 # build api library
 include(src/api/Api.cmake)

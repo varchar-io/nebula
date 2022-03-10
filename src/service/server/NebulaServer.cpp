@@ -263,7 +263,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   futures.reserve(specs.size());
   for (auto spec : specs) {
     // assign a nebula node randomly to it
-    spec->setAffinity(nodes.at(ri()));
+    spec->affinity(nodes.at(ri()));
     auto promise = std::make_shared<folly::Promise<TaskState>>();
 
     // pass values since we reutrn the whole lambda - don't reference temporary things

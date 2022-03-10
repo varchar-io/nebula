@@ -26,6 +26,18 @@
 // group most of the base types definitions here to work with its adapters
 namespace nebula {
 namespace meta {
+// node states
+enum class NState {
+  ACTIVE,
+  BAD,
+  DEAD
+};
+
+// node role
+enum class NRole {
+  NODE,
+  SERVER
+};
 // spec state defines states for life cycle of given spec
 enum class SpecState : char {
   // NEW spec requires data sync
@@ -194,3 +206,5 @@ MSGPACK_ADD_ENUM(nebula::meta::ActionType)
 MSGPACK_ADD_ENUM(nebula::meta::DataFormat)
 MSGPACK_ADD_ENUM(nebula::type::Kind)
 MSGPACK_ADD_ENUM(nebula::meta::SpecState)
+MSGPACK_ADD_ENUM(nebula::meta::NRole)
+MSGPACK_ADD_ENUM(nebula::meta::NState)

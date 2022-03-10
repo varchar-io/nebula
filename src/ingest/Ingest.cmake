@@ -26,14 +26,14 @@ target_link_libraries(${NEBULA_INGEST}
 add_executable(IngestTests
     ${NEBULA_SRC}/ingest/test/TestIngestion.cpp)
 
-target_link_libraries(IngestTests 
+target_link_libraries(IngestTests
     PRIVATE ${NEBULA_INGEST}
-    PRIVATE ${GTEST_LIBRARY} 
-    PRIVATE ${GTEST_MAIN_LIBRARY} 
+    PRIVATE ${GTEST_LIBRARY}
+    PRIVATE ${GTEST_MAIN_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${URIP_LIBRARY}
-    PRIVATE ${FOLLY_LIBRARY}   
+    PRIVATE ${FOLLY_LIBRARY}  
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${GFLAGS_LIBRARY}
     PRIVATE ${PARQUET_LIBRARY}

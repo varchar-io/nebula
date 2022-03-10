@@ -22,6 +22,7 @@
 #include <sstream>
 
 #include "common/Identifiable.h"
+#include "meta/NNode.h"
 #include "meta/TableSpec.h"
 #include "meta/Types.h"
 
@@ -95,7 +96,7 @@ using SpecPtr = std::shared_ptr<DataSpec>;
 class DataSpec : public nebula::common::Identifiable {
 public:
   // default constructor for serde
-  DataSpec() {}
+  DataSpec() : node_{ nebula::meta::NNode::invalid() } {}
   DataSpec(nebula::meta::TableSpecPtr table,
            const std::string& version,
            const std::string& domain,
@@ -105,7 +106,8 @@ public:
       version_{ version },
       domain_{ domain },
       splits_{ splits },
-      state_{ state } {
+      state_{ state },
+      node_{ nebula::meta::NNode::invalid() } {
     construct();
   }
 
@@ -158,6 +160,19 @@ public:
     return (state_ == SpecState::NEW || state_ == SpecState::RENEW);
   }
 
+  inline void affinity(const nebula::meta::NNode& node) {
+    // copy the node as my node
+    node_ = node;
+  }
+
+  inline const nebula::meta::NNode& affinity() const {
+    return node_;
+  }
+
+  inline bool assigned() const {
+    return !node_.isInvalid();
+  }
+
 protected:
   // get the first and the only split for most single split use cases
   inline SpecSplitPtr split() const {
@@ -187,13 +202,14 @@ protected:
   std::string domain_;
   std::vector<SpecSplitPtr> splits_;
   SpecState state_;
+  nebula::meta::NNode node_;
 
   // computed identifier during construction
   size_t size_;
   std::string id_;
 
 public:
-  MSGPACK_DEFINE(table_, version_, domain_, splits_, state_);
+  MSGPACK_DEFINE(table_, version_, domain_, splits_, state_, node_);
   // serialize a table spec into a string
   static std::string serialize(const DataSpec&) noexcept;
   // deserialize a table spec from a string

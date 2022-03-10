@@ -170,7 +170,7 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
     auto spec = std::make_shared<IngestSpec>(tbSpec, "0", sourceInfo.host, splits, SpecState::NEW);
 
     // round robin assign the spec to each node
-    spec->setAffinity(nodes.at(assignId));
+    spec->affinity(nodes.at(assignId));
     if (++assignId >= nodes.size()) {
       assignId = 0;
     }

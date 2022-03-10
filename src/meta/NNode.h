@@ -17,30 +17,18 @@
 #pragma once
 
 #include "Table.h"
+#include "meta/Types.h"
 
 /**
- * Define nebula table and system metadata 
+ * Define nebula table and system metadata
  * which manages what data segments are loaded in memory for each table
  * This meta data can persist and sync with external DB system such as MYSQL or RocksDB
  * (A KV store is necessary for Nebula to manage all metadata)
- * 
+ *
  * (Also - Is this responsibility of zookeeper?)
  */
 namespace nebula {
 namespace meta {
-
-// node states
-enum class NState {
-  ACTIVE,
-  BAD,
-  DEAD
-};
-
-// node role
-enum class NRole {
-  NODE,
-  SERVER
-};
 
 struct NNode {
   // node basics - server and port
@@ -121,6 +109,8 @@ struct NNode {
     static const NNode INVALID = NNode{ NRole::NODE, "invalid", 0 };
     return INVALID;
   }
+
+  MSGPACK_DEFINE(role, server, port, state, size)
 }; // namespace meta
 
 struct NodeHash {

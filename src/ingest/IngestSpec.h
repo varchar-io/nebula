@@ -49,22 +49,8 @@ public:
              const std::string& domain,
              const std::vector<nebula::meta::SpecSplitPtr>& splits,
              nebula::meta::SpecState state)
-    : DataSpec(table, version, domain, splits, state),
-      node_{ nebula::meta::NNode::invalid() } {}
+    : DataSpec(table, version, domain, splits, state) {}
   virtual ~IngestSpec() = default;
-
-  inline void setAffinity(const nebula::meta::NNode& node) {
-    // copy the node as my node
-    node_ = node;
-  }
-
-  inline const nebula::meta::NNode& affinity() const {
-    return node_;
-  }
-
-  inline bool assigned() const {
-    return !node_.isInvalid();
-  }
 
   // core work to process this ingest spec
   bool work() noexcept;
@@ -99,10 +85,6 @@ private:
 
   // ingest will expect all files are downloaded
   bool ingest(nebula::execution::io::BlockList&) noexcept;
-
-private:
-  // node info if the spec has affinity on a node
-  nebula::meta::NNode node_;
 };
 
 } // namespace ingest
