@@ -95,6 +95,7 @@ public:
   virtual const std::string& id() const override {
     return command_;
   }
+  inline virtual void construct() override {}
 
   inline bool isShutdown() const noexcept {
     return shutdown()->id() == command_;

@@ -35,6 +35,15 @@ class BlockExpire : public nebula::common::Identifiable {
 public:
   BlockExpire(nebula::common::unordered_set<std::pair<std::string, std::string>> specs)
     : specs_{ std::move(specs) } {
+    construct();
+  }
+  virtual ~BlockExpire() = default;
+
+  virtual const std::string& id() const override {
+    return sign_;
+  }
+
+  inline virtual void construct() override {
     size_t mix = std::accumulate(specs_.begin(), specs_.end(), 0, [](size_t v, const auto& str) {
       return v ^ nebula::common::Hasher::hashString(str.second);
     });
@@ -42,11 +51,6 @@ public:
     // TODO(cao) - signature equals mix hash and size - it is still not guranteed to be unique
     // which implies if collision happens, some expire task may not be executed.
     sign_ = fmt::format("{0}_{1}", mix, specs_.size());
-  }
-  virtual ~BlockExpire() = default;
-
-  virtual const std::string& id() const override {
-    return sign_;
   }
 
   inline const nebula::common::unordered_set<std::pair<std::string, std::string>>& specs() const {

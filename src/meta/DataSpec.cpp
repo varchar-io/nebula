@@ -1,4 +1,3 @@
-
 /*
  * Copyright 2017-present varchar.io
  *
@@ -15,25 +14,35 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <mutex>
-#include "meta/TableSpec.h"
+#include "DataSpec.h"
 
 /**
- * A generic data spec interface that loads one or more data blocks in runtime
- *
+ * Node manager managing all nebula working nodes
  */
-
 namespace nebula {
-namespace execution {
 namespace meta {
 
-// data spec: defines a logical data unit which could produce multiple data blocks
-class Spec {
-};
+std::string DataSpec::serialize(const DataSpec& spec) noexcept {
+  std::stringstream buffer;
+  msgpack::pack(buffer, spec);
+  buffer.seekg(0);
+  return buffer.str();
+}
 
-using SpecPtr = std::shared_ptr<Spec>;
+SpecPtr DataSpec::deserialize(const std::string_view str) {
+  msgpack::object_handle oh = msgpack::unpack(str.data(), str.size());
+  auto spec = oh.get().as<SpecPtr>();
+  // reconstruct all splits
+  for (auto& split : spec->splits_) {
+    split->construct();
+  }
+
+  // reconstruct spec too
+  spec->construct();
+
+  // now the spec should be well established
+  return spec;
+}
+
 } // namespace meta
-} // namespace execution
 } // namespace nebula

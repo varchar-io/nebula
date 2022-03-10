@@ -25,6 +25,7 @@
 #include "memory/Batch.h"
 #include "meta/TestTable.h"
 #include "surface/MockSurface.h"
+#include "surface/eval/EvalContext.h"
 #include "surface/eval/UDF.h"
 #include "surface/eval/ValueEval.h"
 
@@ -35,8 +36,10 @@ namespace test {
 
 using nebula::execution::core::BlockExecutor;
 using nebula::memory::Batch;
+using nebula::memory::EvaledBlock;
 using nebula::surface::MockRowData;
 using nebula::surface::RowData;
+using nebula::surface::eval::BlockEval;
 using nebula::surface::eval::column;
 using nebula::surface::eval::constant;
 using nebula::surface::eval::UDAF;
@@ -45,10 +48,10 @@ using nebula::type::TypeSerializer;
 TEST(OptimizedQuery, TestPredicatePushdown) {
   nebula::meta::TestTable test;
   auto size = 10;
-  nebula::memory::Batch batch(test, size);
+  auto batch = std::make_shared<Batch>(test, size);
   nebula::surface::MockRowData row;
   for (auto i = 0; i < size; ++i) {
-    batch.add(row);
+    batch->add(row);
   }
 
   LOG(INFO) << "build up a block compute result";
@@ -66,7 +69,8 @@ TEST(OptimizedQuery, TestPredicatePushdown) {
     .aggregate(0, { false, false, false })
     .limit(size);
 
-  auto cursor = nebula::execution::core::compute(batch, plan);
+  EvaledBlock eb{ batch, BlockEval::PARTIAL };
+  auto cursor = nebula::execution::core::compute(eb, plan);
 }
 } // namespace test
 } // namespace execution

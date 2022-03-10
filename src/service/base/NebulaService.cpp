@@ -58,16 +58,17 @@ using nebula::execution::QueryStats;
 using nebula::execution::QueryWindow;
 using nebula::ingest::BlockExpire;
 using nebula::ingest::IngestSpec;
-using nebula::ingest::SpecState;
 using nebula::memory::keyed::FlatBuffer;
 using nebula::memory::keyed::FlatRowCursor;
 using nebula::meta::AccessSpec;
 using nebula::meta::Column;
 using nebula::meta::ColumnProps;
 using nebula::meta::DataSource;
+using nebula::meta::DataSpec;
 using nebula::meta::DBType;
 using nebula::meta::MetaConf;
 using nebula::meta::MetaDb;
+using nebula::meta::SpecState;
 using nebula::meta::TableSpec;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
@@ -344,40 +345,6 @@ RowCursorPtr BatchSerde::deserialize(const flatbuffers::grpc::Message<BatchRows>
   return std::make_shared<FlatRowCursor>(std::move(fb));
 }
 
-flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<nebula::service::KeyValue>>> serializeMacrosAndValues(flatbuffers::grpc::MessageBuilder& mb, const nebula::common::unordered_map<std::string, std::string>& macroCombinations) {
-  std::vector<flatbuffers::Offset<nebula::service::KeyValue>> macrosAndValues;
-  for (const auto& colNameAndMacro : macroCombinations) {
-    macrosAndValues.emplace_back(CreateKeyValue(mb, mb.CreateString(colNameAndMacro.first), mb.CreateString(colNameAndMacro.second)));
-  }
-  return mb.CreateVector<flatbuffers::Offset<KeyValue>>(macrosAndValues);
-}
-
-nebula::common::unordered_map<std::string, std::string> deserializeMacrosAndValues(const flatbuffers::Vector<flatbuffers::Offset<nebula::service::KeyValue>>* macrosAndValues) {
-  nebula::common::unordered_map<std::string, std::string> macroCombinations;
-  for (const auto& macroAndValue : *macrosAndValues) {
-    macroCombinations.emplace(macroAndValue->key()->str(), macroAndValue->value()->str());
-  }
-  return macroCombinations;
-}
-
-flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>> serializeStringVector(flatbuffers::grpc::MessageBuilder& mb, const std::vector<std::string>& values) {
-  std::vector<flatbuffers::Offset<flatbuffers::String>> serValues;
-  serValues.reserve(values.size());
-  for (const auto& value : values) {
-    serValues.emplace_back(mb.CreateString(value));
-  }
-  return mb.CreateVector<flatbuffers::Offset<flatbuffers::String>>(serValues);
-}
-
-std::vector<std::string> deserializeStringVector(const flatbuffers::Vector<flatbuffers::Offset<flatbuffers::String>>* values) {
-  std::vector<std::string> deserValues;
-  deserValues.reserve(values->size());
-  for (const auto& value : *values) {
-    deserValues.emplace_back(value->str());
-  }
-  return deserValues;
-}
-
 // serialize a ingest spec into a task spec to be sent over
 flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
   flatbuffers::grpc::MessageBuilder mb;
@@ -388,19 +355,12 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
   if (type == TaskType::INGESTION) {
     auto spec = task.spec<IngestSpec>();
 
-    // create ingest task
-    auto strTableSpec = TableSpec::serialize(*spec->table());
+    // create ingest task -
+    // note that, we are dropping fields in IngestSpec which does the core work only
+    auto strSpec = DataSpec::serialize(*spec);
 
     // serialize the ingest task
-    auto it = CreateIngestTask(mb,
-                               mb.CreateString(strTableSpec),
-                               mb.CreateString(spec->version()),
-                               serializeStringVector(mb, spec->paths()),
-                               mb.CreateString(spec->domain()),
-                               spec->size(),
-                               (int8_t)spec->state(),
-                               spec->watermark(),
-                               serializeMacrosAndValues(mb, spec->macroCombinations()));
+    auto it = CreateIngestTask(mb, mb.CreateString(strSpec));
 
     // create task spec
     auto ts = CreateTaskSpec(mb, type, sync, it);
@@ -452,16 +412,7 @@ Task TaskSerde::deserialize(const flatbuffers::grpc::Message<TaskSpec>* ts) {
     auto it = ptr->ingest();
 
     // NOTE: here incurs string copy in IngestSpec constructor, better to avoid it
-    auto is = std::make_shared<IngestSpec>(
-      TableSpec::deserialize(it->table_spec()->str()),
-      it->version()->str(),
-      deserializeStringVector(it->paths()),
-      it->domain()->str(),
-      it->size(),
-      (SpecState)it->state(),
-      it->date(),
-      deserializeMacrosAndValues(it->macrosAndValues()));
-
+    auto is = DataSpec::deserialize(it->spec()->str());
     return Task(type, is, sync);
   }
 

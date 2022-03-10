@@ -45,9 +45,9 @@ using nebula::execution::BlockManager;
 using nebula::execution::meta::TableService;
 using nebula::ingest::BlockExpire;
 using nebula::ingest::SpecRepo;
-using nebula::ingest::SpecState;
 using nebula::meta::ClusterInfo;
 using nebula::meta::NNode;
+using nebula::meta::SpecState;
 
 void NodeSync::sync(
   folly::ThreadPoolExecutor& pool,
@@ -160,7 +160,7 @@ void NodeSync::sync(
       // TODO(cao): handle node reset event. SpecRepo needs to reset spec state if a node reset
       // if assigned to a node, but the node doesn't have the spec, we reset the spec state to
       if (!bm->hasSpec(sp->affinity(), sp->table()->name, sp->id())) {
-        sp->setState(SpecState::RENEW);
+        sp->state(SpecState::RENEW);
       }
 
       if (sp->needSync()) {
@@ -175,7 +175,7 @@ void NodeSync::sync(
 
         // udpate spec state so that it won't be resent
         if (state == TaskState::SUCCEEDED) {
-          sp->setState(SpecState::READY);
+          sp->state(SpecState::READY);
         }
         // we can remove its assigned node and wait it to be reassin to different node for retry
         // but what if it keeps failing? we need counter for it

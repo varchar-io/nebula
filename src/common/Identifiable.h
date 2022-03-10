@@ -32,7 +32,13 @@ namespace common {
 // But most of the time, we don't use GUID because we're making semantic meaningfulness for each asset.
 class Identifiable {
 public:
+  // an identifiable should always return a unique ID in its breed
   virtual const std::string& id() const = 0;
+
+  // when we serialize a class with computed fields (value cache)
+  // usually they are private and need to computed in the construction time
+  // this interface is used to be called after object is deserialized
+  virtual void construct() = 0;
 };
 
 } // namespace common

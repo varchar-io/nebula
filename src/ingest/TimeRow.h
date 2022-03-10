@@ -27,8 +27,8 @@ namespace ingest {
 // row wrapper to translate "date" string into reserved "_time_" column
 class TimeRow : public nebula::surface::RowData {
 public:
-  TimeRow(const nebula::meta::TimeSpec& ts, size_t watermark, nebula::common::unordered_map<std::string, std::string> macroCombinations)
-    : timeFunc_{ makeTimeFunc(ts, watermark) }, macroCombinations_(macroCombinations) {}
+  TimeRow(const nebula::meta::TimeSpec& ts, size_t watermark, nebula::meta::MapKV macros)
+    : timeFunc_{ makeTimeFunc(ts, watermark) }, macros_(macros) {}
   ~TimeRow() = default;
 
   const TimeRow& set(const nebula::surface::RowData* row) {
@@ -53,7 +53,8 @@ public:
   TRANSFER(std::unique_ptr<nebula::surface::MapData>, readMap)
 
   bool isNull(const std::string& field) const override {
-    if (N_UNLIKELY(field == nebula::meta::Table::TIME_COLUMN) || macroCombinations_.contains(field)) {
+    if (N_UNLIKELY(field == nebula::meta::Table::TIME_COLUMN)
+        || macros_.find(field) != macros_.end()) {
       return false;
     }
 
@@ -72,9 +73,10 @@ public:
 
   // read from macro combinations if present there
   std::string_view readString(const std::string& field) const override {
-    if (N_UNLIKELY(macroCombinations_.contains(field))) {
-      return macroCombinations_.at(field);
+    if (N_UNLIKELY(macros_.find(field) != macros_.end())) {
+      return macros_.at(field);
     }
+
     return row_->readString(field);
   }
 
@@ -168,7 +170,7 @@ private:
 private:
   std::function<int64_t(const nebula::surface::RowData*)> timeFunc_;
   const nebula::surface::RowData* row_;
-  const nebula::common::unordered_map<std::string, std::string> macroCombinations_;
+  const nebula::meta::MapKV macros_;
 };
 
 } // namespace ingest

@@ -34,6 +34,7 @@ public:
   virtual const std::string& id() const override {
     return id_;
   }
+  inline virtual void construct() override {}
 
 private:
   std::string id_;
@@ -45,6 +46,7 @@ struct Data final : public nebula::common::Identifiable {
   virtual const std::string& id() const override {
     return key_;
   }
+  inline virtual void construct() override {}
 };
 
 // test buidling a hash ring

@@ -53,7 +53,7 @@ class ParquetReader : public nebula::surface::RowCursor {
   static constexpr size_t SLICE_SIZE = 1024;
 
 public:
-  ParquetReader(const std::string& file, nebula::type::Schema schema)
+  ParquetReader(const std::string& file, nebula::type::Schema schema, const std::vector<std::string>& columns = {})
     : nebula::surface::RowCursor(0),
       reader_{ parquet::ParquetFileReader::OpenFile(file, false) },
       group_{ 0 },
@@ -111,13 +111,13 @@ public:
 
     // TODO(cao): not sure why some file has duplicate names which ends up found is larger
     // every node should be validated
-    N_ENSURE(found >= schema_->size(), "every node in desired schema should be present");
+    N_ENSURE(found >= columns.size(), "every node in desired schema should be present");
 
 #undef PTYPE_CONV_CASE_VALIDATION
   }
 
   ParquetReader(const std::string& file)
-    : ParquetReader(file, nullptr) {
+    : ParquetReader(file, nullptr, {}) {
 // build up schema with all columns
 // TODO(cao) - use tree visitor to convert schema tree
 // right now, here we only support single plain schema struct[primitive,...]

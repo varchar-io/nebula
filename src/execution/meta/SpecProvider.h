@@ -37,14 +37,19 @@
  *
  */
 
+#include "Spec.h"
 #include "meta/TableSpec.h"
 
 namespace nebula {
 namespace execution {
 namespace meta {
+
 class SpecProvider {
-  void process(const std::string&, const nebula::meta::TableSpecPtr&, std::vector<SpecPtr>&) noexcept;
+  // generate specs for given table at the function execution time
+  // if no spec to generate, return empty vector, do not throw
+  virtual std::vector<SpecPtr> generate(const std::string&, const nebula::meta::TableSpecPtr&) noexcept = 0;
 };
+
 } // namespace meta
 } // namespace execution
 } // namespace nebula

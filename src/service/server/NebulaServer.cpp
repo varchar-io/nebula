@@ -82,10 +82,10 @@ using nebula::execution::QueryContext;
 using nebula::execution::io::BlockLoader;
 using nebula::execution::meta::TableService;
 using nebula::ingest::IngestSpec;
-using nebula::ingest::SpecState;
 using nebula::memory::Batch;
 using nebula::meta::BlockSignature;
 using nebula::meta::ClusterInfo;
+using nebula::meta::SpecState;
 using nebula::meta::Table;
 using nebula::meta::TableSpec;
 using nebula::meta::TableSpecPtr;
@@ -274,7 +274,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
       Task t(TaskType::INGESTION, std::static_pointer_cast<Identifiable>(spec), true);
       TaskState state = client->task(t);
       if (state == TaskState::SUCCEEDED) {
-        spec->setState(SpecState::READY);
+        spec->state(SpecState::READY);
         // update state immediately to reflesh the load state
         client->update();
       }

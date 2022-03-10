@@ -78,12 +78,19 @@ public:
   // currently we default to support path in name.
   JsonRow(nebula::type::Schema schema,
           std::unordered_map<std::string, std::string> columnsMap = {},
+          const std::vector<std::string>& columns = {},
           bool defaultNull = false)
     : defaultNull_{ defaultNull }, hasTime_{ false } {
 
     for (size_t i = 0; i < schema->size(); ++i) {
       auto type = schema->childType(i);
       const auto& name = type->name();
+
+      // ignore the column that is not existing in the valid set
+      if (!columns.empty() && std::find(columns.begin(), columns.end(), name) == columns.end()) {
+        continue;
+      }
+
       if (name == nebula::meta::Table::TIME_COLUMN) {
         hasTime_ = true;
       }

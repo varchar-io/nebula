@@ -42,9 +42,13 @@ using nebula::meta::ClusterInfo;
 using nebula::meta::DataSource;
 using nebula::meta::DataSourceUtils;
 using nebula::meta::Macro;
+using nebula::meta::MapKV;
 using nebula::meta::NNode;
 using nebula::meta::NNodeSet;
 using nebula::meta::PatternMacro;
+using nebula::meta::SpecSplit;
+using nebula::meta::SpecSplitPtr;
+using nebula::meta::SpecState;
 using nebula::meta::TableSpecPtr;
 using nebula::meta::TimeSpec;
 using nebula::meta::TimeType;
@@ -90,16 +94,14 @@ std::string buildIdentityByTime(const TimeSpec& time) {
   }
 }
 
-// void genSpecForBatch()
-
 // this method is to generate one spec per file
 void genSpecPerFile(const TableSpecPtr& table,
                     const std::string& version,
                     const std::vector<FileInfo>& files,
                     std::vector<std::shared_ptr<IngestSpec>>& specs,
                     size_t watermark,
-                    const nebula::common::unordered_map<std::string, std::string>& macroCombination) noexcept {
-  std::vector<std::string> pathBatch;
+                    const MapKV& macros) noexcept {
+  std::vector<SpecSplitPtr> splits;
   size_t batchSize = 0;
   std::string domain;
   for (auto itr = files.cbegin(), end = files.cend(); itr != end; ++itr) {
@@ -114,20 +116,21 @@ void genSpecPerFile(const TableSpecPtr& table,
     if (domain.empty()) {
       domain = itr->domain;
     }
-    pathBatch.push_back(itr->name);
+    splits.push_back(std::make_shared<SpecSplit>(itr->name, itr->size, watermark, macros));
+
+    // generate new spec if current spec exceeds optimal block size (estimation)
     batchSize += itr->size;
     if (batchSize >= table->optimalBlockSize) {
       // push batch and start a new one
-      specs.push_back(std::make_shared<IngestSpec>(
-        table, version, pathBatch, domain, batchSize, SpecState::NEW, watermark, macroCombination));
-      pathBatch.clear();
+      specs.push_back(std::make_shared<IngestSpec>(table, version, domain, splits, SpecState::NEW));
+      splits.clear();
       batchSize = 0;
     }
   }
+
   // push the final batch in case it didn't fit evenly
-  if (!pathBatch.empty()) {
-    specs.push_back(std::make_shared<IngestSpec>(
-      table, version, pathBatch, domain, batchSize, SpecState::NEW, watermark, macroCombination));
+  if (!splits.empty()) {
+    specs.push_back(std::make_shared<IngestSpec>(table, version, domain, splits, SpecState::NEW));
   }
 }
 
@@ -177,7 +180,7 @@ void SpecRepo::genPatternSpec(const nebula::meta::PatternMacro macro,
   auto enumeratedPathsWithCombinations = Macro::enumeratePathsWithCustomMacros(pathTemplate, table->macroValues);
 
   for (const auto& pathWithoutTimeWithMacroCombination : enumeratedPathsWithCombinations) {
-  // from now going back step by step until exceeding maxSeconds
+    // from now going back step by step until exceeding maxSeconds
     size_t count = 0;
     while (count < maxSeconds) {
       const auto watermark = now - count;
@@ -227,9 +230,8 @@ void genRocksetSpec(const std::string& version,
 
   // lambda to add a new spec
   auto add = [&specs, &table, &version](auto watermark) {
-    // const auto id = fmt::format("{0}-{1}", watermark, interval);
-    specs.push_back(std::make_shared<IngestSpec>(
-      table, version, std::vector<std::string>({table->location}), "rockset", watermark, SpecState::NEW, watermark));
+    std::vector<SpecSplitPtr> splits = { std::make_shared<SpecSplit>(table->location, 0, watermark) };
+    specs.push_back(std::make_shared<IngestSpec>(table, version, "rockset", splits, SpecState::NEW));
   };
 
   // going back from hour start
@@ -268,8 +270,8 @@ void genKafkaSpec(const std::string& version,
   auto convert = [&specs, &table, &version](const std::list<KafkaSegment>& segments) {
     // turn these segments into ingestion spec
     for (auto itr = segments.cbegin(), end = segments.cend(); itr != end; ++itr) {
-      specs.push_back(std::make_shared<IngestSpec>(
-        table, version, std::vector<std::string>({itr->id()}), "kafka", itr->size, SpecState::NEW, 0));
+      std::vector<SpecSplitPtr> splits = { std::make_shared<SpecSplit>(itr->id(), itr->size, 0) };
+      specs.push_back(std::make_shared<IngestSpec>(table, version, "kafka", splits, SpecState::NEW));
     }
   };
 
@@ -297,8 +299,8 @@ void SpecRepo::process(
   // specialized loader handling - nebula test set identified by static time provided
   if (table->loader == "NebulaTest") {
     // single spec for nebula test loader
-    specs.push_back(std::make_shared<IngestSpec>(
-      table, version, std::vector<std::string>({buildIdentityByTime(table->timeSpec)}), table->name, 0, SpecState::NEW, 0));
+    std::vector<SpecSplitPtr> splits = { std::make_shared<SpecSplit>(buildIdentityByTime(table->timeSpec), 0, 0) };
+    specs.push_back(std::make_shared<IngestSpec>(table, version, table->name, splits, SpecState::NEW));
     return;
   }
 
@@ -360,12 +362,12 @@ void SpecRepo::update(const std::vector<std::shared_ptr<IngestSpec>>& specs) noe
       // by default, we carry over existing spec's properties
       const auto& node = prev->affinity();
       specPtr->setAffinity(node);
-      specPtr->setState(prev->state());
+      specPtr->state(prev->state());
 
       // TODO(cao) - use only size for the checker for now, may extend to other properties
       // this is an update case, otherwise, spec doesn't change, ignore it.
       if (specPtr->size() != prev->size()) {
-        specPtr->setState(SpecState::RENEW);
+        specPtr->state(SpecState::RENEW);
         ++renew;
       }
 
