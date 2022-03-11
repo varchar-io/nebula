@@ -22,7 +22,7 @@ include(ExternalProject)
 ExternalProject_Add(aws
   PREFIX aws
   GIT_REPOSITORY https://github.com/aws/aws-sdk-cpp.git
-  GIT_TAG 1.9.30
+  GIT_TAG 1.9.212
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   CMAKE_ARGS ${AWS_CMAKE_BUILD_OPTIONS}

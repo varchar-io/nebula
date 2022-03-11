@@ -76,8 +76,8 @@ SET(FB_OPTS
   -DFLATBUFFERS_BUILD_TESTS:BOOL=OFF)
 ExternalProject_Add(flatbuffers
   PREFIX flatbuffers
-  GIT_REPOSITORY https://github.com/varchar-io/flatbuffers.git
-  GIT_TAG patch-nebula
+  GIT_REPOSITORY https://github.com/google/flatbuffers.git
+  GIT_TAG v2.0.0
   CMAKE_ARGS ${FB_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
@@ -102,6 +102,32 @@ add_dependencies(${FLATBUFFERS_LIBRARY} flatbuffers)
 # set flatbuffers compiler
 SET(FLATBUFFERS_COMPILER ${BINARY_DIR}/flatc)
 
+
+# install re2 linked by grpc
+ExternalProject_Add(re2
+  PREFIX re2
+  GIT_REPOSITORY https://github.com/google/re2.git
+  GIT_TAG 2021-09-01
+  UPDATE_COMMAND ""
+  INSTALL_COMMAND ""
+  LOG_DOWNLOAD ON
+  LOG_CONFIGURE ON
+  LOG_BUILD ON)
+
+ExternalProject_Get_Property(re2 SOURCE_DIR)
+ExternalProject_Get_Property(re2 BINARY_DIR)
+
+set(RE2_INCLUDE_DIRS ${SOURCE_DIR}/re2)
+file(MAKE_DIRECTORY ${RE2_INCLUDE_DIRS})
+set(RE2_LIBRARY_PATH ${BINARY_DIR}/libre2.a)
+set(RE2_LIBRARY libre2)
+add_library(${RE2_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${RE2_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${RE2_LIBRARY_PATH}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES" "${RE2_INCLUDE_DIRS}")
+add_dependencies(${RE2_LIBRARY} re2)
+
 # -DgRPC_PROTOBUF_PROVIDER:STRING=package
 # -DgRPC_PROTOBUF_PACKAGE_TYPE:STRING=CONFIG
 # -DProtobuf_DIR:PATH=${CMAKE_CURRENT_BINARY_DIR}/protobuf
@@ -121,6 +147,8 @@ SET(GRPC_CMAKE_ARGS
   -DgRPC_INSTALL:BOOL=OFF
   -DgRPC_BUILD_TESTS:BOOL=OFF
   -DgRPC_SSL_PROVIDER:STRING=package
+  -DgRPC_ABSL_PROVIDER:STRING=package
+  -DgRPC_PROTOBUF_PROVIDER:STRING=package
   -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/grpc)
 
 # unfortunately ssllib in latest macos doesn't allow application to use
@@ -135,8 +163,8 @@ endif()
 # or submit PR to fix ByteBuffer used in Deserialize method
 ExternalProject_Add(grpc
   PREFIX grpc
-  GIT_REPOSITORY https://github.com/varchar-io/grpc.git
-  GIT_TAG patch-nebula
+  GIT_REPOSITORY https://github.com/grpc/grpc.git
+  GIT_TAG v1.33.2
   CMAKE_CACHE_ARGS ${GRPC_CMAKE_ARGS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
@@ -154,7 +182,7 @@ file(MAKE_DIRECTORY ${GRPC_INCLUDE_DIRS})
 # use their file name as the LIB target name
 foreach(_lib
   libaddress_sorting libgpr libgrpc libgrpc_cronet libgrpc_plugin_support libgrpc_unsecure libgrpcpp_channelz
-  libgrpc++ libgrpc++_cronet libgrpc++_reflection libgrpc++_unsecure libgrpc++_error_details)
+  libgrpc++ libgrpc++_cronet libgrpc++_reflection libgrpc++_unsecure libgrpc++_error_details libupb)
   add_library(${_lib} UNKNOWN IMPORTED)
   set_target_properties(${_lib} PROPERTIES
       "IMPORTED_LOCATION" "${BINARY_DIR}/${_lib}.a"
@@ -164,6 +192,7 @@ foreach(_lib
       ${CARES_LIBRARY}
       ${ZLIB_LIBRARY}
       ${PROTOBUF_LIBRARY}
+      ${RE2_LIBRARY}
       grpc)
 endforeach()
 
