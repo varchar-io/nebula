@@ -26,7 +26,8 @@ target_link_libraries(${NEBULA_STORAGE}
     PUBLIC ${GCS_LIBRARY}
     PUBLIC ${KAFKA_LIBRARY}
     PUBLIC ${JSON_LIBRARY}
-    PUBLIC ${THRIFT_LIBRARY})
+    PUBLIC ${THRIFT_LIBRARY}
+    PUBLIC ${YAML_LIBRARY})
 
 #build test binary
 add_executable(StorageTests

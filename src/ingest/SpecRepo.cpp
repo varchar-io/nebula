@@ -18,8 +18,12 @@
 #include <folly/Conv.h>
 
 #include "SpecRepo.h"
+
 #include "common/Evidence.h"
+#include "execution/BlockManager.h"
 #include "execution/meta/SpecProvider.h"
+#include "execution/meta/TableService.h"
+#include "ingest/BlockExpire.h"
 #include "storage/NFS.h"
 #include "storage/kafka/KafkaTopic.h"
 
@@ -32,13 +36,22 @@ namespace ingest {
 
 using dsu = nebula::meta::DataSourceUtils;
 using nebula::common::Evidence;
+using nebula::common::Identifiable;
+using nebula::common::MapKV;
+using nebula::common::Task;
+using nebula::common::TaskState;
+using nebula::common::TaskType;
 using nebula::common::unordered_map;
+using nebula::execution::BlockManager;
+using nebula::execution::TableSpecSet;
+using nebula::execution::core::NodeClient;
+using nebula::execution::core::NodeConnector;
 using nebula::execution::meta::SpecProvider;
+using nebula::execution::meta::TableService;
 using nebula::meta::ClusterInfo;
 using nebula::meta::DataSource;
 using nebula::meta::DataSourceUtils;
 using nebula::meta::Macro;
-using nebula::meta::MapKV;
 using nebula::meta::NNode;
 using nebula::meta::NNodeSet;
 using nebula::meta::PatternMacro;
@@ -54,107 +67,99 @@ using nebula::storage::kafka::KafkaSegment;
 using nebula::storage::kafka::KafkaTopic;
 
 // generate a list of ingestion spec based on cluster info
-void SpecRepo::refresh(const ClusterInfo& ci) noexcept {
+size_t SpecRepo::refresh() noexcept {
+  // cluster info and table service
+  const auto& ci = ClusterInfo::singleton();
+  const auto& ts = TableService::singleton();
+
   // we only support adding new spec to the repo
   // if a spec is already in repo, we skip it
   // for some use case such as data refresh, it will have the same signature
   // if data is newer (e.g file size + timestamp), we should mark it as replacement.
-  std::vector<SpecPtr> specs;
   const auto& tableSpecs = ci.tables();
 
+  size_t numSpecs = 0;
   // generate a version all spec to be made during this batch: {config version}_{current unix timestamp}
   SpecProvider provider;
   const auto version = fmt::format("{0}.{1}", ci.version(), Evidence::unix_timestamp());
   for (auto itr = tableSpecs.cbegin(); itr != tableSpecs.cend(); ++itr) {
-    std::vector<SpecPtr> snapshot = provider.generate(version, *itr);
-    specs.insert(specs.end(), std::begin(snapshot), std::end(snapshot));
+    const auto& table = *itr;
+    auto registry = ts->get(table);
+    std::vector<SpecPtr> snapshot = provider.generate(version, table);
+    numSpecs += snapshot.size();
+
+    registry->update(snapshot);
   }
 
-  // process all specs to mark their status
-  update(specs);
+  return numSpecs;
 }
 
-void SpecRepo::update(const std::vector<SpecPtr>& specs) noexcept {
-  // next version of all specs
-  unordered_map<std::string, SpecPtr> next;
-  next.reserve(specs.size());
+// remove (or take it offline) all expired blocks from active nodes
+std::vector<NNode> SpecRepo::expire(
+  std::function<std::unique_ptr<NodeClient>(const NNode&)> clientMaker) noexcept {
+  // cluster manager and a local block manager
+  const auto& ci = ClusterInfo::singleton();
+  const auto& bm = BlockManager::init();
+  const auto& ts = TableService::singleton();
 
-  // go through the new spec list and update the existing ones
-  // need lock here?
-  auto brandnew = 0;
-  auto renew = 0;
-  auto removed = specs_.size() - specs.size();
-  for (auto itr = specs.cbegin(), end = specs.cend(); itr != end; ++itr) {
-    // check if we have this spec already?
-    auto specPtr = (*itr);
-    const auto& sign = specPtr->id();
-    auto found = specs_.find(sign);
-    if (found == specs_.end()) {
-      ++brandnew;
-    } else {
-      auto prev = found->second;
+  const auto& clusterNodes = ci.nodes();
+  std::vector<NNode> nodes;
+  nodes.reserve(clusterNodes.size());
+  for (const auto& node : clusterNodes) {
+    if (node.isActive()) {
+      // fetch node state in server
+      auto client = clientMaker(node);
+      client->update();
 
-      // by default, we carry over existing spec's properties
-      const auto& node = prev->affinity();
-      specPtr->affinity(node);
-      specPtr->state(prev->state());
+      // extracting all expired spec from existing blocks on this node
+      // make a copy since it's possible to be removed.
+      const auto& states = bm->states(node);
 
-      // TODO(cao) - use only size for the checker for now, may extend to other properties
-      // this is an update case, otherwise, spec doesn't change, ignore it.
-      if (specPtr->size() != prev->size()) {
-        specPtr->state(SpecState::RENEW);
-        ++renew;
+      // recording expired block ID for given node
+      TableSpecSet expired;
+      size_t memorySize = 0;
+      for (auto itr = states.begin(); itr != states.end(); ++itr) {
+        const auto& state = itr->second;
+        auto pairs = state->expired([&ts](const std::string& table, const std::string& spec) -> bool {
+          // find the spec from table registery who tracks all online specs
+          const auto& registry = ts->query(table);
+
+          // check if the table registry has this spec online
+          if (!registry.empty() && registry.online(spec)) {
+            return false;
+          }
+
+          // remove it otherise
+          return true;
+        });
+
+        if (!pairs.empty()) {
+          // should be the same as std::unordered_set.merge
+          expired.insert(pairs.begin(), pairs.end());
+        }
+
+        // TODO(cao): use memory size rather than data raw size
+        // accumulate memory usage for this node
+        memorySize += state->rawBytes();
       }
 
-      // if the node is not active, we may remove the affinity to allow new assignment
-      if (!node.isActive()) {
-        specPtr->affinity(NNode::invalid());
+      // sync expire task to node
+      const auto expireSize = expired.size();
+      if (expireSize > 0) {
+        Task t(TaskType::EXPIRATION, std::shared_ptr<Identifiable>(new BlockExpire(std::move(expired))));
+        TaskState state = client->task(t);
+        LOG(INFO) << fmt::format("Expire {0} specs in node {1}: {2}", expireSize, node.server, (char)state);
       }
+
+      // push a node with a size
+      NNode n{ node };
+      n.size = memorySize;
+      nodes.push_back(std::move(n));
     }
-
-    // move to the next version
-    next.emplace(sign, specPtr);
   }
 
-  // print out update stats
-  if (brandnew > 0 || renew > 0 || removed > 0) {
-    LOG(INFO) << "Updating " << specs.size()
-              << " specs: brandnew=" << brandnew
-              << ", renew=" << renew
-              << ", removed=" << removed
-              << ", count=" << next.size();
-
-    // let's swap with existing one
-    if (specs.size() != next.size()) {
-      LOG(WARNING) << "No duplicate specs allowed.";
-    }
-
-    std::swap(specs_, next);
-  }
-}
-
-bool SpecRepo::confirm(const std::string& spec, const nebula::meta::NNode& node) noexcept {
-  auto f = specs_.find(spec);
-  // not found
-  if (f == specs_.end()) {
-    return false;
-  }
-
-  // reuse the same node for the same spec
-  auto& sp = f->second;
-  if (!sp->assigned()) {
-    sp->affinity(node);
-    return true;
-  }
-
-  // not in the same node
-  auto& assignment = sp->affinity();
-  if (!assignment.equals(node)) {
-    LOG(INFO) << "Spec [" << spec << "] moves from " << node.server << " to " << assignment.server;
-    return false;
-  }
-
-  return true;
+  // return all active nodes that we have communicated
+  return nodes;
 }
 
 void SpecRepo::assign(const std::vector<NNode>& nodes) noexcept {
@@ -170,29 +175,33 @@ void SpecRepo::assign(const std::vector<NNode>& nodes) noexcept {
     return;
   }
 
+  const auto& ts = TableService::singleton();
   size_t idx = 0;
 
   // for each spec
   // TODO(cao): should we do hash-based shuffling here to ensure a stable assignment?
   // Round-robin is easy to break the position affinity whenever new spec is coming
   // Or we can keep order of the specs so that any old spec is associated.
-  for (auto& spec : specs_) {
-    // not assigned yet
-    auto sp = spec.second;
-    if (!sp->assigned()) {
-      auto startId = idx;
-      while (true) {
-        auto& n = nodes.at(idx);
-        if (n.isActive()) {
-          sp->affinity(n);
-          idx = (idx + 1) % size;
-          break;
-        }
+  auto tables = ts->all();
+  for (auto& registry : tables) {
+    auto specs = registry->all();
+    for (auto& spec : specs) {
+      // if the spec is not assigned to a node yet
+      if (!spec->assigned()) {
+        auto startId = idx;
+        while (true) {
+          auto& n = nodes.at(idx);
+          if (n.isActive()) {
+            spec->affinity(n);
+            idx = (idx + 1) % size;
+            break;
+          }
 
-        idx = (idx + 1) % size;
-        if (idx == startId) {
-          LOG(ERROR) << "No active node found to assign spec.";
-          return;
+          idx = (idx + 1) % size;
+          if (idx == startId) {
+            LOG(ERROR) << "No active node found to assign a spec.";
+            return;
+          }
         }
       }
     }

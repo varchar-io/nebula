@@ -28,7 +28,7 @@ namespace nebula {
 namespace meta {
 
 // generate a table spec for unit tests
-static inline TableSpecPtr genTableSpec() {
+static inline TableSpecPtr genTableSpec(const std::string& name = "test") {
   CsvProps csvProps;
   JsonProps jsonProps;
   ThriftProps thriftProps;
@@ -43,7 +43,7 @@ static inline TableSpecPtr genTableSpec() {
   std::vector<std::string> headers;
 
   return std::make_shared<TableSpec>(
-    "test", 1000, 10, "s3", DataSource::S3,
+    name, 1000, 10, "ROW<id:int>", DataSource::S3,
     "swap", "s3://test", "s3://bak",
     DataFormat::CSV, std::move(csvProps), std::move(jsonProps), std::move(thriftProps),
     std::move(kafkaSerde), std::move(rocksetSerde),

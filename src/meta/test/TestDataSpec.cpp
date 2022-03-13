@@ -25,9 +25,9 @@ namespace nebula {
 namespace meta {
 namespace test {
 
+using nebula::common::MapKV;
 using nebula::meta::DataFormat;
 using nebula::meta::DataSpec;
-using nebula::meta::MapKV;
 using nebula::meta::SpecSplit;
 using nebula::meta::SpecSplitPtr;
 using nebula::meta::SpecState;

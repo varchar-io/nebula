@@ -18,8 +18,8 @@
 
 #include <vector>
 
-#include "ingest/IngestSpec.h"
 #include "common/Params.h"
+#include "ingest/IngestSpec.h"
 #include "nebula.pb.h"
 
 /**
@@ -29,9 +29,6 @@ namespace nebula {
 namespace service {
 namespace server {
 
-// any load request will leads to a load result
-using LoadResult = std::vector<std::shared_ptr<nebula::ingest::IngestSpec>>;
-
 // load list of ingest specs per request
 class LoadHandler {
 public:
@@ -40,13 +37,13 @@ public:
 
 public:
   // load pre-configured template found in cluster config
-  LoadResult loadConfigured(const LoadRequest*, LoadError&, std::string&);
+  nebula::meta::TableSpecPtr loadConfigured(const LoadRequest*, LoadError&);
 
   // load a google sheet spec
-  LoadResult loadGoogleSheet(const LoadRequest*, LoadError&, std::string&);
+  nebula::meta::TableSpecPtr loadGoogleSheet(const LoadRequest*, LoadError&);
 
   // load a google sheet spec
-  LoadResult loadDemand(const LoadRequest*, LoadError&, std::string&);
+  nebula::meta::TableSpecPtr loadDemand(const LoadRequest*, LoadError&);
 };
 
 } // namespace server

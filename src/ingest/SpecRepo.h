@@ -19,6 +19,7 @@
 #include "IngestSpec.h"
 
 #include "common/Hash.h"
+#include "execution/core/NodeConnector.h"
 #include "meta/ClusterInfo.h"
 #include "meta/Macro.h"
 #include "meta/TableSpec.h"
@@ -46,26 +47,14 @@ public:
   virtual ~SpecRepo() = default;
 
   // refresh spec repo based on cluster configs
-  void refresh(const nebula::meta::ClusterInfo&) noexcept;
+  size_t refresh() noexcept;
+
+  // remove all expired blocks from active nodes
+  std::vector<nebula::meta::NNode> expire(
+    std::function<std::unique_ptr<nebula::execution::core::NodeClient>(const nebula::meta::NNode&)>) noexcept;
 
   // this method can be sub-routine of refresh
   void assign(const std::vector<nebula::meta::NNode>&) noexcept;
-
-  // expose all current specs in repo
-  inline const auto& specs() const {
-    return specs_;
-  }
-
-  // try to assign a node to a spec
-  // assign the spec for given node
-  bool confirm(const std::string& spec, const nebula::meta::NNode& node) noexcept;
-
-private:
-  // update the snapshot of new spec list into spec repo
-  void update(const std::vector<nebula::meta::SpecPtr>&) noexcept;
-
-private:
-  nebula::common::unordered_map<std::string, nebula::meta::SpecPtr> specs_;
 };
 
 } // namespace ingest

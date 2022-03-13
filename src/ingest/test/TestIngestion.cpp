@@ -106,7 +106,7 @@ TEST(IngestTest, TestTimePatternSpecGeneration) {
     return std::make_unique<nebula::meta::VoidDb>();
   });
 
-  sr.refresh(ci);
+  sr.refresh();
 
   // test macro parser
   const auto& tables = ci.tables();

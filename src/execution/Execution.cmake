@@ -40,6 +40,7 @@ target_link_libraries(${NEBULA_EXEC}
 add_executable(ExecTests
     ${NEBULA_SRC}/execution/test/TestExec.cpp
     ${NEBULA_SRC}/execution/test/TestOptimizedBlockExec.cpp
+    ${NEBULA_SRC}/execution/test/TestTableService.cpp
     ${NEBULA_SRC}/execution/test/TestValueEvalTree.cpp)
 
 target_link_libraries(ExecTests 

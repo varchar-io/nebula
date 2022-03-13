@@ -17,6 +17,7 @@
 #include "SpecProvider.h"
 
 #include "common/Evidence.h"
+#include "meta/BucketHelper.h"
 #include "storage/NFS.h"
 #include "storage/kafka/KafkaTopic.h"
 
@@ -37,10 +38,11 @@ namespace meta {
 
 using dsu = nebula::meta::DataSourceUtils;
 using nebula::common::Evidence;
+using nebula::common::MapKV;
+using nebula::meta::BucketHelper;
 using nebula::meta::DataSource;
 using nebula::meta::DataSpec;
 using nebula::meta::Macro;
-using nebula::meta::MapKV;
 using nebula::meta::PatternMacro;
 using nebula::meta::SpecPtr;
 using nebula::meta::SpecSplit;
@@ -81,6 +83,10 @@ void genSpecs4Files(const TableSpecPtr& table,
     if (domain.empty()) {
       domain = itr->domain;
     }
+
+    // support bucket if existing (using legacy spark convention)
+    // if enabled, populate the bucket value based on settings
+    BucketHelper::populate(table, macros);
     splits.push_back(std::make_shared<SpecSplit>(itr->name, itr->size, watermark, macros));
 
     // generate new spec if current spec exceeds optimal block size (estimation)
@@ -114,8 +120,8 @@ void genSpecs4Swap(const std::string& version,
     auto fs = nebula::storage::makeFS(dsu::getProtocol(table->source), sourceInfo.host, table->settings);
 
     // list all objects/files from given paths
-    const auto& enumeratedPathsWithCombinations = Macro::enumeratePathsWithCustomMacros(sourceInfo.path, table->macroValues);
-    for (const auto& pathWithCombination : enumeratedPathsWithCombinations) {
+    const auto& pathsWithMacros = Macro::enumeratePathsWithMacros(sourceInfo.path, table->macroValues);
+    for (const auto& pathWithCombination : pathsWithMacros) {
       auto files = fs->list(pathWithCombination.first);
       genSpecs4Files(table, version, files, specs, 0, pathWithCombination.second);
     }
@@ -141,9 +147,9 @@ void genPatternSpec(const PatternMacro macro,
   const auto step = Macro::seconds(macro);
 
   // fill in custom macros
-  auto enumeratedPathsWithCombinations = Macro::enumeratePathsWithCustomMacros(pathTemplate, table->macroValues);
+  auto pathsWithMacros = Macro::enumeratePathsWithMacros(pathTemplate, table->macroValues);
 
-  for (const auto& pathMacros : enumeratedPathsWithCombinations) {
+  for (const auto& pathMacros : pathsWithMacros) {
     // from now going back step by step until exceeding maxSeconds
     size_t count = 0;
     while (count < maxSeconds) {

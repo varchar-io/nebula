@@ -16,21 +16,21 @@
 
 #pragma once
 
-#include <unordered_map>
 #include "Type.h"
+#include "common/Params.h"
 
 namespace nebula {
 namespace type {
 
 // key-value settings in both string types
-using Settings = std::unordered_map<std::string, std::string>;
+using Settings = nebula::common::MapKV;
 
 /*
- * 
+ *
  * A type tree serializer
  * Here we use default string serialization format which is compliant with hive
  * This can be override with other format such as JSON/protobuf/thrift
- * 
+ *
  */
 class TypeSerializer {
 public:

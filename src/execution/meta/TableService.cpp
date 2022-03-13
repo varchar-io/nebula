@@ -15,6 +15,8 @@
  */
 
 #include "TableService.h"
+
+#include "execution/BlockManager.h"
 #include "type/Serde.h"
 
 /**
@@ -47,14 +49,6 @@ std::vector<NNode> TableService::queryNodes(
   });
 
   return nodes;
-}
-
-// enroll each table with registration
-void TableService::enroll(const ClusterInfo& ci) {
-  const auto& tsp = ci.tables();
-  std::for_each(tsp.cbegin(), tsp.cend(), [this](auto itr) {
-    enroll(itr->to());
-  });
 }
 
 } // namespace meta

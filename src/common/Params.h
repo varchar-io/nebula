@@ -15,11 +15,13 @@
  */
 #pragma once
 
+#include <map>
 #include <rapidjson/document.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
-#include "common/Hash.h"
+#include "Hash.h"
 
 /**
  * Defines an input parameter as key-value list, everything encoded in string.
@@ -27,6 +29,18 @@
  */
 namespace nebula {
 namespace common {
+
+// shortcut: nebula common map of key-value in string types
+using MapKV = std::unordered_map<std::string, std::string>;
+// more efficient representation
+using InternalMapKV = unordered_map<std::string_view, std::string_view>;
+inline InternalMapKV mapKV2(const MapKV& map) {
+  InternalMapKV imkv;
+  for (const auto& kv : map) {
+    imkv.emplace(kv.first, kv.second);
+  }
+  return imkv;
+}
 
 struct Param {
   explicit Param(std::string_view n, std::vector<std::string_view> v)
@@ -45,8 +59,24 @@ struct Param {
   }
 };
 
+// a param list is a list of macros where each of them may have multiple values
+// this list provides an interface to provide all combinations to iterate on
 class ParamList {
 public:
+  // construct a param list from key-values directly
+  ParamList(const std::map<std::string, std::vector<std::string>>& macros) {
+    for (auto& kv : macros) {
+      std::vector<std::string_view> values;
+      values.reserve(kv.second.size());
+      for (auto& v : kv.second) {
+        values.emplace_back(v);
+      }
+      params_.emplace_back(kv.first, values);
+    }
+  }
+
+  // construct a param list from a json doc, for example:
+  // {a: [1, 2, 3], b: ["x", "y"]}
   ParamList(const rapidjson::Document& doc) {
     auto obj = doc.GetObject();
     params_.reserve(obj.MemberCount());
@@ -68,10 +98,10 @@ public:
     }
   }
 
-  unordered_map<std::string_view, std::string_view> next() {
-    unordered_map<std::string_view, std::string_view> map;
+  std::unordered_map<std::string, std::string> next() {
+    std::unordered_map<std::string, std::string> map;
     // we only need to check if first item is out of range
-    if (params_.at(0).atEnd()) {
+    if (params_.empty() || params_.at(0).atEnd()) {
       return map;
     }
 

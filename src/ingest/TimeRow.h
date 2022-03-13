@@ -27,7 +27,7 @@ namespace ingest {
 // row wrapper to translate "date" string into reserved "_time_" column
 class TimeRow : public nebula::surface::RowData {
 public:
-  TimeRow(const nebula::meta::TimeSpec& ts, size_t watermark, nebula::meta::MapKV macros)
+  TimeRow(const nebula::meta::TimeSpec& ts, size_t watermark, nebula::common::MapKV macros)
     : timeFunc_{ makeTimeFunc(ts, watermark) }, macros_(macros) {}
   ~TimeRow() = default;
 
@@ -170,7 +170,7 @@ private:
 private:
   std::function<int64_t(const nebula::surface::RowData*)> timeFunc_;
   const nebula::surface::RowData* row_;
-  const nebula::meta::MapKV macros_;
+  const nebula::common::MapKV macros_;
 };
 
 } // namespace ingest

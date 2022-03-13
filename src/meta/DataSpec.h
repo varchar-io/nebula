@@ -22,6 +22,7 @@
 #include <sstream>
 
 #include "common/Identifiable.h"
+#include "common/Params.h"
 #include "meta/NNode.h"
 #include "meta/TableSpec.h"
 #include "meta/Types.h"
@@ -37,7 +38,7 @@ namespace meta {
 struct SpecSplit : public nebula::common::Identifiable {
   // default constructor for serde
   SpecSplit() {}
-  SpecSplit(std::string p, size_t o, size_t s, size_t w, MapKV m)
+  SpecSplit(std::string p, size_t o, size_t s, size_t w, nebula::common::MapKV m)
     : path{ std::move(p) },
       offset{ o },
       size{ s },
@@ -46,11 +47,11 @@ struct SpecSplit : public nebula::common::Identifiable {
     construct();
   }
   // path, size, watermark and macros - 0 offset
-  SpecSplit(std::string p, size_t s, size_t w, MapKV m)
+  SpecSplit(std::string p, size_t s, size_t w, nebula::common::MapKV m)
     : SpecSplit(std::move(p), 0, s, w, std::move(m)) {}
   // path, size and watermark - 0 offset, empty macros
   SpecSplit(std::string p, size_t s, size_t w)
-    : SpecSplit(std::move(p), 0, s, w, MapKV{}) {}
+    : SpecSplit(std::move(p), 0, s, w, nebula::common::MapKV{}) {}
   virtual ~SpecSplit() = default;
 
   // split path
@@ -66,7 +67,7 @@ struct SpecSplit : public nebula::common::Identifiable {
   size_t watermark;
 
   // if the split is generated from template, it will have key-value macros
-  MapKV macros;
+  nebula::common::MapKV macros;
 
   // a local disk file that holds data copy of current split for temporary
   std::string local;
@@ -157,7 +158,7 @@ public:
 
   // a spec needs to sync to a node when it's NEW or RENEW
   inline bool needSync() const {
-    return (state_ == SpecState::NEW || state_ == SpecState::RENEW);
+    return state_ == SpecState::NEW;
   }
 
   inline void affinity(const nebula::meta::NNode& node) {

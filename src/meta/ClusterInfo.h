@@ -90,6 +90,13 @@ public:
   // should move to metadata server in future
   std::string addTable(const std::string&, const std::string&);
 
+  // add a table spec definition directly
+  inline bool addTable(const nebula::meta::TableSpecPtr tableSpec) noexcept {
+    const auto size = this->tables_.size();
+    this->tables_.emplace(tableSpec);
+    return this->tables_.size() > size;
+  }
+
   // remove the table entry
   inline size_t removeTable(const std::string& table) noexcept {
     stateChanged_ = true;
@@ -100,7 +107,7 @@ public:
     return nodeManager_->nodes();
   }
 
-  inline const TableSpecSet& tables() const {
+  inline const nebula::meta::TableSpecSet& tables() const {
     return tables_;
   }
 
@@ -135,7 +142,7 @@ public:
 
 private:
   std::unique_ptr<NodeManager> nodeManager_;
-  TableSpecSet tables_;
+  nebula::meta::TableSpecSet tables_;
   std::string version_;
   ServerOptions server_;
   std::unique_ptr<MetaDb> db_;

@@ -86,7 +86,7 @@ public:
     // Do nothing as config mode doesn't accept node registration
     LOG(WARNING) << "Config mode does not update node list.";
   }
-
+  
 private:
   NNodeSet nodes_;
 };

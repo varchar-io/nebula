@@ -46,18 +46,12 @@ enum class SpecState : char {
   // data of the spec loaded in nebula
   READY = 'A',
 
-  // Spec is updated, data needs renew
-  RENEW = 'R',
-
   // Spec is waiting for offload
   EXPIRED = 'E',
 
   // spec is offline - we should have an external location for it
   OFFLINE = 'O',
 };
-
-// shortcut: nebula common map of key-value in string types
-using MapKV = std::unordered_map<std::string, std::string>;
 
 // define data sources supported in Nebula:
 // NEBULA is a reserved type only used internally.

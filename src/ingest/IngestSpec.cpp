@@ -49,6 +49,7 @@ namespace ingest {
 
 using dsu = nebula::meta::DataSourceUtils;
 using nebula::common::Evidence;
+using nebula::common::MapKV;
 using nebula::common::unordered_map;
 using nebula::execution::BlockManager;
 using nebula::execution::io::BatchBlock;
@@ -61,7 +62,6 @@ using nebula::meta::BlockSignature;
 using nebula::meta::DataFormat;
 using nebula::meta::DataSource;
 using nebula::meta::Macro;
-using nebula::meta::MapKV;
 using nebula::meta::SpecSplitPtr;
 using nebula::meta::Table;
 using nebula::meta::TablePtr;
@@ -110,6 +110,10 @@ void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
 }
 
 bool IngestSpec::work() noexcept {
+  // register the table in the working node
+  // in case it is the first time
+  auto registry = TableService::singleton()->get(table_);
+
   // TODO(cao) - refator this to have better hirachy for different ingest types.
   const auto& loader = table_->loader;
   if (loader == FLAGS_NTEST_LOADER) {
@@ -359,9 +363,6 @@ bool IngestSpec::loadRockset(SpecSplitPtr split) noexcept {
   // get a table definition
   auto table = table_->to();
 
-  // enroll the table in case it is the first time
-  TableService::singleton()->enroll(table);
-
   // load all blocks
   BlockList blocks;
   const auto& serde = table_->rocksetSerde;
@@ -404,9 +405,6 @@ bool IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
 
   // get a table definition
   auto table = table_->to();
-
-  // enroll the table in case it is the first time
-  TableService::singleton()->enroll(table);
 
   // build a batch
   auto batch = std::make_shared<Batch>(*table, reader.size());
@@ -454,9 +452,6 @@ bool IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
 
 bool IngestSpec::ingest(BlockList& blocks) noexcept {
   auto table = table_->to();
-
-  // enroll the table in case it is the first time
-  TableService::singleton()->enroll(table);
 
   // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
   const auto& specId = id();

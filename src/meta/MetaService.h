@@ -19,17 +19,19 @@
 #include <glog/logging.h>
 
 #include "ClusterInfo.h"
+#include "DataSpec.h"
 #include "NNode.h"
 #include "Table.h"
+#include "TableSpec.h"
 #include "common/Chars.h"
 #include "common/Evidence.h"
 
 /**
- * Define nebula table and system metadata 
+ * Define nebula table and system metadata
  * which manages what data segments are loaded in memory for each table
  * This meta data can persist and sync with external DB system such as MYSQL or RocksDB
  * (A KV store is necessary for Nebula to manage all metadata)
- * 
+ *
  * (Also - Is this responsibility of zookeeper?)
  */
 namespace nebula {
@@ -40,32 +42,85 @@ using TablePtr = std::shared_ptr<nebula::meta::Table>;
 class TableRegistry {
 public:
   explicit TableRegistry(const TablePtr table, size_t stl = 0)
-    : table_{ table }, stl_{ stl } {
-    activate();
-  }
+    : table_{ table }, ttl_{ stl } {}
+  virtual ~TableRegistry() = default;
 
 public:
-  // check if current registry is expired
-  inline bool expired() const {
-    return stl_ > 0 && active_ + stl_ < nebula::common::Evidence::unix_timestamp();
-  }
-
-  inline void activate() {
-    active_ = nebula::common::Evidence::unix_timestamp();
+  inline bool empty() const {
+    return table_ == nullptr;
   }
 
   inline TablePtr table() const {
     return table_;
   }
 
+  // check if current registry is expired
+  inline bool expired() const {
+    return ttl_.expired();
+  }
+
+  inline void activate() {
+    ttl_.reset();
+  }
+
+  // check if a spec should be online or not
+  // a spec is online if it's included in current snapshot
+  // and it should be assigned to a node already
+  inline bool online(const std::string& specId) const noexcept {
+    auto spec = onlineSpecs_.find(specId);
+    if (spec == onlineSpecs_.end()) {
+      return false;
+    }
+
+    // should we require it to be in ready state?
+    return spec->second->assigned();
+  }
+
+  inline size_t numSpecs(bool online = true) const noexcept {
+    if (online) {
+      return onlineSpecs_.size();
+    }
+
+    // update the logic for offline case
+    return 0;
+  }
+
+  inline std::vector<SpecPtr> all(bool online = true) const {
+    if (online) {
+      std::vector<SpecPtr> specs;
+      for (auto itr = onlineSpecs_.begin(); itr != onlineSpecs_.end(); ++itr) {
+        // push the table ref
+        specs.push_back(itr->second);
+      }
+
+      return specs;
+    }
+
+    // update here for offline case
+    return {};
+  }
+
+  // update specs
+  void update(const std::vector<SpecPtr>&) noexcept;
+
 private:
   TablePtr table_;
-  // last active time stamp
-  size_t active_;
   // seconds to live: if active + stl exceeds current time
   // the table registry is expired and will be removed
-  size_t stl_;
+  TTL ttl_;
+
+  // maintain online specs (in memory)
+  nebula::common::unordered_map<std::string, SpecPtr> onlineSpecs_;
+
+  // TODO: maintain offline specs as well, support transition between online/offline
+public:
+  static const TableRegistry& null() {
+    static const TableRegistry EMPTY{ nullptr };
+    return EMPTY;
+  }
 };
+
+using TableRegistryPtr = std::shared_ptr<TableRegistry>;
 
 class MetaService {
   // DB-key: total query served
@@ -77,9 +132,8 @@ protected:
 public:
   virtual ~MetaService() = default;
 
-  virtual TableRegistry& query(const std::string& name) {
-    static auto EMPTY = TableRegistry{ std::make_shared<Table>(name) };
-    return EMPTY;
+  virtual const TableRegistry& query(const std::string&) {
+    return TableRegistry::null();
   }
 
   virtual std::vector<NNode> queryNodes(const std::shared_ptr<Table>, std::function<bool(const NNode&)>) {
@@ -87,51 +141,10 @@ public:
   }
 
 public:
-  size_t incrementQueryServed() noexcept {
-    auto& db = metadb();
-
-    std::string value;
-    if (queryCount_ == 0 && db.read(QUERY_COUNT, value)) {
-      queryCount_ = folly::to<size_t>(value);
-    }
-    value = std::to_string(++queryCount_);
-    db.write(QUERY_COUNT, value);
-
-    return queryCount_;
-  }
+  size_t incrementQueryServed() noexcept;
 
   // short a URL into a 6-letter code
-  std::string shortenUrl(const std::string& url) noexcept {
-    static constexpr auto MAX_ATTEMPT = 5;
-    auto& db = metadb();
-    // handle collision
-    auto str = url.data();
-    auto size = url.size();
-    auto i = 0;
-    while (i++ < MAX_ATTEMPT) {
-      // get digest
-      auto digest = nebula::common::Chars::digest(str, size);
-      // if the digest does not exist, we save it and return
-      std::string value;
-      if (db.read(digest, value)) {
-        // same URL already existing
-        if (value == url) {
-          return digest;
-        }
-
-        // not the same, we have collision, change input and try it again
-        size -= 6;
-        continue;
-      }
-
-      // key is not existing, write it out
-      db.write(digest, url);
-      return digest;
-    }
-
-    // nothing is working
-    return {};
-  }
+  std::string shortenUrl(const std::string& url) noexcept;
 
   // fetch a URL by a 6-letter code
   // empty result if not found
@@ -148,7 +161,9 @@ protected:
   }
 
 private:
+  // counter for number of queries served
   size_t queryCount_;
 };
+
 } // namespace meta
 } // namespace nebula

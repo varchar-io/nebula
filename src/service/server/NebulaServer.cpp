@@ -226,20 +226,19 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   auto context = buildQueryContext(ctx);
   LOG(INFO) << "Load data source for user: " << context->user();
 
-  LoadResult specs{ 0 };
   LoadError err = LoadError::SUCCESS;
-  std::string tableName;
+  TableSpecPtr tbSpec;
 
   // load request as specs belonging to a unique table name
   switch (req->type()) {
   case LoadType::CONFIG:
-    specs = loadHandler_.loadConfigured(req, err, tableName);
+    tbSpec = loadHandler_.loadConfigured(req, err);
     break;
   case LoadType::GOOGLE_SHEET:
-    specs = loadHandler_.loadGoogleSheet(req, err, tableName);
+    tbSpec = loadHandler_.loadGoogleSheet(req, err);
     break;
   case LoadType::DEMAND:
-    specs = loadHandler_.loadDemand(req, err, tableName);
+    tbSpec = loadHandler_.loadDemand(req, err);
     break;
   default:
     err = LoadError::NOT_SUPPORTED;
@@ -252,76 +251,20 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
     return Status::CANCELLED;
   }
 
-  // assign nebula node to each spec
-  auto& nodes = ClusterInfo::singleton().nodes();
-  auto ri = Evidence::rand<size_t>(0, nodes.size() - 1);
-
-  // now we have a list of specs, let's assign nodes to these ingest specs and send to each node
-  auto& threadPool = pool();
-  auto connector = std::make_shared<node::RemoteNodeConnector>(nullptr);
-  std::vector<folly::Future<TaskState>> futures;
-  futures.reserve(specs.size());
-  for (auto spec : specs) {
-    // assign a nebula node randomly to it
-    spec->affinity(nodes.at(ri()));
-    auto promise = std::make_shared<folly::Promise<TaskState>>();
-
-    // pass values since we reutrn the whole lambda - don't reference temporary things
-    // such as local stack allocated variables, including "this" the client itself.
-    threadPool.add([promise, connector, spec, &threadPool]() {
-      auto client = connector->makeClient(spec->affinity(), threadPool);
-      // build a task out of this spec
-      Task t(TaskType::INGESTION, std::static_pointer_cast<Identifiable>(spec), true);
-      TaskState state = client->task(t);
-      if (state == TaskState::SUCCEEDED) {
-        spec->state(SpecState::READY);
-        // update state immediately to reflesh the load state
-        client->update();
-      }
-
-      // set the task state
-      promise->setValue(state);
-    });
-
-    futures.push_back(promise->getFuture());
+  // requested table name or overwritten name
+  auto tableName = req->table();
+  if (tbSpec) {
+    tableName = tbSpec->name;
   }
 
-  auto x = folly::collectAll(futures).get();
-  auto unsuccess = TaskState::SUCCEEDED;
-  for (auto it = x.begin(); it < x.end(); ++it) {
-    // if the result is empty
-    if (!it->hasValue()) {
-      unsuccess = TaskState::UNKNOWN;
-      break;
-    }
+  // add this table spec to cluster info
+  ClusterInfo::singleton().addTable(tbSpec);
 
-    auto s = it->value();
-    if (s != TaskState::SUCCEEDED) {
-      unsuccess = s;
-      break;
-    }
-  }
-
-  if (unsuccess == TaskState::SUCCEEDED) {
-    reply->set_error(err);
-    reply->set_loadtimems(tick.elapsedMs());
-    reply->set_table(tableName);
-    return Status::OK;
-  }
-
-  // if it's in processing, we let client know that
-  if (unsuccess == TaskState::PROCESSING) {
-    reply->set_error(LoadError::IN_LOADING);
-    reply->set_loadtimems(tick.elapsedMs());
-    reply->set_table(tableName);
-    return Status::OK;
-  }
-
-  // unregister the table if the load failed
-  TableService::singleton()->unenroll(tableName);
-
-  reply->set_error(LoadError::TEMPLATE_NOT_FOUND);
-  return Status::CANCELLED;
+  // always indicating loading using async communication
+  reply->set_error(LoadError::IN_LOADING);
+  reply->set_loadtimems(tick.elapsedMs());
+  reply->set_table(tableName);
+  return Status::OK;
 }
 
 Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, QueryResponse* reply) {
@@ -565,9 +508,6 @@ void RunServer() {
 
         // load the new conf
         ci.load(conf, nebula::service::base::createMetaDB);
-
-        // TODO(cao) - how to support table schema/column props evolution?
-        nebula::execution::meta::TableService::singleton()->enroll(ci);
       }
 
       // if the file is copied tmp file, delete it

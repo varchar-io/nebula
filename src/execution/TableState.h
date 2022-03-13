@@ -113,6 +113,9 @@ protected:
   nebula::surface::eval::HistVector hists_;
 };
 
+// a shortcut for pair set of {table name, spec id}
+using TableSpecSet = nebula::common::unordered_set<std::pair<std::string, std::string>>;
+
 // Table State with solid data in it
 class TableState : public TableStateBase {
 public:
@@ -122,14 +125,12 @@ public:
     return data_.find(spec) != data_.end();
   }
 
-  nebula::common::unordered_set<std::pair<std::string, std::string>> expired(
-    std::function<bool(bool, const std::string&, const std::string&, const nebula::meta::NNode&)> eval) const {
-    nebula::common::unordered_set<std::pair<std::string, std::string>> specs;
+  TableSpecSet expired(std::function<bool(const std::string&, const std::string&)> shouldExpire) const {
+    TableSpecSet specs;
     const std::lock_guard<std::mutex> lock(mdata_);
     for (auto& b : data_) {
-      auto& sign = b.second->signature();
       // assign existing spec, expire it if not assigned
-      if (eval(sign.isEphemeral(), table_, b.first, b.second->residence())) {
+      if (shouldExpire(table_, b.first)) {
         specs.emplace(table_, b.first);
       }
     }
