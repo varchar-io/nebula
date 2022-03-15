@@ -20,7 +20,7 @@
 #include <gperftools/heap-profiler.h>
 #include <rapidjson/document.h>
 
-#include "TimeRow.h"
+#include "MacroRow.h"
 #include "common/Evidence.h"
 #include "execution/BlockManager.h"
 #include "execution/meta/TableService.h"
@@ -401,7 +401,7 @@ bool IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
   KafkaReader reader(table_, std::move(segment));
 
   // time function
-  TimeRow timeRow(table_->timeSpec, split->watermark, split->macros);
+  MacroRow macroRow(table_->timeSpec, split->watermark, split->macros);
 
   // get a table definition
   auto table = table_->to();
@@ -414,7 +414,7 @@ bool IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
 
   while (reader.hasNext()) {
     auto& r = reader.next();
-    const auto& row = timeRow.set(&r);
+    const auto& row = macroRow.set(&r);
 
     // TODO(cao) - Kafka may produce NULL row due to corruption or exception
     // ideally we can handle nulls in our system, however, let's skip null row for now.
@@ -527,12 +527,12 @@ bool IngestSpec::ingest(BlockList& blocks) noexcept {
       }
 
       // build time row to handle time column and macro columns reading
-      TimeRow timeRow(table_->timeSpec, split->watermark, split->macros);
+      MacroRow macroRow(table_->timeSpec, split->watermark, split->macros);
 
       // ingest current reader into the blocks
       while (source->hasNext()) {
         auto& r = source->next();
-        const auto& row = timeRow.set(&r);
+        const auto& row = macroRow.set(&r);
 
         // for non-partitioned, all batch's pid will be 0
         size_t pid = 0;

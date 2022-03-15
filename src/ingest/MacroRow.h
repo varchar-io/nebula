@@ -24,14 +24,16 @@
 namespace nebula {
 namespace ingest {
 
-// row wrapper to translate "date" string into reserved "_time_" column
-class TimeRow : public nebula::surface::RowData {
+// row wrapper to
+// 1. translate "date" value into reserved "_time_" column
+// 2. replace macros for special column
+class MacroRow : public nebula::surface::RowData {
 public:
-  TimeRow(const nebula::meta::TimeSpec& ts, size_t watermark, nebula::common::MapKV macros)
+  MacroRow(const nebula::meta::TimeSpec& ts, size_t watermark, nebula::common::MapKV macros)
     : timeFunc_{ makeTimeFunc(ts, watermark) }, macros_(macros) {}
-  ~TimeRow() = default;
+  ~MacroRow() = default;
 
-  const TimeRow& set(const nebula::surface::RowData* row) {
+  const MacroRow& set(const nebula::surface::RowData* row) {
     row_ = row;
     return *this;
   }
