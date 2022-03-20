@@ -95,8 +95,7 @@ size_t SpecRepo::refresh() noexcept {
 }
 
 // remove (or take it offline) all expired blocks from active nodes
-std::vector<NNode> SpecRepo::expire(
-  std::function<std::unique_ptr<NodeClient>(const NNode&)> clientMaker) noexcept {
+std::vector<NNode> SpecRepo::expire(const ClientMaker& clientMaker) noexcept {
   // cluster manager and a local block manager
   const auto& ci = ClusterInfo::singleton();
   const auto& bm = BlockManager::init();
@@ -162,17 +161,11 @@ std::vector<NNode> SpecRepo::expire(
   return nodes;
 }
 
-void SpecRepo::assign(const std::vector<NNode>& nodes) noexcept {
-  // we're looking for a stable assignmet, given the same set of nodes
-  // this order is most likely having stable order
-  // std::sort(nodes.begin(), nodes.end(), [](auto& n1, auto& n2) {
-  //   return n1.server.compare(n2.server);
-  // });
+size_t SpecRepo::assign(const std::vector<NNode>& nodes, const ClientMaker& clientMaker) noexcept {
   const auto size = nodes.size();
-
   if (size == 0) {
     LOG(WARNING) << "No nodes to assign nebula specs.";
-    return;
+    return 0;
   }
 
   const auto& ts = TableService::singleton();
@@ -182,6 +175,7 @@ void SpecRepo::assign(const std::vector<NNode>& nodes) noexcept {
   // TODO(cao): should we do hash-based shuffling here to ensure a stable assignment?
   // Round-robin is easy to break the position affinity whenever new spec is coming
   // Or we can keep order of the specs so that any old spec is associated.
+  auto numTasks = 0;
   auto tables = ts->all();
   for (auto& registry : tables) {
     auto specs = registry->all();
@@ -200,12 +194,35 @@ void SpecRepo::assign(const std::vector<NNode>& nodes) noexcept {
           idx = (idx + 1) % size;
           if (idx == startId) {
             LOG(ERROR) << "No active node found to assign a spec.";
-            return;
+            return numTasks;
           }
+        }
+      }
+
+      // check if the spec needs to be communicated to the node
+      if (spec->needSync()) {
+        ++numTasks;
+
+        // get the client
+        auto client = clientMaker(spec->affinity());
+        Task t(TaskType::INGESTION, std::static_pointer_cast<Identifiable>(spec));
+        TaskState state = client->task(t);
+
+        // udpate spec state so that it won't be resent
+        if (state == TaskState::SUCCEEDED) {
+          spec->state(SpecState::READY);
+        } else if (state == TaskState::FAILED || state == TaskState::QUEUE) {
+          // TODO(cao) - post process for case if this task failed?
+          LOG(WARNING) << "Task state: " << (char)state
+                       << " at node: " << spec->affinity().toString()
+                       << " | " << t.signature();
         }
       }
     }
   }
+
+  // number of tasks communicated
+  return numTasks;
 }
 
 } // namespace ingest

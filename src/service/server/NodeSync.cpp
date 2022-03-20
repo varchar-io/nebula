@@ -59,11 +59,26 @@ void NodeSync::sync(folly::ThreadPoolExecutor& pool, SpecRepo& specRepo) noexcep
 
   // refresh specs snapshot for every registered table
   const auto numSpecs = specRepo.refresh();
+  if (numSpecs == 0) {
+    LOG(WARNING) << "No-Sync: no specs generated in current cycle.";
+    return;
+  }
 
   // expire those blocks that pass retention
   auto nodes = specRepo.expire(clientMaker);
 
-  // assign unassigned specs
+  // do status check before spec assignment
+  const auto numActiveNodes = nodes.size();
+  if (numActiveNodes == 0) {
+    LOG(WARNING) << "No-Sync: no active nodes found in current cycle.";
+    // why we don't have active nodes - debug info
+    for (const auto& node : ClusterInfo::singleton().nodes()) {
+      LOG(INFO) << "Node State Check: node=" << node.toString() << ", state=" << (int)node.state;
+    }
+
+    return;
+  }
+
   // assign each spec to a node if it needs to be processed
   // TODO(cao) - build resource constaints here to reach a balance
   // for now, we just spin new specs into nodes with lower memory size
@@ -71,63 +86,13 @@ void NodeSync::sync(folly::ThreadPoolExecutor& pool, SpecRepo& specRepo) noexcep
     return n1.size < n2.size;
   });
 
-  // do status check before spec assignment
-  const auto numActiveNodes = nodes.size();
-  if (numSpecs == 0 || numActiveNodes == 0) {
-    LOG(WARNING) << "No-Sync: num-specs=" << numSpecs << ", num-active-nodes=" << numActiveNodes;
-    // what if we don't have active nodes?
-    if (numActiveNodes == 0) {
-      for (const auto& node : ClusterInfo::singleton().nodes()) {
-        LOG(INFO) << "Node State Check: node=" << node.toString() << ", state=" << (int)node.state;
-      }
-    }
+  // assign all specs to available nodes, and reutrn number of tasks communicated
+  auto numTasks = specRepo.assign(nodes, clientMaker);
+  if (numTasks > 0) {
+    LOG(INFO) << "Communicated tasks=" << numTasks
+              << " to nodes=" << numActiveNodes
+              << " using ms=" << duration.elapsedMs();
   }
-
-  // assign all specs to available nodes
-  specRepo.assign(nodes);
-
-  // iterate over all specs, if it needs to be process, process it
-  // auto taskNotified = 0;
-  // for (auto& spec : specRepo.specs()) {
-  //   auto& sp = spec.second;
-  //   if (sp->assigned()) {
-  //     // TODO(cao): handle node reset event. SpecRepo needs to reset spec state if a node reset
-  //     // if assigned to a node, but the node doesn't have the spec, we reset the spec state to
-  //     // if (!bm->hasSpec(sp->affinity(), sp->table()->name, sp->id())) {
-  //     //   sp->state(SpecState::RENEW);
-  //     // }
-
-  //     if (sp->needSync()) {
-  //       taskNotified++;
-
-  //       // connect the node to sync the task over
-  //       auto client = connector->makeClient(sp->affinity(), pool);
-
-  //       // build a task out of this spec
-  //       Task t(TaskType::INGESTION, std::static_pointer_cast<Identifiable>(sp));
-  //       TaskState state = client->task(t);
-
-  //       // udpate spec state so that it won't be resent
-  //       if (state == TaskState::SUCCEEDED) {
-  //         sp->state(SpecState::READY);
-  //       }
-  //       // we can remove its assigned node and wait it to be reassin to different node for retry
-  //       // but what if it keeps failing? we need counter for it
-  //       else if (state == TaskState::FAILED || state == TaskState::QUEUE) {
-  //         // TODO(cao) - post process for case if this task failed?
-  //         LOG(WARNING) << "Task state: " << (char)state
-  //                      << " at node: " << sp->affinity().toString()
-  //                      << " | " << t.signature();
-  //       }
-  //     }
-  //   }
-  // }
-
-  // if (taskNotified > 0) {
-  //   LOG(INFO) << "Communicated tasks=" << taskNotified
-  //             << " to nodes=" << nodesTalked
-  //             << " using ms=" << duration.elapsedMs();
-  // }
 }
 
 std::shared_ptr<folly::FunctionScheduler> NodeSync::async(

@@ -42,6 +42,8 @@ namespace nebula {
 namespace ingest {
 
 class SpecRepo {
+  using ClientMaker = std::function<std::unique_ptr<nebula::execution::core::NodeClient>(const nebula::meta::NNode&)>;
+
 public:
   SpecRepo() = default;
   virtual ~SpecRepo() = default;
@@ -50,11 +52,10 @@ public:
   size_t refresh() noexcept;
 
   // remove all expired blocks from active nodes
-  std::vector<nebula::meta::NNode> expire(
-    std::function<std::unique_ptr<nebula::execution::core::NodeClient>(const nebula::meta::NNode&)>) noexcept;
+  std::vector<nebula::meta::NNode> expire(const ClientMaker&) noexcept;
 
   // this method can be sub-routine of refresh
-  void assign(const std::vector<nebula::meta::NNode>&) noexcept;
+  size_t assign(const std::vector<nebula::meta::NNode>&, const ClientMaker&) noexcept;
 };
 
 } // namespace ingest

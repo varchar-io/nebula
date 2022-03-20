@@ -80,7 +80,7 @@ public:
                     sorts_{ std::move(q.sorts_) },
                     sortType_{ q.sortType_ },
                     limit_{ q.limit_ } {}
-
+  Query(Query&&) = default;
   Query(const Query&) = delete;
   virtual ~Query() = default;
 

@@ -281,6 +281,9 @@ include(ext/Bloom_Ext.cmake)
 # add a dependency of roaring
 include(ext/Roaring_Ext.cmake)
 
+# add a dependency of re2
+include(ext/RE2_Ext.cmake)
+
 # add a basic gtest dependency
 include(ext/Gtest_Ext.cmake)
 
