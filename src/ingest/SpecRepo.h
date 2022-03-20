@@ -41,21 +41,41 @@
 namespace nebula {
 namespace ingest {
 
+// Spec repo takes care of all specs management through table service interface
 class SpecRepo {
   using ClientMaker = std::function<std::unique_ptr<nebula::execution::core::NodeClient>(const nebula::meta::NNode&)>;
 
-public:
+private:
+  // by default - use service discovery node manager
+  // if config mode is specified, it will be replaced.
   SpecRepo() = default;
+  SpecRepo(SpecRepo&) = delete;
+  SpecRepo(SpecRepo&&) = delete;
+
+public:
   virtual ~SpecRepo() = default;
+
+public:
+  static SpecRepo& singleton() {
+    static SpecRepo repo;
+    return repo;
+  }
 
   // refresh spec repo based on cluster configs
   size_t refresh() noexcept;
 
   // remove all expired blocks from active nodes
-  std::vector<nebula::meta::NNode> expire(const ClientMaker&) noexcept;
+  size_t expire(const ClientMaker&) noexcept;
 
   // this method can be sub-routine of refresh
-  size_t assign(const std::vector<nebula::meta::NNode>&, const ClientMaker&) noexcept;
+  std::pair<size_t, size_t> assign(const ClientMaker&) noexcept;
+
+  // unassign spec when we lost a node
+  size_t lost(const std::string&) noexcept;
+
+private:
+  // used to sync operations on specs maintainance
+  mutable std::mutex specsMutex_;
 };
 
 } // namespace ingest

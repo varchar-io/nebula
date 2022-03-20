@@ -324,18 +324,19 @@ std::unique_ptr<RowCursor> IngestSpec::readGSheet() noexcept {
   // the sheet content in this json objects
   auto split = this->split();
   auto json = http.readJson(split->path, headers);
-  rapidjson::Document doc;
-  if (doc.Parse(json.c_str()).HasParseError()) {
+
+  auto doc = std::make_unique<rapidjson::Document>();
+  if (doc->Parse(json.c_str()).HasParseError()) {
     LOG(WARNING) << "Error parsing google sheet reply: " << json;
     return nullptr;
   }
 
-  if (!doc.IsObject()) {
+  if (!doc->IsObject()) {
     LOG(WARNING) << "Expect an object for google sheet reply.";
     return nullptr;
   }
 
-  auto root = doc.GetObject();
+  auto root = doc->GetObject();
 
   // ensure this is a columns data
   auto md = root.FindMember("majorDimension");
@@ -356,7 +357,7 @@ std::unique_ptr<RowCursor> IngestSpec::readGSheet() noexcept {
   const auto schema = TypeSerializer::from(table_->schema);
 
   // size() will have total number of rows for current spec
-  return std::make_unique<JsonVectorReader>(schema, values, this->size());
+  return std::make_unique<JsonVectorReader>(schema, std::move(doc), values, this->size());
 }
 
 bool IngestSpec::loadRockset(SpecSplitPtr split) noexcept {

@@ -531,6 +531,7 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
     }
 
     // replace the default node manager use pre-configured one
+    // this will overwrite all existing node states - "bad->active" as reset event
     this->nodeManager_ = NodeManager::create(std::move(nodeSet));
   }
 

@@ -22,7 +22,6 @@
 #include "common/Ip.h"
 #include "meta/NNode.h"
 #include "service/base/NebulaService.h"
-#include "service/node/NodeClient.h"
 
 int main(int argc, char** argv) {
   const nebula::meta::NNode node{

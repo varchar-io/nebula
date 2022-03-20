@@ -28,7 +28,7 @@
  * Define nebula execution runtime.
  * This object should be singleton per node. It manages all data segments that loaded in memory.
  * And their attributes, such as their time range, partition keys, and of course table name.
- * 
+ *
  */
 namespace nebula {
 namespace execution {
@@ -84,7 +84,7 @@ public:
   // return number of blocks removed
   size_t removeBySpec(const std::string&, const std::string&);
 
-  // get table state for given table name
+  // get table state for given table name in local node
   const TableStateBase& state(const std::string& table) const {
     const auto& self = local();
     if (self.find(table) == self.end()) {
@@ -96,6 +96,7 @@ public:
 
   // get all table states for given node
   inline const TableStates& states(const nebula::meta::NNode& node = nebula::meta::NNode::inproc()) {
+    std::lock_guard<std::mutex> lock(dmux_);
     // it may reutrn empty result if the node is not in
     return data_[node];
   }
@@ -104,6 +105,16 @@ public:
   inline void swap(const nebula::meta::NNode& node, TableStates states) {
     std::lock_guard<std::mutex> lock(dmux_);
     data_[node] = states;
+  }
+
+  inline void removeNode(const std::string& addr) {
+    std::lock_guard<std::mutex> lock(dmux_);
+    for (auto itr = data_.begin(); itr != data_.end(); ++itr) {
+      if (addr == itr->first.toString()) {
+        data_.erase(itr);
+        break;
+      }
+    }
   }
 
   inline size_t numBlocks() const {
@@ -156,6 +167,26 @@ public:
     }
 
     return metricsOnly;
+  }
+
+  // get all active specs
+  nebula::common::unordered_set<std::string> activeSpecs() const {
+    std::lock_guard<std::mutex> lock(dmux_);
+    const auto nodes = nebula::meta::ClusterInfo::singleton().nodes();
+    nebula::common::unordered_set<std::string> specs;
+    for (const auto& node : nodes) {
+      auto entry = data_.find(node);
+      if (entry != data_.end()) {
+        const auto& states = entry->second;
+        for (auto& ts : states) {
+          auto nodeSpecs = ts.second->specs();
+          specs.insert(nodeSpecs.begin(), nodeSpecs.end());
+        }
+      }
+    }
+
+    // return all unique specs that seen from all active nodes
+    return specs;
   }
 
   // get historgram of given table/column

@@ -31,6 +31,8 @@ namespace nebula {
 namespace execution {
 
 class TableStateBase {
+  static constexpr auto EMPTY_NAME = "EMTPY";
+
 public:
   using Window = std::pair<size_t, size_t>;
   TableStateBase(const std::string& table)
@@ -76,8 +78,12 @@ public:
     merge(hists_, state.hists_);
   }
 
+  inline bool isEmpty() const {
+    return table_ == EMPTY_NAME;
+  }
+
   static const TableStateBase& empty() {
-    static const TableStateBase EMPTY{ "EMPTY" };
+    static const TableStateBase EMPTY{ EMPTY_NAME };
     return EMPTY;
   }
 
@@ -136,6 +142,15 @@ public:
     }
 
     return specs;
+  }
+
+  nebula::common::unordered_set<std::string> specs() const {
+    nebula::common::unordered_set<std::string> set;
+    for (auto& b : data_) {
+      set.emplace(b.first);
+    }
+
+    return set;
   }
 
 public:

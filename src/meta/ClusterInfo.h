@@ -103,8 +103,13 @@ public:
     return runtimeTables_.erase(table);
   }
 
+  // always return valid active nodes
   inline const std::vector<NNode> nodes() const {
     return nodeManager_->nodes();
+  }
+
+  inline void updateNodeSize(const nebula::meta::NNode& node, size_t size) noexcept {
+    nodeManager_->setSize(node, size);
   }
 
   inline const nebula::meta::TableSpecSet& tables() const {

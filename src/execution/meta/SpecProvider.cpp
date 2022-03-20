@@ -299,11 +299,6 @@ std::vector<SpecPtr> SpecProvider::generate(
       genSpecs4Roll(version, table, specs);
       return specs;
     }
-
-    if (table->loader == "Api") {
-      // We're not loading data for API
-      return specs;
-    }
   }
 
   if (table->source == DataSource::KAFKA) {
@@ -317,8 +312,19 @@ std::vector<SpecPtr> SpecProvider::generate(
     return specs;
   }
 
-  LOG(WARNING) << fmt::format("Unsupported loader: {0} for table {1}",
-                              table->loader, table->toString());
+  // API are data load request from API layer
+  if (table->loader == "Api") {
+    std::vector<SpecSplitPtr> splits = { std::make_shared<SpecSplit>(table->location, 0, 0) };
+    specs.push_back(std::make_shared<DataSpec>(table, version, "api", splits, SpecState::NEW));
+    return specs;
+  }
+
+  // template is used for API to materialize it - so no warning
+  if (table->loader != "Template") {
+    LOG(WARNING) << fmt::format("Unsupported loader: {0} for table {1}",
+                                table->loader, table->toString());
+  }
+
   return specs;
 }
 

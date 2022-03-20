@@ -15,11 +15,22 @@
  */
 
 #include "ConnectionPool.h"
+
 #include <glog/logging.h>
+
+#include "execution/BlockManager.h"
+#include "ingest/SpecRepo.h"
+
+DEFINE_uint64(CONNECTION_WAIT_SECONDS, 3, "Seconds to wait for connection to be done");
 
 namespace nebula {
 namespace service {
 namespace node {
+
+using nebula::common::Evidence;
+using nebula::execution::BlockManager;
+using nebula::meta::ClusterInfo;
+using nebula::meta::NState;
 
 std::shared_ptr<ConnectionPool> ConnectionPool::init() noexcept {
   static const auto inst = std::shared_ptr<ConnectionPool>(new ConnectionPool());
@@ -41,36 +52,38 @@ std::shared_ptr<grpc::Channel> ConnectionPool::connection(const std::string& add
     }
 
     // will be replaced by channel recreation below
+    connections_.erase(addr);
     LOG(INFO) << "Seeing a dead channel to " << addr;
   }
 
-  // all client configurations come to here
-  grpc::ChannelArguments chArgs;
-  chArgs.SetMaxReceiveMessageSize(-1);
-
-  // TODO(cao): not clear how to best tune these settings to avoid unstable errors.
-  // such as
-  //   Received a GOAWAY with error code ENHANCE_YOUR_CALM and debug data equal to "too_many_pings"
-  // Simialr issue: https://github.com/grpc/grpc-node/issues/138
-  // Commenting out these settings for now.
-  // keep alive connection settings
-  // chArgs.SetInt(GRPC_ARG_KEEPALIVE_TIME_MS, 10000);
-  // chArgs.SetInt(GRPC_ARG_KEEPALIVE_TIMEOUT_MS, 10000);
-  // chArgs.SetInt(GRPC_ARG_KEEPALIVE_PERMIT_WITHOUT_CALLS, 1);
-  // chArgs.SetInt(GRPC_ARG_HTTP2_BDP_PROBE, 1);
-  // chArgs.SetInt(GRPC_ARG_HTTP2_MIN_RECV_PING_INTERVAL_WITHOUT_DATA_MS, 5000);
-  // chArgs.SetInt(GRPC_ARG_HTTP2_MIN_SENT_PING_INTERVAL_WITHOUT_DATA_MS, 10000);
-  // chArgs.SetInt(GRPC_ARG_HTTP2_MAX_PINGS_WITHOUT_DATA, 0);
+  // create new connection
   LOG(INFO) << "Creating a channel to " << addr;
-  auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), chArgs);
-  auto state = channel->GetState(true);
-  if (state == grpc_connectivity_state::GRPC_CHANNEL_SHUTDOWN || state == grpc_connectivity_state::GRPC_CHANNEL_TRANSIENT_FAILURE) {
+  auto channel = this->connect(addr);
+  auto state = channel->GetState(false);
+  if (state == grpc_connectivity_state::GRPC_CHANNEL_SHUTDOWN
+      || state == grpc_connectivity_state::GRPC_CHANNEL_TRANSIENT_FAILURE) {
     // a bad channel when creating
     recordReset(addr);
     return channel;
   }
 
+  // good connection (ready) or potential good (connecting)
   connections_[addr] = channel;
+  return channel;
+}
+
+std::shared_ptr<grpc::Channel> ConnectionPool::connect(const std::string& addr) const noexcept {
+  auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), getArgs());
+  auto state = channel->GetState(true);
+
+  // wait the connection to have clear state - ready or failure
+  const auto deadline = Evidence::later(FLAGS_CONNECTION_WAIT_SECONDS);
+  while (state == grpc_connectivity_state::GRPC_CHANNEL_IDLE
+         || state == grpc_connectivity_state::GRPC_CHANNEL_CONNECTING) {
+    if (!channel->WaitForStateChange(state, deadline)) {
+      break;
+    }
+  }
 
   return channel;
 }
@@ -80,6 +93,40 @@ void ConnectionPool::reset(const nebula::meta::NNode& node) {
   connections_.erase(addr);
   LOG(INFO) << "Removing a channel to " << addr;
   recordReset(addr);
+}
+
+void ConnectionPool::recordReset(const std::string& addr) {
+  auto reported = resets_.find(addr);
+  if (reported != resets_.end()) {
+    // increment the size
+    ++reported->second.second;
+  } else {
+    resets_.emplace(addr, std::pair{ Evidence::unix_timestamp(), 1 });
+  }
+
+  // process all resets
+  for (auto itr = resets_.begin(); itr != resets_.end(); ++itr) {
+    auto count = itr->second.second;
+
+    // TODO(cao): simple algo for now = if by avg reset in less than 5 minutes
+    // mark this node as bad node
+    if (count > 3) {
+      auto& ci = ClusterInfo::singleton();
+      auto durationSeconds = Evidence::unix_timestamp() - reported->second.first;
+      auto avgSeconds = durationSeconds / count;
+      if (avgSeconds < 300) {
+        LOG(INFO) << "Marking this node as bad since it is reseting every " << avgSeconds;
+        ci.mark(addr);
+
+        // remove all data state from this address
+        BlockManager::init()->removeNode(addr);
+        nebula::ingest::SpecRepo::singleton().lost(addr);
+      } else if (avgSeconds > 3600) {
+        LOG(INFO) << "Reactivating this node since it is reseting every " << avgSeconds;
+        ci.mark(addr, NState::ACTIVE);
+      }
+    }
+  }
 }
 
 } // namespace node

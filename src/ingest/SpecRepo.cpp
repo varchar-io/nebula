@@ -44,7 +44,6 @@ using nebula::common::TaskType;
 using nebula::common::unordered_map;
 using nebula::execution::BlockManager;
 using nebula::execution::TableSpecSet;
-using nebula::execution::core::NodeClient;
 using nebula::execution::core::NodeConnector;
 using nebula::execution::meta::SpecProvider;
 using nebula::execution::meta::TableService;
@@ -68,6 +67,8 @@ using nebula::storage::kafka::KafkaTopic;
 
 // generate a list of ingestion spec based on cluster info
 size_t SpecRepo::refresh() noexcept {
+  std::lock_guard<std::mutex> lock(specsMutex_);
+
   // cluster info and table service
   const auto& ci = ClusterInfo::singleton();
   const auto& ts = TableService::singleton();
@@ -95,16 +96,17 @@ size_t SpecRepo::refresh() noexcept {
 }
 
 // remove (or take it offline) all expired blocks from active nodes
-std::vector<NNode> SpecRepo::expire(const ClientMaker& clientMaker) noexcept {
+size_t SpecRepo::expire(const ClientMaker& clientMaker) noexcept {
+  std::lock_guard<std::mutex> lock(specsMutex_);
+
   // cluster manager and a local block manager
-  const auto& ci = ClusterInfo::singleton();
+  auto& ci = ClusterInfo::singleton();
   const auto& bm = BlockManager::init();
   const auto& ts = TableService::singleton();
 
-  const auto& clusterNodes = ci.nodes();
-  std::vector<NNode> nodes;
-  nodes.reserve(clusterNodes.size());
-  for (const auto& node : clusterNodes) {
+  const auto nodes = ci.nodes();
+  size_t numExpired = 0;
+  for (const auto& node : nodes) {
     if (node.isActive()) {
       // fetch node state in server
       auto client = clientMaker(node);
@@ -150,26 +152,43 @@ std::vector<NNode> SpecRepo::expire(const ClientMaker& clientMaker) noexcept {
         LOG(INFO) << fmt::format("Expire {0} specs in node {1}: {2}", expireSize, node.server, (char)state);
       }
 
-      // push a node with a size
-      NNode n{ node };
-      n.size = memorySize;
-      nodes.push_back(std::move(n));
+      // update size of the node
+      ci.updateNodeSize(node, memorySize);
+      numExpired += expireSize;
     }
   }
 
   // return all active nodes that we have communicated
-  return nodes;
+  return numExpired;
 }
 
-size_t SpecRepo::assign(const std::vector<NNode>& nodes, const ClientMaker& clientMaker) noexcept {
+void resetSpec(SpecPtr& spec) {
+  spec->affinity(nebula::meta::NNode::invalid());
+  spec->state(nebula::meta::SpecState::NEW);
+}
+
+std::pair<size_t, size_t> SpecRepo::assign(const ClientMaker& clientMaker) noexcept {
+  std::lock_guard<std::mutex> lock(specsMutex_);
+
+  // TODO(cao) - build resource constaints here to reach a balance
+  // for now, we just spin new specs into nodes with lower memory size
+  auto nodes = ClusterInfo::singleton().nodes();
   const auto size = nodes.size();
   if (size == 0) {
     LOG(WARNING) << "No nodes to assign nebula specs.";
-    return 0;
+    return { 0, 0 };
   }
+
+  // allocate resource to less occupied node first
+  std::sort(nodes.begin(), nodes.end(), [](auto& n1, auto& n2) {
+    return n1.size < n2.size;
+  });
 
   const auto& ts = TableService::singleton();
   size_t idx = 0;
+
+  // all active specs seen from active nodes in current cycle
+  const auto activeSpecs = BlockManager::init()->activeSpecs();
 
   // for each spec
   // TODO(cao): should we do hash-based shuffling here to ensure a stable assignment?
@@ -180,6 +199,12 @@ size_t SpecRepo::assign(const std::vector<NNode>& nodes, const ClientMaker& clie
   for (auto& registry : tables) {
     auto specs = registry->all();
     for (auto& spec : specs) {
+      // if current spec is assigned but somehow it's lost as we don't see it in active spec
+      // we will need to make sure it's assigned again
+      if (spec->assigned() && !activeSpecs.contains(spec->id())) {
+        resetSpec(spec);
+      }
+
       // if the spec is not assigned to a node yet
       if (!spec->assigned()) {
         auto startId = idx;
@@ -194,7 +219,7 @@ size_t SpecRepo::assign(const std::vector<NNode>& nodes, const ClientMaker& clie
           idx = (idx + 1) % size;
           if (idx == startId) {
             LOG(ERROR) << "No active node found to assign a spec.";
-            return numTasks;
+            return { numTasks, size };
           }
         }
       }
@@ -222,7 +247,28 @@ size_t SpecRepo::assign(const std::vector<NNode>& nodes, const ClientMaker& clie
   }
 
   // number of tasks communicated
-  return numTasks;
+  return { numTasks, size };
+}
+
+size_t SpecRepo::lost(const std::string& addr) noexcept {
+  // most likely called in the path of assign or expire
+  // std::lock_guard<std::mutex> lock(specsMutex_);
+
+  const auto& ts = TableService::singleton();
+  auto numSpecs = 0;
+  auto tables = ts->all();
+  for (auto& registry : tables) {
+    auto specs = registry->all();
+    for (auto& spec : specs) {
+      if (spec->assigned() && spec->affinity().toString() == addr) {
+        resetSpec(spec);
+        ++numSpecs;
+      }
+    }
+  }
+
+  // total number of specs reset
+  return numSpecs;
 }
 
 } // namespace ingest

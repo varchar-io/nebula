@@ -71,7 +71,7 @@ TEST(IngestTest, TestIngestSpec) {
 
 TEST(IngestTest, TestSpecGeneration) {
 #ifndef __APPLE__
-  nebula::ingest::SpecRepo sr;
+  auto& sr = nebula::ingest::SpecRepo::singleton();
 
   // load cluster info from sample config
   auto& ci = nebula::meta::ClusterInfo::singleton();
@@ -98,7 +98,7 @@ TEST(IngestTest, TestTransformerAddColumn) {
 }
 
 TEST(IngestTest, TestTimePatternSpecGeneration) {
-  nebula::ingest::SpecRepo sr;
+  auto& sr = nebula::ingest::SpecRepo::singleton();
 
   // load cluster info from sample config
   auto& ci = nebula::meta::ClusterInfo::singleton();
