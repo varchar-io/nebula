@@ -5,62 +5,85 @@
 Nebula is an extremely-fast end-to-end interactive big data analytics solution.
 Nebula is designed as a high-performance columnar data storage and tabular OLAP engine.
 
-It can do much more than these:
-- Extreme Fast Data Analytics Platform.
+What is Nebula?
+- Extreme Fast Data Analytics System.
 - Column Level Access Control Storage System.
 - Distributed Cache Tier For Tabular Data.
 
-Documents of design, internals and stories will be shared at [project site](https://nebula.bz).
+Nebula can run on
+- Local box
+- VM cluster
+- Run on Kubenettes
+
+Documents of design, internals and stories will be shared at [project docs (under-construction)](https://nebula.bz).
+
+# Contents
+- [Introduction](#introduction)
+- [Get Started](#get-started)
+- [Build Source](#build-source--test)
+- [Birdeye View](#birdeye-view)
+- [Common Scenarios](#common-scenarios)
+- [Open Source](#open-source)
+- [Adoptions](#adoptions)
 
 ## Introduction
 
 With Nebula, you could easily:
 
-* Generate beautiful charts from TB's data in less than 1s
+* Generate beautiful real-time charts from TB's data in less than 1s, [Generate bar from 700M rows in 600ms](./test/nebula-rep2.png)
 
 ![pretty chart 1](./test/nebula-rep.png)
 
-![Generate bar from 700M rows in 600ms](./test/nebula-rep2.png)
-
-* Write an instant javascript function in real-time query.
+* Advanced: write instant function in JS in the real-time query. [Another more complex example](./test/nebula-sdk.png)
 
 ![Transform column, aggregate by it with filters](./test/nebula-ide-cropped.png)
 
-![Pivot data on client for visual](./test/nebula-sdk.png)
+* To learn more, check out these resources:
 
-To learn more about how to do it, please take a look at:
+ 1. [10 minutes quick tutorial video](https://youtu.be/Fwevde7iBws)
 
-- [10 minutes quick tutorial video](https://youtu.be/Fwevde7iBws)
+ 2. [Nebula presentation slides](https://docs.google.com/presentation/d/1-npCBu_tLZRikMDvqOTHWzVLO3UuQxqEBedD3f0YnEE)
 
-- [Nebula presentation slides](https://docs.google.com/presentation/d/1-npCBu_tLZRikMDvqOTHWzVLO3UuQxqEBedD3f0YnEE)
 
-I provide free talks / presentations, and short-term onboard consultanting.
-
-If you consider adopting Nebula, feel free to shoot me email at [email](mailto:caoxhua@gmail.com?subject=[Nebula]%20questions)
-
-# Get Started
-## Run It!
-### Prebuilt binaries
+## Get Started
+### Run example instance with sample data on local 
 - clone the repo: `git clone https://github.com/varchar-io/nebula.git`
 - run run.sh in source root: `cd nebula && ./run.sh`
 - explore nebula UI in browser: `http://localhost:8088`
 
-### Kubernetes
+### Run example instance with sample data on Kubernetes
 Deploy a single node k8s cluster on your local box.
 Assume your current kubectl points to the cluster, just run:
 - apply: `kubectl apply -f deploy/k8s/nebula.yaml`.
 - forward: `kubectl port-forward nebula/server 8088:8088`
 - explore: `http://localhost:8088`
 
-## Build Source
-Please refer [Developer Guide](./dev.md) for building nebula from source code.
-Welcome to become a contributor.
+## Build Source & Test
+The whole repo can be built on either MacOS or Linux. Just run `./build.sh`.
 
-# Nebula birdeye view
+After built the source successfully, the binaries can be found in `./build` directory.
+Now you can launch a simple cluster of "server" + "one worker" + "web server" like this:
+- launch node: `~/nebula/build%./NodeServer`
+- launch server: `~/nebula/build% ./NebulaServer --CLS_CONF configs/test.yml`
+- launch web server: ~/nebula/src/service/http/nebula% NS_ADDR=localhost:9190 NODE_PORT=8081 node node.js`
+
+If everything goes as expected, now you should be able to explore and query the sample data from its UI at http://localhost:8081
+
+## Birdeye View
 ![Overview](./test/nebula-overview.svg)
 
-# Use Cases
-## Static Data Analytics
+## Common Scenarios
+As you may see in the previous section where we talk about running the sample locally. 
+All of Nebula data tables are defined by a yaml section in the cluster config file, it's `configs/test.yml` in the example.
+Each of the use case demonstrated here is a table defintion, which you can copy to configs/test.yml and run it in that test. 
+(Just replace the real values of your own data, such as schema and file location)
+
+- [analyze data from cloud storage](#case-1-static-data-analytics)
+- [analyze real-time data from streaming](#case-2-realtime-data-analytics)
+- [sparse storage](#case-4-sparse-storage)
+- [instant function to analyze data](#sdk-nebula-is-programmable)
+
+### CASE-1: Static Data Analytics
 Configure your data source from a permanent storage (file system) and run analytics on it. 
 AWS S3, Azure Blob Storage are often used storage system with support of file formats like CSV, Parquet, ORC. 
 These file formats and storage system are frequently used in modern big data ecosystems.
@@ -86,7 +109,7 @@ seattle.calls:
     pattern: "%m/%d/%Y %H:%M:%S"
 ```
 
-## Realtime Data Analytics
+### CASE-2: Realtime Data Analytics
 Connect Nebula to real-time data source such as Kafka with data formats in thrift or JSON, and do real-time data analytics.
 
 For example, this config section will ask Nebula to connect one Kafka topic for real time code profiling.
@@ -119,11 +142,11 @@ For example, this config section will ask Nebula to connect one Kafka topic for 
       batch: 500
 ```
 
-## Ephemeral Data Analytics
+### CASE-3: Ephemeral Data Analytics
 Define a template in Nebula, and load data through Nebula API to allow data live for specific period. 
 Run analytics on Nebula to serve queries in this ephemeral data's life time.
 
-## Sparse Storage
+### CASE-4: Sparse Storage
 Highly break down input data into huge small data cubes living in Nebula nodes, usually a simple predicate (filter) will massively 
 prune dowm data to scan for super low latency in your analytics.
 
@@ -164,7 +187,7 @@ For exmaple, config internal partition leveraging sparse storage for super fast 
 
 
 
-## Nebula Is Programmable
+### SDK: Nebula Is Programmable
 Through the great projecct QuickJS, Nebula is able to support full ES6 programing through its simple UI code editor.
 Below is an snippet code that generates a pie charts for your SQL-like query code in JS.
 
@@ -186,7 +209,7 @@ On the page top, the demo video shows how nebula client SDK is used and tables a
         .run();
 ```
 
-# Open source
+## Open source
 Open source is wonderful - that is the reason we can build software and make innovations on top of others.
 Without these great open source projects, Nebula won't be possible: 
 
@@ -201,6 +224,5 @@ Many others are used by Nebula:
 - algos(xxhash, roaring bitmap, zstd, lz4)
 - ...
 
-# Adoptions
-
+## Adoptions
 ![Pinterest](https://avatars.githubusercontent.com/u/541152?s=200&v=4)
