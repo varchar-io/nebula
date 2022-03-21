@@ -179,7 +179,15 @@ grpc::Status NodeServerImpl::Poll(
     });
   }
 
-  mb.Finish(CreateNodeStateReplyDirect(mb, &db));
+  // empty specs
+  const auto& specSet = bm->emptySpecs();
+  std::vector<flatbuffers::Offset<flatbuffers::String>> specs;
+  specs.reserve(specSet.size());
+  for (const auto& spec : specSet) {
+    specs.push_back(mb.CreateString(spec));
+  }
+
+  mb.Finish(CreateNodeStateReplyDirect(mb, &db, &specs));
 
   // The `ReleaseMessage<T>()` function detaches the message from the
   // builder, so we can transfer the resopnse to gRPC while simultaneously

@@ -13,11 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "TaskExecutor.h"
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
-#include "TaskExecutor.h"
+#include "execution/BlockManager.h"
 #include "ingest/BlockExpire.h"
 #include "ingest/IngestSpec.h"
 
@@ -35,6 +36,7 @@ using nebula::common::SingleCommandTask;
 using nebula::common::Task;
 using nebula::common::TaskState;
 using nebula::common::TaskType;
+using nebula::execution::BlockManager;
 using nebula::ingest::BlockExpire;
 using nebula::ingest::IngestSpec;
 
@@ -131,8 +133,14 @@ bool TaskExecutor::process(const Task& task) {
   if (task.type() == TaskType::INGESTION) {
     std::shared_ptr<IngestSpec> is = task.spec<IngestSpec>();
 
+    // TODO(cao): need a way to differentiate empty data vs retryable failure.
     // process a new task - enroll its table if its first time
-    return is->work();
+    const auto numBlocks = is->work();
+    if (numBlocks == 0) {
+      BlockManager::init()->recordEmptySpec(is->id());
+    }
+
+    return true;
   }
 
   if (task.type() == TaskType::EXPIRATION) {

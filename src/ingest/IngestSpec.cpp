@@ -109,7 +109,7 @@ void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
   }
 }
 
-bool IngestSpec::work() noexcept {
+size_t IngestSpec::work() noexcept {
   // register the table in the working node
   // in case it is the first time
   auto registry = TableService::singleton()->get(table_);
@@ -118,7 +118,7 @@ bool IngestSpec::work() noexcept {
   const auto& loader = table_->loader;
   if (loader == FLAGS_NTEST_LOADER) {
     loadNebulaTestData(table_, id_);
-    return true;
+    return 1;
   }
 
   // either swap, they are reading files
@@ -144,7 +144,7 @@ bool IngestSpec::work() noexcept {
   }
 
   // can not hanlde other loader type yet
-  return false;
+  return 0;
 }
 
 bool IngestSpec::load(BlockList& blocks) noexcept {
@@ -181,7 +181,7 @@ bool IngestSpec::load(BlockList& blocks) noexcept {
   return result;
 }
 
-bool IngestSpec::loadSwap() noexcept {
+size_t IngestSpec::loadSwap() noexcept {
   // LOCAL data source only supported in swap for local test scenarios on single node
   // As it doesn't make sense for distributed system to share a local data source
   if (dsu::isFileSystem(table_->source)) {
@@ -189,6 +189,7 @@ bool IngestSpec::loadSwap() noexcept {
     BlockList blocks;
 
     // load current
+    size_t numBlocks = 0;
     auto result = this->load(blocks);
     if (result) {
       // unique specs by table and spec
@@ -205,36 +206,38 @@ bool IngestSpec::loadSwap() noexcept {
       }
 
       // move all new blocks in
-      bm->add(blocks);
+      numBlocks = bm->add(blocks);
     }
 
-    return result;
+    return numBlocks;
   }
 
-  return false;
+  return 0;
 }
 
-bool IngestSpec::loadRoll() noexcept {
+size_t IngestSpec::loadRoll() noexcept {
   if (dsu::isFileSystem(table_->source)) {
     BlockList blocks;
 
     // load current
+    size_t numBlocks = 0;
     auto result = this->load(blocks);
     if (result) {
       auto bm = BlockManager::init();
       // move all new blocks in
-      bm->add(blocks);
+      numBlocks = bm->add(blocks);
     }
 
-    return result;
+    return numBlocks;
   }
 
-  return false;
+  return 0;
 }
 
-bool IngestSpec::loadApi() noexcept {
+size_t IngestSpec::loadApi() noexcept {
   BlockList blocks;
   auto result = false;
+  size_t numBlocks = 0;
 
   // normal file system access: S3, GS, Local
   if (dsu::isFileSystem(table_->source)) {
@@ -253,10 +256,10 @@ bool IngestSpec::loadApi() noexcept {
   if (result) {
     auto bm = BlockManager::init();
     // move all new blocks in
-    bm->add(blocks);
+    numBlocks = bm->add(blocks);
   }
 
-  return result;
+  return numBlocks;
 }
 
 // TODO(cao): refactor it to reuse similar flow as `load`
@@ -360,7 +363,7 @@ std::unique_ptr<RowCursor> IngestSpec::readGSheet() noexcept {
   return std::make_unique<JsonVectorReader>(schema, std::move(doc), values, this->size());
 }
 
-bool IngestSpec::loadRockset(SpecSplitPtr split) noexcept {
+size_t IngestSpec::loadRockset(SpecSplitPtr split) noexcept {
   // get a table definition
   auto table = table_->to();
 
@@ -380,19 +383,19 @@ bool IngestSpec::loadRockset(SpecSplitPtr split) noexcept {
                           Evidence::fmt_iso8601(split->watermark),
                           Evidence::fmt_iso8601(split->watermark + serde.interval));
 
+  size_t numBlocks = 0;
   if (this->loadHttp(blocks, split, std::move(headers), data)) {
     auto bm = BlockManager::init();
     // move all new blocks in
-    bm->add(blocks);
-    return true;
+    numBlocks = bm->add(blocks);
   }
 
   // rockset use HTTP rest api to load data but, we need to send
-  return false;
+  return numBlocks;
 }
 
 // current is a kafka spec
-bool IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
+size_t IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
 #ifdef PPROF
   HeapProfilerStart("/tmp/heap_ingest_kafka.out");
 #endif
@@ -448,7 +451,7 @@ bool IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
 #endif
 
   // iterate this read until it reaches end of the segment - blocking queue?
-  return true;
+  return 1;
 }
 
 bool IngestSpec::ingest(BlockList& blocks) noexcept {

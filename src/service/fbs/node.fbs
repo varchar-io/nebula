@@ -73,7 +73,11 @@ table NodeStateRequest {
 }
 
 table NodeStateReply {
+  // all data blocks in a node
   blocks: [DataBlock];
+  
+  // spec that doesn't produce data
+  emptySpecs: [string];
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////

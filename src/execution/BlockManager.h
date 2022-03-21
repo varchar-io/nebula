@@ -48,6 +48,7 @@ struct Equal {
 // table name to table state object mapping
 using TableStates = nebula::common::unordered_map<std::string, std::shared_ptr<TableState>>;
 using FilteredBlocks = std::vector<nebula::memory::EvaledBlock>;
+using StringSet = nebula::common::unordered_set<std::string>;
 
 class BlockManager {
 public:
@@ -67,7 +68,8 @@ public:
   static bool addBlock(TableStates&, std::shared_ptr<io::BatchBlock>);
 
   // add a block list, will change the list
-  bool add(io::BlockList&);
+  // return number of blocks added
+  size_t add(io::BlockList&);
 
   // add a block already loaded
   bool add(std::shared_ptr<io::BatchBlock>);
@@ -83,6 +85,19 @@ public:
   // remove blocks by table name and spec signature
   // return number of blocks removed
   size_t removeBySpec(const std::string&, const std::string&);
+
+  inline void recordEmptySpec(const std::string& spec) noexcept {
+    emptySpecs_.emplace(spec);
+  }
+
+  inline const StringSet& emptySpecs() const noexcept {
+    return emptySpecs_;
+  }
+
+  // suppose to run every cycle
+  inline void clearEmptySpecs() noexcept {
+    emptySpecs_.clear();
+  }
 
   // get table state for given table name in local node
   const TableStateBase& state(const std::string& table) const {
@@ -122,9 +137,9 @@ public:
   }
 
   // get table list of current node
-  nebula::common::unordered_set<std::string> tables(const size_t limit) const noexcept {
+  StringSet tables(const size_t limit) const noexcept {
     std::lock_guard<std::mutex> lock(dmux_);
-    nebula::common::unordered_set<std::string> tables;
+    StringSet tables;
     for (const auto& node : data_) {
       for (const auto& ts : node.second) {
         tables.emplace(ts.first);
@@ -170,10 +185,10 @@ public:
   }
 
   // get all active specs
-  nebula::common::unordered_set<std::string> activeSpecs() const {
+  StringSet activeSpecs() const {
     std::lock_guard<std::mutex> lock(dmux_);
     const auto nodes = nebula::meta::ClusterInfo::singleton().nodes();
-    nebula::common::unordered_set<std::string> specs;
+    StringSet specs;
     for (const auto& node : nodes) {
       auto entry = data_.find(node);
       if (entry != data_.end()) {
@@ -216,6 +231,9 @@ private:
     nebula::meta::NodeHash,
     nebula::meta::NodeEqual>
     data_;
+
+  // empty specs
+  StringSet emptySpecs_;
   mutable std::mutex dmux_;
 
 private:

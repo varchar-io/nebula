@@ -53,23 +53,24 @@ public:
   virtual ~IngestSpec() = default;
 
   // core work to process this ingest spec
-  bool work() noexcept;
+  // return number of blocks produced
+  size_t work() noexcept;
 
 private:
   // load swap
-  bool loadSwap() noexcept;
+  size_t loadSwap() noexcept;
 
   // load roll
-  bool loadRoll() noexcept;
+  size_t loadRoll() noexcept;
 
   // load api - on demand ingestion
-  bool loadApi() noexcept;
+  size_t loadApi() noexcept;
 
   // load kafka
-  bool loadKafka(nebula::meta::SpecSplitPtr) noexcept;
+  size_t loadKafka(nebula::meta::SpecSplitPtr) noexcept;
 
   // load rockset data
-  bool loadRockset(nebula::meta::SpecSplitPtr) noexcept;
+  size_t loadRockset(nebula::meta::SpecSplitPtr) noexcept;
 
   // load google sheet
   std::unique_ptr<nebula::surface::RowCursor> readGSheet() noexcept;

@@ -187,13 +187,18 @@ bool BlockManager::add(std::shared_ptr<io::BatchBlock> block) {
   return addBlock(data_.at(node), block);
 }
 
-bool BlockManager::add(BlockList& range) {
-  bool result = true;
+size_t BlockManager::add(BlockList& range) {
+  size_t numAdded = 0;
   for (auto itr = range.begin(); itr != range.end(); ++itr) {
-    result = result && add(*itr);
+    auto& b = *itr;
+    if (!add(b)) {
+      LOG(WARNING) << "Failed to add a data block of spec: " << b->spec();
+    } else {
+      ++numAdded;
+    }
   }
 
-  return result;
+  return numAdded;
 }
 
 // remove all blocks that share the given spec

@@ -101,8 +101,11 @@ size_t SpecRepo::expire(const ClientMaker& clientMaker) noexcept {
 
   // cluster manager and a local block manager
   auto& ci = ClusterInfo::singleton();
-  const auto& bm = BlockManager::init();
+  auto bm = BlockManager::init();
   const auto& ts = TableService::singleton();
+
+  // clear empty specs before full collection
+  bm->clearEmptySpecs();
 
   const auto nodes = ci.nodes();
   size_t numExpired = 0;
@@ -188,7 +191,9 @@ std::pair<size_t, size_t> SpecRepo::assign(const ClientMaker& clientMaker) noexc
   size_t idx = 0;
 
   // all active specs seen from active nodes in current cycle
-  const auto activeSpecs = BlockManager::init()->activeSpecs();
+  const auto& bm = BlockManager::init();
+  const auto& emptySpecs = bm->emptySpecs();
+  const auto activeSpecs = bm->activeSpecs();
 
   // for each spec
   // TODO(cao): should we do hash-based shuffling here to ensure a stable assignment?
@@ -201,7 +206,10 @@ std::pair<size_t, size_t> SpecRepo::assign(const ClientMaker& clientMaker) noexc
     for (auto& spec : specs) {
       // if current spec is assigned but somehow it's lost as we don't see it in active spec
       // we will need to make sure it's assigned again
-      if (spec->assigned() && !activeSpecs.contains(spec->id())) {
+      const auto& id = spec->id();
+      if (spec->assigned()
+          && !activeSpecs.contains(id)
+          && !emptySpecs.contains(id)) {
         resetSpec(spec);
       }
 
