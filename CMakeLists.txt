@@ -281,6 +281,9 @@ include(ext/Bloom_Ext.cmake)
 # add a dependency of roaring
 include(ext/Roaring_Ext.cmake)
 
+# add a dependency of re2
+include(ext/RE2_Ext.cmake)
+
 # add a basic gtest dependency
 include(ext/Gtest_Ext.cmake)
 
@@ -374,11 +377,11 @@ include(src/memory/Memory.cmake)
 # build data storage - clound providers
 include(src/storage/Storage.cmake)
 
-# build data ingestion
-include(src/ingest/Ingest.cmake)
-
 # build meta module
 include(src/execution/Execution.cmake)
+
+# build data ingestion
+include(src/ingest/Ingest.cmake)
 
 # build api library
 include(src/api/Api.cmake)

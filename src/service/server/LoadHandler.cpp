@@ -42,7 +42,6 @@ using nebula::common::ParamList;
 using nebula::common::Spark;
 using nebula::execution::meta::TableService;
 using nebula::ingest::IngestSpec;
-using nebula::ingest::SpecState;
 using nebula::meta::AccessSpec;
 using nebula::meta::BlockSignature;
 using nebula::meta::BucketInfo;
@@ -57,14 +56,18 @@ using nebula::meta::KafkaSerde;
 using nebula::meta::Macro;
 using nebula::meta::NNode;
 using nebula::meta::RocksetSerde;
+using nebula::meta::SpecSplit;
+using nebula::meta::SpecSplitPtr;
+using nebula::meta::SpecState;
 using nebula::meta::TableSpec;
 using nebula::meta::TableSpecPtr;
 using nebula::meta::ThriftProps;
+using nebula::meta::TTL;
 using nebula::service::base::GoogleSheet;
 using nebula::service::base::LoadSpec;
 using nebula::type::Settings;
 
-LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, std::string& name) {
+TableSpecPtr LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err) {
   // get request content
   const auto& table = req->table();
   const auto& json = req->json();
@@ -82,7 +85,7 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
 
   if (tmp == nullptr) {
     err = LoadError::TEMPLATE_NOT_FOUND;
-    return {};
+    return nullptr;
   }
 
   // based on parameters, we will generate a list of sources
@@ -92,7 +95,37 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
 
   // all ephemeral table instance will start with a prefix
   // because normal table won't be able to configured through YAML with # since it's comment.
-  name = fmt::format("{0}{1}-{2}", BlockSignature::EPHEMERAL_TABLE_PREFIX, table, hash);
+  const auto name = fmt::format("{0}{1}-{2}", BlockSignature::EPHEMERAL_TABLE_PREFIX, table, hash);
+
+  // generate all the macro values for this table
+  // by comparing the json value in table settings
+  // std::map<std::string, std::vector<std::string>>
+  std::map<std::string, std::vector<std::string>> macroValues;
+  rapidjson::Document doc;
+  if (doc.Parse(json.c_str()).HasParseError()) {
+    LOG(WARNING) << fmt::format("Error parsing params-json: {0}", json);
+    err = LoadError::PARSE_ERROR;
+    return nullptr;
+  }
+
+  // convert this into a param list
+  N_ENSURE(doc.IsObject(), "expect params-json as an object.");
+  auto obj = doc.GetObject();
+  for (auto& m : obj) {
+    std::vector<std::string> values;
+    if (m.value.IsArray()) {
+      auto a = m.value.GetArray();
+      values.reserve(a.Size());
+      for (auto& v : a) {
+        values.push_back(v.GetString());
+      }
+    } else {
+      values.reserve(1);
+      values.push_back(m.value.GetString());
+    }
+
+    macroValues.emplace(m.name.GetString(), values);
+  }
 
   // enroll this table in table service
   auto tbSpec = std::make_shared<TableSpec>(
@@ -115,84 +148,21 @@ LoadResult LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err, s
     tmp->accessSpec,
     tmp->bucketInfo,
     tmp->settings,
-    tmp->macroValues,
+    macroValues,
     tmp->headers,
     tmp->optimalBlockSize);
 
   // must enroll this new dataset to make it visible to client
-  if (!TableService::singleton()->enroll(tbSpec->to(), ttl)) {
-    return {};
-  }
-
-  // by comparing the json value in table settings
-  rapidjson::Document cd;
-  if (cd.Parse(json.c_str()).HasParseError()) {
-    throw NException(fmt::format("Error parsing params-json: {0}", json));
-  }
-
-  // convert this into a param list
-  N_ENSURE(cd.IsObject(), "expect params-json as an object.");
-  ParamList params(cd);
-  auto p = params.next();
-  static constexpr auto BUCKET = "bucket";
-
-  auto sourceInfo = nebula::storage::parse(tmp->location);
-  // for every single combination, we will use it to format template source to get a new spec source
-  LoadResult specs;
-  auto& nodeSet = ci.nodes();
-  std::vector<NNode> nodes(nodeSet.begin(), nodeSet.end());
-  size_t assignId = 0;
-  while (p.size() > 0) {
-    // get date info if provided by parameters
-    auto watermark = Macro::watermark(p);
-
-    // if bucket is required, bucket column value must be provided
-    // but if bucket parameter is provided directly, we don't need to compute
-    auto bucketCount = tbSpec->bucketInfo.count;
-    if (p.find(BUCKET) == p.end() && bucketCount > 0) {
-      // TODO(cao) - short term dependency, if Spark changes its hash algo, this will be broken
-      auto bcValue = folly::to<size_t>(p.at(tbSpec->bucketInfo.bucketColumn));
-      auto bucket = std::to_string(Spark::hashBucket(bcValue, bucketCount));
-
-      // TODO(cao) - ugly code, how can we avoid this?
-      auto width = std::log10(bucketCount) + 1;
-      bucket = std::string((width - bucket.size()), '0').append(bucket);
-      p.emplace(BUCKET, bucket);
-    }
-
-    // if the table has bucket info
-    auto path = nebula::common::format(sourceInfo.path, p);
-    LOG(INFO) << "Generate a spec path: " << path;
-    // build ingestion spec from this location
-    auto spec = std::make_shared<IngestSpec>(tbSpec, "0", std::vector<std::string>({path}), sourceInfo.host, 0, SpecState::NEW, watermark);
-
-    // round robin assign the spec to each node
-    spec->setAffinity(nodes.at(assignId));
-    if (++assignId >= nodes.size()) {
-      assignId = 0;
-    }
-
-    specs.push_back(spec);
-
-    // see next params
-    p = params.next();
-  }
-
-  // possible we got an empty result
-  if (specs.empty()) {
-    err = LoadError::EMPTY_RESULT;
-  }
-
-  return specs;
+  tbSpec->ttl = TTL(ttl);
+  return tbSpec;
 }
 
 // load a google sheet request as specs
 // it could be mulitple specs if we split single sheets by row range for large file.
-LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, std::string& name) {
-  // TODO(cao): Nebula should introduce namespace to organize data sources under each user's name/id
+TableSpecPtr LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err) {
   // public data source will be under the default namespace, probably called [PUBLIC]
   // use passed in name as data source name, API loaded table needs to be started with #
-  name = fmt::format("{0}{1}", BlockSignature::EPHEMERAL_TABLE_PREFIX, req->table());
+  const auto name = fmt::format("{0}{1}", BlockSignature::EPHEMERAL_TABLE_PREFIX, req->table());
 
   // TTL in seconds
   const auto ttl = req->ttl();
@@ -202,9 +172,9 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
   // by comparing the json value in table settings
   rapidjson::Document doc;
   if (doc.Parse(json.c_str()).HasParseError()) {
-    LOG(WARNING) << fmt::format("Error parsing google sheet json: {0}", json);
+    LOG(WARNING) << "Error parsing google sheet json: " << json;
     err = LoadError::PARSE_ERROR;
-    return {};
+    return nullptr;
   }
 
   GoogleSheet sheet{ doc };
@@ -234,26 +204,13 @@ LoadResult LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err, 
     std::vector<std::string>(),
     0);
 
-  // pattern must be present in settings
-  if (!TableService::singleton()->enroll(tbSpec->to(), ttl)) {
-    return {};
-  }
-
-  // build ingestion spec for this google sheet
-  // use uid (user ID) as its domain
-  LOG(INFO) << "Generate a ingest spec for google sheet: " << sheet.url;
-  auto spec = std::make_shared<IngestSpec>(
-    tbSpec, "0", std::vector<std::string>({sheet.url}), sheet.uid, sheet.rows, SpecState::NEW, 0);
-
-  // could be multiple specs generated by single file
-  LoadResult specs{ spec };
-
-  // return the collection  - copy elison
-  return specs;
+  // set ttl of this ephemeral table
+  tbSpec->ttl = TTL(ttl);
+  return tbSpec;
 }
 
 // auto detect the schema if not provided
-LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::string& name) {
+TableSpecPtr LoadHandler::loadDemand(const LoadRequest* req, LoadError& err) {
   const auto& table = req->table();
 
   // TTL in seconds
@@ -262,10 +219,15 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
   // configuration in json format
   const auto& json = req->json();
 
+  // cluster info manages all table definitions
+  auto& ci = ClusterInfo::singleton();
+
   // by comparing the json value in table settings
   rapidjson::Document doc;
   if (doc.Parse(json.c_str()).HasParseError()) {
-    throw NException(fmt::format("Error parsing load spec json: {0}", json));
+    LOG(WARNING) << "Error parsing load spec json: " << json;
+    err = LoadError::PARSE_ERROR;
+    return nullptr;
   }
 
   N_ENSURE(doc.IsObject(), "json object expected in google sheet spec.");
@@ -287,7 +249,6 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
       LOG(ERROR) << "Invalid yaml, expect `{\"yaml\": \"<table definition>\"}`";
     } else {
       // add a new table entry
-      auto& ci = ClusterInfo::singleton();
       auto error = ci.addTable(table, yaml);
       if (error.size() > 0) {
         LOG(ERROR) << "Failed to add this new table: " << error;
@@ -295,19 +256,19 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
     }
 
     // stop here for any request with TTL equals to 0
-    name = table;
-    return {};
+    return nullptr;
   }
 
   // get table name - needs to be unique for all other ephmeral table
-  name = fmt::format("{0}{1}", BlockSignature::EPHEMERAL_TABLE_PREFIX, table);
+  const auto name = fmt::format("{0}{1}", BlockSignature::EPHEMERAL_TABLE_PREFIX, table);
   LoadSpec demand{ doc };
 
   // build a table spec
   auto format = DataFormatUtils::from(demand.format);
   if (format == DataFormat::UNKNOWN) {
     LOG(ERROR) << "Data format is unknown: " << demand.format;
-    return {};
+    err = LoadError::NOT_SUPPORTED;
+    return nullptr;
   }
 
   auto tbSpec = std::make_shared<TableSpec>(
@@ -334,19 +295,9 @@ LoadResult LoadHandler::loadDemand(const LoadRequest* req, LoadError& err, std::
     demand.headers,
     demand.optimalBlockSize);
 
-  // if table still alive - failed to register the table
-  if (!TableService::singleton()->enroll(tbSpec->to(), ttl)) {
-    return {};
-  }
-
-  // build ingestion spec for this google sheet
-  // use uid (user ID) as its domain
-  LOG(INFO) << "Generate a ingest spec for load command: " << demand.path;
-  auto spec = std::make_shared<IngestSpec>(
-    tbSpec, "0", std::vector<std::string>({demand.path}), demand.domain, 0, SpecState::NEW, 0);
-
-  // return this spec list
-  return { spec };
+  // set ttl of this ephemeral table
+  tbSpec->ttl = TTL(ttl);
+  return tbSpec;
 }
 
 } // namespace server

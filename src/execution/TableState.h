@@ -31,6 +31,8 @@ namespace nebula {
 namespace execution {
 
 class TableStateBase {
+  static constexpr auto EMPTY_NAME = "EMTPY";
+
 public:
   using Window = std::pair<size_t, size_t>;
   TableStateBase(const std::string& table)
@@ -76,8 +78,12 @@ public:
     merge(hists_, state.hists_);
   }
 
+  inline bool isEmpty() const {
+    return table_ == EMPTY_NAME;
+  }
+
   static const TableStateBase& empty() {
-    static const TableStateBase EMPTY{ "EMPTY" };
+    static const TableStateBase EMPTY{ EMPTY_NAME };
     return EMPTY;
   }
 
@@ -113,6 +119,9 @@ protected:
   nebula::surface::eval::HistVector hists_;
 };
 
+// a shortcut for pair set of {table name, spec id}
+using TableSpecSet = nebula::common::unordered_set<std::pair<std::string, std::string>>;
+
 // Table State with solid data in it
 class TableState : public TableStateBase {
 public:
@@ -122,19 +131,26 @@ public:
     return data_.find(spec) != data_.end();
   }
 
-  nebula::common::unordered_set<std::pair<std::string, std::string>> expired(
-    std::function<bool(bool, const std::string&, const std::string&, const nebula::meta::NNode&)> eval) const {
-    nebula::common::unordered_set<std::pair<std::string, std::string>> specs;
+  TableSpecSet expired(std::function<bool(const std::string&, const std::string&)> shouldExpire) const {
+    TableSpecSet specs;
     const std::lock_guard<std::mutex> lock(mdata_);
     for (auto& b : data_) {
-      auto& sign = b.second->signature();
       // assign existing spec, expire it if not assigned
-      if (eval(sign.isEphemeral(), table_, b.first, b.second->residence())) {
+      if (shouldExpire(table_, b.first)) {
         specs.emplace(table_, b.first);
       }
     }
 
     return specs;
+  }
+
+  nebula::common::unordered_set<std::string> specs() const {
+    nebula::common::unordered_set<std::string> set;
+    for (auto& b : data_) {
+      set.emplace(b.first);
+    }
+
+    return set;
   }
 
 public:

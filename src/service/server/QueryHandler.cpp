@@ -22,7 +22,6 @@
 #include "common/Zip.h"
 #include "execution/BlockManager.h"
 #include "execution/core/ServerExecutor.h"
-#include "service/node/NodeClient.h"
 #include "service/node/RemoteNodeConnector.h"
 
 DEFINE_uint32(AUTO_WINDOW_SIZE, 100, "maximum data point when selecting auto window");

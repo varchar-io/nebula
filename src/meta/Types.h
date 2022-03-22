@@ -26,6 +26,32 @@
 // group most of the base types definitions here to work with its adapters
 namespace nebula {
 namespace meta {
+// node states
+enum class NState {
+  ACTIVE,
+  BAD,
+  DEAD
+};
+
+// node role
+enum class NRole {
+  NODE,
+  SERVER
+};
+// spec state defines states for life cycle of given spec
+enum class SpecState : char {
+  // NEW spec requires data sync
+  NEW = 'N',
+
+  // data of the spec loaded in nebula
+  READY = 'A',
+
+  // Spec is waiting for offload
+  EXPIRED = 'E',
+
+  // spec is offline - we should have an external location for it
+  OFFLINE = 'O',
+};
 
 // define data sources supported in Nebula:
 // NEBULA is a reserved type only used internally.
@@ -173,3 +199,6 @@ MSGPACK_ADD_ENUM(nebula::meta::AccessType)
 MSGPACK_ADD_ENUM(nebula::meta::ActionType)
 MSGPACK_ADD_ENUM(nebula::meta::DataFormat)
 MSGPACK_ADD_ENUM(nebula::type::Kind)
+MSGPACK_ADD_ENUM(nebula::meta::SpecState)
+MSGPACK_ADD_ENUM(nebula::meta::NRole)
+MSGPACK_ADD_ENUM(nebula::meta::NState)

@@ -55,6 +55,11 @@ public:
   // update node
   virtual void update(const NNode&) = 0;
 
+  // get in-active nodes
+  virtual void activate(std::function<bool(const NNode&)>) = 0;
+
+  virtual void setSize(const NNode&, size_t size) = 0;
+
 public:
   static std::unique_ptr<NodeManager> create(NNodeSet);
   static std::unique_ptr<NodeManager> create();
@@ -66,7 +71,15 @@ public:
 
   virtual std::vector<NNode> nodes() const override {
     // make a copy and return the copy - should be inexpensive
-    return std::vector<NNode>(nodes_.begin(), nodes_.end());
+    std::vector<NNode> copy;
+    copy.reserve(nodes_.size());
+    for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
+      if (itr->state == NState::ACTIVE) {
+        copy.push_back(*itr);
+      }
+    }
+
+    return copy;
   }
 
   virtual void mark(const std::string& node, NState state = NState::BAD) override {
@@ -74,9 +87,9 @@ public:
       if (node == itr->toString()) {
         itr->state = state;
         if (state == NState::BAD) {
-          nodes_.erase(itr);
           LOG(WARNING) << "Removing a node as it's marked as bad.";
         }
+
         break;
       }
     }
@@ -85,6 +98,23 @@ public:
   virtual void update(const NNode&) override {
     // Do nothing as config mode doesn't accept node registration
     LOG(WARNING) << "Config mode does not update node list.";
+  }
+
+  virtual void activate(std::function<bool(const NNode&)> alive) override {
+    for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
+      if (itr->state != NState::ACTIVE) {
+        if (alive(*itr)) {
+          itr->state = NState::ACTIVE;
+        }
+      }
+    }
+  }
+
+  virtual void setSize(const NNode& node, size_t size) override {
+    auto itr = nodes_.find(node);
+    if (itr != nodes_.end()) {
+      itr->size = size;
+    }
   }
 
 private:
@@ -105,11 +135,12 @@ public:
     nodes.reserve(nodes_.size());
     const auto now = nebula::common::Evidence::unix_timestamp();
     for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
+      auto& n = itr->first;
       auto ping = itr->second.lastPing;
       if (now - ping <= HEALTHY_TIME) {
-        nodes.push_back(itr->first);
+        nodes.push_back(n);
       } else {
-        LOG(WARNING) << "Seeing an unhealthy node " << itr->first.toString() << " with last ping at " << ping;
+        LOG(WARNING) << "Seeing an unhealthy node " << n.toString() << " with last ping at " << ping;
       }
     }
 
@@ -131,6 +162,18 @@ public:
 
   virtual void update(const NNode& node) override {
     nodes_[node] = { nebula::common::Evidence::unix_timestamp() };
+  }
+
+  virtual void activate(std::function<bool(const NNode&)>) override {
+    // dynamic node manager use update to active each one
+  }
+
+  virtual void setSize(const NNode& node, size_t size) override {
+    for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
+      if (node.equals(itr->first)) {
+        const_cast<NNode*>(&itr->first)->size = size;
+      }
+    }
   }
 
 private:

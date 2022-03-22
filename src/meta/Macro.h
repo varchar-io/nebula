@@ -23,6 +23,8 @@
 #include "common/Evidence.h"
 #include "common/Format.h"
 #include "common/Hash.h"
+#include "common/Params.h"
+#include "meta/Types.h"
 
 /**
  * Define macro supported in Nebula.
@@ -140,26 +142,26 @@ public:
     return getTimeStringForMacro(MACRO_MAP.at(str), watermark);
   }
 
-  static inline std::string getTimeStringForMacro(PatternMacro macro, const std::time_t& watermark, const std::string& defaultStr="") {
+  static inline std::string getTimeStringForMacro(PatternMacro macro, const std::time_t& watermark, const std::string& defaultStr = "") {
     switch (macro) {
-      case PatternMacro::TIMESTAMP: {
-        return std::to_string(watermark);
-      }
-      case PatternMacro::DAILY: {
-        return nebula::common::Evidence::fmt_ymd_dash(watermark);
-      }
-      case PatternMacro::HOURLY: {
-        return nebula::common::Evidence::fmt_hour(watermark);
-      }
-      case PatternMacro::MINUTELY: {
-        return nebula::common::Evidence::fmt_minute(watermark);
-      }
-      case PatternMacro::SECONDLY: {
-        return nebula::common::Evidence::fmt_second(watermark);
-      }
-      default: {
-        return defaultStr;
-      }
+    case PatternMacro::TIMESTAMP: {
+      return std::to_string(watermark);
+    }
+    case PatternMacro::DAILY: {
+      return nebula::common::Evidence::fmt_ymd_dash(watermark);
+    }
+    case PatternMacro::HOURLY: {
+      return nebula::common::Evidence::fmt_hour(watermark);
+    }
+    case PatternMacro::MINUTELY: {
+      return nebula::common::Evidence::fmt_minute(watermark);
+    }
+    case PatternMacro::SECONDLY: {
+      return nebula::common::Evidence::fmt_second(watermark);
+    }
+    default: {
+      return defaultStr;
+    }
     }
   }
 
@@ -190,67 +192,23 @@ public:
     return str;
   }
 
-  static inline const std::map<std::string, std::vector<std::string>> filteredMacroValuesMap(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
-    std::map<std::string, std::vector<std::string>> filteredMacroValues;
-    for (auto it = macroValues.begin(); it != macroValues.end(); ++it) {
-      const auto searchString = fmt::format("{{{}}}", it->first);
-      if (input.find(searchString) != std::string::npos) {
-        filteredMacroValues.emplace(it->first, it->second);
-      }
-    }
-    return filteredMacroValues;
-  }
+  // this method generates all possible paths for given template
+  // first the the materialized path, the second is the macro values applied
+  static inline std::unordered_map<std::string, nebula::common::MapKV> enumeratePathsWithMacros(
+    const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
+    // using unordered map instead of vector could help dedup
+    std::unordered_map<std::string, nebula::common::MapKV> results;
+    nebula::common::ParamList params(macroValues);
+    auto combination = params.next();
 
-  static inline const std::vector<nebula::common::unordered_map<std::string_view, std::string_view>> enumerateMacroCombinations(const std::map<std::string, std::vector<std::string>>& filteredMacroValues) {
-    std::vector<nebula::common::unordered_map<std::string_view, std::string_view>> macroCombinations;
-    for (auto it = filteredMacroValues.begin(); it != filteredMacroValues.end(); ++it) {
-      if (it == filteredMacroValues.begin()) {
-        for (const auto& val : it->second) {
-          nebula::common::unordered_map<std::string_view, std::string_view> newCombination = { { it->first, val } };
-          macroCombinations.emplace_back(newCombination);
-        }
-        continue;
-      }
-      std::vector<nebula::common::unordered_map<std::string_view, std::string_view>> newMacroCombinations;
-      for (const auto& combination : macroCombinations) {
-        for (const auto& val : it->second) {
-          // intentional copy
-          auto newCombination = combination;
-          newCombination.emplace(it->first, val);
-          newMacroCombinations.emplace_back(newCombination);
-        }
-      }
-      macroCombinations = newMacroCombinations;
-    }
-    return macroCombinations;
-  }
-
-  static inline const std::vector<std::pair<std::string, nebula::common::unordered_map<std::string, std::string>>>
-    enumeratePathsWithCustomMacros(const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
-    std::vector<std::pair<std::string, nebula::common::unordered_map<std::string, std::string>>> results;
-    const auto& filteredMacroValues = Macro::filteredMacroValuesMap(input, macroValues);
-    const auto& macroCombinations = Macro::enumerateMacroCombinations(filteredMacroValues);
-    if (macroCombinations.size() == 0) {
-      return { std::make_pair(
-        input,
-        nebula::common::unordered_map<std::string, std::string>()) };
+    // get a valid combination
+    while (combination.size() > 0) {
+      // it is okay to fill partial macros in the path
+      auto path = nebula::common::format(input, nebula::common::mapKV2(combination), true);
+      results.emplace(path, combination);
+      combination = params.next();
     }
 
-    for (const auto& macroCombination : macroCombinations) {
-      // need to manually copy to make string out of string_view
-      nebula::common::unordered_map<std::string, std::string> stringMacroCombinations;
-      for (const auto& p : macroCombination) {
-        stringMacroCombinations.emplace(p.first, p.second);
-      }
-      results.push_back(
-        std::make_pair(
-          nebula::common::format(
-            input,
-            macroCombination,
-            // allow missing macros for time macros
-            true),
-          stringMacroCombinations));
-    }
     return results;
   }
 

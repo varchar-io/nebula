@@ -14,29 +14,35 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <glog/logging.h>
-
-#include "NodeClient.h"
-#include "common/Folly.h"
-#include "meta/NNode.h"
+#include "DataSpec.h"
 
 /**
- * Node connector provides way to connect a node.
- * It could be a in-process provider or network-endpoint provider
+ * Node manager managing all nebula working nodes
  */
 namespace nebula {
-namespace execution {
-namespace core {
-class NodeConnector {
-public:
-  NodeConnector() = default;
-  virtual ~NodeConnector() = default;
-  virtual std::unique_ptr<NodeClient> makeClient(const nebula::meta::NNode& node, folly::ThreadPoolExecutor& pool) {
-    return std::make_unique<NodeClient>(node, pool);
+namespace meta {
+
+std::string DataSpec::serialize(const DataSpec& spec) noexcept {
+  std::stringstream buffer;
+  msgpack::pack(buffer, spec);
+  buffer.seekg(0);
+  return buffer.str();
+}
+
+SpecPtr DataSpec::deserialize(const std::string_view str) {
+  msgpack::object_handle oh = msgpack::unpack(str.data(), str.size());
+  auto spec = oh.get().as<SpecPtr>();
+  // reconstruct all splits
+  for (auto& split : spec->splits_) {
+    split->construct();
   }
-};
-} // namespace core
-} // namespace execution
+
+  // reconstruct spec too
+  spec->construct();
+
+  // now the spec should be well established
+  return spec;
+}
+
+} // namespace meta
 } // namespace nebula

@@ -18,12 +18,11 @@
 
 #include "common/Folly.h"
 #include "common/Task.h"
-#include "ingest/SpecRepo.h"
 
 /**
- * TODO(cao) - major node states will be sync through cluster management system 
+ * TODO(cao) - major node states will be sync through cluster management system
  * such as etcd, shard manager, kubenetes or zookeeper
- * 
+ *
  * At this momment, we're sync through rpc, and it's possible we'll continue maintain this.
  */
 namespace nebula {
@@ -32,10 +31,9 @@ namespace server {
 
 class NodeSync {
 public:
-  static std::shared_ptr<folly::FunctionScheduler> async(
-    folly::ThreadPoolExecutor&, nebula::ingest::SpecRepo&, size_t) noexcept;
+  static std::shared_ptr<folly::FunctionScheduler> async(folly::ThreadPoolExecutor&, size_t) noexcept;
 
-  static void sync(folly::ThreadPoolExecutor&, nebula::ingest::SpecRepo&) noexcept;
+  static void sync(folly::ThreadPoolExecutor&) noexcept;
 };
 
 } // namespace server

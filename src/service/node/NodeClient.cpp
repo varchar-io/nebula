@@ -140,6 +140,7 @@ void NodeClient::update() {
     auto blocks = response->blocks();
     size_t size = blocks->size();
 
+    auto bm = BlockManager::init();
     // update into current server block management
     TableStates states;
     for (size_t i = 0; i < size; ++i) {
@@ -160,9 +161,15 @@ void NodeClient::update() {
       BlockManager::addBlock(states, block);
     }
 
+    // append empty spec from this node
+    auto emptySpecs = response->emptySpecs();
+    for (auto itr = emptySpecs->begin(); itr != emptySpecs->end(); ++itr) {
+      bm->recordEmptySpec(itr->str());
+    }
+
     // TODO(cao): only swap when there is change?
     // swap the new states in
-    BlockManager::init()->swap(node_, states);
+    bm->swap(node_, states);
     return;
   }
 

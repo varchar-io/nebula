@@ -4,6 +4,8 @@ set(NEBULA_META NMeta)
 # target_include_directories(${NEBULA_META} INTERFACE src/meta)
 add_library(${NEBULA_META} STATIC
     ${NEBULA_SRC}/meta/ClusterInfo.cpp
+    ${NEBULA_SRC}/meta/DataSpec.cpp
+    ${NEBULA_SRC}/meta/MetaService.cpp
     ${NEBULA_SRC}/meta/NodeManager.cpp
     ${NEBULA_SRC}/meta/Table.cpp
     ${NEBULA_SRC}/meta/TableSpec.cpp
@@ -37,7 +39,9 @@ include_directories(include ${GTEST_INCLUDE_DIRS})
 
 # build test binary
 add_executable(MetaTests
+    ${NEBULA_SRC}/meta/test/TestClusterInfo.cpp
     ${NEBULA_SRC}/meta/test/TestConnection.cpp
+    ${NEBULA_SRC}/meta/test/TestDataSpec.cpp
     ${NEBULA_SRC}/meta/test/TestMacro.cpp
     ${NEBULA_SRC}/meta/test/TestMeta.cpp
     ${NEBULA_SRC}/meta/test/TestPartition.cpp

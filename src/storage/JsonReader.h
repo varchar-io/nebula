@@ -42,10 +42,11 @@ public:
     const std::string& file,
     const nebula::meta::JsonProps& props,
     nebula::type::Schema schema,
+    const std::vector<std::string>& columns = {},
     bool nullDefault = true)
     : nebula::surface::RowCursor(0),
       fstream_{ file },
-      json_{ schema, props.columnsMap, nullDefault },
+      json_{ schema, props.columnsMap, columns, nullDefault },
       row_{ SLICE_SIZE } {
 
     // read first line to initialize cursor state
@@ -94,9 +95,10 @@ public:
     const std::string& file,
     const nebula::meta::JsonProps& props,
     nebula::type::Schema schema,
+    const std::vector<std::string>& columns = {},
     bool nullDefault = true)
     : nebula::surface::RowCursor(0),
-      json_{ schema, props.columnsMap, nullDefault },
+      json_{ schema, props.columnsMap, columns, nullDefault },
       row_{ SLICE_SIZE },
       array_{ nullptr } {
     const auto& rf = props.rowsField;
@@ -149,12 +151,13 @@ std::unique_ptr<nebula::surface::RowCursor> makeJsonReader(
   const std::string& file,
   const nebula::meta::JsonProps& props,
   nebula::type::Schema schema,
+  const std::vector<std::string>& columns,
   bool nullDefault = true) {
   // empty rows field - every line of the file is a row object in json
   if (props.rowsField.size() == 0) {
-    return std::make_unique<LineJsonReader>(file, props, schema, nullDefault);
+    return std::make_unique<LineJsonReader>(file, props, schema, columns, nullDefault);
   } else {
-    return std::make_unique<ObjectJsonReader>(file, props, schema, nullDefault);
+    return std::make_unique<ObjectJsonReader>(file, props, schema, columns, nullDefault);
   }
 }
 

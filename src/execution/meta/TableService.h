@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "common/Evidence.h"
-#include "execution/BlockManager.h"
 #include "meta/ClusterInfo.h"
 #include "meta/MetaService.h"
 #include "meta/NNode.h"
@@ -30,6 +29,8 @@
 /**
  *
  * Define table meta data service provider for nebula execution runtime.
+ * A Table Service will connect with external meta data persistent store
+ * Or raft-based service store (Nebula Server will use raft to manage state).
  *
  */
 namespace nebula {
@@ -56,7 +57,7 @@ public:
   }
 
 public:
-  virtual nebula::meta::TableRegistry& query(const std::string& name) override {
+  virtual const nebula::meta::TableRegistry& query(const std::string& name) override {
     auto it = tables_.find(name);
     if (it != tables_.end()) {
       return *(it->second);
@@ -70,6 +71,32 @@ public:
     const std::shared_ptr<nebula::meta::Table>,
     std::function<bool(const nebula::meta::NNode&)>) override;
 
+  inline bool exists(const std::string& table) const {
+    return tables_.find(table) != tables_.end();
+  }
+
+  // get table registry - enroll it if first time
+  inline nebula::meta::TableRegistryPtr get(const nebula::meta::TableSpecPtr& tbSpec) {
+    const auto& name = tbSpec->name;
+    if (!exists(name)) {
+      enroll(tbSpec->to(), tbSpec->ttl.stl);
+    }
+
+    return tables_[name];
+  }
+
+  // get all table registries (refs)
+  inline std::vector<nebula::meta::TableRegistryPtr> all() const {
+    std::vector<nebula::meta::TableRegistryPtr> tables;
+    for (auto itr = tables_.begin(); itr != tables_.end(); ++itr) {
+      // push the table ref
+      tables.push_back(itr->second);
+    }
+
+    return tables;
+  }
+
+private:
   // TODO(cao) - currently the data source of table definition is from system configs
   // this system wide truth is not good for schema evolution.
   // e.g. what about if different data blocks loaded in different time has different schema?
@@ -78,7 +105,7 @@ public:
     std::lock_guard<std::mutex> lock(lock_);
     const auto& tn = tp->name();
     if (tables_.find(tn) == tables_.end()) {
-      tables_[tn] = std::make_unique<nebula::meta::TableRegistry>(tp, stl);
+      tables_[tn] = std::make_shared<nebula::meta::TableRegistry>(tp, stl);
       return true;
     }
 
@@ -90,34 +117,12 @@ public:
     tables_.erase(name);
   }
 
-  // enroll/refresh tables from the whole cluster info
-  void enroll(const nebula::meta::ClusterInfo&);
-
-  // clean any table that past TTL
-  void clean() {
-    std::vector<std::string> expired;
-    for (auto&& it : tables_) {
-      if (it.second->expired()) {
-        expired.push_back(it.first);
-      }
-    }
-
-    // erase them
-    for (auto& key : expired) {
-      LOG(INFO) << "Remove table that passed its ttl: " << key;
-      tables_.erase(key);
-    }
-  }
-
-  inline bool exists(const std::string& table) const {
-    return tables_.find(table) != tables_.end();
-  }
-
 private:
   // preset is a list of preload table before meta service functions
-  nebula::common::unordered_map<std::string, std::unique_ptr<nebula::meta::TableRegistry>> tables_;
+  nebula::common::unordered_map<std::string, nebula::meta::TableRegistryPtr> tables_;
   std::mutex lock_;
 };
+
 } // namespace meta
 } // namespace execution
 } // namespace nebula

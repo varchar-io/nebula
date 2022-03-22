@@ -70,6 +70,11 @@ public: /** only static methods */
     return seconds(std::chrono::system_clock::now());
   }
 
+  // time point of seconds later
+  inline static auto later(size_t seconds) {
+    return std::chrono::system_clock::now() + std::chrono::seconds(seconds);
+  }
+
   // convert a serial number to unix timestamp (seconds)
   inline static int64_t serial_2_unix(double serial) {
     return static_cast<int64_t>(serial * DAY_SECONDS + UNIX_1899_DEC_30);

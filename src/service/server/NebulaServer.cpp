@@ -38,7 +38,6 @@
 #include "common/TaskScheduler.h"
 #include "execution/BlockManager.h"
 #include "execution/meta/TableService.h"
-#include "ingest/SpecRepo.h"
 #include "memory/Batch.h"
 #include "meta/ClusterInfo.h"
 #include "meta/NBlock.h"
@@ -46,14 +45,15 @@
 #include "meta/TableSpec.h"
 #include "nebula.grpc.pb.h"
 #include "service/base/NebulaService.h"
+#include "service/node/ConnectionPool.h"
 #include "service/node/RemoteNodeConnector.h"
 #include "storage/NFS.h"
 #include "storage/NFileSystem.h"
 
 // use "host.docker.internal" for docker env
 DEFINE_string(CLS_CONF, "configs/cluster.yml", "cluster config file");
-DEFINE_uint64(CLS_CONF_UPDATE_INTERVAL, 5000, "interval in milliseconds to update cluster config");
-DEFINE_uint64(NODE_SYNC_INTERVAL, 5000, "interval in ms to conduct node sync");
+DEFINE_uint64(CLS_CONF_UPDATE_INTERVAL, 3000, "interval in milliseconds to update cluster config");
+DEFINE_uint64(NODE_SYNC_INTERVAL, 500, "interval in ms to conduct node sync");
 DEFINE_uint32(MAX_TABLES_RETURN, 500, "max tables to fetch to display");
 DEFINE_int32(MAX_MSG_SIZE, 67108864, "max message size sending between server and client, default to 64M");
 
@@ -82,10 +82,12 @@ using nebula::execution::QueryContext;
 using nebula::execution::io::BlockLoader;
 using nebula::execution::meta::TableService;
 using nebula::ingest::IngestSpec;
-using nebula::ingest::SpecState;
 using nebula::memory::Batch;
 using nebula::meta::BlockSignature;
 using nebula::meta::ClusterInfo;
+using nebula::meta::NNode;
+using nebula::meta::NRole;
+using nebula::meta::SpecState;
 using nebula::meta::Table;
 using nebula::meta::TableSpec;
 using nebula::meta::TableSpecPtr;
@@ -226,20 +228,19 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   auto context = buildQueryContext(ctx);
   LOG(INFO) << "Load data source for user: " << context->user();
 
-  LoadResult specs{ 0 };
   LoadError err = LoadError::SUCCESS;
-  std::string tableName;
+  TableSpecPtr tbSpec;
 
   // load request as specs belonging to a unique table name
   switch (req->type()) {
   case LoadType::CONFIG:
-    specs = loadHandler_.loadConfigured(req, err, tableName);
+    tbSpec = loadHandler_.loadConfigured(req, err);
     break;
   case LoadType::GOOGLE_SHEET:
-    specs = loadHandler_.loadGoogleSheet(req, err, tableName);
+    tbSpec = loadHandler_.loadGoogleSheet(req, err);
     break;
   case LoadType::DEMAND:
-    specs = loadHandler_.loadDemand(req, err, tableName);
+    tbSpec = loadHandler_.loadDemand(req, err);
     break;
   default:
     err = LoadError::NOT_SUPPORTED;
@@ -252,76 +253,29 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
     return Status::CANCELLED;
   }
 
-  // assign nebula node to each spec
-  auto& nodes = ClusterInfo::singleton().nodes();
-  auto ri = Evidence::rand<size_t>(0, nodes.size() - 1);
+  // requested table name or overwritten name
+  auto tableName = req->table();
 
-  // now we have a list of specs, let's assign nodes to these ingest specs and send to each node
-  auto& threadPool = pool();
-  auto connector = std::make_shared<node::RemoteNodeConnector>(nullptr);
-  std::vector<folly::Future<TaskState>> futures;
-  futures.reserve(specs.size());
-  for (auto spec : specs) {
-    // assign a nebula node randomly to it
-    spec->setAffinity(nodes.at(ri()));
-    auto promise = std::make_shared<folly::Promise<TaskState>>();
-
-    // pass values since we reutrn the whole lambda - don't reference temporary things
-    // such as local stack allocated variables, including "this" the client itself.
-    threadPool.add([promise, connector, spec, &threadPool]() {
-      auto client = connector->makeClient(spec->affinity(), threadPool);
-      // build a task out of this spec
-      Task t(TaskType::INGESTION, std::static_pointer_cast<Identifiable>(spec), true);
-      TaskState state = client->task(t);
-      if (state == TaskState::SUCCEEDED) {
-        spec->setState(SpecState::READY);
-        // update state immediately to reflesh the load state
-        client->update();
-      }
-
-      // set the task state
-      promise->setValue(state);
-    });
-
-    futures.push_back(promise->getFuture());
+  // add this table spec to cluster info - auto dedup
+  // tbSpec could be null is request is a permanent table
+  if (tbSpec) {
+    tableName = tbSpec->name;
+    ClusterInfo::singleton().addTable(tbSpec);
   }
 
-  auto x = folly::collectAll(futures).get();
-  auto unsuccess = TaskState::SUCCEEDED;
-  for (auto it = x.begin(); it < x.end(); ++it) {
-    // if the result is empty
-    if (!it->hasValue()) {
-      unsuccess = TaskState::UNKNOWN;
-      break;
-    }
-
-    auto s = it->value();
-    if (s != TaskState::SUCCEEDED) {
-      unsuccess = s;
-      break;
-    }
+  // check if we have data for this table already
+  // if we have no data blocks - assuming it's loading
+  // but in fact, it could be failed too
+  const auto state = BlockManager::init()->metrics(tableName);
+  if (state.numBlocks() == 0) {
+    err = LoadError::IN_LOADING;
   }
 
-  if (unsuccess == TaskState::SUCCEEDED) {
-    reply->set_error(err);
-    reply->set_loadtimems(tick.elapsedMs());
-    reply->set_table(tableName);
-    return Status::OK;
-  }
-
-  // if it's in processing, we let client know that
-  if (unsuccess == TaskState::PROCESSING) {
-    reply->set_error(LoadError::IN_LOADING);
-    reply->set_loadtimems(tick.elapsedMs());
-    reply->set_table(tableName);
-    return Status::OK;
-  }
-
-  // unregister the table if the load failed
-  TableService::singleton()->unenroll(tableName);
-
-  reply->set_error(LoadError::TEMPLATE_NOT_FOUND);
-  return Status::CANCELLED;
+  // always indicating loading using async communication
+  reply->set_error(err);
+  reply->set_loadtimems(tick.elapsedMs());
+  reply->set_table(tableName);
+  return Status::OK;
 }
 
 Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, QueryResponse* reply) {
@@ -414,16 +368,16 @@ grpc::Status V1ServiceImpl::Url(grpc::ServerContext*, const UrlData* req, UrlDat
   return Status::OK;
 }
 
-nebula::meta::NRole fromTier(ServiceTier tier) {
+NRole fromTier(ServiceTier tier) {
   switch (tier) {
-  case ServiceTier::NODE: return nebula::meta::NRole::NODE;
+  case ServiceTier::NODE: return NRole::NODE;
   default:
-    return nebula::meta::NRole::SERVER;
+    return NRole::SERVER;
   }
 }
 
 grpc::Status V1ServiceImpl::Ping(grpc::ServerContext*, const ServiceInfo* si, PingResponse*) {
-  nebula::meta::NNode node{ fromTier(si->tier()), si->ipv4(), si->port() };
+  NNode node{ fromTier(si->tier()), si->ipv4(), si->port() };
   if (node.server.size() == 0 || node.port == 0) {
     return grpc::Status(StatusCode::INVALID_ARGUMENT,
                         fmt::format("Invalid node info: {0}", node.toString()));
@@ -494,12 +448,6 @@ void RunServer() {
   std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
   LOG(INFO) << "Nebula server listening on " << server_address;
 
-  // a unique spec repo per server
-  nebula::ingest::SpecRepo specRepo;
-
-  // start node sync to sync all node's states and tasks
-  // auto nsync = nebula::service::server::NodeSync::async(v1Service.pool(), specRepo, FLAGS_NODE_SYNC_INTERVAL);
-
   // TODO (cao): start a thread to sync up with etcd setup for cluster info.
   // register cluster info, we're using two different time based scheduelr currently
   // one is NodeSync uses folly::FunctionScheduler and TaskScheduler is built on top of EventBase
@@ -519,14 +467,12 @@ void RunServer() {
     });
   });
 
-  // having a local file system to detect change of cluster config
-  auto& pool = v1Service.pool();
   // a counter indicating total number of updates executed
   auto updates = 0;
   std::string confSignature;
   taskScheduler.setInterval(
     FLAGS_CLS_CONF_UPDATE_INTERVAL,
-    [&pool, &specRepo, &confSignature, &updates] {
+    [&confSignature, &updates] {
       // load config into cluster info
       auto conf = LoadClusterConfig();
 
@@ -565,9 +511,6 @@ void RunServer() {
 
         // load the new conf
         ci.load(conf, nebula::service::base::createMetaDB);
-
-        // TODO(cao) - how to support table schema/column props evolution?
-        nebula::execution::meta::TableService::singleton()->enroll(ci);
       }
 
       // if the file is copied tmp file, delete it
@@ -575,18 +518,18 @@ void RunServer() {
         unlink(conf.c_str());
       }
 
-      { // sync cluster state
-        // TODO(cao) - use hash ring to handle dynamic nodes adding/removing events
-        // skip first time to allow all nodes to register themselves.
-        if (updates > 0) {
-          nebula::service::server::NodeSync::sync(pool, specRepo);
+      { // backup metadb
+        if (ci.db().backup()) {
+          LOG(INFO) << "complete backup meta db.";
         }
       }
 
-      { // backup metadb
-        if (nebula::meta::ClusterInfo::singleton().db().backup()) {
-          LOG(INFO) << "complete backup meta db.";
-        }
+      { // re-activate bad nodes by checking if they are back.
+        // iterate all non-active nodes from node manager
+        // ask connection pool to connect - if get valid channel, reactivate it
+        ci.nodeManager().activate([](const nebula::meta::NNode& node) {
+          return nebula::service::node::ConnectionPool::init()->test(node);
+        });
       }
 
       // count number of times to update, log info every 500 updates
@@ -594,6 +537,14 @@ void RunServer() {
         LOG(INFO) << "Nebula Server updated itself " << updates << " times.";
       }
     });
+
+  // node sync let it keep going using a unique spec repo per server
+  // NOTE: our task scheduler schedule function run in sequence
+  // interval is the time gap between any sequential two runs
+  auto& pool = v1Service.pool();
+  taskScheduler.setInterval(FLAGS_NODE_SYNC_INTERVAL, [&pool]() {
+    nebula::service::server::NodeSync::sync(pool);
+  });
 
   // NOTE that, this is blocking main thread to wait for server down
   // this may prevent system to exit properly, will revisit and revise.
@@ -603,9 +554,6 @@ void RunServer() {
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.
   server->Wait();
-
-  // shut down node sync process
-  // nsync->shutdown();
 }
 
 int main(int argc, char** argv) {

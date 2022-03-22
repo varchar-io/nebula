@@ -41,16 +41,16 @@ TEST(StorageTest, TestVectorReaderBasic) {
         ] \
     }";
 
-  rapidjson::Document doc;
-  if (doc.Parse(json).HasParseError()) {
+  auto doc = std::make_unique<rapidjson::Document>();
+  if (doc->Parse(json).HasParseError()) {
     throw NException("invalid json content");
   }
 
-  auto root = doc.GetObject();
+  auto root = doc->GetObject();
   auto values = root["values"].GetArray();
   auto schema = TypeSerializer::from("ROW<id:bigint, name:varchar, score:float, age:int>");
 
-  JsonVectorReader vectorReader(schema, values, 4);
+  JsonVectorReader vectorReader(schema, std::move(doc), values, 4);
   EXPECT_EQ(vectorReader.size(), 4);
 
   // go through every single row
@@ -99,16 +99,16 @@ TEST(StorageTest, TestVectorReaderHeadless) {
         ] \
     }";
 
-  rapidjson::Document doc;
-  if (doc.Parse(json).HasParseError()) {
+  auto doc = std::make_unique<rapidjson::Document>();
+  if (doc->Parse(json).HasParseError()) {
     throw NException("invalid json content");
   }
 
-  auto root = doc.GetObject();
+  auto root = doc->GetObject();
   auto values = root["values"].GetArray();
   auto schema = TypeSerializer::from("ROW<id:bigint, name:varchar, score:float, age:int>");
 
-  JsonVectorReader vectorReader(schema, values, 1, true);
+  JsonVectorReader vectorReader(schema, std::move(doc), values, 1, true);
   EXPECT_EQ(vectorReader.size(), 1);
 
   // go through every single row
@@ -137,16 +137,16 @@ TEST(StorageTest, TestVectorReaderTypeConversion) {
         ] \
     }";
 
-  rapidjson::Document doc;
-  if (doc.Parse(json).HasParseError()) {
+  auto doc = std::make_unique<rapidjson::Document>();
+  if (doc->Parse(json).HasParseError()) {
     throw NException("invalid json content");
   }
 
-  auto root = doc.GetObject();
+  auto root = doc->GetObject();
   auto values = root["values"].GetArray();
   auto schema = TypeSerializer::from("ROW<id:bigint, name:varchar, score:float, age:int>");
 
-  JsonVectorReader vectorReader(schema, values, 5);
+  JsonVectorReader vectorReader(schema, std::move(doc), values, 5);
   EXPECT_EQ(vectorReader.size(), 5);
 
   // go through every single row

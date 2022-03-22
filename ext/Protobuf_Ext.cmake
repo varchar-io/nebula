@@ -5,7 +5,7 @@ include(ExternalProject)
 ExternalProject_Add(protobuf
     PREFIX protobuf
     GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-    GIT_TAG v3.17.3
+    GIT_TAG v3.19.2
     UPDATE_COMMAND ""
     INSTALL_COMMAND ""
     CONFIGURE_COMMAND ""

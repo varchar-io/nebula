@@ -1002,7 +1002,7 @@ TEST(CommonTest, TestParams) {
   auto p = params.next();
   std::vector<std::string> paths;
   while (p.size() > 0) {
-    auto path = nebula::common::format(tmp, p);
+    auto path = nebula::common::format(tmp, nebula::common::mapKV2(p));
     LOG(INFO) << "Get a path: " << path;
     paths.push_back(path);
     p = params.next();

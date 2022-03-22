@@ -140,18 +140,25 @@ foreach(i RANGE ${list_max_index})
   # NOTE that - on linux, GCC behaves wired, the order of the dependencies matter
   # which means, libgrpc++ depends on libgrpc, and likewise, libgrpc depends on libgpr and address_sorting
   # if we messed up the order, the link will report huge amount of errors like undefined referneces.
+  find_package(absl REQUIRED)
   target_link_libraries(${target}
     PRIVATE ${NEBULA_SERVICE}
     PRIVATE libgrpc++
     PRIVATE libgrpc
     PRIVATE libgpr
     PRIVATE libaddress_sorting
+    PRIVATE libupb
     PRIVATE ${OMM_LIBRARY}
     PRIVATE ${URIP_LIBRARY}
     PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${GLOG_LIBRARY}
     PRIVATE ${CARES_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
+    PRIVATE ${RE2_LIBRARY}
+    PRIVATE absl::hash
+    PRIVATE absl::status
+    PRIVATE absl::statusor
+    PRIVATE absl::synchronization
     PRIVATE ${XXH_LIBRARY}
     PRIVATE ${AWS_LIBRARY}
     PRIVATE ${PERF_LIBRARY})

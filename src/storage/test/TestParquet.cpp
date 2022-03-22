@@ -484,7 +484,7 @@ TEST(ParquetTest, TestReadThroughFlatRow) {
       row.isNull("double_field") ? "NULL" : folly::to<std::string>(row.readDouble("double_field")),
       row.isNull("ba_field") ? "NULL" : row.readString("ba_field"));
   };
-  ParquetReader reader(readWriteSample, schema);
+  ParquetReader reader(readWriteSample, schema, {});
   auto rows = 0;
   while (reader.hasNext()) {
     auto& line = reader.next();

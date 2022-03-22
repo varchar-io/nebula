@@ -16,73 +16,66 @@
 
 #pragma once
 
-#include <meta/TableSpec.h>
-
 #include "IngestSpec.h"
+
 #include "common/Hash.h"
+#include "execution/core/NodeConnector.h"
 #include "meta/ClusterInfo.h"
 #include "meta/Macro.h"
 #include "meta/TableSpec.h"
 
 /**
- * Based on current cluster settings. 
+ * Based on current cluster settings.
  * Generate ingestion spec list for each table.
- * 
+ *
  * A spec repo is held by a nebula serve which holds the truth of all data knowledge.
  * We usually run a SpecRepo gen methods periodically.
- * 
+ *
  * Every spec will be check against current data store to indicate if a spec needs to be ingested.
  * Server will ask a node to ingest the spec. So spec state usually transits like
  *    "new" -> "assigned" -> "done"
- * 
- * A spec may produce multiple data blocks, if anything failing in the middle, 
+ *
+ * A spec may produce multiple data blocks, if anything failing in the middle,
  * the data node will clean them up and tell server it doesn't finish the task. Server will re-assign later.
  */
 namespace nebula {
 namespace ingest {
 
+// Spec repo takes care of all specs management through table service interface
 class SpecRepo {
-  using SpecPtr = std::shared_ptr<IngestSpec>;
+  using ClientMaker = std::function<std::unique_ptr<nebula::execution::core::NodeClient>(const nebula::meta::NNode&)>;
 
-public:
-  // parse pattern string and generate ingest spec
-  static void genPatternSpec(
-    const nebula::meta::PatternMacro, const std::string&,
-    const size_t, const std::string&, const nebula::meta::TableSpecPtr&,
-    std::vector<std::shared_ptr<IngestSpec>>&);
-
-public:
+private:
+  // by default - use service discovery node manager
+  // if config mode is specified, it will be replaced.
   SpecRepo() = default;
+  SpecRepo(SpecRepo&) = delete;
+  SpecRepo(SpecRepo&&) = delete;
+
+public:
   virtual ~SpecRepo() = default;
 
-  // refresh spec repo based on cluster configs
-  void refresh(const nebula::meta::ClusterInfo&) noexcept;
-
-  // this method can be sub-routine of refresh
-  void assign(const std::vector<nebula::meta::NNode>&) noexcept;
-
-  // expose all current specs in repo
-  inline const auto& specs() const {
-    return specs_;
+public:
+  static SpecRepo& singleton() {
+    static SpecRepo repo;
+    return repo;
   }
 
-  // try to assign a node to a spec
-  // assign the spec for given node
-  bool confirm(const std::string& spec, const nebula::meta::NNode& node) noexcept;
+  // refresh spec repo based on cluster configs
+  size_t refresh() noexcept;
+
+  // remove all expired blocks from active nodes
+  size_t expire(const ClientMaker&) noexcept;
+
+  // this method can be sub-routine of refresh
+  std::pair<size_t, size_t> assign(const ClientMaker&) noexcept;
+
+  // unassign spec when we lost a node
+  size_t lost(const std::string&) noexcept;
 
 private:
-  // process a table spec and generate all specs into the given specs container
-  void process(const std::string&, const nebula::meta::TableSpecPtr&, std::vector<SpecPtr>&) noexcept;
-
-  // update the snapshot of new spec list into spec repo
-  void update(const std::vector<SpecPtr>&) noexcept;
-
-  void genSpecs4Roll(const std::string& version,
-                     const meta::TableSpecPtr& table,
-                     std::vector<std::shared_ptr<IngestSpec>>& specs) noexcept;
-
-private:
-  nebula::common::unordered_map<std::string, SpecPtr> specs_;
+  // used to sync operations on specs maintainance
+  mutable std::mutex specsMutex_;
 };
 
 } // namespace ingest

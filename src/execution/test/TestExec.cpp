@@ -186,7 +186,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       idSum += sameRow.readInt("id");
     }
 
-    LOG(INFO) << "build up a block compute result";
+    LOG(INFO) << "build up a block compute result, sum(id)=" << idSum;
     auto outputSchema = TypeSerializer::from("ROW<key:int, agg:int>");
     nebula::execution::BlockPhase plan(test.schema(), outputSchema);
 

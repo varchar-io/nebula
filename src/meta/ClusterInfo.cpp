@@ -496,7 +496,6 @@ inline void processTableDefinitions(
 }
 
 void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
-
   YAML::Node config = YAML::LoadFile(file);
 
   // total top level section supported
@@ -532,6 +531,7 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
     }
 
     // replace the default node manager use pre-configured one
+    // this will overwrite all existing node states - "bad->active" as reset event
     this->nodeManager_ = NodeManager::create(std::move(nodeSet));
   }
 
@@ -551,8 +551,27 @@ void ClusterInfo::load(const std::string& file, CreateMetaDB createDb) {
   processTableDefinitions(configTables, nameSet, tableSet);
   processTableDefinitions(runtimeTables_, nameSet, tableSet);
 
-  // swap with new table set
-  std::swap(tables_, tableSet);
+  // update table spec
+  // 1. if table is not found in new set, remove it from tables_
+  // 2. if table is new, add it to tables_
+  // 3. if table is expired, remove it.
+  for (auto itr = tables_.cbegin(); itr != tables_.cend(); ++itr) {
+    // table is deleted or expired
+    const auto& ptr = *itr;
+    const auto& ttl = ptr->ttl;
+    if ((ttl.never() && !nameSet.contains(ptr->name)) || ttl.expired()) {
+      tables_.erase(itr);
+    }
+  }
+
+  // add new table if not existing
+  for (auto& newTb : tableSet) {
+    if (!tables_.contains(newTb)) {
+      tables_.emplace(newTb);
+    }
+  }
+
+  // std::swap(tables_, tableSet);
   stateChanged_ = false;
 
   // if user mistakenly config things at top level

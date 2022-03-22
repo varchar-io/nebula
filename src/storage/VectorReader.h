@@ -154,11 +154,13 @@ private:
 class JsonVectorReader : public nebula::surface::RowCursor {
 public:
   JsonVectorReader(nebula::type::Schema schema,
+                   std::unique_ptr<rapidjson::Document> doc,
                    const rapidjson::GenericArray<false, rapidjson::Value>& values,
                    size_t size,
                    bool headless = false)
     : nebula::surface::RowCursor(size),
-      row_{ index_ } {
+      row_{ index_ },
+      doc_{ std::move(doc) } {
     // for each column vector
     using ST = rapidjson::SizeType;
     auto numColumns = std::min(values.Size(), (ST)schema->size());
@@ -207,13 +209,13 @@ public:
     }
 
     // use smaller value to load data
-    if (maxRows < size) {
+    if (maxRows < size || size == 0) {
       size_ = maxRows;
     }
 
     // log a json vector reader creation
     LOG(INFO) << "Initialize a json vector reader for rows="
-              << size
+              << size_
               << " without header="
               << headless;
   }
@@ -247,6 +249,7 @@ private:
 
 private:
   VectorRow row_;
+  std::unique_ptr<rapidjson::Document> doc_;
 };
 
 } // namespace storage

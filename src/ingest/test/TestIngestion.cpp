@@ -21,6 +21,7 @@
 #include <pg_query.h>
 #include <storage/NFS.h>
 
+#include "execution/meta/SpecProvider.h"
 #include "ingest/IngestSpec.h"
 #include "ingest/SpecRepo.h"
 #include "meta/ClusterInfo.h"
@@ -31,6 +32,7 @@ namespace nebula {
 namespace ingest {
 namespace test {
 
+using nebula::execution::meta::genPatternSpec;
 using nebula::ingest::SpecRepo;
 using namespace nebula::meta;
 
@@ -55,12 +57,13 @@ TEST(IngestTest, TestIngestSpec) {
     std::move(colProps), std::move(timeSpec),
     std::move(accSpec), std::move(bucketInfo), std::move(settings),
     std::move(macroValues), std::move(headers), -1);
-  nebula::ingest::IngestSpec spec(table, "1.0", {"nebula/v1.x"}, "nebula", 10, SpecState::NEW, 0);
-  LOG(INFO) << "SPEC: " << spec.toString();
-  EXPECT_EQ(spec.id(), "test@nebula/v1.x@10");
+  auto splits = { std::make_shared<SpecSplit>("nebula/v1.x", 10, 0) };
+  nebula::ingest::IngestSpec spec(table, "1.0", "nebula", splits, SpecState::NEW);
+  LOG(INFO) << "SPEC: " << spec.id();
+  EXPECT_EQ(spec.id(), "test@[nebula/v1.x#0#10#0,]");
   EXPECT_EQ(spec.size(), 10);
-  EXPECT_EQ(spec.paths()[0], "nebula/v1.x");
-  EXPECT_EQ(spec.paths().size(), 1);
+  EXPECT_EQ(spec.splits().size(), 1);
+  EXPECT_EQ(spec.splits()[0]->path, "nebula/v1.x");
   EXPECT_EQ(spec.domain(), "nebula");
   EXPECT_EQ(spec.table()->name, "test");
   EXPECT_EQ(spec.version(), "1.0");
@@ -68,7 +71,7 @@ TEST(IngestTest, TestIngestSpec) {
 
 TEST(IngestTest, TestSpecGeneration) {
 #ifndef __APPLE__
-  nebula::ingest::SpecRepo sr;
+  auto& sr = nebula::ingest::SpecRepo::singleton();
 
   // load cluster info from sample config
   auto& ci = nebula::meta::ClusterInfo::singleton();
@@ -95,7 +98,7 @@ TEST(IngestTest, TestTransformerAddColumn) {
 }
 
 TEST(IngestTest, TestTimePatternSpecGeneration) {
-  nebula::ingest::SpecRepo sr;
+  auto& sr = nebula::ingest::SpecRepo::singleton();
 
   // load cluster info from sample config
   auto& ci = nebula::meta::ClusterInfo::singleton();
@@ -103,15 +106,15 @@ TEST(IngestTest, TestTimePatternSpecGeneration) {
     return std::make_unique<nebula::meta::VoidDb>();
   });
 
-  sr.refresh(ci);
+  sr.refresh();
 
   // test macro parser
-  const auto& specs = ci.tables();
-  for (auto spec : specs) {
-    const auto type = spec->timeSpec.type;
-    const auto name = spec->name;
+  const auto& tables = ci.tables();
+  for (auto table : tables) {
+    const auto type = table->timeSpec.type;
+    const auto name = table->name;
     if (type == meta::TimeType::MACRO && name == "nebula.hourly") {
-      const auto sourceInfo = nebula::storage::parse(spec->location);
+      const auto sourceInfo = nebula::storage::parse(table->location);
       std::string macroStr = "hour";
 
       int pos = sourceInfo.path.find(macroStr);
@@ -120,21 +123,28 @@ TEST(IngestTest, TestTimePatternSpecGeneration) {
       EXPECT_EQ(pathTemplate.substr(pos, strlen("2020-01-01")), "2020-01-01");
 
       // scan four hour ago
-      auto ingestSpec = std::vector<std::shared_ptr<IngestSpec>>();
+      std::vector<SpecPtr> specs;
       // always include current hour
-      SpecRepo::genPatternSpec(meta::PatternMacro::HOURLY,
-                               sourceInfo.path,
-                               common::Evidence::HOUR_SECONDS * 4,
-                               "1.0", spec, ingestSpec);
+      genPatternSpec(meta::PatternMacro::HOURLY,
+                     sourceInfo.path,
+                     common::Evidence::HOUR_SECONDS * 4,
+                     "1.0",
+                     table,
+                     specs);
+
+      // no file to be listed from s3 with no-existing path
+      EXPECT_EQ(specs.size(), 0);
     } else if (type == meta::TimeType::MACRO && name == "nebula.daily") {
-      const auto sourceInfo = nebula::storage::parse(spec->location);
+      const auto sourceInfo = nebula::storage::parse(table->location);
       std::string macroStr = "date";
       // scan an hour ago
-      auto ingestSpec = std::vector<std::shared_ptr<IngestSpec>>();
+      auto specs = std::vector<SpecPtr>();
+
       // TODO (chenqin): mock s3 filesystem list
       // expect cover last day
-      SpecRepo::genPatternSpec(meta::PatternMacro::DAILY, sourceInfo.path, 3600,
-                               "1.0", spec, ingestSpec);
+      genPatternSpec(meta::PatternMacro::DAILY, sourceInfo.path, 3600, "2.0", table, specs);
+      // no file to be listed from s3 with no-existing path
+      EXPECT_EQ(specs.size(), 0);
     }
   }
 }

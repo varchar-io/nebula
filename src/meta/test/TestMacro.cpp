@@ -128,7 +128,7 @@ TEST(MacroTest, TestWatermark) {
   auto p = list.next();
   std::vector<size_t> wms;
   while (p.size() > 0) {
-    auto watermark = Macro::watermark(p);
+    auto watermark = Macro::watermark(nebula::common::mapKV2(p));
     wms.push_back(watermark);
     p = list.next();
   }
@@ -146,7 +146,7 @@ TEST(MacroTest, TestCustomMacros1) {
     { "b", { "3", "4" } },
     { "c", { "5", "6" } },
   };
-  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+  const auto paths = Macro::enumeratePathsWithMacros(path, macroValues);
   const std::vector<std::string> expectedPaths = {
     "1/3/5",
     "1/3/6",
@@ -175,7 +175,7 @@ TEST(MacroTest, TestCustomMacros2) {
     { "a", { "1" } },
     { "b", { "2", "3" } },
   };
-  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+  const auto paths = Macro::enumeratePathsWithMacros(path, macroValues);
   const std::vector<std::string> expectedPaths = { "1/2", "1/3" };
 
   EXPECT_EQ(paths.size(), 2);
@@ -194,10 +194,10 @@ TEST(MacroTest, TestCustomMacros3) {
   const std::map<std::string, std::vector<std::string>> macroValues = {
     { "c", { "1", "2", "3" } }
   };
-  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+  const auto paths = Macro::enumeratePathsWithMacros(path, macroValues);
 
   EXPECT_EQ(paths.size(), 1);
-  EXPECT_EQ(paths[0].first, "a/b");
+  EXPECT_EQ(paths.begin()->first, "a/b");
 }
 
 TEST(MacroTest, TestCustomMacros4) {
@@ -206,7 +206,7 @@ TEST(MacroTest, TestCustomMacros4) {
     { "a", { "1", "2" } },
     { "b", { "1", "2" } }
   };
-  const auto paths = Macro::enumeratePathsWithCustomMacros(path, macroValues);
+  const auto paths = Macro::enumeratePathsWithMacros(path, macroValues);
 
   const std::vector<std::string> expectedPaths = { "a/1/{c}/{def}", "a/2/{c}/{def}" };
 

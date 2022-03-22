@@ -73,7 +73,11 @@ table NodeStateRequest {
 }
 
 table NodeStateReply {
+  // all data blocks in a node
   blocks: [DataBlock];
+  
+  // spec that doesn't produce data
+  emptySpecs: [string];
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -81,22 +85,8 @@ table NodeStateReply {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 // this is serde format mapping to IngestSpec
 table IngestTask {
-  // table spec serialized by msgpack
-  table_spec: string;
-
-  // ingest spec itself
-  version: string;
-  paths: [string];
-  domain: string;
-  size: uint64;
-  state: byte;
-  date: uint64;
-  macrosAndValues: [KeyValue];
-}
-
-table KeyValue {
-  key: string;
-  value: string;
+  // data spec serialized by msgpack
+  spec: string;
 }
 
 table Spec {

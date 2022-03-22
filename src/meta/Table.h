@@ -26,11 +26,11 @@
 #include "type/Type.h"
 
 /**
- * Define nebula table and system metadata 
+ * Define nebula table and system metadata
  * which manages what data segments are loaded in memory for each table
  * This meta data can persist and sync with external DB system such as MYSQL or RocksDB
  * (A KV store is necessary for Nebula to manage all metadata)
- * 
+ *
  * (Also - Is this responsibility of zookeeper?)
  */
 namespace nebula {
@@ -249,15 +249,17 @@ public:
       AccessType,
       const nebula::common::unordered_set<std::string>&,
       const std::string& col = "") const;
-  
-  inline const std::vector<std::pair<std::string, std::string>> getColumnNameToMacroMapping() {
+
+  // get macro name for given column name - empty string if not found
+  inline const std::string& fromMacro(const std::string& colName) {
+    static const std::string EMPTY = "";
     std::vector<std::pair<std::string, std::string>> columnNameAndMacro;
-    for (const auto& cp : columns_) {
-      if (!cp.second.fromMacro.empty()) {
-        columnNameAndMacro.emplace_back(std::make_pair(cp.first, cp.second.fromMacro));
-      }
+    auto found = columns_.find(colName);
+    if (found != columns_.end()) {
+      return found->second.fromMacro;
     }
-    return columnNameAndMacro;
+
+    return EMPTY;
   }
 
 protected:

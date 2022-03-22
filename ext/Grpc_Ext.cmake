@@ -76,8 +76,8 @@ SET(FB_OPTS
   -DFLATBUFFERS_BUILD_TESTS:BOOL=OFF)
 ExternalProject_Add(flatbuffers
   PREFIX flatbuffers
-  GIT_REPOSITORY https://github.com/varchar-io/flatbuffers.git
-  GIT_TAG patch-nebula
+  GIT_REPOSITORY https://github.com/google/flatbuffers.git
+  GIT_TAG v2.0.0
   CMAKE_ARGS ${FB_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
@@ -121,6 +121,8 @@ SET(GRPC_CMAKE_ARGS
   -DgRPC_INSTALL:BOOL=OFF
   -DgRPC_BUILD_TESTS:BOOL=OFF
   -DgRPC_SSL_PROVIDER:STRING=package
+  -DgRPC_ABSL_PROVIDER:STRING=package
+  -DgRPC_PROTOBUF_PROVIDER:STRING=package
   -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/grpc)
 
 # unfortunately ssllib in latest macos doesn't allow application to use
@@ -135,8 +137,8 @@ endif()
 # or submit PR to fix ByteBuffer used in Deserialize method
 ExternalProject_Add(grpc
   PREFIX grpc
-  GIT_REPOSITORY https://github.com/varchar-io/grpc.git
-  GIT_TAG patch-nebula
+  GIT_REPOSITORY https://github.com/grpc/grpc.git
+  GIT_TAG v1.33.2
   CMAKE_CACHE_ARGS ${GRPC_CMAKE_ARGS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
@@ -154,7 +156,7 @@ file(MAKE_DIRECTORY ${GRPC_INCLUDE_DIRS})
 # use their file name as the LIB target name
 foreach(_lib
   libaddress_sorting libgpr libgrpc libgrpc_cronet libgrpc_plugin_support libgrpc_unsecure libgrpcpp_channelz
-  libgrpc++ libgrpc++_cronet libgrpc++_reflection libgrpc++_unsecure libgrpc++_error_details)
+  libgrpc++ libgrpc++_cronet libgrpc++_reflection libgrpc++_unsecure libgrpc++_error_details libupb)
   add_library(${_lib} UNKNOWN IMPORTED)
   set_target_properties(${_lib} PROPERTIES
       "IMPORTED_LOCATION" "${BINARY_DIR}/${_lib}.a"
@@ -164,6 +166,7 @@ foreach(_lib
       ${CARES_LIBRARY}
       ${ZLIB_LIBRARY}
       ${PROTOBUF_LIBRARY}
+      ${RE2_LIBRARY}
       grpc)
 endforeach()
 

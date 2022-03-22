@@ -2,15 +2,16 @@ set(NEBULA_EXEC NExec)
 
 # build nebula.exec library
 # target_include_directories(${NEBULA_EXEC} INTERFACE src/execution)
-add_library(${NEBULA_EXEC} STATIC 
-    ${NEBULA_SRC}/execution/core/AggregationMerge.cpp    
-    ${NEBULA_SRC}/execution/core/BlockExecutor.cpp    
-    ${NEBULA_SRC}/execution/core/ComputedRow.cpp    
-    ${NEBULA_SRC}/execution/core/Finalize.cpp    
-    ${NEBULA_SRC}/execution/core/NodeClient.cpp    
-    ${NEBULA_SRC}/execution/core/NodeExecutor.cpp    
-    ${NEBULA_SRC}/execution/core/ServerExecutor.cpp    
+add_library(${NEBULA_EXEC} STATIC
+    ${NEBULA_SRC}/execution/core/AggregationMerge.cpp
+    ${NEBULA_SRC}/execution/core/BlockExecutor.cpp
+    ${NEBULA_SRC}/execution/core/ComputedRow.cpp
+    ${NEBULA_SRC}/execution/core/Finalize.cpp 
+    ${NEBULA_SRC}/execution/core/NodeClient.cpp
+    ${NEBULA_SRC}/execution/core/NodeExecutor.cpp
+    ${NEBULA_SRC}/execution/core/ServerExecutor.cpp
     ${NEBULA_SRC}/execution/io/BlockLoader.cpp
+    ${NEBULA_SRC}/execution/meta/SpecProvider.cpp
     ${NEBULA_SRC}/execution/meta/TableService.cpp
     ${NEBULA_SRC}/execution/op/Operator.cpp
     ${NEBULA_SRC}/execution/serde/RowCursorSerde.cpp
@@ -38,6 +39,8 @@ target_link_libraries(${NEBULA_EXEC}
 # build test binary
 add_executable(ExecTests
     ${NEBULA_SRC}/execution/test/TestExec.cpp
+    ${NEBULA_SRC}/execution/test/TestOptimizedBlockExec.cpp
+    ${NEBULA_SRC}/execution/test/TestTableService.cpp
     ${NEBULA_SRC}/execution/test/TestValueEvalTree.cpp)
 
 target_link_libraries(ExecTests 

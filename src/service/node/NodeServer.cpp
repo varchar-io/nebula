@@ -33,6 +33,7 @@
 
 DEFINE_int32(MAX_MSG_SIZE, 1073741824, "max message size sending between node and server, default to 1G");
 DEFINE_string(NSERVER, "", "discovery server address - host and port");
+DEFINE_int32(NODE_PORT, 9199, "port for current node server");
 
 /**
  * Define node server that does the work as nebula server asks.
@@ -178,7 +179,15 @@ grpc::Status NodeServerImpl::Poll(
     });
   }
 
-  mb.Finish(CreateNodeStateReplyDirect(mb, &db));
+  // empty specs
+  const auto& specSet = bm->emptySpecs();
+  std::vector<flatbuffers::Offset<flatbuffers::String>> specs;
+  specs.reserve(specSet.size());
+  for (const auto& spec : specSet) {
+    specs.push_back(mb.CreateString(spec));
+  }
+
+  mb.Finish(CreateNodeStateReplyDirect(mb, &db, &specs));
 
   // The `ReleaseMessage<T>()` function detaches the message from the
   // builder, so we can transfer the resopnse to gRPC while simultaneously
@@ -234,8 +243,13 @@ void RunServer() {
   nebula::common::Finally f([]() { nebula::service::base::globalExit(); });
 
   // launch the server
-  std::string server_address = fmt::format(
-    "0.0.0.0:{0}", nebula::service::base::ServiceProperties::NPORT);
+  auto port = FLAGS_NODE_PORT;
+  if (port < 1 || port > 65535) {
+    LOG(WARNING) << "Invalid port for nebula node, using the default port.";
+    port = nebula::service::base::ServiceProperties::NPORT;
+  }
+
+  std::string server_address = fmt::format("0.0.0.0:{0}", port);
   nebula::service::node::NodeServerImpl node;
 
   grpc::ServerBuilder builder;
@@ -281,7 +295,7 @@ void RunServer() {
     // set the ping info
     info.set_host(hi.host);
     info.set_ipv4(hi.ipv4);
-    info.set_port(nebula::service::base::ServiceProperties::NPORT);
+    info.set_port(port);
 
     taskScheduler.setInterval(
       1000,

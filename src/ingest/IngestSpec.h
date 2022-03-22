@@ -22,6 +22,7 @@
 
 #include "common/Task.h"
 #include "execution/io/BlockLoader.h"
+#include "meta/DataSpec.h"
 #include "meta/NNode.h"
 #include "meta/TableSpec.h"
 
@@ -40,162 +41,51 @@
 namespace nebula {
 namespace ingest {
 
-// spec state defines states for life cycle of given spec
-enum class SpecState : char {
-  // NEW spec requires data sync
-  NEW = 'N',
-
-  // data of the spec loaded in nebula
-  READY = 'A',
-
-  // Spec is updated, data needs renew
-  RENEW = 'R',
-
-  // Spec is waiting for offload
-  EXPIRED = 'E'
-};
-
 // a ingest spec defines a task specification to ingest some data
-class IngestSpec : public nebula::common::Identifiable {
+class IngestSpec : public nebula::meta::DataSpec {
 public:
-  // TODO: build consistent identifier for list of paths
-  // ISSUE: https://github.com/varchar-io/nebula/issues/176
-  IngestSpec(
-    nebula::meta::TableSpecPtr table,
-    const std::string& version,
-    const std::vector<std::string>& paths,
-    const std::string& domain,
-    size_t size,
-    SpecState state,
-    size_t watermark,
-    nebula::common::unordered_map<std::string, std::string> macroCombinations = nebula::common::unordered_map<std::string, std::string>())
-    : table_{ table },
-      version_{ version },
-      paths_{ paths },
-      domain_{ domain },
-      size_{ size },
-      state_{ state },
-      watermark_{ watermark },
-      macroCombinations_{ macroCombinations },
-      node_{ nebula::meta::NNode::invalid() },
-      id_{ fmt::format("{0}@{1}@{2}", table_->name, paths_[0], size_) } {}
+  IngestSpec(nebula::meta::TableSpecPtr table,
+             const std::string& version,
+             const std::string& domain,
+             const std::vector<nebula::meta::SpecSplitPtr>& splits,
+             nebula::meta::SpecState state)
+    : DataSpec(table, version, domain, splits, state) {}
   virtual ~IngestSpec() = default;
 
-  inline std::string toString() const {
-    return fmt::format("[IS {0} - {1}]", version_, paths_[0]);
-  }
-
-  inline virtual const std::string& id() const override {
-    // TODO(cao) - use file+size as unique signature?
-    return id_;
-  }
-
-  inline void setState(SpecState state) {
-    state_ = state;
-  }
-
-  inline void setAffinity(const nebula::meta::NNode& node) {
-    // copy the node as my node
-    node_ = node;
-  }
-
-  inline const std::string& version() const {
-    return version_;
-  }
-
-  inline size_t size() const {
-    return size_;
-  }
-
-  inline const nebula::meta::NNode& affinity() const {
-    return node_;
-  }
-
-  inline bool assigned() const {
-    return !node_.isInvalid();
-  }
-
-  inline bool needSync() const {
-    return state_ != SpecState::READY;
-  }
-
-  inline SpecState state() const {
-    return state_;
-  }
-
-  inline nebula::meta::TableSpecPtr table() const {
-    return table_;
-  }
-
-  inline const std::string& domain() const {
-    return domain_;
-  }
-
-  inline const std::vector<std::string>& paths() const {
-    return paths_;
-  }
-  // watermark provides hints data is complete before this given timestamp
-  inline size_t watermark() const {
-    return watermark_;
-  }
-
-  inline const nebula::common::unordered_map<std::string, std::string>& macroCombinations() const {
-    return macroCombinations_;
-  }
-
-  // do the work based on current spec
-  // it may have missing field since most likely data is after deserialized
-  bool work() noexcept;
+  // core work to process this ingest spec
+  // return number of blocks produced
+  size_t work() noexcept;
 
 private:
   // load swap
-  bool loadSwap() noexcept;
+  size_t loadSwap() noexcept;
 
   // load roll
-  bool loadRoll() noexcept;
+  size_t loadRoll() noexcept;
 
   // load api - on demand ingestion
-  bool loadApi() noexcept;
+  size_t loadApi() noexcept;
 
   // load kafka
-  bool loadKafka() noexcept;
+  size_t loadKafka(nebula::meta::SpecSplitPtr) noexcept;
 
   // load rockset data
-  bool loadRockset() noexcept;
+  size_t loadRockset(nebula::meta::SpecSplitPtr) noexcept;
 
   // load google sheet
-  bool loadGSheet(nebula::execution::io::BlockList&) noexcept;
+  std::unique_ptr<nebula::surface::RowCursor> readGSheet() noexcept;
 
   // load an http resource
   bool loadHttp(nebula::execution::io::BlockList&,
+                nebula::meta::SpecSplitPtr,
                 std::vector<std::string> = {},
                 std::string_view = "") noexcept;
 
   // load current spec as blocks
   bool load(nebula::execution::io::BlockList&) noexcept;
 
-  // ingest a given local file (usually tmp file) into a list of blocks
-  bool ingest(const std::vector<std::string>&, nebula::execution::io::BlockList&) noexcept;
-
-private:
-  nebula::meta::TableSpecPtr table_;
-  std::string version_;
-  std::vector<std::string> paths_;
-  // could be s3 bucket or other protocol
-  std::string domain_;
-  size_t size_;
-  SpecState state_;
-  // macro watermark in unix time stamp
-  size_t watermark_;
-
-  nebula::common::unordered_map<std::string, std::string> macroCombinations_;
-
-  // node info if the spec has affinity on a node
-  nebula::meta::NNode node_;
-
-  // global unique identifier.
-  // not like id which is unique for a given table
-  std::string id_;
+  // ingest will expect all files are downloaded
+  bool ingest(nebula::execution::io::BlockList&) noexcept;
 };
 
 } // namespace ingest

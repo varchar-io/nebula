@@ -19,6 +19,7 @@
 #include <rapidjson/document.h>
 #include <unordered_map>
 
+#include "common/Evidence.h"
 #include "meta/Table.h"
 #include "type/Serde.h"
 #include "type/Type.h"
@@ -33,6 +34,35 @@
  */
 namespace nebula {
 namespace meta {
+
+// Time to live- measured by seconds
+struct TTL {
+  explicit TTL(size_t seconds = 0)
+    : time{ nebula::common::Evidence::unix_timestamp() },
+      stl{ seconds } {}
+  virtual ~TTL() = default;
+
+  // check if it's already expired
+  inline bool expired() const {
+    return stl > 0 && (time + stl) < nebula::common::Evidence::unix_timestamp();
+  }
+
+  inline bool never() const {
+    return stl == 0;
+  }
+
+  // reset impression time - expiration extended
+  inline void reset() {
+    time = nebula::common::Evidence::unix_timestamp();
+  }
+
+  // impression time
+  size_t time;
+  // seconds to live
+  size_t stl;
+
+  MSGPACK_DEFINE(time, stl);
+};
 
 #define READ_MEMBER(NAME, VAR, GETTER)    \
   {                                       \
@@ -205,8 +235,10 @@ struct TableSpec {
   std::vector<std::string> headers;
   // optimal block size, used to combine files into blocks that are as close to this size as possible without going over
   size_t optimalBlockSize;
+  // unix time in seconds to indicate when the table expires for ephemeral table only, use 0 for never expire
+  nebula::meta::TTL ttl;
 
-  explicit TableSpec() {}
+  explicit TableSpec() : ttl{ 0 } {}
   explicit TableSpec(std::string _name, size_t maxMb, size_t maxSeconds, std::string _schema,
                      DataSource ds, std::string _loader, std::string _location, std::string _backup,
                      DataFormat _format, CsvProps csvProps, JsonProps jsonProps, ThriftProps thriftProps,
@@ -236,21 +268,25 @@ struct TableSpec {
       settings{ std::move(_settings) },
       macroValues{ std::move(_macroValues) },
       headers{ std::move(_headers) },
-      optimalBlockSize{ _optimalBlockSize } {}
+      optimalBlockSize{ _optimalBlockSize },
+      ttl{ 0 } {}
 
   // make it msgpack serializable
   MSGPACK_DEFINE(name, max_mb, max_seconds, schema,
                  source, loader, location, backup, format,
                  csv, json, thrift, kafkaSerde, rocksetSerde,
                  columnProps, timeSpec, accessSpec, bucketInfo, settings,
-                 macroValues, headers);
+                 macroValues, headers, ttl);
 
   inline std::string toString() const {
     // table name @ location - format: time
     return fmt::format("{0}@{1}-{2}: {3}", name, location, format, timeSpec.unixTimeValue);
   }
 
-  // generate table pointer
+  // generate table pointer which only cares by internal storage/engine
+  // NOTE: a bit more on why we have TableSpec and Table.
+  // TableSpec is a verbose info that interfaced with end user to define everything regards the table.
+  // Table is however only cared by internal storage/engine for data store and query serving.
   std::shared_ptr<Table> to() const {
     // raw schema to manipulate on
     auto schemaPtr = nebula::type::TypeSerializer::from(schema);

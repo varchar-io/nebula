@@ -28,7 +28,7 @@
  * Define nebula execution runtime.
  * This object should be singleton per node. It manages all data segments that loaded in memory.
  * And their attributes, such as their time range, partition keys, and of course table name.
- * 
+ *
  */
 namespace nebula {
 namespace execution {
@@ -48,6 +48,7 @@ struct Equal {
 // table name to table state object mapping
 using TableStates = nebula::common::unordered_map<std::string, std::shared_ptr<TableState>>;
 using FilteredBlocks = std::vector<nebula::memory::EvaledBlock>;
+using StringSet = nebula::common::unordered_set<std::string>;
 
 class BlockManager {
 public:
@@ -67,7 +68,8 @@ public:
   static bool addBlock(TableStates&, std::shared_ptr<io::BatchBlock>);
 
   // add a block list, will change the list
-  bool add(io::BlockList&);
+  // return number of blocks added
+  size_t add(io::BlockList&);
 
   // add a block already loaded
   bool add(std::shared_ptr<io::BatchBlock>);
@@ -84,7 +86,20 @@ public:
   // return number of blocks removed
   size_t removeBySpec(const std::string&, const std::string&);
 
-  // get table state for given table name
+  inline void recordEmptySpec(const std::string& spec) noexcept {
+    emptySpecs_.emplace(spec);
+  }
+
+  inline const StringSet& emptySpecs() const noexcept {
+    return emptySpecs_;
+  }
+
+  // suppose to run every cycle
+  inline void clearEmptySpecs() noexcept {
+    emptySpecs_.clear();
+  }
+
+  // get table state for given table name in local node
   const TableStateBase& state(const std::string& table) const {
     const auto& self = local();
     if (self.find(table) == self.end()) {
@@ -96,6 +111,7 @@ public:
 
   // get all table states for given node
   inline const TableStates& states(const nebula::meta::NNode& node = nebula::meta::NNode::inproc()) {
+    std::lock_guard<std::mutex> lock(dmux_);
     // it may reutrn empty result if the node is not in
     return data_[node];
   }
@@ -106,14 +122,24 @@ public:
     data_[node] = states;
   }
 
+  inline void removeNode(const std::string& addr) {
+    std::lock_guard<std::mutex> lock(dmux_);
+    for (auto itr = data_.begin(); itr != data_.end(); ++itr) {
+      if (addr == itr->first.toString()) {
+        data_.erase(itr);
+        break;
+      }
+    }
+  }
+
   inline size_t numBlocks() const {
     return blocks_;
   }
 
   // get table list of current node
-  nebula::common::unordered_set<std::string> tables(const size_t limit) const noexcept {
+  StringSet tables(const size_t limit) const noexcept {
     std::lock_guard<std::mutex> lock(dmux_);
-    nebula::common::unordered_set<std::string> tables;
+    StringSet tables;
     for (const auto& node : data_) {
       for (const auto& ts : node.second) {
         tables.emplace(ts.first);
@@ -158,6 +184,26 @@ public:
     return metricsOnly;
   }
 
+  // get all active specs
+  StringSet activeSpecs() const {
+    std::lock_guard<std::mutex> lock(dmux_);
+    const auto nodes = nebula::meta::ClusterInfo::singleton().nodes();
+    StringSet specs;
+    for (const auto& node : nodes) {
+      auto entry = data_.find(node);
+      if (entry != data_.end()) {
+        const auto& states = entry->second;
+        for (auto& ts : states) {
+          auto nodeSpecs = ts.second->specs();
+          specs.insert(nodeSpecs.begin(), nodeSpecs.end());
+        }
+      }
+    }
+
+    // return all unique specs that seen from all active nodes
+    return specs;
+  }
+
   // get historgram of given table/column
   std::shared_ptr<nebula::surface::eval::Histogram> hist(const std::string&, size_t) const;
 
@@ -185,6 +231,9 @@ private:
     nebula::meta::NodeHash,
     nebula::meta::NodeEqual>
     data_;
+
+  // empty specs
+  StringSet emptySpecs_;
   mutable std::mutex dmux_;
 
 private:
