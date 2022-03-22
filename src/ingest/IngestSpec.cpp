@@ -399,9 +399,6 @@ size_t IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
 #ifdef PPROF
   HeapProfilerStart("/tmp/heap_ingest_kafka.out");
 #endif
-  if (paths_.size() != 1) {
-    LOG(WARNING) << "Kafka spec expects exactly one path, got " << paths_.size();
-  }
   // build up the segment to consume
   // note that: Kafka path is composed by this pattern: "{partition}_{offset}_{size}"
   auto segment = KafkaSegment::from(split->path);
