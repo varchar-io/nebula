@@ -1,21 +1,33 @@
 # Nebula
-**Extremely-fast Interactive Big Data Analytics**
+**Extremely-fast Interactive Real-Time Analytics**
 
 [<img src="./docs/static/img/nebula.svg" alt="logo" width="200"/>](https://shawncao.medium.com/introduce-nebula-62d6e17dfaeb) <br>
 Nebula is an extremely-fast end-to-end interactive big data analytics solution.
 Nebula is designed as a high-performance columnar data storage and tabular OLAP engine.
 
 What is Nebula?
-- Extreme Fast Data Analytics System.
-- Column Level Access Control Storage System.
-- Distributed Cache Tier For Tabular Data.
+- Extreme Fast Data Analytics System with Access Control.
+- Distributed Cache Tier for Tabular Data.
+- Build Unified Service API for any Sources (files, streaming, services, etc.)
 
 Nebula can run on
 - Local box
 - VM cluster
-- Run on Kubenettes
+- Kubenettes
 
 Documents of design, internals and stories will be shared at [project docs (under-construction)](https://nebula.bz).
+
+### The Simplest Story
+To cut it short, check this story and see if it's interesting to you:
+1. You have **some data**, they are files on cloud storage, or streaming (eg. kafka), or even just a bunch of CSV files on Github, 
+pretty much any source...
+2. You **deploy** a Nebula cluster, it is either single box, a cluster of a few EC2 machines on AWS, or just a Kubenettes cluster. 
+Nebula doesn't have external dependencies, just a couple binaries (or docker images), so it's easy to maintain. 
+3. Now, you add a **table defintion** in the cluster config file. Right away, you have these available:
+   - A **web UI** where you can slice/dice your data for interactive visualization. You can also write script to transform your data in server side.
+   - A **REST API** that you can build your own application with.
+
+Sounds interesting? Continue to read...
 
 # Contents
 - [Introduction](#introduction)
