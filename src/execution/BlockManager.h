@@ -155,8 +155,16 @@ public:
   }
 
   // has spec in node
-  bool hasSpec(const nebula::meta::NNode& node, const std::string& table, const std::string& spec) {
+  bool hasSpec(const std::string& table,
+               const std::string& spec,
+               const nebula::meta::NNode& node = nebula::meta::NNode::inproc()) {
     std::lock_guard<std::mutex> lock(dmux_);
+    // if empty spec list includes it
+    if (emptySpecs_.find(spec) != emptySpecs_.end()) {
+      return true;
+    }
+
+    // search data list
     auto entry = data_.find(node);
     if (entry != data_.end()) {
       const auto& states = entry->second;

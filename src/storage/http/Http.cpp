@@ -114,6 +114,42 @@ static size_t write(void* ptr, size_t size, size_t nmemb, void* stream) {
   return written;
 }
 
+// refer: https://curl.se/libcurl/c/curl_easy_getinfo.html
+void diagnoseInfo(CURL* curl) {
+#define EXTRACT(T, N, V) \
+  T N = -1;              \
+  curl_easy_getinfo(curl, V, &N);
+
+  EXTRACT(long, response_code, CURLINFO_RESPONSE_CODE)
+  EXTRACT(long, err_no, CURLINFO_OS_ERRNO)
+
+  EXTRACT(double, total_time, CURLINFO_TOTAL_TIME)
+  EXTRACT(double, dns_time, CURLINFO_NAMELOOKUP_TIME)
+  EXTRACT(double, connect_time, CURLINFO_CONNECT_TIME)
+  EXTRACT(double, appcon_time, CURLINFO_APPCONNECT_TIME)
+
+  EXTRACT(double, down_size, CURLINFO_SIZE_DOWNLOAD)
+  EXTRACT(long, num_connects, CURLINFO_NUM_CONNECTS)
+  EXTRACT(long, ssl_vr, CURLINFO_SSL_VERIFYRESULT)
+
+#undef EXTRACT
+
+  char* url = NULL;
+  curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &url);
+
+  // format and print as one line info
+  LOG(INFO) << "[Curl-Info]: response code=" << response_code
+            << ", error number=" << err_no
+            << ", time=(total=" << total_time
+            << ", dns=" << dns_time
+            << ", conn=" << connect_time
+            << ", app-conn=" << appcon_time << ")"
+            << ", num-conn=" << num_connects
+            << ", ssl-verify=" << ssl_vr
+            << ", download-size=" << down_size
+            << ", url=" << url;
+}
+
 // follow https://curl.se/libcurl/c/url2file.html
 bool HttpService::download(const std::string& url,
                            const std::vector<std::string>& headers,
@@ -151,6 +187,8 @@ bool HttpService::download(const std::string& url,
     // check the result code
     if (res != CURLE_OK) {
       LOG(ERROR) << "Failed to read URL: " << url << "; Code=" << res;
+      // print some diagnostic info for why we get this error
+      diagnoseInfo(curl_);
       return false;
     }
 
