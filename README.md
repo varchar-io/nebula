@@ -17,7 +17,7 @@ Nebula can run on
 
 Documents of design, internals and stories will be shared at [project docs (under-construction)](https://nebula.bz).
 
-### The Simplest Story
+### A Simple Story
 To cut it short, check this story and see if it's interesting to you:
 1. You have **some data**, they are files on cloud storage, or streaming (eg. kafka), or even just a bunch of CSV files on Github, 
 pretty much any source...
@@ -26,6 +26,10 @@ Nebula doesn't have external dependencies, just a couple binaries (or docker ima
 3. Now, you add a **table defintion** in the cluster config file. Right away, you have these available:
    - A **web UI** where you can slice/dice your data for interactive visualization. You can also write script to transform your data in server side.
    - A **REST API** that you can build your own application with.
+
+
+### Highlight - visualize your real-time streaming from Kafka
+[![demo](https://user-images.githubusercontent.com/26632293/160012066-39dda2dd-c3ff-4130-a4b8-f8ae94f41979.png)](https://youtu.be/RpHJgqEStQ0)
 
 Sounds interesting? Continue to read...
 
