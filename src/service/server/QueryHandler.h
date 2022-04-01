@@ -61,8 +61,9 @@ public:
 private:
   //  build query internally which can throw
   std::shared_ptr<nebula::api::dsl::Query> buildQuery(
-    const nebula::meta::Table& tb,
-    const QueryRequest& req) const;
+    const nebula::meta::Table&,
+    const QueryRequest&,
+    nebula::service::base::ErrorCode&) const;
 
   // build predicate into the query
   std::shared_ptr<nebula::api::dsl::Expression> buildPredicate(

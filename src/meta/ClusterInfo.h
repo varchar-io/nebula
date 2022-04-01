@@ -93,14 +93,24 @@ public:
   // add a table spec definition directly
   inline bool addTable(const nebula::meta::TableSpecPtr tableSpec) noexcept {
     const auto size = this->tables_.size();
+
+    // emplace may not do anything if old spec exists, we want "update" behavior
+    this->tables_.erase(tableSpec);
     this->tables_.emplace(tableSpec);
+
     return this->tables_.size() > size;
   }
 
-  // remove the table entry
-  inline size_t removeTable(const std::string& table) noexcept {
-    stateChanged_ = true;
-    return runtimeTables_.erase(table);
+  inline bool removeTable(const std::string& table) {
+    for (auto itr = tables_.begin(); itr != tables_.end(); ++itr) {
+      if ((*itr)->name == table) {
+        tables_.erase(itr);
+        return true;
+      }
+    }
+
+    // not found
+    return false;
   }
 
   // always return valid active nodes

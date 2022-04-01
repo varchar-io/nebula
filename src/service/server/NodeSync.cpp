@@ -19,14 +19,8 @@
 #include <glog/logging.h>
 
 #include "common/Evidence.h"
-#include "common/Identifiable.h"
-#include "execution/BlockManager.h"
-#include "execution/meta/TableService.h"
-#include "ingest/BlockExpire.h"
 #include "ingest/SpecRepo.h"
-#include "meta/ClusterInfo.h"
 #include "meta/NNode.h"
-#include "service/base/NebulaService.h"
 #include "service/node/NodeClient.h"
 #include "service/node/RemoteNodeConnector.h"
 
@@ -38,18 +32,9 @@ namespace service {
 namespace server {
 
 using nebula::common::Evidence;
-using nebula::common::Identifiable;
-using nebula::common::Task;
-using nebula::common::TaskState;
-using nebula::common::TaskType;
-using nebula::execution::BlockManager;
 using nebula::execution::core::NodeClient;
-using nebula::execution::meta::TableService;
-using nebula::ingest::BlockExpire;
 using nebula::ingest::SpecRepo;
-using nebula::meta::ClusterInfo;
 using nebula::meta::NNode;
-using nebula::meta::SpecState;
 
 void NodeSync::sync(folly::ThreadPoolExecutor& pool) noexcept {
   const Evidence::Duration duration;

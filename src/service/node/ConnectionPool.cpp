@@ -21,7 +21,7 @@
 #include "execution/BlockManager.h"
 #include "ingest/SpecRepo.h"
 
-DEFINE_uint64(CONNECTION_WAIT_SECONDS, 3, "Seconds to wait for connection to be done");
+DEFINE_uint64(CONNECTION_WAIT_SECONDS, 5, "Seconds to wait for connection to be done");
 
 namespace nebula {
 namespace service {
@@ -73,18 +73,10 @@ std::shared_ptr<grpc::Channel> ConnectionPool::connection(const std::string& add
 }
 
 std::shared_ptr<grpc::Channel> ConnectionPool::connect(const std::string& addr) const noexcept {
-  auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), getArgs());
-  auto state = channel->GetState(true);
-
   // wait the connection to have clear state - ready or failure
   const auto deadline = Evidence::later(FLAGS_CONNECTION_WAIT_SECONDS);
-  while (state == grpc_connectivity_state::GRPC_CHANNEL_IDLE
-         || state == grpc_connectivity_state::GRPC_CHANNEL_CONNECTING) {
-    if (!channel->WaitForStateChange(state, deadline)) {
-      break;
-    }
-  }
-
+  auto channel = grpc::CreateCustomChannel(addr, grpc::InsecureChannelCredentials(), getArgs());
+  channel->WaitForConnected(deadline);
   return channel;
 }
 

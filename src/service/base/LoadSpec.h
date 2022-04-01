@@ -76,6 +76,9 @@ struct LoadSpec {
   // time spec of this load demand
   nebula::meta::TimeSpec timeSpec;
 
+  // macros used to materialize path
+  std::map<std::string, std::vector<std::string>> macros;
+
   // access spec of this sheet - only accessible to current user
   // or user can grant access to specified groups
   // TODO(cao): every user will have a special group [<user>] to set access to him/her only
@@ -126,6 +129,24 @@ struct LoadSpec {
       if (member != obj.MemberEnd() && member->value.IsObject()) {
         const auto& jsonObj = member->value.GetObject();
         this->json.from(jsonObj);
+      }
+    }
+    {
+      // read macros
+      auto member = obj.FindMember("macros");
+      if (member != obj.MemberEnd() && member->value.IsObject()) {
+        const auto& macroObj = member->value.GetObject();
+        for (auto& prop : macroObj) {
+          if (prop.value.IsArray()) {
+            std::vector<std::string> macroValues;
+            const auto& values = prop.value.GetArray();
+            for (size_t i = 0; i < values.Size(); ++i) {
+              macroValues.emplace_back(values[i].GetString());
+            }
+
+            this->macros.emplace(prop.name.GetString(), std::move(macroValues));
+          }
+        }
       }
     }
 

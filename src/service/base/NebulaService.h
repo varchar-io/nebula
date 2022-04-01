@@ -62,7 +62,8 @@ enum ErrorCode {
   FAIL_COMPILE_QUERY = 5,
   FAIL_EXECUTE_QUERY = 6,
   AUTH_REQUIRED = 7,
-  PERMISSION_REQUIRED = 8
+  PERMISSION_REQUIRED = 8,
+  TABLE_NOT_FOUND = 9
 };
 
 template <ErrorCode E>
@@ -111,6 +112,11 @@ struct ErrorTraits<ErrorCode::AUTH_REQUIRED> {
 template <>
 struct ErrorTraits<ErrorCode::PERMISSION_REQUIRED> {
   static constexpr auto MESSAGE = "User Has No Permission To Execute";
+};
+
+template <>
+struct ErrorTraits<ErrorCode::TABLE_NOT_FOUND> {
+  static constexpr auto MESSAGE = "Table in query not found";
 };
 
 class ServiceProperties final {

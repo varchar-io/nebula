@@ -257,7 +257,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   auto tableName = req->table();
 
   // add this table spec to cluster info - auto dedup
-  // tbSpec could be null is request is a permanent table
+  // tbSpec could be null if request is a permanent table
   if (tbSpec) {
     tableName = tbSpec->name;
     ClusterInfo::singleton().addTable(tbSpec);
@@ -285,6 +285,7 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
 
   const auto tableName = request->table();
   // get the table registry and activate it by recording latest used time
+  // so whenever a data set is queried, its expire time will be extended.
   auto tr = TableService::singleton()->query(tableName);
   tr.activate();
 

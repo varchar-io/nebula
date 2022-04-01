@@ -96,6 +96,25 @@ public:
     return tables;
   }
 
+  inline void clean() noexcept {
+    std::lock_guard<std::mutex> lock(lock_);
+    // whole table expired, we should remove it
+    std::vector<std::string> expired;
+    for (auto itr = tables_.begin(); itr != tables_.end(); ++itr) {
+      // push the table ref
+      if (itr->second->expired()) {
+        expired.emplace_back(itr->first);
+      }
+    }
+
+    // remove them all
+    for (auto& name : expired) {
+      tables_.erase(name);
+      // remove table spec from cluster info as well
+      nebula::meta::ClusterInfo::singleton().removeTable(name);
+    }
+  }
+
 private:
   // TODO(cao) - currently the data source of table definition is from system configs
   // this system wide truth is not good for schema evolution.
@@ -111,10 +130,6 @@ private:
 
     // already existing
     return false;
-  }
-
-  inline void unenroll(const std::string& name) {
-    tables_.erase(name);
   }
 
 private:

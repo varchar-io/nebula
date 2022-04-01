@@ -94,6 +94,7 @@ const std::string ServiceProperties::errorMessage(ErrorCode error) {
     ERROR_MESSSAGE_CASE(FAIL_EXECUTE_QUERY)
     ERROR_MESSSAGE_CASE(AUTH_REQUIRED)
     ERROR_MESSSAGE_CASE(PERMISSION_REQUIRED)
+    ERROR_MESSSAGE_CASE(TABLE_NOT_FOUND)
   default: throw NException("Error Code Not Covered");
   }
 }

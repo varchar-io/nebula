@@ -291,7 +291,7 @@ TableSpecPtr LoadHandler::loadDemand(const LoadRequest* req, LoadError& err) {
     demand.accessSpec,
     BucketInfo::empty(),
     demand.settings,
-    std::map<std::string, std::vector<std::string>>(),
+    demand.macros,
     demand.headers,
     demand.optimalBlockSize);
 

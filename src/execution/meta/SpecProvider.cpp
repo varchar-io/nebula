@@ -314,8 +314,21 @@ std::vector<SpecPtr> SpecProvider::generate(
 
   // API are data load request from API layer
   if (table->loader == "Api") {
-    std::vector<SpecSplitPtr> splits = { std::make_shared<SpecSplit>(table->location, 0, 0) };
-    specs.push_back(std::make_shared<DataSpec>(table, version, "api", splits, SpecState::NEW));
+    // TODO(cao): refactor macro enumeration in multiple places
+    // since the location is probably URL encoded, hence {X} could be found as "%7BX%7D"
+    // but we can't decode the whole uri since the url might be partially encoded
+    const auto& mv = table->macroValues;
+    std::vector<std::string> macroNames;
+    for (auto& kv : mv) {
+      macroNames.push_back(kv.first);
+    }
+    const auto pathTemplate = Macro::restoreTemplate(table->location, macroNames);
+    auto pathsWithMacros = Macro::enumeratePathsWithMacros(pathTemplate, mv);
+    for (const auto& pathMacros : pathsWithMacros) {
+      std::vector<SpecSplitPtr> splits = { std::make_shared<SpecSplit>(pathMacros.first, 0, 0, pathMacros.second) };
+      specs.push_back(std::make_shared<DataSpec>(table, version, "api", splits, SpecState::NEW));
+    }
+
     return specs;
   }
 

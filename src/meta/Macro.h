@@ -169,6 +169,19 @@ public:
     return std::regex_replace(str, MACRO_REGEX.at(macro), getTimeStringForMacro(macro, watermark));
   }
 
+  static inline std::string restoreTemplate(const std::string& path, const std::vector<std::string>& names) {
+    std::string output = path;
+
+    // ugly and not performant but should be okay in its use case
+    for (auto& name : names) {
+      std::regex search(fmt::format("%7B{0}%7D", name));
+      auto replace = fmt::format("{{{0}}}", name);
+      output = std::regex_replace(output, search, replace);
+    }
+
+    return output;
+  }
+
   // materialize a template with all macros based on the provided watermark
   // e.g
   // "s3://nebula/{DATE}" -> "2020-12-20"

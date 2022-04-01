@@ -73,6 +73,9 @@ size_t SpecRepo::refresh() noexcept {
   const auto& ci = ClusterInfo::singleton();
   const auto& ts = TableService::singleton();
 
+  // clean up expired table before generate specs for them
+  ts->clean();
+
   // we only support adding new spec to the repo
   // if a spec is already in repo, we skip it
   // for some use case such as data refresh, it will have the same signature

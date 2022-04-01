@@ -221,6 +221,19 @@ TEST(MacroTest, TestCustomMacros4) {
   }
 }
 
+TEST(MacroTest, TestRestoreTemplate) {
+  {
+    const auto path = "o/hY2%2FA-hauz6Y%2F16488%2F%7BFILE%7D?alt=media";
+    auto pathTemplate = Macro::restoreTemplate(path, { "FILE" });
+    EXPECT_EQ(pathTemplate, "o/hY2%2FA-hauz6Y%2F16488%2F{FILE}?alt=media");
+  }
+  {
+    const auto path = "o/%7BDIR%7DhY2%2FA-hauz6Y%2F16488%2F%7BFILE%7D?alt=media";
+    auto pathTemplate = Macro::restoreTemplate(path, { "DIR", "FILE" });
+    EXPECT_EQ(pathTemplate, "o/{DIR}hY2%2FA-hauz6Y%2F16488%2F{FILE}?alt=media");
+  }
+}
+
 } // namespace test
 } // namespace meta
 } // namespace nebula

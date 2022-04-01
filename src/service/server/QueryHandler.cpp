@@ -159,7 +159,7 @@ std::shared_ptr<Query> QueryHandler::build(const Table& tb, const QueryRequest& 
 
   try {
     // create a node connector for this executor
-    return buildQuery(tb, req);
+    return buildQuery(tb, req, err);
   } catch (const std::exception& exp) {
     LOG(ERROR) << "Error in building query: " << exp.what();
     err = ErrorCode::FAIL_BUILD_QUERY;
@@ -167,9 +167,14 @@ std::shared_ptr<Query> QueryHandler::build(const Table& tb, const QueryRequest& 
   }
 }
 
-std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequest& req) const {
+std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequest& req, ErrorCode& err) const {
   // build filter
   auto q = std::make_shared<Query>(req.table(), ms_);
+  // table not found
+  if (q->table_ == nullptr) {
+    err = ErrorCode::TABLE_NOT_FOUND;
+    return q;
+  }
 
   std::shared_ptr<Expression> expr = nullptr;
 #define BUILD_EXPR(PREDS, LOP)                                    \
