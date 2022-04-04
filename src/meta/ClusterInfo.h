@@ -92,16 +92,18 @@ public:
 
   // add a table spec definition directly
   inline bool addTable(const nebula::meta::TableSpecPtr tableSpec) noexcept {
-    const auto size = this->tables_.size();
+    std::lock_guard<std::mutex> lock(lock_);
+    const auto size = tables_.size();
 
     // emplace may not do anything if old spec exists, we want "update" behavior
-    this->tables_.erase(tableSpec);
-    this->tables_.emplace(tableSpec);
+    tables_.erase(tableSpec);
+    tables_.emplace(tableSpec);
 
-    return this->tables_.size() > size;
+    return tables_.size() > size;
   }
 
   inline bool removeTable(const std::string& table) {
+    std::lock_guard<std::mutex> lock(lock_);
     for (auto itr = tables_.begin(); itr != tables_.end(); ++itr) {
       if ((*itr)->name == table) {
         tables_.erase(itr);
@@ -156,8 +158,9 @@ public:
   }
 
 private:
-  std::unique_ptr<NodeManager> nodeManager_;
+  std::mutex lock_;
   nebula::meta::TableSpecSet tables_;
+  std::unique_ptr<NodeManager> nodeManager_;
   std::string version_;
   ServerOptions server_;
   std::unique_ptr<MetaDb> db_;

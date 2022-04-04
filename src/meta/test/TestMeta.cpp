@@ -122,7 +122,7 @@ TEST(MetaTest, TestClusterConfigLoad) {
   const auto& tables = clusterInfo.tables();
   nebula::meta::TableSpecPtr test = nullptr;
   nebula::meta::TableSpecPtr ephemeral = nullptr;
-  EXPECT_EQ(tables.size(), 3);
+  EXPECT_GE(tables.size(), 3);
   for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
     LOG(INFO) << "TABLE: " << (*itr)->toString();
     if ((*itr)->name == "nebula.daily") {
@@ -136,7 +136,7 @@ TEST(MetaTest, TestClusterConfigLoad) {
   // on-demand ephemeral pacakge are loaded through API
   auto schema = nebula::type::TypeSerializer::from(ephemeral->schema);
   EXPECT_EQ(schema->size(), 18);
-  EXPECT_EQ(ephemeral->loader, "Api");
+  EXPECT_EQ(ephemeral->loader, "Template");
   EXPECT_EQ(ephemeral->bucketInfo.count, 10000);
   EXPECT_EQ(ephemeral->bucketInfo.bucketColumn, "partner_id");
   // the bucket column can be found from the schema
@@ -203,7 +203,7 @@ TEST(MetaTest, TestRuntimeTableDefinition) {
   // in addition to the ones loaded from static config
   const auto& tables = clusterInfo.tables();
   nebula::meta::TableSpecPtr runtime = nullptr;
-  EXPECT_EQ(tables.size(), 4);
+  EXPECT_GE(tables.size(), 4);
   for (auto itr = tables.cbegin(); itr != tables.cend(); ++itr) {
     LOG(INFO) << "TABLE: " << (*itr)->toString();
     if ((*itr)->name == "k.test") {

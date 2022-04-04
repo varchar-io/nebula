@@ -211,6 +211,13 @@ public:
     const std::string& input, const std::map<std::string, std::vector<std::string>>& macroValues) {
     // using unordered map instead of vector could help dedup
     std::unordered_map<std::string, nebula::common::MapKV> results;
+
+    // expect input itself to be a valid path when macroValues are empty
+    if (macroValues.empty()) {
+      results.emplace(input, nebula::common::MapKV{});
+      return results;
+    }
+
     nebula::common::ParamList params(macroValues);
     auto combination = params.next();
 

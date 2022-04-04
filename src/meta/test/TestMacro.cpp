@@ -234,6 +234,14 @@ TEST(MacroTest, TestRestoreTemplate) {
   }
 }
 
+TEST(MacroTest, GetInputSelfWhenMacrosEmpty) {
+  const auto path = "a/{b}/{c}/{def}";
+  const std::map<std::string, std::vector<std::string>> macroValues;
+  const auto paths = Macro::enumeratePathsWithMacros(path, macroValues);
+  EXPECT_EQ(paths.size(), 1);
+  EXPECT_EQ(paths.cbegin()->first, path);
+}
+
 } // namespace test
 } // namespace meta
 } // namespace nebula
