@@ -104,7 +104,11 @@ target_link_libraries(${NEBULA_SERVICE}
     PUBLIC ${Boost_regex_LIBRARY}
     PUBLIC ${ROARING_LIBRARY}
     PUBLIC ${MSGPACK_LIBRARY}
-    PUBLIC ${LEVELDB_LIBRARY})
+    PUBLIC ${LEVELDB_LIBRARY}
+    PUBLIC absl::hash
+    PUBLIC absl::status
+    PUBLIC absl::statusor
+    PUBLIC absl::synchronization)
 
 add_dependencies(${NEBULA_SERVICE} compile_fbs)
 
@@ -155,10 +159,6 @@ foreach(i RANGE ${list_max_index})
     PRIVATE ${CARES_LIBRARY}
     PRIVATE ${ZLIB_LIBRARY}
     PRIVATE ${RE2_LIBRARY}
-    PRIVATE absl::hash
-    PRIVATE absl::status
-    PRIVATE absl::statusor
-    PRIVATE absl::synchronization
     PRIVATE ${XXH_LIBRARY}
     PRIVATE ${AWS_LIBRARY}
     PRIVATE ${PERF_LIBRARY})
