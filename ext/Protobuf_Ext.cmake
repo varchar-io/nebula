@@ -46,3 +46,4 @@ SET(PROTO_COMPILER ${INST_DIR}/bin/protoc)
 
 # alias used by some components in grpc
 SET(Protobuf_PROTOC_LIBRARY ${PROTO_COMPILER})
+SET(Protobuf_INCLUDE_DIR ${PROTOBUF_INCLUDE_DIRS})
