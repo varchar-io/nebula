@@ -18,7 +18,8 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include <pg_query.h>
+// TODO: https://github.com/varchar-io/nebula/issues/178
+// #include <pg_query.h>
 #include <storage/NFS.h>
 
 #include "execution/meta/SpecProvider.h"
@@ -70,7 +71,6 @@ TEST(IngestTest, TestIngestSpec) {
 }
 
 TEST(IngestTest, TestSpecGeneration) {
-#ifndef __APPLE__
   auto& sr = nebula::ingest::SpecRepo::singleton();
 
   // load cluster info from sample config
@@ -79,23 +79,18 @@ TEST(IngestTest, TestSpecGeneration) {
     return std::make_unique<nebula::meta::VoidDb>();
   });
 
-  // refresh spec repo with the ci object
-  sr.refresh(ci);
-
-  // check sr states with number of specs generated and their status
-  const auto& specs = sr.specs();
-  for (auto itr = specs.cbegin(), end = specs.cend(); itr != end; ++itr) {
-    LOG(INFO) << fmt::format("ID={0}, Spec={1}", itr->first, itr->second->toString());
-  }
-#endif
+  // refresh spec repo - it has only nebula test with single spec
+  auto size = sr.refresh();
+  EXPECT_EQ(size, 1);
 }
 
-TEST(IngestTest, TestTransformerAddColumn) {
-  // schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
-  auto transformer = pg_query_parse("SELECT id, event, items, flag, value, to_unixtime(now) from nebula.test");
-  LOG(INFO) << transformer.parse_tree;
-  pg_query_free_parse_result(transformer);
-}
+// TODO: https://github.com/varchar-io/nebula/issues/178
+// TEST(IngestTest, TestTransformerAddColumn) {
+//   // schema: "ROW<id:int, event:string, items:list<string>, flag:bool, value:tinyint>"
+//   auto transformer = pg_query_parse("SELECT id, event, items, flag, value, to_unixtime(now) from nebula.test");
+//   LOG(INFO) << transformer.parse_tree;
+//   pg_query_free_parse_result(transformer);
+// }
 
 TEST(IngestTest, TestTimePatternSpecGeneration) {
   auto& sr = nebula::ingest::SpecRepo::singleton();
