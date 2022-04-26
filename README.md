@@ -63,9 +63,10 @@ With Nebula, you could easily:
 
 ## Get Started
 ### Run example instance with sample data on local 
-- clone the repo: `git clone https://github.com/varchar-io/nebula.git`
-- run run.sh in source root: `cd nebula && ./run.sh`
-- explore nebula UI in browser: `http://localhost:8088`
+1. clone the repo: `git clone https://github.com/varchar-io/nebula.git`
+2. build latest code: `cd nebula && ./build.sh`
+3. launch services: `./run.sh` (the script uses test config file `build/configs/test.yml` which you can modify to connect your own data)
+4. explore nebula UI in browser if all up running: `http://localhost:8088`
 
 ### Run example instance with sample data on Kubernetes
 Deploy a single node k8s cluster on your local box.
