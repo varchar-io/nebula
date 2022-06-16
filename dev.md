@@ -115,10 +115,10 @@ Based on this consideration, I chose leveldb as our internal meta store. We will
 ## Manual steps to build Nebula (linux)
 ### Install CMake
 Your system may not have new version of cmake required to build nebula.
-Recommend building a version of cmake from source (take 3.18.1 as example):
-1. wget https://cmake.org/files/v3.18/cmake-3.18.1.tar.gz
-2. tar -xzvf cmake-3.18.1.tar.gz
-3. cd cmake-3.18.1/
+Recommend building a version of cmake from source (take 3.19.2 as example):
+1. wget https://cmake.org/files/v3.19/cmake-3.19.2.tar.gz
+2. tar -xzvf cmake-3.19.2.tar.gz
+3. cd cmake-3.19.2/
 4. ./bootstrap
 5. make -j$(nproc)
 6. sudo make install
