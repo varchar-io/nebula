@@ -97,6 +97,7 @@ export class Nebula {
             this.end_ = 0;
             this.columns_ = [];
             this.timeline_ = false;
+            this.time_unit_ = "";
             this.sort_ = this.Sort.ASC;
             this.limit_ = 100;
             this.filter_ = {};
@@ -286,6 +287,7 @@ export class Nebula {
             s.keys = this.keys_;
             s.window = this.window_;
             s.timeline = this.timeline_;
+            s.time_unit = this.time_unit_;
             s.limit = this.limit_;
             s.sort = this.sort_;
             s.metrics = this.metrics_;

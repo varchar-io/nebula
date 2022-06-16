@@ -3225,6 +3225,10 @@ proto.nebula.service.QueryRequest.deserializeBinaryFromReader = function(msg, re
       reader.readMessage(value,proto.nebula.service.CustomColumn.deserializeBinaryFromReader);
       msg.addCustom(value);
       break;
+    case 13:
+      var value = /** @type {number} */ (reader.readUint32());
+      msg.setTimeUnit(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3639,7 +3643,6 @@ proto.nebula.service.QueryRequest.prototype.setTimeline = function(value) {
   return jspb.Message.setProto3BooleanField(this, 11, value);
 };
 
-
 /**
  * repeated CustomColumn custom = 12;
  * @return {!Array<!proto.nebula.service.CustomColumn>}
@@ -3667,6 +3670,23 @@ proto.nebula.service.QueryRequest.prototype.setCustomList = function(value) {
 proto.nebula.service.QueryRequest.prototype.addCustom = function(opt_value, opt_index) {
   return jspb.Message.addToRepeatedWrapperField(this, 12, opt_value, proto.nebula.service.CustomColumn, opt_index);
 };
+
+/**
+ * optional uint32 timeUnit = 13;
+ * @return {number}
+ */
+ proto.nebula.service.QueryRequest.prototype.getTimeUnit = function() {
+  return /** @type {string} */ jspb.Message.getFieldWithDefault(this, 13, "");
+};
+
+/**
+ * @param {number} value
+ * @return {!proto.nebula.service.QueryRequest} returns this
+ */
+ proto.nebula.service.QueryRequest.prototype.setTimeUnit = function(value) {
+  return jspb.Message.setProto3StringField(this, 13, value);
+};
+
 
 
 /**

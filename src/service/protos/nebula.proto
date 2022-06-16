@@ -208,6 +208,9 @@ message QueryRequest {
 
   // custom column list
   repeated CustomColumn custom = 12;
+
+  // custom time unit 
+  uint32 time_unit = 13;
 }
 
 // define query processing metrics

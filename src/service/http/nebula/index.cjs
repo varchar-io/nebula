@@ -3225,6 +3225,10 @@ proto.nebula.service.QueryRequest.deserializeBinaryFromReader = function(msg, re
       reader.readMessage(value,proto.nebula.service.CustomColumn.deserializeBinaryFromReader);
       msg.addCustom(value);
       break;
+    case 13:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setTimeUnit(value);
+      break;
     default:
       reader.skipField();
       break;

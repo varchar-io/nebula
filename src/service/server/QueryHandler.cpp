@@ -240,30 +240,69 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
     // we have minimum size of window as 1 second to be enforced
     // so if buckets is smaller than range (seconds), we use each range as
-    auto range = req.end() - req.start();
+    auto range = (req.end() - req.start());
+    LOG(INFO) << "range is: " << range;
     N_ENSURE_GT(range, 0, "timeline requires end time greater than start time");
 
     int32_t window = (int32_t)req.window();
+    int32_t time_unit = req.time_unit();
+  
     auto buckets = window == 0 ? FLAGS_AUTO_WINDOW_SIZE : range / window;
+    LOG(INFO) << FLAGS_AUTO_WINDOW_SIZE;
+    // LOG(INFO) << "number of buckets: " << buckets;
+    // LOG(INFO) << "window: " << window;
+    // LOG(INFO) << "time unit: " << time_unit;
     if (buckets == 0 || buckets > range) {
       buckets = range;
     }
-
     // recalculate window based on buckets
     window = range / buckets;
     N_ENSURE_GT(window, 0, "window should be at least 1 second");
-
+    // LOG(INFO) << "recalculated window: " << window; 
     // only one bucket?
     std::shared_ptr<Expression> windowExpr = nullptr;
-    if (buckets < 2) {
+    if (buckets < 2) {    
       auto w = std::make_shared<ConstExpression<int64_t>>(0);
       w->as(Table::WINDOW_COLUMN);
       windowExpr = w;
     } else {
-      int64_t beginTime = (int64_t)req.start();
+      int64_t beginTime = (int64_t)(req.start());
       // divided by window to get the bucket and times window to get a time point
-      auto expr = ((col(Table::TIME_COLUMN) - beginTime) / window * window).as(Table::WINDOW_COLUMN);
-      windowExpr = std::make_shared<decltype(expr)>(expr);
+      LOG(INFO) << "beginTime: " << beginTime;
+
+      // probably not the best place to put this
+      static constexpr int32_t DAY_CASE = 0;
+      static constexpr int32_t WEEK_CASE = 1;
+      static constexpr int32_t MONTH_CASE = 2;
+      static constexpr int32_t QUARTER_CASE = 3;
+      static constexpr int32_t YEAR_CASE = 4;
+
+      static constexpr int32_t SECS_DAY = 3600;
+      static constexpr int32_t SECS_WEEK = 604800;
+
+      switch (time_unit) {
+        case DAY_CASE: 
+        case WEEK_CASE: { 
+          int32_t TIME_CONST = (time_unit == 0 ? (int32_t)SECS_DAY : (int32_t)SECS_WEEK); 
+          auto expr = ((((col(Table::TIME_COLUMN)) / TIME_CONST) * TIME_CONST) - beginTime).as(Table::WINDOW_COLUMN);
+          windowExpr = std::make_shared<decltype(expr)>(expr);
+          break;
+        }
+        case MONTH_CASE: { 
+          break;
+        }
+        case QUARTER_CASE: {
+          break;
+        }
+        case YEAR_CASE: { 
+          break;
+        }
+        default: { 
+          auto expr = (((col(Table::TIME_COLUMN) - beginTime) / window * window)).as(Table::WINDOW_COLUMN);
+          windowExpr = std::make_shared<decltype(expr)>(expr);
+          break;
+        }
+      }
     }
 
     N_ENSURE_NOT_NULL(windowExpr, "window expr should be built");
@@ -279,11 +318,15 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
   // push other dimensions
   for (auto i = 0, size = req.dimension_size(); i < size; ++i) {
     const auto& colName = req.dimension(i);
+    // LOG(INFO) << colName;
     columns.push_back(colName);
     fields.push_back(std::make_shared<ColumnExpression>(colName));
 
     // group by clause uses 1-based index
     keys.push_back(columns.size());
+  }
+  for (auto i = 0; i < (int) (keys.size()); i++) {
+    LOG(INFO) << keys[i];
   }
 
   for (auto i = 0, size = req.metric_size(); i < size; ++i) {
