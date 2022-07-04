@@ -132,9 +132,18 @@ private:
       return (T)value.GetDouble();
     }
 
+    if (value.IsBool()) {
+      return nebula::common::safe_to<T>(value.GetBool());
+    }
+
     // try to convert from its string value
     // use default value if conversion failed
-    return nebula::common::safe_to<T>(value.GetString());
+    if (value.IsString()) {
+      return nebula::common::safe_to<T>(value.GetString());
+    }
+
+    // can't do anything, return the default value
+    return T();
   }
 
   inline size_t index() const {
