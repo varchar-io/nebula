@@ -1,13 +1,10 @@
 # Work On Nebula
 
 ## Build the project
-These steps are tested for MacOS and Ubuntu (LTS 18) only.
+These steps are tested for MacOS and Ubuntu (LTS 20) only.
 
-### Install dependencies and build
-run `~/nebula/build.sh` for automate setup (All steps in the build.sh script also listed on the bottom of this page as well)
-A little hiccup of this script is we still need to fix below issue manually, hopefully this manual step won't be required after a version upgrade.
-
-In build script, we use `sudo make` because some of the components needs to be installed in system path.
+Run `~/nebula/build.sh` for automate setup (All steps in the build.sh script also listed on the bottom of this page as well)
+Depending on the platform the script is executed, it mainly invokes `~/nebula/build.mac.sh` or `~/nebula/build.linux.sh` as its name suggests.
 
 ### run nebula
 After you build nebula successfully, you can run this script to run all services locally by `./run.sh`.
@@ -93,5 +90,6 @@ At the same time, this metadata DB will be served as service registry through Ne
 So we need 
 - An embeded DB that managed by nebula server itself.
 - Build home made service discovery story on top of this metadata DB. 
+
 
 Based on this consideration, I chose leveldb as our internal meta store. We will add web API for service registry.

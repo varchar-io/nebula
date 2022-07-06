@@ -87,14 +87,19 @@ public:
     }
 
     auto& value = vector[realIndex];
-    if (value.IsNumber()) {
+    if (!value.IsString()) {
       // save this for string_view reference
       auto& snapshot = const_cast<VectorRow*>(this)->strs_;
+      snapshot[field] = value.IsNull() ?
+                          "" :
+                          (value.IsDouble() ?
+                             std::to_string(value.GetDouble()) :
+                             (value.IsBool() ?
+                                std::to_string(value.GetBool()) :
+                                (value.IsInt() ?
+                                   std::to_string(value.GetInt64()) :
+                                   "")));
 
-      // TODO(cao): probably need more fine-grained typed data reading (rather than just double/int64)
-      snapshot[field] = value.IsDouble() ?
-                          std::to_string(value.GetDouble()) :
-                          std::to_string(value.GetInt64());
       return snapshot.at(field);
     }
 
@@ -127,9 +132,18 @@ private:
       return (T)value.GetDouble();
     }
 
+    if (value.IsBool()) {
+      return nebula::common::safe_to<T>(value.GetBool());
+    }
+
     // try to convert from its string value
     // use default value if conversion failed
-    return nebula::common::safe_to<T>(value.GetString());
+    if (value.IsString()) {
+      return nebula::common::safe_to<T>(value.GetString());
+    }
+
+    // can't do anything, return the default value
+    return T();
   }
 
   inline size_t index() const {
