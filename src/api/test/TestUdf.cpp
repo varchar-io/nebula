@@ -54,6 +54,38 @@ TEST(UDFTest, TestNot) {
   EXPECT_EQ(y.eval(ctx), false);
 }
 
+TEST(UDFTest, TestRoundUnit) {
+  nebula::surface::MockAccessor row;
+  nebula::surface::eval::EvalContext ctx{ false };
+  ctx.reset(row);
+
+  auto h = std::make_shared<nebula::api::dsl::ConstExpression<int>>(2661623);
+  nebula::api::udf::RoundToUnit hour_test("hour", h->asEval(), 0);
+  hour_test.eval(ctx);
+  // EXPECT_EQ(n.eval(ctx), 3600);
+
+  auto d = std::make_shared<nebula::api::dsl::ConstExpression<int>>(2661623);
+  nebula::api::udf::RoundToUnit day_test("day", d->asEval(), 1);
+  day_test.eval(ctx);
+  // EXPECT_EQ(n.eval(ctx), 3600);
+
+  auto w = std::make_shared<nebula::api::dsl::ConstExpression<int>>(2661623);
+  nebula::api::udf::RoundToUnit week_test("week", w->asEval(), 2);
+  week_test.eval(ctx);
+  // EXPECT_EQ(y.eval(ctx), 604800);
+
+  auto m = std::make_shared<nebula::api::dsl::ConstExpression<int>>(2661623);
+  nebula::api::udf::RoundToUnit month_test("month", m->asEval(), 3);
+  month_test.eval(ctx);
+  // EXPECT_EQ(y.eval(ctx), 604800);
+
+  auto y = std::make_shared<nebula::api::dsl::ConstExpression<int>>(2661623);
+  nebula::api::udf::RoundToUnit year_test("year", m->asEval(), 5);
+  year_test.eval(ctx);
+    // EXPECT_EQ(y.eval(ctx), 604800);
+}
+
+
 TEST(UDFTest, TestLike) {
   std::vector<std::tuple<std::string, std::string, bool>> data{
     { "a", "a%", true },

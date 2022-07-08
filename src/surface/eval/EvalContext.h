@@ -166,7 +166,9 @@ class TypeValueEval : public ValueEval {
 
 public:
   TypeValueEval(const std::string& sign, const ExpressionType et, const OPT&& op, const EvalBlock&& eb)
-    : TypeValueEval(sign, et, std::move(op), std::move(eb), {}, {}) {}
+    : TypeValueEval(sign, et, std::move(op), std::move(eb), {}, {}) {
+      // LOG(INFO) << "SIGN: " << sign;
+    }
 
   TypeValueEval(
     const std::string& sign,

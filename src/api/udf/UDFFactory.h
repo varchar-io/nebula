@@ -25,6 +25,7 @@
 #include "Max.h"
 #include "Min.h"
 #include "Not.h"
+#include "RoundToUnit.h"
 #include "Pct.h"
 #include "Prefix.h"
 #include "Sum.h"
@@ -53,6 +54,10 @@ public:
 
     if constexpr (UKIND == UDFKind::NOT) {
       return std::make_unique<Not>(name, expr->asEval());
+    }
+
+    if constexpr (UKIND == UDFKind::ROUNDTOUNIT) {
+      return std::make_unique<RoundToUnit>(name, expr->asEval());
     }
 
     if constexpr (UKIND == UDFKind::MAX) {

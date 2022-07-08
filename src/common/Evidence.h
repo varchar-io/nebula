@@ -147,7 +147,40 @@ public: /** only static methods */
     return std::time(nullptr);
   }
 
-  // given a date time value, stripe time out to date granularity
+  // given a date time value, strip all but year
+  // such as value of (2019-05-15 23:01:34) => value of (2019-01-1 00:00:00)
+  static std::time_t year(std::time_t time) {
+    // remove all except for date
+    auto strip_days = date(time);
+    auto tm = std::gmtime(&strip_days);
+    // yday stores [0-365]
+    auto delta_days = (tm->tm_yday) * 86400; 
+    return strip_days - delta_days;
+  }
+
+  // given a date time value, strip all but month
+  // such as value of (2019-05-15 23:01:34) => value of (2019-05-1 00:00:00)
+  static std::time_t month(std::time_t time) {
+    // remove all except for date
+    auto strip_days = date(time);
+    auto tm = std::gmtime(&strip_days);
+    // mday stores [1-31]
+    auto delta_days = (tm->tm_mday - 1) * 86400; 
+    return strip_days - delta_days;
+  }
+
+  // given a date time value, strip all but week
+  // such as value of (Wednesday 2019-05-15 23:01:34) => value of (Sunday 2019-05-12 00:00:00)
+  static std::time_t week(std::time_t time) {
+    // remove all except for date
+    auto strip_days = date(time);
+    auto tm = std::gmtime(&strip_days);
+    // wday stores [0-6]
+    auto delta_days = (tm->tm_wday) * 86400; 
+    return strip_days - delta_days;
+  }
+
+  // given a date time value, strip all but day
   // such as value of (2019-05-15 23:01:34) => value of (2019-05-15 00:00:00)
   static std::time_t date(std::time_t time) {
     auto tm = std::gmtime(&time);
@@ -156,7 +189,7 @@ public: /** only static methods */
     return time - delta;
   }
 
-  // given a date time value, stripe time out to date granularity
+  // given a date time value, strip all but hour
   // such as value of (2019-05-15 23:01:34) => value of (2019-05-15 23:00:00)
   static std::time_t hour(std::time_t time) {
     auto tm = std::gmtime(&time);
