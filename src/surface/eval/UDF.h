@@ -125,7 +125,7 @@ enum class UDFType {
   PREFIX,
   IN,
   BETWEEN,
-  ROUNDTOUNIT,
+  ROUNDTIMETOUNIT,
   // UDAF
   MAX,
   MIN,
@@ -205,10 +205,10 @@ UDF_TRAITS(LIKE, nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR)
 STATIC_TRAITS(PREFIX, false)
 UDF_TRAITS(PREFIX, nebula::type::Kind::BOOLEAN, nebula::type::Kind::VARCHAR)
 
-// define traits for UDF: ROUNDTOUNIT
-// ROUNDTOUNIT function applies to integer type only.
-STATIC_TRAITS(ROUNDTOUNIT, false)
-UDF_TRAITS(ROUNDTOUNIT, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT)
+// define traits for UDF: ROUNDTIMETOUNIT
+// ROUNDTIMETOUNIT function applies to integer type only.
+STATIC_TRAITS(ROUNDTIMETOUNIT, false)
+UDF_TRAITS(ROUNDTIMETOUNIT, nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT)
 
 // define traits for UDF: IN
 // IN function looks for expected value in given list of values

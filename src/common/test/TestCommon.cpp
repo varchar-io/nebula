@@ -303,6 +303,29 @@ TEST(CommonTest, TestTimeParsing) {
   }
 }
 
+TEST(CommonTest, TestStripTime) {
+  // test stripping hour, week, month, year
+  {
+    auto time1 = Evidence::time("2019-04-03 23:23:45", "%Y-%m-%d %H:%M:%S");
+
+    auto time_hour = Evidence::hour(time1);
+    auto time_hour_exp = Evidence::time("2019-04-03 23:00:00", "%Y-%m-%d %H:%M:%S");
+    EXPECT_EQ(time_hour, time_hour_exp);
+
+    auto time_week = Evidence::week(time1);
+    auto time_week_exp = Evidence::time("2019-03-31 00:00:00", "%Y-%m-%d %H:%M:%S");
+    EXPECT_EQ(time_week, time_week_exp);
+
+    auto time_month = Evidence::month(time1);
+    auto time_month_exp = Evidence::time("2019-04-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+    EXPECT_EQ(time_month, time_month_exp);
+
+    auto time_year = Evidence::year(time1);
+    auto time_year_exp = Evidence::time("2019-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+    EXPECT_EQ(time_year, time_year_exp);
+  }
+}
+
 TEST(CommonTest, Test0AndOverflow) {
   int64_t min = 0, max = 0;
   size_t size = 100;

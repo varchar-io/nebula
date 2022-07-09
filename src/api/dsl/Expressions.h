@@ -384,7 +384,7 @@ private:
 template <typename T>
 class ConstExpression : public Expression {
 public:
-  ConstExpression(const T& value) : value_{ value }  {}
+  ConstExpression(const T& value) : value_{ value } {}
   ConstExpression(const ConstExpression&) = default;
   ConstExpression& operator=(const ConstExpression&) = default;
   virtual ~ConstExpression() = default;

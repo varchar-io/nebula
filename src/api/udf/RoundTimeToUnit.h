@@ -29,11 +29,11 @@ namespace api {
 namespace udf {
 // Round a time 
 using UdfRoundBase = nebula::surface::eval::UDF<nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT>;
-class RoundToUnit : public UdfRoundBase {
+class RoundTimeToUnit : public UdfRoundBase {
     using TimeUnitType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
     using RoundedTimeType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
 public:
-  RoundToUnit(const std::string& name, 
+  RoundTimeToUnit(const std::string& name, 
   std::unique_ptr<nebula::surface::eval::ValueEval> expr,
   TimeUnitType unit)
     : UdfRoundBase(
@@ -53,7 +53,7 @@ public:
 
         // need to subtract begintime
 
-        InputType timeSecs = std::move(origin.value());
+        InputType timeSecs = origin.value();
         RoundedTimeType res = std::numeric_limits<RoundedTimeType>::lowest();
         std::time_t timePoint = (std::time_t) timeSecs;
         switch (unit) {
@@ -99,7 +99,7 @@ public:
         LOG(INFO) << "res: " << nebula::common::Evidence::fmt_normal(res);
         return res;
       }) {}
-  virtual ~RoundToUnit() = default;
+  virtual ~RoundTimeToUnit() = default;
 };
 
 } // namespace udf
