@@ -73,6 +73,7 @@ TEST(ServiceTest, TestQueryTimeline) {
   request.set_table(tableName);
   request.set_start(start);
   request.set_end(end);
+  request.set_time_unit(1);
   auto pa = request.mutable_filtera();
   // COUNT needs to be more than 2
   {
@@ -105,8 +106,8 @@ TEST(ServiceTest, TestQueryTimeline) {
   auto result = handler.query(pool, plan, connector, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
-  LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  LOG(INFO) << ServiceProperties::jsonify(result, plan->getOutputSchema());
+  std::cout << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  std::cout << ServiceProperties::jsonify(result, plan->getOutputSchema());
 }
 
 TEST(ServiceTest, TestStringFilters) {

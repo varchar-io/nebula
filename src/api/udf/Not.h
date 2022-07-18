@@ -38,7 +38,7 @@ public:
         if (N_UNLIKELY(origin == std::nullopt)) {
           return std::nullopt;
         }
-
+        LOG(INFO) << "ORIGIN: " << origin.value();
         // otherwise reverse
         return !origin.value();
       }) {}

@@ -97,7 +97,7 @@ export class Nebula {
             this.end_ = 0;
             this.columns_ = [];
             this.timeline_ = false;
-            this.time_unit_ = "";
+            this.time_unit_ = 0;
             this.sort_ = this.Sort.ASC;
             this.limit_ = 100;
             this.filter_ = {};
@@ -295,7 +295,7 @@ export class Nebula {
 
             // send columns back
             s.customs = this.columns_;
-
+q
             // pivot column set by user - used by client side only
             s.pivot = this.pivot_;
 

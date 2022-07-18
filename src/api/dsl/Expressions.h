@@ -595,6 +595,71 @@ protected:
   std::shared_ptr<Expression> expr_;
 };
 
+template <nebula::surface::eval::UDFType UDF>
+class IntUDF : public Expression {
+public:
+  IntUDF(std::shared_ptr<Expression> expr)
+    : expr_{ expr } {}
+
+public:
+  IS_AGG(false)
+
+  virtual TypeInfo type(const nebula::meta::TypeLookup& lookup) override {
+    expr_->type(lookup);
+
+    // inner type is
+    type_ = TypeInfo{ nebula::type::Kind::BIGINT };
+    return type_;
+  }
+
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = Expression::serialize();
+    data->type = ExpressionType::FUNCTION;
+    data->u_type = UDF;
+    data->inner = std::move(expr_->serialize());
+    return data;
+  }
+
+protected:
+  std::shared_ptr<Expression> expr_;
+};
+
+using RoundTimeBase = IntUDF<nebula::surface::eval::UDFType::ROUNDTIMETOUNIT>;
+using TimeUnitType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
+using RoundedTimeType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
+
+class RoundTimeExpression : public RoundTimeBase {
+public:
+  RoundTimeExpression(std::shared_ptr<Expression> left,
+                 TimeUnitType unit,
+                 TimeUnitType startTime)
+    : RoundTimeBase(left),
+      unit_{ unit },
+      start_{ startTime } {}
+
+public:
+  ALL_LOGICAL_OPS()
+
+  ALIAS()
+
+  virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
+    return nebula::api::udf::UDFFactory::createUDF<
+      nebula::surface::eval::UDFType::ROUNDTIMETOUNIT,
+      nebula::type::Kind::BIGINT>(expr_, unit_, start_);
+  }
+
+  virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
+    auto data = RoundTimeBase::serialize();
+    data->custom2 = unit_;
+    data->custom3 = start_;
+    return data;
+  }
+
+private:
+  TimeUnitType unit_;
+  TimeUnitType start_;
+};
+
 using LikeBase = BoolUDF<nebula::surface::eval::UDFType::LIKE>;
 class LikeExpression : public LikeBase {
 public:

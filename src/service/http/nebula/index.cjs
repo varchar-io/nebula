@@ -103,7 +103,13 @@
 
 var jspb = __webpack_require__(5);
 var goog = jspb;
-var global = Function('return this')();
+var global = (function() {
+  if (this) { return this; }
+  if (typeof window !== 'undefined') { return window; }
+  if (typeof global !== 'undefined') { return global; }
+  if (typeof self !== 'undefined') { return self; }
+  return Function('return this')();
+}.call(null));
 
 goog.exportSymbol('proto.nebula.service.CustomColumn', null, global);
 goog.exportSymbol('proto.nebula.service.CustomType', null, global);
@@ -3135,7 +3141,8 @@ proto.nebula.service.QueryRequest.toObject = function(includeInstance, msg) {
     order: (f = msg.getOrder()) && proto.nebula.service.Order.toObject(includeInstance, f),
     timeline: jspb.Message.getBooleanFieldWithDefault(msg, 11, false),
     customList: jspb.Message.toObjectList(msg.getCustomList(),
-    proto.nebula.service.CustomColumn.toObject, includeInstance)
+    proto.nebula.service.CustomColumn.toObject, includeInstance),
+    timeUnit: jspb.Message.getFieldWithDefault(msg, 13, 0)
   };
 
   if (includeInstance) {
@@ -3226,7 +3233,7 @@ proto.nebula.service.QueryRequest.deserializeBinaryFromReader = function(msg, re
       msg.addCustom(value);
       break;
     case 13:
-      var value = /** @type {string} */ (reader.readString());
+      var value = /** @type {number} */ (reader.readUint64());
       msg.setTimeUnit(value);
       break;
     default:
@@ -3345,6 +3352,13 @@ proto.nebula.service.QueryRequest.serializeBinaryToWriter = function(message, wr
       12,
       f,
       proto.nebula.service.CustomColumn.serializeBinaryToWriter
+    );
+  }
+  f = message.getTimeUnit();
+  if (f !== 0) {
+    writer.writeUint64(
+      13,
+      f
     );
   }
 };
@@ -3679,6 +3693,24 @@ proto.nebula.service.QueryRequest.prototype.addCustom = function(opt_value, opt_
  */
 proto.nebula.service.QueryRequest.prototype.clearCustomList = function() {
   return this.setCustomList([]);
+};
+
+
+/**
+ * optional uint64 time_unit = 13;
+ * @return {number}
+ */
+proto.nebula.service.QueryRequest.prototype.getTimeUnit = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 13, 0));
+};
+
+
+/**
+ * @param {number} value
+ * @return {!proto.nebula.service.QueryRequest} returns this
+ */
+proto.nebula.service.QueryRequest.prototype.setTimeUnit = function(value) {
+  return jspb.Message.setProto3IntField(this, 13, value);
 };
 
 
@@ -5049,7 +5081,8 @@ proto.nebula.service.LoadError = {
   ANAUTHORIZED: 4,
   EMPTY_RESULT: 5,
   NOT_SUPPORTED: 6,
-  IN_LOADING: 7
+  IN_LOADING: 7,
+  PARSE_ERROR: 8
 };
 
 /**
@@ -5368,6 +5401,7 @@ module.exports = require("google-protobuf");
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
+// ESM COMPAT FLAG
 __webpack_require__.r(__webpack_exports__);
 
 // EXTERNAL MODULE: external "grpc"
@@ -5378,10 +5412,10 @@ var external_grpc_default = /*#__PURE__*/__webpack_require__.n(external_grpc_);
 var external_json_bigint_ = __webpack_require__(2);
 var external_json_bigint_default = /*#__PURE__*/__webpack_require__.n(external_json_bigint_);
 
-// EXTERNAL MODULE: /Users/shawncao/nebula/src/service/gen/nebula/nodejs/nebula_pb.js
+// EXTERNAL MODULE: /home/ubuntu/git/nebula/src/service/gen/nebula/nodejs/nebula_pb.js
 var nebula_pb = __webpack_require__(0);
 
-// EXTERNAL MODULE: /Users/shawncao/nebula/src/service/gen/nebula/nodejs/nebula_grpc_pb.js
+// EXTERNAL MODULE: /home/ubuntu/git/nebula/src/service/gen/nebula/nodejs/nebula_grpc_pb.js
 var nebula_grpc_pb = __webpack_require__(3);
 
 // EXTERNAL MODULE: external "stream"

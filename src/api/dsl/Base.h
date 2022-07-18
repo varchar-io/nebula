@@ -76,6 +76,8 @@ struct ExpressionData {
 
   // extra customized info
   std::string custom;
+  int64_t custom2;
+  int64_t custom3;
 
   // extra flags
   bool flag;

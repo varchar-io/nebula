@@ -264,10 +264,10 @@ const webq = (q, handler, client) => {
 
     // set limit
     req.setTop(state.limit);
-
     // send request to service to get result
     client.query(req, handler.metadata, (err, reply) => {
         if (err !== null) {
+            log(err);
             return handler.onError(err);
         }
 

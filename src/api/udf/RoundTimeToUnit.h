@@ -35,21 +35,22 @@ class RoundTimeToUnit : public UdfRoundBase {
 public:
   RoundTimeToUnit(const std::string& name, 
   std::unique_ptr<nebula::surface::eval::ValueEval> expr,
-  TimeUnitType unit)
+  TimeUnitType unit,
+  TimeUnitType beginTime)
     : UdfRoundBase(
       name,
       std::move(expr),
-      [unit](const std::optional<InputType>& origin) -> std::optional<int> {
+      [unit, beginTime](const std::optional<InputType>& origin) -> std::optional<int> {
         if (N_UNLIKELY(origin == std::nullopt)) {
           return std::nullopt;
         }
 
-        static constexpr int32_t HOUR_CASE = 0;
-        static constexpr int32_t DAY_CASE = 1;
-        static constexpr int32_t WEEK_CASE = 2;
-        static constexpr int32_t MONTH_CASE = 3;
-        static constexpr int32_t QUARTER_CASE = 4;
-        static constexpr int32_t YEAR_CASE = 5;
+        static constexpr int32_t HOUR_CASE = 1;
+        static constexpr int32_t DAY_CASE = 2;
+        static constexpr int32_t WEEK_CASE = 3;
+        static constexpr int32_t MONTH_CASE = 4;
+        static constexpr int32_t QUARTER_CASE = 5;
+        static constexpr int32_t YEAR_CASE = 6;
 
         // need to subtract begintime
 
@@ -94,10 +95,12 @@ public:
 
         N_ENSURE_NE(res, std::numeric_limits<RoundedTimeType>::lowest(), "res should be defined");
         
-        LOG(INFO) << "timeSecs: " << nebula::common::Evidence::fmt_normal(timeSecs);
-        LOG(INFO) << "unit: " << unit;
-        LOG(INFO) << "res: " << nebula::common::Evidence::fmt_normal(res);
-        return res;
+        // LOG(INFO) << "timeSecs: " << nebula::common::Evidence::fmt_normal(timeSecs);
+        // LOG(INFO) << "unit: " << unit;
+        // LOG(INFO) << "res: " << nebula::common::Evidence::fmt_normal(res);
+        // LOG(INFO) << "(res - beginTime): " << nebula::common::Evidence::fmt_normal(res - beginTime);
+
+        return (res - beginTime);
       }) {}
   virtual ~RoundTimeToUnit() = default;
 };
