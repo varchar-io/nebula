@@ -83,7 +83,7 @@ api=$base/src/service/http/nebula
 if ! grep -q "$api" <<< `ps aux` ; then
     pushd $api
     npm install
-    NS_ADDR=localhost:9190 NODE_PORT=8081 node node.js
+    NS_ADDR=localhost:9190 NODE_PORT=8088 node node.js
 else
     echo 'Nebula API is already running.'
 fi
