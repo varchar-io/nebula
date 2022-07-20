@@ -34,6 +34,7 @@ That is why I spent a lot of effort to enforce `Nebula Web` to be a consistent t
 
 ## Use Webpack
 Webpack is used to produce two bundles for both `browser` and `node.js`, follow these steps to refresh them whenver proto contracts updated in the service.
+
 0. remove "type:module" from `package.json` to make below command work (due to webpack bad support for ES6).
 1. $ ~/nebula/src/service/http/nebula > npm install (based on package.json - can be reused for all service)
 2. ~/nebula/src/service/http/nebula > npx webpack
