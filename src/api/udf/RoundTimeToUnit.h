@@ -100,10 +100,12 @@ public:
         // LOG(INFO) << "res: " << nebula::common::Evidence::fmt_normal(res);
         // LOG(INFO) << "(res - beginTime): " << nebula::common::Evidence::fmt_normal(res - beginTime);
 
-        return (res - beginTime);
+        RoundedTimeType minValue = (RoundedTimeType)(0);
+
+        return std::max(minValue, res - beginTime);
       }) {}
   virtual ~RoundTimeToUnit() = default;
-};
+}; 
 
 } // namespace udf
 } // namespace api
