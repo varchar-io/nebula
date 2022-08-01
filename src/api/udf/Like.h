@@ -63,7 +63,6 @@ public:
         }
 
         auto v = source.value();
-        LOG(INFO) << v.data();
         auto m = match(v.data(), v.size(), 0,
                        pattern.data(), pattern.size(), 0,
                        caseSensitive);

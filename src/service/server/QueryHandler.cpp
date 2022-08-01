@@ -24,8 +24,6 @@
 #include "execution/core/ServerExecutor.h"
 #include "service/node/RemoteNodeConnector.h"
 
-#include "surface/MockSurface.h"
-
 DEFINE_uint32(AUTO_WINDOW_SIZE, 100, "maximum data point when selecting auto window");
 // TODO(cao): read setting from API call rather than env setting - filter most of value=1 frames
 DEFINE_uint64(TREE_PATH_MIN_SIZE, 3, "min size of tree merge path to return - should be passed from client.");
@@ -154,12 +152,10 @@ inline SortType orderTypeConvert(OrderType type) {
 
 // build the query object to execute
 std::shared_ptr<Query> QueryHandler::build(const Table& tb, const QueryRequest& req, ErrorCode& err) const noexcept {
-  LOG(INFO) << "VALIDATING...";
   // 1. validate the query request, if failed, we can return right away
   if ((err = validate(req)) != 0) {
     return {};
   }
-  LOG(INFO) << "VALIDATED.";
 
   try {
     // create a node connector for this executor
@@ -245,32 +241,26 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     // we have minimum size of window as 1 second to be enforced
     // so if buckets is smaller than range (seconds), we use each range as
     auto range = (req.end() - req.start());
-    LOG(INFO) << "range is: " << range;
     N_ENSURE_GT(range, 0, "timeline requires end time greater than start time");
 
     int64_t window = (int64_t)req.window();
     int64_t time_unit = (int64_t)req.time_unit();
-  
+
     auto buckets = window == 0 ? FLAGS_AUTO_WINDOW_SIZE : range / window;
-    LOG(INFO) << FLAGS_AUTO_WINDOW_SIZE;
-    LOG(INFO) << "number of buckets: " << buckets;
-    // LOG(INFO) << "window: " << window;
-    LOG(INFO) << "time unit: " << time_unit;
     if (buckets == 0 || buckets > range) {
       buckets = range;
     }
     // recalculate window based on buckets
     window = range / buckets;
     N_ENSURE_GT(window, 0, "window should be at least 1 second");
-    // LOG(INFO) << "recalculated window: " << window; 
     // only one bucket?
     std::shared_ptr<Expression> windowExpr = nullptr;
-    int64_t beginTime = (int64_t)req.start();
-    if (buckets < 2) {    
+    if (buckets < 2) {
       auto w = std::make_shared<ConstExpression<int64_t>>(0);
       w->as(Table::WINDOW_COLUMN);
       windowExpr = w;
     } else {
+      int64_t beginTime = (int64_t)req.start();
       if (time_unit > 0) {
         auto expr = nebula::api::dsl::round(col(Table::TIME_COLUMN), time_unit, beginTime).as(Table::WINDOW_COLUMN);
         windowExpr = std::make_shared<decltype(expr)>(expr);
@@ -293,14 +283,13 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
   // push other dimensions
   for (auto i = 0, size = req.dimension_size(); i < size; ++i) {
     const auto& colName = req.dimension(i);
-    // LOG(INFO) << colName;
     columns.push_back(colName);
     fields.push_back(std::make_shared<ColumnExpression>(colName));
 
     // group by clause uses 1-based index
     keys.push_back(columns.size());
   }
-  for (auto i = 0; i < (int) (keys.size()); i++) {
+  for (auto i = 0; i < (int)(keys.size()); i++) {
     LOG(INFO) << keys[i];
   }
 

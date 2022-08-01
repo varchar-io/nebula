@@ -66,7 +66,6 @@ public:
         if (N_UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
-
         return values->find(source.value()) == values->end();
       },
       buildEvalBlock(expr, values, false)) {
@@ -86,7 +85,7 @@ private:
       // const expr signature is compsoed by "C:{col}"
       std::string colName(ve->signature().substr(2));
       return [name = std::move(colName), values, in](const nebula::surface::eval::Block& b)
-               -> nebula::surface::eval::BlockEval {  
+               -> nebula::surface::eval::BlockEval {
         auto A = in ? nebula::surface::eval::BlockEval::ALL : nebula::surface::eval::BlockEval::NONE;
         auto N = in ? nebula::surface::eval::BlockEval::NONE : nebula::surface::eval::BlockEval::ALL;
 

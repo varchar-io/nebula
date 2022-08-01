@@ -624,15 +624,15 @@ protected:
   std::shared_ptr<Expression> expr_;
 };
 
-using RoundTimeBase = IntUDF<nebula::surface::eval::UDFType::ROUNDTIMETOUNIT>;
+using RoundTimeBase = IntUDF<nebula::surface::eval::UDFType::ROUNDTIME>;
 using TimeUnitType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
 using RoundedTimeType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
 
 class RoundTimeExpression : public RoundTimeBase {
 public:
   RoundTimeExpression(std::shared_ptr<Expression> left,
-                 TimeUnitType unit,
-                 TimeUnitType startTime)
+                      TimeUnitType unit,
+                      TimeUnitType startTime)
     : RoundTimeBase(left),
       unit_{ unit },
       start_{ startTime } {}
@@ -644,14 +644,13 @@ public:
 
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
-      nebula::surface::eval::UDFType::ROUNDTIMETOUNIT,
+      nebula::surface::eval::UDFType::ROUNDTIME,
       nebula::type::Kind::BIGINT>(expr_, unit_, start_);
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
     auto data = RoundTimeBase::serialize();
-    data->custom2 = unit_;
-    data->custom3 = start_;
+    data->custom = std::to_string(unit_) + "," + std::to_string(start_);
     return data;
   }
 

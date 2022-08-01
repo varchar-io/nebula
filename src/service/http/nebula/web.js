@@ -304,7 +304,7 @@ const build = (s) => {
     }
 
     let TIME_UNIT = 0;
-    let TIME_ARR = ["3600", "86400", "604800", "2592000", "QUARTERLY", "31536000"];
+    let TIME_ARR = ["3600", "86400", "604800", "2592000", "7889400", "31536000"];
 
     for (let i = 0; i < 6; ++i) {
         // console.log($$(windowId) + " " + TIME_ARR[i] + ($$(windowId) === TIME_ARR[i]))
@@ -325,8 +325,6 @@ const build = (s) => {
         sort: $$('#ob'),
         limit: $$('#limit')
     };
-
-    console.log(JSON.stringify(state));
 
     if (!state.start || !state.end) {
         msg('Error: please enter start and end time');

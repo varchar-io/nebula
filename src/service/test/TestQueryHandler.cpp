@@ -106,8 +106,8 @@ TEST(ServiceTest, TestQueryTimeline) {
   auto result = handler.query(pool, plan, connector, err);
   EXPECT_EQ(err, ErrorCode::NONE);
 
-  std::cout << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
-  std::cout << ServiceProperties::jsonify(result, plan->getOutputSchema());
+  LOG(INFO) << "Execute the query and jsonify results: " << result->size() << " using " << tick.elapsedMs() << " ms";
+  LOG(INFO) << ServiceProperties::jsonify(result, plan->getOutputSchema());
 }
 
 TEST(ServiceTest, TestStringFilters) {

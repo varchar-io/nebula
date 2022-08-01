@@ -307,6 +307,7 @@ TEST(CommonTest, TestStripTime) {
   // test stripping hour, week, month, year
   {
     auto time1 = Evidence::time("2019-04-03 23:23:45", "%Y-%m-%d %H:%M:%S");
+    auto time2 = Evidence::time("2019-05-13 23:23:45", "%Y-%m-%d %H:%M:%S");
 
     auto time_hour = Evidence::hour(time1);
     auto time_hour_exp = Evidence::time("2019-04-03 23:00:00", "%Y-%m-%d %H:%M:%S");
@@ -319,6 +320,10 @@ TEST(CommonTest, TestStripTime) {
     auto time_month = Evidence::month(time1);
     auto time_month_exp = Evidence::time("2019-04-01 00:00:00", "%Y-%m-%d %H:%M:%S");
     EXPECT_EQ(time_month, time_month_exp);
+
+    auto time_quarter = Evidence::quarter(time2);
+    auto time_quarter_exp = Evidence::time("2019-04-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+    EXPECT_EQ(time_quarter, time_quarter_exp);
 
     auto time_year = Evidence::year(time1);
     auto time_year_exp = Evidence::time("2019-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");

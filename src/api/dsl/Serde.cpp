@@ -97,10 +97,6 @@ std::string ser(const ExpressionData& data) {
     // append an tail to keep any trailing 0 in custom
     // remove tail N before consuming it
     addstring(json, "custom", data.custom);
-    json.Key("custom2");
-    json.Int64(data.custom2);
-    json.Key("custom3");
-    json.Int64(data.custom3);
     json.Key("flag");
     json.Bool(data.flag);
     json.Key("flag2");
@@ -245,8 +241,6 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
                                    UDFType ut,
                                    std::shared_ptr<Expression> inner,
                                    const std::string& custom,
-                                   int64_t custom2,
-                                   int64_t custom3,
                                    bool flag,
                                    bool flag2,
                                    const std::string& inputType) {
@@ -260,8 +254,17 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
     return as(alias, std::make_shared<PrefixExpression>(inner, custom, flag, flag2));
   }
 
-  case UDFType::ROUNDTIMETOUNIT: {
-    return as(alias, std::make_shared<RoundTimeExpression>(inner, custom2, custom3));
+  case UDFType::ROUNDTIME: {
+    // parse comma delimited string
+    auto comma_pos = custom.find(',');
+    N_ENSURE_NE(comma_pos, std::string::npos, "comma not found");
+
+    N_ENSURE_GT(comma_pos, 0, "timeUnit is an empty string");
+    int64_t unit = stoll(custom.substr(0, comma_pos));
+    N_ENSURE_GT(custom.length() - comma_pos - 1, 0, "beginTime is an empty string");
+    int64_t begin = stoll(custom.substr(comma_pos + 1, custom.length() - comma_pos - 1));
+
+    return as(alias, std::make_shared<RoundTimeExpression>(inner, unit, begin));
   }
 
   case UDFType::IN: {
@@ -417,12 +420,10 @@ std::shared_ptr<Expression> Serde::deserialize(const std::string& data) {
   case ExpressionType::FUNCTION: {
     const auto& c = document["custom"];
     const auto& inputType = document["c_type"];
-    return u_expr(alias, 
+    return u_expr(alias,
                   static_cast<UDFType>(document["udf"].GetInt()),
                   deserialize(document["inner"].GetString()),
                   std::string(c.GetString(), c.GetStringLength()),
-                  document["custom2"].GetInt64(),
-                  document["custom3"].GetInt64(),
                   document["flag"].GetBool(),
                   document["flag2"].GetBool(),
                   inputType.GetString());

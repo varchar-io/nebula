@@ -147,6 +147,13 @@ public: /** only static methods */
     return std::time(nullptr);
   }
 
+  // find weekday given time_t, [0-6] for [Sun-Sat]
+  static int32_t weekday(std::time_t time) {
+    auto tm = std::gmtime(&time);
+    auto day = (tm->tm_wday);
+    return day;
+  }
+
   // given a date time value, strip all but year
   // such as value of (2019-05-15 23:01:34) => value of (2019-01-1 00:00:00)
   static std::time_t year(std::time_t time) {
@@ -154,8 +161,26 @@ public: /** only static methods */
     auto strip_days = date(time);
     auto tm = std::gmtime(&strip_days);
     // yday stores [0-365]
-    auto delta_days = (tm->tm_yday) * 86400; 
+    auto delta_days = (tm->tm_yday) * 86400;
     return strip_days - delta_days;
+  }
+
+  // given a date time value, strip all but quarter
+  // such as value of (2019-05-15 23:01:34) => value of (2019-04-1 00:00:00)
+  // Q1 = [Jan - Mar], Q2 = [Apr - Jun], Q3 = [Jul - Sep], Q4 = [Oct - Dec]
+  static time_t quarter(std::time_t time) {
+    // strip days
+    auto st_mon = month(time);
+
+    auto tm = std::gmtime(&st_mon);
+    auto cur_month = (tm->tm_mon);
+
+    auto excess_months = cur_month % 3;
+
+    // should never produce invalid date, but need to write tests
+    tm->tm_mon -= excess_months;
+
+    return mktime(tm);
   }
 
   // given a date time value, strip all but month
@@ -165,7 +190,7 @@ public: /** only static methods */
     auto strip_days = date(time);
     auto tm = std::gmtime(&strip_days);
     // mday stores [1-31]
-    auto delta_days = (tm->tm_mday - 1) * 86400; 
+    auto delta_days = (tm->tm_mday - 1) * 86400;
     return strip_days - delta_days;
   }
 
@@ -174,9 +199,7 @@ public: /** only static methods */
   static std::time_t week(std::time_t time) {
     // remove all except for date
     auto strip_days = date(time);
-    auto tm = std::gmtime(&strip_days);
-    // wday stores [0-6]
-    auto delta_days = (tm->tm_wday) * 86400; 
+    auto delta_days = weekday(strip_days) * 86400;
     return strip_days - delta_days;
   }
 
