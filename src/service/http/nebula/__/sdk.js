@@ -295,7 +295,7 @@ export class Nebula {
 
             // send columns back
             s.customs = this.columns_;
-q
+
             // pivot column set by user - used by client side only
             s.pivot = this.pivot_;
 

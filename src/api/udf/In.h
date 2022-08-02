@@ -67,6 +67,7 @@ public:
         if (N_UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
+        
         return values->find(source.value()) == values->end();
       },
       buildEvalBlock(expr, values, false)) {
