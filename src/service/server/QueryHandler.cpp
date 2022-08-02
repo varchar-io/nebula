@@ -253,6 +253,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     // recalculate window based on buckets
     window = range / buckets;
     N_ENSURE_GT(window, 0, "window should be at least 1 second");
+
     // only one bucket?
     std::shared_ptr<Expression> windowExpr = nullptr;
     if (buckets < 2) {
@@ -288,9 +289,6 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
     // group by clause uses 1-based index
     keys.push_back(columns.size());
-  }
-  for (auto i = 0; i < (int)(keys.size()); i++) {
-    LOG(INFO) << keys[i];
   }
 
   for (auto i = 0, size = req.metric_size(); i < size; ++i) {

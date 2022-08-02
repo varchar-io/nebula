@@ -53,7 +53,6 @@ public:
         static constexpr int32_t YEAR_CASE = 6;
 
         auto timeSecs = origin.value();
-        LOG(INFO) << timeSecs;
         BigIntType res = std::numeric_limits<int8_t>::min();
         std::time_t timePoint = (std::time_t)timeSecs;
         std::time_t roundedPoint = (time_t) -1;
@@ -84,7 +83,6 @@ public:
         }
         }
         // LOG(INFO) << nebula::common::Evidence::fmt_normal(timeSecs);
-        auto form = nebula::common::Evidence::fmt_normal(roundedPoint);
         N_ENSURE_NE(roundedPoint, (time_t) -1, "rounded point not changed");
         res = (BigIntType)roundedPoint;
         N_ENSURE_NE(res, std::numeric_limits<BigIntType>::lowest(), "res should be defined");

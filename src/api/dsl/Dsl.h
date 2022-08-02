@@ -131,11 +131,10 @@ static LikeExpression like(const T& expr,
                         opposite);
 }
 
-using TimeUnitType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
 template <typename T>
 static RoundTimeExpression round(const T& expr,
-                                 TimeUnitType unit,
-                                 TimeUnitType startTime) {
+                                 size_t unit,
+                                 size_t startTime) {
   return RoundTimeExpression(std::shared_ptr<Expression>(new T(expr)),
                              unit, 
                              startTime);

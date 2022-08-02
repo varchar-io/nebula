@@ -625,8 +625,7 @@ protected:
 };
 
 using RoundTimeBase = IntUDF<nebula::surface::eval::UDFType::ROUNDTIME>;
-using TimeUnitType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
-using RoundedTimeType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
+using TimeUnitType = size_t;
 
 class RoundTimeExpression : public RoundTimeBase {
 public:
