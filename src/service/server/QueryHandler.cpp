@@ -240,15 +240,17 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
     // we have minimum size of window as 1 second to be enforced
     // so if buckets is smaller than range (seconds), we use each range as
-    auto range = req.end() - req.start();
+    auto range = (req.end() - req.start());
     N_ENSURE_GT(range, 0, "timeline requires end time greater than start time");
 
-    int32_t window = (int32_t)req.window();
+    int64_t window = (int64_t)req.window();
+    int64_t time_unit = (int64_t)req.time_unit();
+
     auto buckets = window == 0 ? FLAGS_AUTO_WINDOW_SIZE : range / window;
     if (buckets == 0 || buckets > range) {
       buckets = range;
     }
-
+    
     // recalculate window based on buckets
     window = range / buckets;
     N_ENSURE_GT(window, 0, "window should be at least 1 second");
@@ -261,9 +263,13 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
       windowExpr = w;
     } else {
       int64_t beginTime = (int64_t)req.start();
-      // divided by window to get the bucket and times window to get a time point
-      auto expr = ((col(Table::TIME_COLUMN) - beginTime) / window * window).as(Table::WINDOW_COLUMN);
-      windowExpr = std::make_shared<decltype(expr)>(expr);
+      if (time_unit > 0) {
+        auto expr = nebula::api::dsl::round(col(Table::TIME_COLUMN), time_unit, beginTime).as(Table::WINDOW_COLUMN);
+        windowExpr = std::make_shared<decltype(expr)>(expr);
+      } else {
+        auto expr = ((col(Table::TIME_COLUMN) - beginTime) / window * window).as(Table::WINDOW_COLUMN);
+        windowExpr = std::make_shared<decltype(expr)>(expr);
+      }
     }
 
     N_ENSURE_NOT_NULL(windowExpr, "window expr should be built");

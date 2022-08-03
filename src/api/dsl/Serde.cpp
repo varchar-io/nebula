@@ -254,6 +254,19 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
     return as(alias, std::make_shared<PrefixExpression>(inner, custom, flag, flag2));
   }
 
+  case UDFType::ROUNDTIME: {
+    // parse comma delimited string
+    auto comma_pos = custom.find(',');
+    N_ENSURE_NE(comma_pos, std::string::npos, "comma not found");
+
+    N_ENSURE_GT(comma_pos, 0, "timeUnit is an empty string");
+    int64_t unit = stoll(custom.substr(0, comma_pos));
+    N_ENSURE_GT(custom.length() - comma_pos - 1, 0, "beginTime is an empty string");
+    int64_t begin = stoll(custom.substr(comma_pos + 1, custom.length() - comma_pos - 1));
+
+    return as(alias, std::make_shared<RoundTimeExpression>(inner, unit, begin));
+  }
+
   case UDFType::IN: {
 #define TYPE_IN_EXPR(T, F)                                                              \
   if (valueType == TypeDetect<T>::tid()) {                                              \

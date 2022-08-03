@@ -20,6 +20,7 @@
 #include <fmt/format.h>
 #include <folly/stats/Histogram.h>
 
+#include <rapidjson/document.h>
 #include "surface/eval/UDF.h"
 
 namespace nebula {

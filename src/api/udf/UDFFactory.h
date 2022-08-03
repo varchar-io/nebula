@@ -20,6 +20,7 @@
 #include "Between.h"
 #include "Cardinality.h"
 #include "Count.h"
+#include "Histogram.h"
 #include "In.h"
 #include "Like.h"
 #include "Max.h"
@@ -27,9 +28,9 @@
 #include "Not.h"
 #include "Pct.h"
 #include "Prefix.h"
+#include "RoundTime.h"
 #include "Sum.h"
 #include "Tpm.h"
-#include "Histogram.h"
 #include "api/dsl/Base.h"
 #include "surface/eval/UDF.h"
 #include "type/Type.h"
@@ -85,6 +86,10 @@ public:
 
     if constexpr (UKIND == UDFKind::CARD) {
       return std::make_unique<Cardinality<IK>>(name, expr->asEval(), std::forward<Args>(args)...);
+    }
+
+    if constexpr (UKIND == UDFKind::ROUNDTIME) {
+      return std::make_unique<RoundTime>(name, expr->asEval(), std::forward<Args>(args)...);
     }
 
     if constexpr (UKIND == UDFKind::LIKE) {

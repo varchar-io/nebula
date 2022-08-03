@@ -228,6 +228,7 @@ const webq = (q, handler, client) => {
 
     // set query type and window
     req.setTimeline(state.timeline);
+    req.setTimeUnit(state.time_unit);
     req.setWindow(state.window);
 
     // TODO(cao) - this part logic does not exist in web mode (arch=1)

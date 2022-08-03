@@ -132,6 +132,15 @@ static LikeExpression like(const T& expr,
 }
 
 template <typename T>
+static RoundTimeExpression round(const T& expr,
+                                 size_t unit,
+                                 size_t startTime) {
+  return RoundTimeExpression(std::shared_ptr<Expression>(new T(expr)),
+                             unit, 
+                             startTime);
+}
+
+template <typename T>
 static PrefixExpression starts(const T& expr,
                                const std::string& prefix,
                                bool caseSensitive = true,

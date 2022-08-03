@@ -303,6 +303,100 @@ TEST(CommonTest, TestTimeParsing) {
   }
 }
 
+TEST(CommonTest, TestStripTime) {
+  // test stripping hour, week, month, year
+  {
+    auto time1 = Evidence::time("2019-04-03 23:23:45", "%Y-%m-%d %H:%M:%S");
+    auto time2 = Evidence::time("2019-05-13 23:23:45", "%Y-%m-%d %H:%M:%S");
+    // leap year
+    auto time3 = Evidence::time("2020-02-29 03:10:45", "%Y-%m-%d %H:%M:%S"); 
+    
+    {
+      auto time_hour = Evidence::hour(time1);
+      auto time_hour_exp = Evidence::time("2019-04-03 23:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_hour, time_hour_exp);
+
+      time_hour = Evidence::hour(time2);
+      time_hour_exp = Evidence::time("2019-05-13 23:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_hour, time_hour_exp);
+
+      time_hour = Evidence::hour(time3);
+      time_hour_exp = Evidence::time("2020-02-29 03:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_hour, time_hour_exp);
+    }
+
+    {
+      auto time_week = Evidence::week(time1);
+      auto time_week_exp = Evidence::time("2019-03-31 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_week, time_week_exp);
+
+      time_week = Evidence::week(time2);
+      time_week_exp = Evidence::time("2019-05-12 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_week, time_week_exp);
+
+      time_week = Evidence::week(time3);
+      time_week_exp = Evidence::time("2020-02-23 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_week, time_week_exp);
+    }
+    
+    {
+      auto day_of_week = Evidence::weekday(time1);
+      auto day_of_week_exp = 3;
+      EXPECT_EQ(day_of_week, day_of_week_exp);
+
+      day_of_week = Evidence::weekday(time2);
+      day_of_week_exp = 1;
+      EXPECT_EQ(day_of_week, day_of_week_exp);
+
+      day_of_week = Evidence::weekday(time3);
+      day_of_week_exp = 6;
+      EXPECT_EQ(day_of_week, day_of_week_exp);
+    }
+    
+    {
+      auto time_month = Evidence::month(time1);
+      auto time_month_exp = Evidence::time("2019-04-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_month, time_month_exp);
+
+      time_month = Evidence::month(time2);
+      time_month_exp = Evidence::time("2019-05-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_month, time_month_exp);
+
+      time_month = Evidence::month(time3);
+      time_month_exp = Evidence::time("2020-02-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_month, time_month_exp);
+    }
+    
+    {
+      auto time_quarter = Evidence::quarter(time1);
+      auto time_quarter_exp = Evidence::time("2019-04-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_quarter, time_quarter_exp);
+
+      time_quarter = Evidence::quarter(time2);
+      time_quarter_exp = Evidence::time("2019-04-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_quarter, time_quarter_exp);
+
+      time_quarter = Evidence::quarter(time3);
+      time_quarter_exp = Evidence::time("2020-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_quarter, time_quarter_exp);
+    }
+
+    {
+      auto time_year = Evidence::year(time1);
+      auto time_year_exp = Evidence::time("2019-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_year, time_year_exp);
+
+      time_year = Evidence::year(time2);
+      time_year_exp = Evidence::time("2019-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_year, time_year_exp);
+
+      time_year = Evidence::year(time3);
+      time_year_exp = Evidence::time("2020-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");
+      EXPECT_EQ(time_year, time_year_exp);
+    }
+  }
+}
+
 TEST(CommonTest, Test0AndOverflow) {
   int64_t min = 0, max = 0;
   size_t size = 100;

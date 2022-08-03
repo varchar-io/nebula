@@ -44,7 +44,7 @@ public:
         if (N_UNLIKELY(source == std::nullopt)) {
           return std::nullopt;
         }
-
+        
         auto v = source.value();
         return v >= min && v <= max;
       },

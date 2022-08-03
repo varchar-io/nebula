@@ -23,13 +23,13 @@
 #include "api/udf/Between.h"
 #include "api/udf/Cardinality.h"
 #include "api/udf/Count.h"
+#include "api/udf/Histogram.h"
 #include "api/udf/In.h"
 #include "api/udf/Like.h"
 #include "api/udf/Not.h"
 #include "api/udf/Pct.h"
 #include "api/udf/Prefix.h"
 #include "api/udf/Tpm.h"
-#include "api/udf/Histogram.h"
 #include "surface/DataSurface.h"
 #include "surface/MockSurface.h"
 #include "surface/eval/ValueEval.h"
@@ -46,12 +46,49 @@ TEST(UDFTest, TestNot) {
   ctx.reset(row);
 
   auto f = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(false);
+  // LOG(INFO) << "f as eval: " << f->asEval();
   nebula::api::udf::Not n("n", f->asEval());
   EXPECT_EQ(n.eval(ctx), true);
 
   auto t = std::make_shared<nebula::api::dsl::ConstExpression<bool>>(true);
   nebula::api::udf::Not y("n", t->asEval());
   EXPECT_EQ(y.eval(ctx), false);
+}
+
+TEST(UDFTest, TestRoundUnit) {
+  nebula::surface::MockAccessor row;
+  nebula::surface::eval::EvalContext ctx{ false };
+  ctx.reset(row);
+
+  auto h = std::make_shared<nebula::api::dsl::ConstExpression<int64_t>>(2661623);
+  nebula::api::udf::RoundTime hour_test("hour", h->asEval(), 1, 0);
+  hour_test.eval(ctx);
+  EXPECT_EQ(hour_test.eval(ctx), 2660400);
+
+  auto d = std::make_shared<nebula::api::dsl::ConstExpression<int64_t>>(2661623);
+  nebula::api::udf::RoundTime day_test("day", d->asEval(), 2, 0);
+  day_test.eval(ctx);
+  EXPECT_EQ(day_test.eval(ctx), 2592000);
+
+  auto w = std::make_shared<nebula::api::dsl::ConstExpression<int64_t>>(2661623);
+  nebula::api::udf::RoundTime week_test("week", w->asEval(), 3, 0);
+  week_test.eval(ctx);
+  EXPECT_EQ(week_test.eval(ctx), 2073600);
+
+  auto m = std::make_shared<nebula::api::dsl::ConstExpression<int64_t>>(2661623);
+  nebula::api::udf::RoundTime month_test("month", m->asEval(), 4, 0);
+  month_test.eval(ctx);
+  EXPECT_EQ(month_test.eval(ctx), 0);
+
+  auto q = std::make_shared<nebula::api::dsl::ConstExpression<int64_t>>(2661623);
+  nebula::api::udf::RoundTime quarter_test("quarter", q->asEval(), 5, 0);
+  quarter_test.eval(ctx);
+  EXPECT_EQ(quarter_test.eval(ctx), 0);
+
+  auto y = std::make_shared<nebula::api::dsl::ConstExpression<int64_t>>(2661623);
+  nebula::api::udf::RoundTime year_test("year", y->asEval(), 6, 0);
+  year_test.eval(ctx);
+  EXPECT_EQ(year_test.eval(ctx), 0);
 }
 
 TEST(UDFTest, TestLike) {

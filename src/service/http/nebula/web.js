@@ -303,6 +303,14 @@ const build = (s) => {
         keys.unshift(timeCol);
     }
 
+    let TIME_UNIT = 0;
+    let TIME_ARR = ["3600", "86400", "604800", "2592000", "7889400", "31536000"];
+
+    for (let i = 0; i < 6; ++i) {
+        // console.log($$(windowId) + " " + TIME_ARR[i] + ($$(windowId) === TIME_ARR[i]))
+        if ($$(windowId) === TIME_ARR[i]) TIME_UNIT = i + 1;
+    }
+
     // build URL and set URL
     const state = s || {
         table: $$(tablesId),
@@ -312,6 +320,7 @@ const build = (s) => {
         keys: keys,
         timeline: $('#timeline').is(':checked'),
         window: $$(windowId),
+        time_unit: TIME_UNIT.toString(),
         metrics: metrics,
         sort: $$('#ob'),
         limit: $$('#limit')

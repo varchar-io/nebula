@@ -73,6 +73,7 @@ TEST(ServiceTest, TestQueryTimeline) {
   request.set_table(tableName);
   request.set_start(start);
   request.set_end(end);
+  request.set_time_unit(1);
   auto pa = request.mutable_filtera();
   // COUNT needs to be more than 2
   {
