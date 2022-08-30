@@ -309,8 +309,8 @@ TEST(CommonTest, TestStripTime) {
     auto time1 = Evidence::time("2019-04-03 23:23:45", "%Y-%m-%d %H:%M:%S");
     auto time2 = Evidence::time("2019-05-13 23:23:45", "%Y-%m-%d %H:%M:%S");
     // leap year
-    auto time3 = Evidence::time("2020-02-29 03:10:45", "%Y-%m-%d %H:%M:%S"); 
-    
+    auto time3 = Evidence::time("2020-02-29 03:10:45", "%Y-%m-%d %H:%M:%S");
+
     {
       auto time_hour = Evidence::hour(time1);
       auto time_hour_exp = Evidence::time("2019-04-03 23:00:00", "%Y-%m-%d %H:%M:%S");
@@ -338,7 +338,7 @@ TEST(CommonTest, TestStripTime) {
       time_week_exp = Evidence::time("2020-02-23 00:00:00", "%Y-%m-%d %H:%M:%S");
       EXPECT_EQ(time_week, time_week_exp);
     }
-    
+
     {
       auto day_of_week = Evidence::weekday(time1);
       auto day_of_week_exp = 3;
@@ -352,7 +352,7 @@ TEST(CommonTest, TestStripTime) {
       day_of_week_exp = 6;
       EXPECT_EQ(day_of_week, day_of_week_exp);
     }
-    
+
     {
       auto time_month = Evidence::month(time1);
       auto time_month_exp = Evidence::time("2019-04-01 00:00:00", "%Y-%m-%d %H:%M:%S");
@@ -366,7 +366,7 @@ TEST(CommonTest, TestStripTime) {
       time_month_exp = Evidence::time("2020-02-01 00:00:00", "%Y-%m-%d %H:%M:%S");
       EXPECT_EQ(time_month, time_month_exp);
     }
-    
+
     {
       auto time_quarter = Evidence::quarter(time1);
       auto time_quarter_exp = Evidence::time("2019-04-01 00:00:00", "%Y-%m-%d %H:%M:%S");

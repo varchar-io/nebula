@@ -250,7 +250,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     if (buckets == 0 || buckets > range) {
       buckets = range;
     }
-    
+
     // recalculate window based on buckets
     window = range / buckets;
     N_ENSURE_GT(window, 0, "window should be at least 1 second");

@@ -136,7 +136,7 @@ static RoundTimeExpression round(const T& expr,
                                  size_t unit,
                                  size_t startTime) {
   return RoundTimeExpression(std::shared_ptr<Expression>(new T(expr)),
-                             unit, 
+                             unit,
                              startTime);
 }
 

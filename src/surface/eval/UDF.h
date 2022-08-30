@@ -25,15 +25,15 @@
 
 /**
  * Define UDF properties used in the nebula DSL.
- * 
+ *
  * We define 2 types associated with UDF and 3 types for UDAF.
  * They are:
- *  Input Type -> the expression accepted by the UDF, 
+ *  Input Type -> the expression accepted by the UDF,
  *                yes, this needs to be variadic to support multi-params in the future.
  *  Native Type -> type of the UDF, what type to use in its output schema
  *  Store Type (UDAF only) -> what is the intermidiate store type for this UDAF.
- * 
- *  As clean-up, let's use above names consistently everywhere, 
+ *
+ *  As clean-up, let's use above names consistently everywhere,
  *  and change the VAR name to NK (Native Kind), IK (Input Kind)
  */
 namespace nebula {
