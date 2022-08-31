@@ -25,8 +25,8 @@ sudo apt update
 sudo apt install -y build-essential libssl-dev cmake libboost-all-dev docker-compose
 
 # packages could be installed by apt install
+# "libfmt-dev"
 aptGetInstallPackages=(
-  "libfmt-dev"
   "libcurl4-gnutls-dev"
   "libunwind-dev"
   "libiberty-dev"

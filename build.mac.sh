@@ -56,7 +56,7 @@ preq() {
 preq gcc
 
 ## fmt
-preq fmt
+# preq fmt
 
 ## boost
 preq boost
