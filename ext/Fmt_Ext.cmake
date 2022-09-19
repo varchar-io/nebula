@@ -7,7 +7,6 @@ ExternalProject_Add(fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
   GIT_TAG 8.0.1
   UPDATE_COMMAND ""
-  INSTALL_COMMAND ""
   LOG_DOWNLOAD ON
   LOG_CONFIGURE ON
   LOG_BUILD ON)

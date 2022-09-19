@@ -23,12 +23,10 @@ if(APPLE)
 set(CMD_UPDATE_CACHE update_dyld_shared_cache)
 endif()
 
-if(NOT EXISTS ${INST_DIR}/bin/protoc)
-    add_custom_target(mprotobuf ALL
-        COMMAND sudo git submodule update --init --recursive && sudo ./autogen.sh && sudo ./configure --prefix=${INST_DIR} && sudo make install -j8 && sudo ${CMD_UPDATE_CACHE}
-        WORKING_DIRECTORY ${SOURCE_DIR}
-        DEPENDS protobuf)
-endif()
+add_custom_target(mprotobuf ALL
+    COMMAND sudo git submodule update --init --recursive && sudo ./autogen.sh && sudo ./configure --prefix=${INST_DIR} && sudo make install -j8 && sudo ${CMD_UPDATE_CACHE}
+    WORKING_DIRECTORY ${SOURCE_DIR}
+    DEPENDS protobuf)
 
 set(PROTOBUF_INCLUDE_DIRS ${INST_DIR}/include)
 file(MAKE_DIRECTORY ${PROTOBUF_INCLUDE_DIRS})
