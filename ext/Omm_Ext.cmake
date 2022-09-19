@@ -10,6 +10,7 @@ SET(YOMM2_OPTS
 ExternalProject_Add(yomm2
   PREFIX yomm2
   GIT_REPOSITORY https://github.com/jll63/yomm2.git
+  GIT_TAG v1.1.2
   CMAKE_ARGS ${YOMM2_OPTS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
