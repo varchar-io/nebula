@@ -95,15 +95,15 @@ void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
 
   // set up a start and end time for the data set in memory
   // (NOTE) table->max_seconds is not serialized, it will be 0
-  auto start = table->timeSpec.unixTimeValue;
-  auto end = start + table->max_seconds;
+  int64_t start = table->timeSpec.unixTimeValue;
+  int64_t end = start + table->max_seconds;
 
   // let's plan these many data std::thread::hardware_concurrency()
   TestTable testTable;
   auto numBlocks = std::thread::hardware_concurrency();
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    size_t begin = start + i * window;
+    int64_t begin = start + i * window;
     bm->add(nebula::meta::BlockSignature{
       table->name, i++, begin, begin + window, spec });
   }
@@ -413,8 +413,8 @@ size_t IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
   // build a batch
   auto batch = std::make_shared<Batch>(*table, reader.size());
 
-  auto lowTime = std::numeric_limits<size_t>::max();
-  auto highTime = std::numeric_limits<size_t>::min();
+  auto lowTime = std::numeric_limits<int64_t>::max();
+  auto highTime = std::numeric_limits<int64_t>::min();
 
   while (reader.hasNext()) {
     auto& r = reader.next();
@@ -422,7 +422,7 @@ size_t IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
 
     // TODO(cao) - Kafka may produce NULL row due to corruption or exception
     // ideally we can handle nulls in our system, however, let's skip null row for now.
-    size_t time = row.readLong(Table::TIME_COLUMN);
+    int64_t time = row.readLong(Table::TIME_COLUMN);
     if (time == 0) {
       continue;
     }
@@ -484,7 +484,7 @@ bool IngestSpec::ingest(BlockList& blocks) noexcept {
   }
 
   // a lambda to build batch block
-  std::pair<size_t, size_t> range{ std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
+  std::pair<int64_t, int64_t> range{ std::numeric_limits<int64_t>::max(), std::numeric_limits<int64_t>::min() };
   auto makeBlock = [&table, &range, &specId](size_t bid, std::shared_ptr<Batch> b) {
     // seal the block
     b->seal();
@@ -560,12 +560,12 @@ bool IngestSpec::ingest(BlockList& blocks) noexcept {
           // make a new batch
           batch = std::make_shared<Batch>(*table, bRows, pid);
           batches[pid] = batch;
-          range = { std::numeric_limits<size_t>::max(), std::numeric_limits<size_t>::min() };
+          range = { std::numeric_limits<int64_t>::max(), std::numeric_limits<int64_t>::min() };
         }
 
         // update time range before adding the row to the batch
         // get time column value
-        size_t time = row.readLong(Table::TIME_COLUMN);
+        int64_t time = row.readLong(Table::TIME_COLUMN);
         if (time < range.first) {
           range.first = time;
         }

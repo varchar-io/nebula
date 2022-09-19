@@ -70,7 +70,7 @@ size_t TableState::remove(const std::string& spec) {
   // update the metrics
   size_t rows = 0;
   size_t bytes = 0;
-  std::pair<size_t, size_t> window{ std::numeric_limits<size_t>::max(), 0 };
+  std::pair<int64_t, int64_t> window{ std::numeric_limits<int64_t>::max(), std::numeric_limits<int64_t>::min() };
   HistVector hists;
   for (auto& b : data_) {
     update(b.second, rows, bytes, window, hists);

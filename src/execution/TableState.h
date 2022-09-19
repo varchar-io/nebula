@@ -34,13 +34,13 @@ class TableStateBase {
   static constexpr auto EMPTY_NAME = "EMTPY";
 
 public:
-  using Window = std::pair<size_t, size_t>;
+  using Window = std::pair<int64_t, int64_t>;
   TableStateBase(const std::string& table)
     : table_{ table },
       blocks_{ 0 },
       rows_{ 0 },
       bytes_{ 0 },
-      window_{ std::numeric_limits<size_t>::max(), 0 } {}
+      window_{ std::numeric_limits<int64_t>::max(), std::numeric_limits<int64_t>::min() } {}
   virtual ~TableStateBase() = default;
 
 public:
@@ -56,7 +56,7 @@ public:
     return bytes_;
   }
 
-  inline std::pair<size_t, size_t> timeWindow() const {
+  inline std::pair<int64_t, int64_t> timeWindow() const {
     return window_;
   }
 

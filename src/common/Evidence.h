@@ -55,19 +55,17 @@ public: /** only static methods */
   }
 
   template <typename T>
-  inline static size_t seconds(const std::chrono::time_point<T>& tp) {
+  inline static int64_t seconds(const std::chrono::time_point<T>& tp) {
     return std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
   }
 
   template <typename T>
-  inline static size_t seconds(const std::chrono::duration<T>& dur) {
+  inline static int64_t seconds(const std::chrono::duration<T>& dur) {
     return std::chrono::duration_cast<std::chrono::seconds>(dur).count();
   }
 
-  // TODO(cao): consider using int64_t rather than size_t
-  // to support time before unix epoch (1970)
   inline static size_t unix_timestamp() {
-    return seconds(std::chrono::system_clock::now());
+    return (size_t)seconds(std::chrono::system_clock::now());
   }
 
   // time point of seconds later
@@ -100,11 +98,11 @@ public: /** only static methods */
 
   /// copied from internet
   /// struct tm to seconds since Unix epoch
-  static size_t my_timegm(struct tm* t) {
+  static int64_t my_timegm(struct tm* t) {
     static constexpr int MONTHSPERYEAR = 12;
     static constexpr int cumdays[MONTHSPERYEAR] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
 
-    size_t result;
+    int64_t result;
     int64_t year = 1900 + t->tm_year + t->tm_mon / MONTHSPERYEAR;
     result = (year - 1970) * 365 + cumdays[t->tm_mon % MONTHSPERYEAR];
     result += (year - 1968) / 4;
@@ -131,7 +129,7 @@ public: /** only static methods */
   }
 
   // given date time string and parsing pattern, return GMT unix time stamp
-  static size_t time(const std::string_view datetime, const std::string& pattern) {
+  static int64_t time(const std::string_view datetime, const std::string& pattern) {
     date::sys_time<std::chrono::microseconds> tp;
     std::istringstream value(datetime.data());
     value >> date::parse(pattern, tp);
@@ -168,7 +166,7 @@ public: /** only static methods */
   // given a date time value, strip all but quarter
   // such as value of (2019-05-15 23:01:34) => value of (2019-04-1 00:00:00)
   // Q1 = [Jan - Mar], Q2 = [Apr - Jun], Q3 = [Jul - Sep], Q4 = [Oct - Dec]
-  static time_t quarter(std::time_t time) {
+  static std::time_t quarter(std::time_t time) {
     // strip days
     auto st_mon = month(time);
 

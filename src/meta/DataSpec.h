@@ -38,7 +38,7 @@ namespace meta {
 struct SpecSplit : public nebula::common::Identifiable {
   // default constructor for serde
   SpecSplit() {}
-  SpecSplit(std::string p, size_t o, size_t s, size_t w, nebula::common::MapKV m)
+  SpecSplit(std::string p, size_t o, size_t s, int64_t w, nebula::common::MapKV m)
     : path{ std::move(p) },
       offset{ o },
       size{ s },
@@ -47,10 +47,10 @@ struct SpecSplit : public nebula::common::Identifiable {
     construct();
   }
   // path, size, watermark and macros - 0 offset
-  SpecSplit(std::string p, size_t s, size_t w, nebula::common::MapKV m)
+  SpecSplit(std::string p, size_t s, int64_t w, nebula::common::MapKV m)
     : SpecSplit(std::move(p), 0, s, w, std::move(m)) {}
   // path, size and watermark - 0 offset, empty macros
-  SpecSplit(std::string p, size_t s, size_t w)
+  SpecSplit(std::string p, size_t s, int64_t w)
     : SpecSplit(std::move(p), 0, s, w, nebula::common::MapKV{}) {}
   virtual ~SpecSplit() = default;
 
@@ -64,7 +64,7 @@ struct SpecSplit : public nebula::common::Identifiable {
   size_t size;
 
   // watermark of the split
-  size_t watermark;
+  int64_t watermark;
 
   // if the split is generated from template, it will have key-value macros
   nebula::common::MapKV macros;

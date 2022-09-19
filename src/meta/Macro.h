@@ -116,8 +116,8 @@ public:
     return 0;
   }
 
-  static inline size_t watermark(const common::unordered_map<std::string_view, std::string_view>& p) {
-    size_t watermark = 0;
+  static inline int64_t watermark(const common::unordered_map<std::string_view, std::string_view>& p) {
+    int64_t watermark = 0;
     for (auto itr = p.cbegin(); itr != p.cend(); ++itr) {
       auto key = itr->first;
       if (common::Chars::same(key, V_DATE)) {

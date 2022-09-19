@@ -42,15 +42,15 @@ struct BlockSignature {
   // all ephemeral table started with # as its disallowed in nebula config.
   static constexpr auto EPHEMERAL_TABLE_PREFIX = '$';
 
-  explicit BlockSignature(const std::string& t, size_t i, size_t s, size_t e, const std::string& sp = "")
+  explicit BlockSignature(const std::string& t, size_t i, int64_t s, int64_t e, const std::string& sp = "")
     : table{ t }, id{ i }, start{ s }, end{ e }, spec{ sp } {}
   // table name
   std::string table;
   size_t id;
 
   // start/end timestamp
-  size_t start;
-  size_t end;
+  int64_t start;
+  int64_t end;
   std::string spec;
 
   inline bool sameSpec(const BlockSignature& another) const {
@@ -123,11 +123,11 @@ public:
     return data_;
   }
 
-  inline bool inRange(size_t time) const {
+  inline bool inRange(int64_t time) const {
     return time >= sign_.start && time <= sign_.end;
   }
 
-  inline bool overlap(const std::pair<size_t, size_t>& window) const noexcept {
+  inline bool overlap(const std::pair<int64_t, int64_t>& window) const noexcept {
     if ((window.second < sign_.start) || (sign_.end < window.first)) {
       return false;
     }
@@ -135,11 +135,11 @@ public:
     return true;
   }
 
-  inline size_t start() const {
+  inline int64_t start() const {
     return sign_.start;
   }
 
-  inline size_t end() const {
+  inline int64_t end() const {
     return sign_.end;
   }
 

@@ -1493,11 +1493,11 @@ proto.nebula.service.TableStateResponse.deserializeBinaryFromReader = function(m
       msg.setMemsize(value);
       break;
     case 4:
-      var value = /** @type {number} */ (reader.readUint64());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setMintime(value);
       break;
     case 5:
-      var value = /** @type {number} */ (reader.readUint64());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setMaxtime(value);
       break;
     case 6:
@@ -1564,14 +1564,14 @@ proto.nebula.service.TableStateResponse.serializeBinaryToWriter = function(messa
   }
   f = message.getMintime();
   if (f !== 0) {
-    writer.writeUint64(
+    writer.writeInt64(
       4,
       f
     );
   }
   f = message.getMaxtime();
   if (f !== 0) {
-    writer.writeUint64(
+    writer.writeInt64(
       5,
       f
     );
@@ -1655,7 +1655,7 @@ proto.nebula.service.TableStateResponse.prototype.setMemsize = function(value) {
 
 
 /**
- * optional uint64 minTime = 4;
+ * optional int64 minTime = 4;
  * @return {number}
  */
 proto.nebula.service.TableStateResponse.prototype.getMintime = function() {
@@ -1673,7 +1673,7 @@ proto.nebula.service.TableStateResponse.prototype.setMintime = function(value) {
 
 
 /**
- * optional uint64 maxTime = 5;
+ * optional int64 maxTime = 5;
  * @return {number}
  */
 proto.nebula.service.TableStateResponse.prototype.getMaxtime = function() {
@@ -3194,11 +3194,11 @@ proto.nebula.service.QueryRequest.deserializeBinaryFromReader = function(msg, re
       msg.setFiltero(value);
       break;
     case 4:
-      var value = /** @type {number} */ (reader.readUint64());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setStart(value);
       break;
     case 5:
-      var value = /** @type {number} */ (reader.readUint64());
+      var value = /** @type {number} */ (reader.readInt64());
       msg.setEnd(value);
       break;
     case 6:
@@ -3290,14 +3290,14 @@ proto.nebula.service.QueryRequest.serializeBinaryToWriter = function(message, wr
   }
   f = message.getStart();
   if (f !== 0) {
-    writer.writeUint64(
+    writer.writeInt64(
       4,
       f
     );
   }
   f = message.getEnd();
   if (f !== 0) {
-    writer.writeUint64(
+    writer.writeInt64(
       5,
       f
     );
@@ -3457,7 +3457,7 @@ proto.nebula.service.QueryRequest.prototype.hasFiltero = function() {
 
 
 /**
- * optional uint64 start = 4;
+ * optional int64 start = 4;
  * @return {number}
  */
 proto.nebula.service.QueryRequest.prototype.getStart = function() {
@@ -3475,7 +3475,7 @@ proto.nebula.service.QueryRequest.prototype.setStart = function(value) {
 
 
 /**
- * optional uint64 end = 5;
+ * optional int64 end = 5;
  * @return {number}
  */
 proto.nebula.service.QueryRequest.prototype.getEnd = function() {

@@ -50,8 +50,8 @@ message TableStateResponse {
   int32 blockCount = 1;
   int64 rowCount = 2;
   int64 memSize = 3;
-  uint64 minTime = 4;
-  uint64 maxTime = 5;
+  int64 minTime = 4;
+  int64 maxTime = 5;
 
   // columns = dimension columns + metric columns
   // metric column are column with number types, others are dimension columns
@@ -184,8 +184,8 @@ message QueryRequest {
   // every query will specify time range for the data to query - this is enforced
   // start time and end time are unix timestamp with GMT timezone - no delta
   // time range filter will be inclusive on both ends as [start, end]
-  uint64 start = 4;
-  uint64 end = 5;
+  int64 start = 4;
+  int64 end = 5;
 
   // window size is used in time serials query that aggregate timestamp into a window as bucket
   // this is in seconds (if the value is 60 -> one minute)

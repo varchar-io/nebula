@@ -58,7 +58,7 @@ std::tuple<std::string, int64_t, int64_t> genData(unsigned numBlocks) {
 
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
-    size_t begin = start + i * window;
+    int64_t begin = start + i * window;
     bm->add(BlockSignature{ testTable.name(), i, begin, begin + window });
   }
 

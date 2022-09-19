@@ -66,7 +66,7 @@ void genSpecs4Files(const TableSpecPtr& table,
                     const std::string& version,
                     const std::vector<FileInfo>& files,
                     std::vector<SpecPtr>& specs,
-                    size_t watermark,
+                    int64_t watermark,
                     const MapKV& macros) noexcept {
   std::vector<SpecSplitPtr> splits;
   size_t batchSize = 0;
@@ -193,7 +193,7 @@ void genRocksetSpec(const std::string& version,
   // produce consistent spec for the time slice, use watermark to store the beginning of the time
   // contract: we provide data start_time and end_time as posted data (UTC time)
   const size_t now = Evidence::now();
-  const size_t earliest = now - table->max_seconds;
+  const int64_t earliest = now - table->max_seconds;
   const size_t currentHour = Evidence::hour(now);
   const size_t interval = table->rocksetSerde.interval;
 
@@ -204,7 +204,7 @@ void genRocksetSpec(const std::string& version,
   };
 
   // going back from hour start
-  size_t watermark = currentHour - interval;
+  int64_t watermark = currentHour - interval;
   while (watermark > earliest) {
     add(watermark);
     watermark -= interval;

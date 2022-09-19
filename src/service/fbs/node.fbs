@@ -28,8 +28,8 @@ table QueryPlan {
   sorts: [uint32];
   desc: bool;
   limit: uint64;
-  tstart: uint64;
-  tend: uint64;
+  tstart: int64;
+  tend: int64;
 }
 
 // cpp: Flat Buffer - intermediate memory batch serde
@@ -55,8 +55,8 @@ table BatchRows {
 table DataBlock {
   table: string;
   id: uint64;
-  time_start: uint64;
-  time_end: uint64;
+  time_start: int64;
+  time_end: int64;
   spec: string;
   storage: string;
 

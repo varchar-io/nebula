@@ -1,6 +1,6 @@
 {
   "name": "nebula-lib",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "nebula web service library",
   "type": "module",
   "repository": {
@@ -18,14 +18,14 @@
     "start": "node node.js"
   },
   "bugs": {
-    "url": "https://github.com/shawncao/nebula/issues"
+    "url": "https://github.com/varchar-io/nebula/issues"
   },
   "keywords": [
     "nebula",
     "lib",
     "analytics"
   ],
-  "author": "Shawn Cao <caoxhua@gmail.com>",
+  "author": "Columns Ai <info@columns.ai>",
   "dependencies": {
     "async": "^1.5.2",
     "finalhandler": "^1.1.2",

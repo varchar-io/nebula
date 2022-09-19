@@ -29,7 +29,7 @@ namespace ingest {
 // 2. replace macros for special column
 class MacroRow : public nebula::surface::RowData {
 public:
-  MacroRow(const nebula::meta::TimeSpec& ts, size_t watermark, nebula::common::MapKV macros)
+  MacroRow(const nebula::meta::TimeSpec& ts, int64_t watermark, nebula::common::MapKV macros)
     : timeFunc_{ makeTimeFunc(ts, watermark) }, macros_(macros) {}
   ~MacroRow() = default;
 
@@ -84,7 +84,7 @@ public:
 
 private:
   // A method to convert time spec into a time function
-  std::function<int64_t(const nebula::surface::RowData*)> makeTimeFunc(const nebula::meta::TimeSpec& ts, size_t watermark) {
+  std::function<int64_t(const nebula::surface::RowData*)> makeTimeFunc(const nebula::meta::TimeSpec& ts, int64_t watermark) {
     // static time spec
     switch (ts.type) {
     case nebula::meta::TimeType::STATIC: {
@@ -103,7 +103,7 @@ private:
       // Note: time column can not be NULL
       // unfortunately if the data has it as null, we return 1 as indicator
       // we can not use 0, because Nebula doesn't allow query time range fall into 0 start/end.
-      static constexpr size_t NULL_TIME = 1;
+      static constexpr int64_t NULL_TIME = 1;
       constexpr auto UNIX_TS = "UNIXTIME";
       constexpr auto UNIX_MS = "UNIXTIME_MS";
       constexpr auto UNIX_NANO = "UNIXTIME_NANO";
@@ -116,8 +116,7 @@ private:
             return NULL_TIME;
           }
 
-          // TODO(cao): support negative unix_time by replacing size_t type
-          return (size_t)nebula::common::Evidence::serial_2_unix(r->readDouble(col));
+          return nebula::common::Evidence::serial_2_unix(r->readDouble(col));
         };
       }
 
@@ -137,7 +136,7 @@ private:
             return NULL_TIME;
           }
 
-          return (size_t)r->readLong(col) / scale;
+          return r->readLong(col) / scale;
         };
       }
 

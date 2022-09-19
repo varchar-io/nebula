@@ -75,7 +75,7 @@ struct TTL {
 struct TimeSpec {
   TimeType type;
   // unix time value if provided
-  size_t unixTimeValue;
+  int64_t unixTimeValue;
   // column name for given
   std::string column;
   // time pattern to parse value out

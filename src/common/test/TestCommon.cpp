@@ -303,6 +303,21 @@ TEST(CommonTest, TestTimeParsing) {
   }
 }
 
+TEST(CommonTest, TestTimeBefore1970) {
+  // test case that fail
+  // "1949-01-01": "%Y-%m-%d" Evidence::time
+  std::vector<std::string> cases = { "1969-01-01", "1949-01-01", "1778-02-08" };
+  std::for_each(cases.begin(), cases.end(), [](auto& date) {
+    auto unixTime = Evidence::time(date, "%Y-%m-%d");
+    auto string1 = Evidence::format(unixTime, "%Y-%m-%d");
+    LOG(INFO) << "date=" << date << ", unix-time=" << unixTime << ", string1=" << string1;
+
+    // run the checks
+    EXPECT_TRUE(unixTime < 0);
+    EXPECT_EQ(string1, date);
+  });
+}
+
 TEST(CommonTest, TestStripTime) {
   // test stripping hour, week, month, year
   {
