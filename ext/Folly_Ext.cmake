@@ -26,7 +26,7 @@ ExternalProject_Add(folly
   LOG_CONFIGURE ON
   LOG_BUILD ON)
 
-add_dependencies(folly double-conversion glog)
+add_dependencies(folly libfmt double-conversion glog)
 
 # get source dir after download step
 ExternalProject_Get_Property(folly SOURCE_DIR)

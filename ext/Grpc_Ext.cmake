@@ -146,6 +146,8 @@ ExternalProject_Add(grpc
   LOG_CONFIGURE ON
   LOG_BUILD ON)
 
+add_dependencies(grpc libpb)
+
 ExternalProject_Get_Property(grpc SOURCE_DIR)
 ExternalProject_Get_Property(grpc BINARY_DIR)
 set(GRPC_INCLUDE_DIRS ${SOURCE_DIR}/include)
