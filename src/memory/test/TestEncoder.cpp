@@ -37,8 +37,8 @@ namespace memory {
 namespace test {
 TEST(TypeDataTest, TestAddTypedData) {
   nebula::meta::Column column;
-
-  auto b = nebula::memory::serde::TypeDataFactory::createData(nebula::type::Kind::BOOLEAN, column, 16);
+  auto type = nebula::type::BoolType::create("col");
+  auto b = nebula::memory::serde::TypeDataFactory::createData(type, column, 16);
   b->add(0, true);
   b->add(1, false);
   b->add(2, false);
@@ -51,7 +51,8 @@ TEST(TypeDataTest, TestAddTypedData) {
 
 TEST(TypeDataTest, TestStringReadWrite) {
   nebula::meta::Column column;
-  auto s = nebula::memory::serde::TypeDataFactory::createData(nebula::type::Kind::VARCHAR, column, 16);
+  auto type = nebula::type::StringType::create("col");
+  auto s = nebula::memory::serde::TypeDataFactory::createData(type, column, 16);
   std::string_view s1 = "Nebula";
   std::string_view s2 = "Is";
   std::string_view s3 = "So";

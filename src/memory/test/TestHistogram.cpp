@@ -26,7 +26,7 @@
 #include "surface/MockSurface.h"
 
 /**
- * Flat Buffer is used to store / compute run time data. 
+ * Flat Buffer is used to store / compute run time data.
  * Test its interfaces and functions here.
  */
 namespace nebula {
@@ -40,7 +40,7 @@ using nebula::surface::eval::IntHistogram;
 using nebula::surface::eval::RealHistogram;
 
 TEST(HistogramTest, TestHistogramTypes) {
-  std::unique_ptr<Histogram> histo = std::make_unique<Histogram>();
+  std::unique_ptr<Histogram> histo = std::make_unique<Histogram>("col");
   histo->count = 2;
 
   EXPECT_EQ(histo->count, 2);
@@ -48,7 +48,8 @@ TEST(HistogramTest, TestHistogramTypes) {
   // test bool histogram
   {
     nebula::meta::Column column;
-    auto m = TypeDataFactory::createMeta(nebula::type::Kind::BOOLEAN, column);
+    auto type = nebula::type::BoolType::create("col");
+    auto m = TypeDataFactory::createMeta(type, column);
     m->histogram(true);
     m->histogram(false);
     m->histogram(true);
@@ -65,7 +66,8 @@ TEST(HistogramTest, TestHistogramTypes) {
     uint64_t count = 100;                                                                            \
     CT min = max - count + 1;                                                                        \
     nebula::meta::Column column;                                                                     \
-    auto m = TypeDataFactory::createMeta(nebula::type::Kind::K, column);                             \
+    auto type = nebula::type::Type<nebula::type::Kind::K>::create("col");                            \
+    auto m = TypeDataFactory::createMeta(type, column);                                              \
     int64_t sum = 0;                                                                                 \
     for (auto i = min; i <= max; ++i) {                                                              \
       sum += i;                                                                                      \
@@ -87,20 +89,21 @@ TEST(HistogramTest, TestHistogramTypes) {
 #undef INT_TYPE_TEST
 
 // test floating values histogram
-#define REAL_TYPE_TEST(K)                                                \
-  {                                                                      \
-    nebula::meta::Column column;                                         \
-    auto m = TypeDataFactory::createMeta(nebula::type::Kind::K, column); \
-    EXPECT_EQ(m->histogram(1.02), 1);                                    \
-    EXPECT_EQ(m->histogram(2.0), 2);                                     \
-    EXPECT_EQ(m->histogram(1.38), 3);                                    \
-    EXPECT_EQ(m->histogram(0.38), 4);                                    \
-    const auto& rh = m->histogram<RealHistogram>();                      \
-    EXPECT_EQ(rh.count, 4);                                              \
-    EXPECT_NEAR(rh.min(), 0.38, 1e-14);                                  \
-    EXPECT_NEAR(rh.max(), 2.0, 1e-14);                                   \
-    EXPECT_NEAR(rh.sum(), 4.78, 1e-14);                                  \
-    EXPECT_NEAR(rh.avg(), 1.195, 1e-14);                                 \
+#define REAL_TYPE_TEST(K)                                                 \
+  {                                                                       \
+    nebula::meta::Column column;                                          \
+    auto type = nebula::type::Type<nebula::type::Kind::K>::create("col"); \
+    auto m = TypeDataFactory::createMeta(type, column);                   \
+    EXPECT_EQ(m->histogram(1.02), 1);                                     \
+    EXPECT_EQ(m->histogram(2.0), 2);                                      \
+    EXPECT_EQ(m->histogram(1.38), 3);                                     \
+    EXPECT_EQ(m->histogram(0.38), 4);                                     \
+    const auto& rh = m->histogram<RealHistogram>();                       \
+    EXPECT_EQ(rh.count, 4);                                               \
+    EXPECT_NEAR(rh.min(), 0.38, 1e-14);                                   \
+    EXPECT_NEAR(rh.max(), 2.0, 1e-14);                                    \
+    EXPECT_NEAR(rh.sum(), 4.78, 1e-14);                                   \
+    EXPECT_NEAR(rh.avg(), 1.195, 1e-14);                                  \
   }
 
   REAL_TYPE_TEST(REAL)
@@ -111,7 +114,8 @@ TEST(HistogramTest, TestHistogramTypes) {
   // other types are all using basic histogram with only count
   {
     nebula::meta::Column column;
-    auto m = TypeDataFactory::createMeta(nebula::type::Kind::VARCHAR, column);
+    auto type = nebula::type::StringType::create("col");
+    auto m = TypeDataFactory::createMeta(type, column);
     m->histogram("true");
     m->histogram("abc");
     m->histogram("xyz");

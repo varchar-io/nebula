@@ -31,8 +31,8 @@ namespace serde {
 
 /**
  * A metadata serde to desribe metadata for a given type.
- * This is a super set that works for any type. 
- * 
+ * This is a super set that works for any type.
+ *
  * Eventually this metadata can be serailized into a flat buffer to persistence.
  */
 class TypeMetadata {
@@ -41,11 +41,11 @@ class TypeMetadata {
 
 public:
   static constexpr IndexType INVALID_INDEX = std::numeric_limits<IndexType>::max();
-  TypeMetadata(nebula::type::Kind kind, const nebula::meta::Column& column)
+  TypeMetadata(const nebula::type::TypeBase& type, const nebula::meta::Column& column)
     : partition_{ column.partition.valid() },
       count_{ 0 },
       offsetSize_{
-        nebula::type::TypeBase::isScalar(kind) ?
+        nebula::type::TypeBase::isScalar(type.k()) ?
           nullptr :
           std::make_unique<nebula::common::ExtendableSlice>(N_ITEMS)
       },
@@ -64,9 +64,11 @@ public:
     bh_ = nullptr;
     ih_ = nullptr;
     rh_ = nullptr;
-    switch (kind) {
+
+    const auto& name = type.name();
+    switch (type.k()) {
     case nebula::type::Kind::BOOLEAN: {
-      auto temp = std::make_unique<nebula::surface::eval::BoolHistogram>();
+      auto temp = std::make_unique<nebula::surface::eval::BoolHistogram>(name);
       bh_ = temp.get();
       histo_ = std::move(temp);
       break;
@@ -75,20 +77,20 @@ public:
     case nebula::type::Kind::SMALLINT:
     case nebula::type::Kind::INTEGER:
     case nebula::type::Kind::BIGINT: {
-      auto temp = std::make_unique<nebula::surface::eval::IntHistogram>();
+      auto temp = std::make_unique<nebula::surface::eval::IntHistogram>(name);
       ih_ = temp.get();
       histo_ = std::move(temp);
       break;
     }
     case nebula::type::Kind::REAL:
     case nebula::type::Kind::DOUBLE: {
-      auto temp = std::make_unique<nebula::surface::eval::RealHistogram>();
+      auto temp = std::make_unique<nebula::surface::eval::RealHistogram>(name);
       rh_ = temp.get();
       histo_ = std::move(temp);
       break;
     }
     default:
-      histo_ = std::make_unique<nebula::surface::eval::Histogram>();
+      histo_ = std::make_unique<nebula::surface::eval::Histogram>(name);
       break;
     }
   }

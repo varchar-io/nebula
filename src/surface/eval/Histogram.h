@@ -16,12 +16,12 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 #include <vector>
 
-#include "common/Likely.h"
-#include "fmt/format.h"
+#include "common/Errors.h"
 
 namespace nebula {
 namespace surface {
@@ -30,17 +30,16 @@ namespace eval {
 /**
  * Define histogram data - Count is common value indicating total valid values.
  */
-
-#define TOSTRING_JSON_START(TYPE)                   \
-  rapidjson::StringBuffer buffer;                   \
-  rapidjson::Writer<rapidjson::StringBuffer,        \
-                    rapidjson::UTF8<>,              \
-                    rapidjson::UTF8<>,              \
-                    rapidjson::CrtAllocator,        \
-                    rapidjson::kWriteNanAndInfFlag> \
-    json(buffer);                                   \
-  json.StartObject();                               \
-  json.Key("type");                                 \
+using JsonWriter = typename rapidjson::Writer<rapidjson::StringBuffer,
+                                              rapidjson::UTF8<>,
+                                              rapidjson::UTF8<>,
+                                              rapidjson::CrtAllocator,
+                                              rapidjson::kWriteNanAndInfFlag>;
+#define TOSTRING_JSON_START(TYPE) \
+  rapidjson::StringBuffer buffer; \
+  JsonWriter json(buffer);        \
+  json.StartObject();             \
+  json.Key("type");               \
   json.String(TYPE);
 
 #define TOSTRING_JSON_END \
@@ -48,15 +47,20 @@ namespace eval {
   return buffer.GetString();
 
 struct Histogram {
-  Histogram() : Histogram(0) {}
-  Histogram(uint64_t c) : count{ c } {}
+  Histogram(const std::string& n) : Histogram(n, 0) {}
+  Histogram(const std::string& n, uint64_t c) : name{ n }, count{ c } {}
   virtual ~Histogram() = default;
+
+  void writeBase(JsonWriter& json) const {
+    json.Key("name");
+    json.String(name.data(), name.size());
+    json.Key("count");
+    json.Uint64(count);
+  }
 
   virtual inline std::string toString() const {
     TOSTRING_JSON_START("BASE")
-    json.Key("count");
-    json.Uint64(count);
-
+    writeBase(json);
     TOSTRING_JSON_END
   }
 
@@ -64,18 +68,18 @@ struct Histogram {
     count += other.count;
   }
 
+  std::string name;
   uint64_t count;
 };
 
 struct BoolHistogram : public Histogram {
-  BoolHistogram() : BoolHistogram(0, 0) {}
-  BoolHistogram(uint64_t c, uint64_t tv) : Histogram(c), trueValues{ tv } {}
+  BoolHistogram(const std::string& n) : BoolHistogram(n, 0, 0) {}
+  BoolHistogram(const std::string& n, uint64_t c, uint64_t tv) : Histogram(n, c), trueValues{ tv } {}
   virtual ~BoolHistogram() = default;
 
   virtual inline std::string toString() const override {
     TOSTRING_JSON_START("BOOL")
-    json.Key("count");
-    json.Uint64(count);
+    writeBase(json);
     json.Key("trues");
     json.Uint64(trueValues);
     TOSTRING_JSON_END
@@ -93,13 +97,14 @@ struct BoolHistogram : public Histogram {
 
 template <typename T>
 struct NumberHistogram : public Histogram {
-  NumberHistogram()
-    : NumberHistogram<T>(0,
+  NumberHistogram(const std::string& n)
+    : NumberHistogram<T>(n,
+                         0,
                          std::numeric_limits<T>::max(),
                          std::numeric_limits<T>::min(),
                          0) {}
-  NumberHistogram(uint64_t c, T min, T max, T sum)
-    : Histogram(c),
+  NumberHistogram(const std::string& n, uint64_t c, T min, T max, T sum)
+    : Histogram(n, c),
       v_min{ min },
       v_max{ max },
       v_sum{ sum } {}
@@ -128,8 +133,7 @@ struct NumberHistogram : public Histogram {
   virtual inline std::string toString() const override {
 #define TYPED_KV(TN, TM)   \
   TOSTRING_JSON_START(#TN) \
-  json.Key("count");       \
-  json.Uint64(count);      \
+  writeBase(json);         \
   json.Key("min");         \
   json.TM(v_min);          \
   json.Key("max");         \
@@ -149,6 +153,7 @@ struct NumberHistogram : public Histogram {
   }
 
   virtual inline void merge(const Histogram& other) override {
+    N_ENSURE(name == other.name, "can not merge histogram for different field.");
     Histogram::merge(other);
 
     auto nh = static_cast<const NumberHistogram<T>&>(other);

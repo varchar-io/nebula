@@ -31,13 +31,13 @@ using nebula::surface::eval::RealHistogram;
 
 TEST(HistogramTest, TestSerde) {
   {
-    Histogram orig{ 2 };
+    Histogram orig{ "col", 2 };
     auto hist = nebula::surface::eval::from(orig.toString());
     EXPECT_EQ(hist->count, 2);
   }
 
   {
-    BoolHistogram orig{ 2, 4 };
+    BoolHistogram orig{ "col", 2, 4 };
     auto histBase = nebula::surface::eval::from(orig.toString());
     auto hist = static_cast<BoolHistogram*>(histBase.get());
     EXPECT_EQ(hist->count, 2);
@@ -45,7 +45,7 @@ TEST(HistogramTest, TestSerde) {
   }
 
   {
-    RealHistogram orig{ 2, 1.0, 3.6, 4.6 };
+    RealHistogram orig{ "col", 2, 1.0, 3.6, 4.6 };
     auto histBase = nebula::surface::eval::from(orig.toString());
     auto hist = static_cast<RealHistogram*>(histBase.get());
     EXPECT_EQ(hist->count, 2);
@@ -55,7 +55,7 @@ TEST(HistogramTest, TestSerde) {
   }
 
   {
-    IntHistogram orig{ 2, 1, 3, 4 };
+    IntHistogram orig{ "col", 2, 1, 3, 4 };
     auto histBase = nebula::surface::eval::from(orig.toString());
     auto hist = static_cast<IntHistogram*>(histBase.get());
     EXPECT_EQ(hist->count, 2);
@@ -67,23 +67,23 @@ TEST(HistogramTest, TestSerde) {
 
 TEST(HistogramTest, TestMerge) {
   {
-    Histogram h{ 2 };
-    Histogram h2{ 3 };
+    Histogram h{ "col", 2 };
+    Histogram h2{ "col", 3 };
     h.merge(h2);
     EXPECT_EQ(h.count, 5);
   }
 
   {
-    BoolHistogram h{ 4, 4 };
-    BoolHistogram h2{ 3, 1 };
+    BoolHistogram h{ "col", 4, 4 };
+    BoolHistogram h2{ "col", 3, 1 };
     h.merge(h2);
     EXPECT_EQ(h.count, 7);
     EXPECT_EQ(h.trueValues, 5);
   }
 
   {
-    RealHistogram h{ 2, 1.0, 3.6, 4.6 };
-    RealHistogram h2{ 3, 1.2, 4.6, 10.2 };
+    RealHistogram h{ "col", 2, 1.0, 3.6, 4.6 };
+    RealHistogram h2{ "col", 3, 1.2, 4.6, 10.2 };
     h.merge(h2);
     EXPECT_EQ(h.count, 5);
     EXPECT_NEAR(h.v_min, 1.0, 0.0000000001);
@@ -92,8 +92,8 @@ TEST(HistogramTest, TestMerge) {
   }
 
   {
-    IntHistogram h{ 2, 1, 3, 4 };
-    IntHistogram h2{ 1, 1, 1, 1 };
+    IntHistogram h{ "col", 2, 1, 3, 4 };
+    IntHistogram h2{ "col", 1, 1, 1, 1 };
     h.merge(h2);
     EXPECT_EQ(h.count, 3);
     EXPECT_EQ(h.v_min, 1);
@@ -106,8 +106,8 @@ TEST(HistogramTest, TestFailOver) {
   // test realhistogram handling infinite value
   {
     const auto inf = std::numeric_limits<float>::infinity();
-    const auto expected = "{\"type\":\"REAL\",\"count\":2,\"min\":1.0,\"max\":3.6,\"sum\":Infinity}";
-    RealHistogram orig{ 2, 1.0, 3.6, inf };
+    const auto expected = "{\"type\":\"REAL\",\"name\":\"col\",\"count\":2,\"min\":1.0,\"max\":3.6,\"sum\":Infinity}";
+    RealHistogram orig{ "col", 2, 1.0, 3.6, inf };
     EXPECT_EQ(orig.toString(), expected);
     auto histBase = nebula::surface::eval::from(expected);
     auto hist = static_cast<RealHistogram*>(histBase.get());
@@ -121,8 +121,8 @@ TEST(HistogramTest, TestFailOver) {
     // integer's infinite value is 0
     const auto inf = std::numeric_limits<int64_t>::infinity();
     EXPECT_EQ(inf, 0);
-    const auto expected = "{\"type\":\"INT\",\"count\":2,\"min\":1,\"max\":3,\"sum\":0}";
-    IntHistogram orig{ 2, 1, 3, inf };
+    const auto expected = "{\"type\":\"INT\",\"name\":\"col\",\"count\":2,\"min\":1,\"max\":3,\"sum\":0}";
+    IntHistogram orig{ "col", 2, 1, 3, inf };
     EXPECT_EQ(orig.toString(), expected);
     auto histBase = nebula::surface::eval::from(expected);
     auto hist = static_cast<IntHistogram*>(histBase.get());

@@ -30,14 +30,14 @@ using nebula::type::Kind;
   }
 
 std::unique_ptr<TypeDataProxy> TypeDataFactory::createData(
-  Kind kind, const Column& column, size_t batchSize) {
+  const nebula::type::TypeBase& type, const Column& column, size_t batchSize) {
   // if current column is a partition column,
   // metadata will record its value and we will not create data stream for it.
   if (column.partition.valid()) {
     return nullptr;
   }
 
-  switch (kind) {
+  switch (type.k()) {
     TYPE_DATA_PROXY(BOOLEAN, BoolData)
     TYPE_DATA_PROXY(TINYINT, ByteData)
     TYPE_DATA_PROXY(SMALLINT, ShortData)
@@ -58,8 +58,9 @@ std::unique_ptr<TypeDataProxy> TypeDataFactory::createData(
 
 #undef TYPE_DATA_PROXY
 
-std::unique_ptr<TypeMetadata> TypeDataFactory::createMeta(Kind kind, const Column& column) {
-  return std::make_unique<TypeMetadata>(kind, column);
+std::unique_ptr<TypeMetadata> TypeDataFactory::createMeta(
+  const nebula::type::TypeBase& type, const Column& column) {
+  return std::make_unique<TypeMetadata>(type, column);
 }
 
 } // namespace serde

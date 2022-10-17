@@ -31,7 +31,7 @@
 
 /**
  * A data node holds real memory data for each node in the schema tree
- * 
+ *
  */
 namespace nebula {
 namespace memory {
@@ -59,8 +59,8 @@ public:
            const std::vector<nebula::type::TreeNode>& children)
     : nebula::type::Tree<DataNode*>(this, children),
       type_{ type },
-      meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type.k(), column) },
-      data_{ nebula::memory::serde::TypeDataFactory::createData(type.k(), column, capacity) },
+      meta_{ nebula::memory::serde::TypeDataFactory::createMeta(type, column) },
+      data_{ nebula::memory::serde::TypeDataFactory::createData(type, column, capacity) },
       count_{ 0 },
       rawSize_{ 0 },
       size_{ 0 },
