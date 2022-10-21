@@ -57,6 +57,14 @@ public:
   }
 
 public:
+  // hit real table, activate it
+  void hit(const std::string& name) {
+    auto it = tables_.find(name);
+    if (it != tables_.end()) {
+      return it->second->activate();
+    }
+  }
+
   virtual const nebula::meta::TableRegistry& query(const std::string& name) override {
     auto it = tables_.find(name);
     if (it != tables_.end()) {

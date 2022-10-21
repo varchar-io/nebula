@@ -64,6 +64,9 @@ struct LoadSpec {
   // csv props
   meta::CsvProps csv;
 
+  // column props
+  meta::ColumnProps props;
+
   // json props
   meta::JsonProps json;
 
@@ -116,7 +119,33 @@ struct LoadSpec {
     // extract other info such as source, domain, etc.
     extract(*this);
 
-    // read csv props and/or json props from the object
+    // read column options if present
+    {
+      auto member = obj.FindMember("options");
+      if (member != obj.MemberEnd() && member->value.IsObject()) {
+        const auto& optionsObj = member->value.GetObject();
+        for (auto& prop : optionsObj) {
+          const auto& colName = prop.name.GetString();
+          const auto& options = prop.value.GetObject();
+          auto bloom = false;
+          auto dict = false;
+
+          member = options.FindMember("bloom");
+          if (member != options.MemberEnd()) {
+            bloom = member->value.GetBool();
+          }
+
+          member = options.FindMember("dict");
+          if (member != options.MemberEnd()) {
+            dict = member->value.GetBool();
+          }
+
+          // add this
+          this->props.emplace(colName, nebula::meta::Column{ bloom, dict });
+        }
+      }
+    }
+    // read csv props from the object
     {
       auto member = obj.FindMember("csv");
       if (member != obj.MemberEnd() && member->value.IsObject()) {
@@ -124,6 +153,7 @@ struct LoadSpec {
         this->csv.from(csvObj);
       }
     }
+    // read json props
     {
       auto member = obj.FindMember("json");
       if (member != obj.MemberEnd() && member->value.IsObject()) {
@@ -131,8 +161,8 @@ struct LoadSpec {
         this->json.from(jsonObj);
       }
     }
+    // read macros
     {
-      // read macros
       auto member = obj.FindMember("macros");
       if (member != obj.MemberEnd() && member->value.IsObject()) {
         const auto& macroObj = member->value.GetObject();

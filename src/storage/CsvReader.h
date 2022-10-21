@@ -20,11 +20,13 @@
 #include <iostream>
 
 #include "SchemaHelper.h"
+#include "common/Compression.h"
 #include "common/Conv.h"
 #include "common/Errors.h"
 #include "common/Format.h"
 #include "common/Hash.h"
 #include "meta/TableSpec.h"
+#include "storage/NFS.h"
 #include "surface/DataSurface.h"
 
 /**
@@ -109,6 +111,14 @@ class CsvReader : public nebula::surface::RowCursor {
 public:
   CsvReader(const std::string& file, const nebula::meta::CsvProps& csv, const std::vector<std::string>& columns)
     : nebula::surface::RowCursor(0), fstream_{ file }, row_{ csv.delimiter.at(0) }, cacheRow_{ csv.delimiter.at(0) } {
+    // if the file is compressed, we decompress it first
+    if (csv.compression == "gz") {
+      LOG(INFO) << "Ungzip the csv file before reading: " << file;
+      auto localFs = nebula::storage::makeFS("local");
+      this->temp_ = localFs->temp();
+      nebula::common::ungzip(file, this->temp_);
+      this->fstream_ = std::ifstream(this->temp_);
+    }
 
     // a few scenarios need to be handled
     // 1. schema provided
@@ -117,7 +127,7 @@ public:
     // 2. schema not provided:
     // 2.a: csv has header - we need to read headers to use them as the schema.
     // 2.b: csv has no header - fail, don't know how to process schema
-    LOG(INFO) << "Reading a delimiter separated file: " << file << " by " << csv.delimiter;
+    LOG(INFO) << "Reading a delimiter separated file by " << csv.delimiter;
     std::vector<std::string> names;
     const auto hasSchema = columns.size() > 0;
 
@@ -170,7 +180,11 @@ public:
     }
   }
 
-  virtual ~CsvReader() = default;
+  virtual ~CsvReader() {
+    if (this->temp_.size() > 0) {
+      unlink(this->temp_.c_str());
+    }
+  }
 
   // next row data of CsvRow
   virtual const nebula::surface::RowData& next() override {
@@ -197,6 +211,7 @@ public:
   }
 
 private:
+  std::string temp_;
   std::ifstream fstream_;
   CsvRow row_;
   CsvRow cacheRow_;

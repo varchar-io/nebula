@@ -286,7 +286,7 @@ TableSpecPtr LoadHandler::loadDemand(const LoadRequest* req, LoadError& err) {
     demand.thrift,
     KafkaSerde{},
     RocksetSerde{},
-    ColumnProps{},
+    demand.props,
     demand.timeSpec,
     demand.accessSpec,
     BucketInfo::empty(),

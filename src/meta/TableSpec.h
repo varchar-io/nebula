@@ -133,19 +133,28 @@ struct CsvProps {
   bool hasMeta;
   // only first letter is used
   std::string delimiter;
+  // compression method: gz, ccsv, <empty>
+  std::string compression;
 
-  CsvProps(bool h = true, bool m = false, std::string d = ",")
-    : hasHeader{ h }, hasMeta{ m }, delimiter{ std::move(d) } {}
+  CsvProps(bool h = true,
+           bool m = false,
+           std::string d = ",",
+           std::string c = "")
+    : hasHeader{ h },
+      hasMeta{ m },
+      delimiter{ std::move(d) },
+      compression{ std::move(c) } {}
 
   // materialize csv props from json settings
   void from(const rapidjson::GenericObject<true, rapidjson::Value>& obj) {
     READ_MEMBER("hasHeader", hasHeader, GetBool);
     READ_MEMBER("hasMeta", hasMeta, GetBool);
     READ_MEMBER("delimiter", delimiter, GetString);
+    READ_MEMBER("compression", compression, GetString);
   }
 
   // make it msgpack serializable
-  MSGPACK_DEFINE(hasHeader, hasMeta, delimiter);
+  MSGPACK_DEFINE(hasHeader, hasMeta, delimiter, compression);
 };
 
 struct JsonProps {

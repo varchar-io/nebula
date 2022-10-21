@@ -286,10 +286,10 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   const auto tableName = request->table();
   // get the table registry and activate it by recording latest used time
   // so whenever a data set is queried, its expire time will be extended.
-  auto tr = TableService::singleton()->query(tableName);
-  tr.activate();
+  TableService::singleton()->hit(tableName);
 
   // build the query
+  const auto& tr = TableService::singleton()->query(tableName);
   auto query = handler_.build(*tr.table(), *request, error);
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);

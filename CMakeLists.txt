@@ -192,6 +192,7 @@ find_package(Boost MODULE
   COMPONENTS
     context
     filesystem
+    iostreams
     program_options
     regex
     system

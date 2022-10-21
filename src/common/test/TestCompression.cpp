@@ -18,6 +18,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "common/Compression.h"
 #include "common/Delta.h"
 #include "common/Evidence.h"
 #include "common/Memory.h"
@@ -133,6 +134,16 @@ TEST(CompressionTest, TestDeltaEncoding) {
   test_type(int32_t);
 
 #undef test_type
+}
+
+TEST(CompressionTest, TestDecompressionFile) {
+  auto origin = "test/data/test.csv";
+  auto source = "test/data/test.csv.gz";
+  auto dest = "/tmp/test.csv.copy.test.csv";
+
+  // after decompress, the copy should be the same as its origin
+  ungzip(source, dest);
+  EXPECT_EQ(filesize(origin), filesize(dest));
 }
 
 } // namespace test
