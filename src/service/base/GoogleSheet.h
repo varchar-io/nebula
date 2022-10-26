@@ -94,32 +94,32 @@ struct GoogleSheet {
     // root object
     auto obj = doc.GetObject();
 
-#define READ_MEMBER(NAME, VAR, GETTER)    \
-  {                                       \
-    auto member = obj.FindMember(NAME);   \
-    if (member != obj.MemberEnd()) {      \
-      this->VAR = member->value.GETTER(); \
-    }                                     \
+#define READ_MEMBER(NAME, VAR, TC, GETTER)                 \
+  {                                                        \
+    auto member = obj.FindMember(NAME);                    \
+    if (member != obj.MemberEnd() && member->value.TC()) { \
+      this->VAR = member->value.GETTER();                  \
+    }                                                      \
   }
 
     // id
-    READ_MEMBER("id", id, GetString)
+    READ_MEMBER("id", id, IsString, GetString)
 
     // uid
-    READ_MEMBER("uid", uid, GetString)
+    READ_MEMBER("uid", uid, IsString, GetString)
 
     // schema
-    READ_MEMBER("schema", schema, GetString)
+    READ_MEMBER("schema", schema, IsString, GetString)
 
     // rows and cols
-    READ_MEMBER("rows", rows, GetInt64)
-    READ_MEMBER("cols", cols, GetInt64)
+    READ_MEMBER("rows", rows, IsInt64, GetInt64)
+    READ_MEMBER("cols", cols, IsInt64, GetInt64)
 
     // save token in the settings
     // TODO(cao): let server figure out the token by itself
     // not safe to transfer gtoken over wire.
-    READ_MEMBER("gtoken", gtoken, GetString)
-    READ_MEMBER("key", key, GetString)
+    READ_MEMBER("gtoken", gtoken, IsString, GetString)
+    READ_MEMBER("key", key, IsString, GetString)
 
     // save these as settings
     this->settings["token"] = this->gtoken;

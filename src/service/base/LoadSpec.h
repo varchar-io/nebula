@@ -33,12 +33,12 @@ namespace base {
 struct LoadSpec;
 void extract(LoadSpec&);
 
-#define READ_MEMBER(NAME, VAR, GETTER)    \
-  {                                       \
-    auto member = obj.FindMember(NAME);   \
-    if (member != obj.MemberEnd()) {      \
-      this->VAR = member->value.GETTER(); \
-    }                                     \
+#define READ_MEMBER(NAME, VAR, TC, GETTER)                 \
+  {                                                        \
+    auto member = obj.FindMember(NAME);                    \
+    if (member != obj.MemberEnd() && member->value.TC()) { \
+      this->VAR = member->value.GETTER();                  \
+    }                                                      \
   }
 
 // client side will send a load spec to load
@@ -107,10 +107,10 @@ struct LoadSpec {
     //     "format":    "csv"
     //     "time":      { "column": "col-1", "pattern": "%m/%d/%Y %H:%M:%S" }
     // }
-    READ_MEMBER("path", path, GetString)
-    READ_MEMBER("schema", schema, GetString)
-    READ_MEMBER("format", format, GetString)
-    READ_MEMBER("token", token, GetString)
+    READ_MEMBER("path", path, IsString, GetString)
+    READ_MEMBER("schema", schema, IsString, GetString)
+    READ_MEMBER("format", format, IsString, GetString)
+    READ_MEMBER("token", token, IsString, GetString)
 
     N_ENSURE(path.size() > 0, "data path is required");
     N_ENSURE(schema.size() > 0, "data schema is required");

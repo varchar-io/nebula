@@ -64,12 +64,12 @@ struct TTL {
   MSGPACK_DEFINE(time, stl);
 };
 
-#define READ_MEMBER(NAME, VAR, GETTER)    \
-  {                                       \
-    auto member = obj.FindMember(NAME);   \
-    if (member != obj.MemberEnd()) {      \
-      this->VAR = member->value.GETTER(); \
-    }                                     \
+#define READ_MEMBER(NAME, VAR, TC, GETTER)                 \
+  {                                                        \
+    auto member = obj.FindMember(NAME);                    \
+    if (member != obj.MemberEnd() && member->value.TC()) { \
+      this->VAR = member->value.GETTER();                  \
+    }                                                      \
   }
 
 struct TimeSpec {
@@ -84,8 +84,8 @@ struct TimeSpec {
   std::string pattern;
 
   void from(const rapidjson::GenericObject<true, rapidjson::Value>& obj) {
-    READ_MEMBER("column", column, GetString);
-    READ_MEMBER("pattern", pattern, GetString);
+    READ_MEMBER("column", column, IsString, GetString);
+    READ_MEMBER("pattern", pattern, IsString, GetString);
 
     // convert type
     auto member = obj.FindMember("type");
@@ -147,10 +147,10 @@ struct CsvProps {
 
   // materialize csv props from json settings
   void from(const rapidjson::GenericObject<true, rapidjson::Value>& obj) {
-    READ_MEMBER("hasHeader", hasHeader, GetBool);
-    READ_MEMBER("hasMeta", hasMeta, GetBool);
-    READ_MEMBER("delimiter", delimiter, GetString);
-    READ_MEMBER("compression", compression, GetString);
+    READ_MEMBER("hasHeader", hasHeader, IsBool, GetBool);
+    READ_MEMBER("hasMeta", hasMeta, IsBool, GetBool);
+    READ_MEMBER("delimiter", delimiter, IsString, GetString);
+    READ_MEMBER("compression", compression, IsString, GetString);
   }
 
   // make it msgpack serializable
@@ -169,7 +169,7 @@ struct JsonProps {
 
   // materialize json props from json settings
   void from(const rapidjson::GenericObject<true, rapidjson::Value>& obj) {
-    READ_MEMBER("rowsField", rowsField, GetString)
+    READ_MEMBER("rowsField", rowsField, IsString, GetString)
     // populate the map from json object with string to string map
     auto cm = obj.FindMember("columnsMap");
     if (cm != obj.MemberEnd()) {
