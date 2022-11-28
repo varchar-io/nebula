@@ -163,9 +163,11 @@ Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, Ta
       reply->add_metric(column->name());
     }
 
-    // send all colummn histograms
-    // bm->hist(tbl, i) = h.at(i)
-    reply->add_hists(h.at(i)->toString());
+    // send all colummn histograms but it maybe empty
+    // if the table has no data blocks (expired)
+    if (i < h.size()) {
+      reply->add_hists(h.at(i)->toString());
+    }
   }
 
   LOG(INFO) << "Served table stats request for " << request->table();

@@ -294,8 +294,19 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
   for (auto i = 0, size = req.metric_size(); i < size; ++i) {
     const auto& m = req.metric(i);
-    // build metric may change column name, using its alais
-    columns.push_back(m.column());
+    // build metric may change column name, using its alias
+    // client may choose a metric without rollup (-1)
+    const auto& name = m.column();
+    columns.push_back(name);
+
+    // if rollup is -1, treat it as key
+    auto rollup = m.method();
+    if (rollup == -1) {
+      fields.push_back(std::make_shared<ColumnExpression>(name));
+      keys.push_back(columns.size());
+      continue;
+    }
+
     fields.push_back(buildMetric(m, tb));
   }
 

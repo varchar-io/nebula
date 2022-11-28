@@ -12,8 +12,8 @@ SET(AWS_CMAKE_BUILD_OPTIONS
   -DBUILD_ONLY:STRING=s3
   -DCPP_STANDARD=17
   -DCMAKE_BUILD_TYPE=Release
-  -DCMAKE_CXX_FLAGS=-Wno-error=deprecated-declarations
   -DCMAKE_CXX_FLAGS=-Wno-error=uninitialized
+  -DCMAKE_CXX_FLAGS=-Wno-error=deprecated-declarations
   -DCUSTOM_MEMORY_MANAGEMENT=0)
 
 # https://cmake.org/cmake/help/latest/module/ExternalProject.html
