@@ -52,8 +52,13 @@ struct TTL {
   }
 
   // reset impression time - expiration extended
-  inline void reset() {
-    time = nebula::common::Evidence::unix_timestamp();
+  // any positive parameter will reset time to very low, so effectively unloading the table
+  inline void reset(size_t t = 0) {
+    if (t == 0 && time != 1) {
+      time = nebula::common::Evidence::unix_timestamp();
+    } else {
+      time = 1;
+    }
   }
 
   // impression time

@@ -1,8 +1,8 @@
 include(ExternalProject)
 ExternalProject_Add(pg_query
     PREFIX pg_query
-    GIT_REPOSITORY https://github.com/chenqin/libpg_query.git
-    GIT_TAG 10-latest
+    GIT_REPOSITORY https://github.com/pganalyze/libpg_query.git
+    GIT_TAG 15-4.2.0
     BUILD_IN_SOURCE 1
     CONFIGURE_COMMAND ""
     BUILD_COMMAND make

@@ -63,6 +63,10 @@ public:
     ttl_.reset();
   }
 
+  inline void deactivate() {
+    ttl_.reset(1);
+  }
+
   // check if a spec should be online or not
   // a spec is online if it's included in current snapshot
   // and it should be assigned to a node already

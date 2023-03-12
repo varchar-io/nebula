@@ -135,6 +135,11 @@ Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, Ta
 
   // the table is probably still in process if empty (schema not set yet)
   auto table = TableService::singleton()->query(tbl).table();
+  if (table == nullptr) {
+    return Status(StatusCode::NOT_FOUND, "table not found");
+  }
+
+  // no schema found for the table
   if (table->empty()) {
     return Status(StatusCode::UNKNOWN, "probably in process");
   }
@@ -233,6 +238,9 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   LoadError err = LoadError::SUCCESS;
   TableSpecPtr tbSpec;
 
+  // support unload a table from the cluster on demand
+  auto isUnload = false;
+
   // load request as specs belonging to a unique table name
   switch (req->type()) {
   case LoadType::CONFIG:
@@ -243,6 +251,9 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
     break;
   case LoadType::DEMAND:
     tbSpec = loadHandler_.loadDemand(req, err);
+    break;
+  case LoadType::UNLOAD:
+    isUnload = true;
     break;
   default:
     err = LoadError::NOT_SUPPORTED;
@@ -268,9 +279,16 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   // check if we have data for this table already
   // if we have no data blocks - assuming it's loading
   // but in fact, it could be failed too
-  const auto state = BlockManager::init()->metrics(tableName);
-  if (state.numBlocks() == 0) {
-    err = LoadError::IN_LOADING;
+  if (!isUnload) {
+    const auto state = BlockManager::init()->metrics(tableName);
+    if (state.numBlocks() == 0) {
+      err = LoadError::IN_LOADING;
+    }
+  }
+
+  // for unload case, let's just unload the table from the system
+  if (isUnload) {
+    TableService::singleton()->unload(tableName);
   }
 
   // always indicating loading using async communication

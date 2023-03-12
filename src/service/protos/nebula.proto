@@ -90,7 +90,7 @@ message Predicate {
   string column = 1;
   Operation op = 2;
   repeated string value = 3;
-  repeated int64 n_value = 4[jstype = JS_STRING];
+  repeated int64 n_value = 4 [jstype = JS_STRING];
   repeated double d_value = 5;
 
   // allow client to pass a zipped values representing
@@ -111,9 +111,8 @@ message PredicateOr {
   repeated Predicate expression = 1;
 }
 
-
 // This defines all the aggregate metric methods suppored in nebula
-// 
+//
 enum Rollup {
   COUNT = 0;
   SUM = 1;
@@ -171,7 +170,7 @@ message CustomColumn {
   string expr = 3;
 }
 
-// define query request 
+// define query request
 message QueryRequest {
   string table = 1;
 
@@ -209,7 +208,7 @@ message QueryRequest {
   // custom column list
   repeated CustomColumn custom = 12;
 
-  // custom time unit 
+  // custom time unit
   uint64 time_unit = 13;
 }
 
@@ -231,7 +230,7 @@ message Statistics {
 }
 
 enum DataType {
-  // use native flat buffer format 
+  // use native flat buffer format
   // it has its own serialziation and deserialization logic
   NATIVE = 0;
   // JSON string sending in bytes buffer
@@ -252,6 +251,8 @@ enum LoadType {
   GOOGLE_SHEET = 1;
   // A spec to load a data file(s) by auto detecting its schema
   DEMAND = 2;
+  // A simple command to unload a table
+  UNLOAD = 3;
 }
 
 // on-demand data loading request
@@ -315,20 +316,20 @@ message PingResponse {}
 // all service methods are captilized compared to other regular methods
 service V1 {
   // Sends a greeting
-  rpc Echo(EchoRequest) returns(EchoResponse) {}
+  rpc Echo(EchoRequest) returns (EchoResponse) {}
   // Get all available data sources
-  rpc Tables(ListTables) returns(TableList) {}
+  rpc Tables(ListTables) returns (TableList) {}
   // Get table state for given table
-  rpc State(TableStateRequest) returns(TableStateResponse) {}
+  rpc State(TableStateRequest) returns (TableStateResponse) {}
   // Query Nebula to get result
-  rpc Query(QueryRequest) returns(QueryResponse) {}
+  rpc Query(QueryRequest) returns (QueryResponse) {}
   // on demand loading specified data with parameters
   // template defined in cluster configuration
-  rpc Load(LoadRequest) returns(LoadResponse) {}
+  rpc Load(LoadRequest) returns (LoadResponse) {}
   // shut down all work nodes - used for perf profiling
-  rpc Nuclear(EchoRequest) returns(EchoResponse) {}
+  rpc Nuclear(EchoRequest) returns (EchoResponse) {}
   // URL service - code for raw or raw for code
-  rpc Url(UrlData) returns(UrlData) {}
+  rpc Url(UrlData) returns (UrlData) {}
   // Discovery service - register node
-  rpc Ping(ServiceInfo) returns(PingResponse) {}
+  rpc Ping(ServiceInfo) returns (PingResponse) {}
 }
