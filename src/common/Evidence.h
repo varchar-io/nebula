@@ -178,7 +178,7 @@ public: /** only static methods */
     // should never produce invalid date, but need to write tests
     tm->tm_mon -= excess_months;
 
-    return mktime(tm);
+    return timegm(tm);
   }
 
   // given a date time value, strip all but month

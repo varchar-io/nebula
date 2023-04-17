@@ -319,6 +319,12 @@ TEST(CommonTest, TestTimeBefore1970) {
 }
 
 TEST(CommonTest, TestStripTime) {
+  // time should represent the UTC time only for simplicity
+  {
+    auto utc_time = Evidence::time("2023-04-16", "%Y-%m-%d");
+    EXPECT_EQ(utc_time, 1681603200);
+  }
+
   // test stripping hour, week, month, year
   {
     auto time1 = Evidence::time("2019-04-03 23:23:45", "%Y-%m-%d %H:%M:%S");
