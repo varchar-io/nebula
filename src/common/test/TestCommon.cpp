@@ -261,6 +261,19 @@ TEST(CommonTest, TestTimeParsing) {
     EXPECT_EQ(Evidence::date(time1), time2);
   }
 
+  // a few ISO8601 time formats
+  {
+    auto time1 = Evidence::time("2023-04-28T10:34:50Z", "%Y-%m-%dT%H:%M:%SZ");
+    auto time2 = Evidence::time("2023-04-28T10:34:50Z", "%FT%T");
+    LOG(INFO) << "time1: " << time1 << ", time2:" << time2;
+    EXPECT_EQ(time1, time2);
+
+    // make sure this format works for date only too
+    time1 = Evidence::time("2023-04-28T00:00:00Z", "%F");
+    time2 = Evidence::time("2023-04-28T03:00:00Z", "%F");
+    EXPECT_EQ(time1, time2);
+  }
+
   {
     auto time1 = Evidence::time("2019-03-31 00:45:22", "%Y-%m-%d %H:%M:%S");
     auto time2 = Evidence::time("2019-03-31 00:00:00", "%Y-%m-%d %H:%M:%S");

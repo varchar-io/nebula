@@ -131,6 +131,9 @@ public:
     std::vector<std::string> names;
     const auto hasSchema = columns.size() > 0;
 
+    // some unicode file has BOM in it that we should skip
+    this->skipBOM();
+
     // scenario 1.b: if the schema is given, has no header
     if (!csv.hasHeader) {
       // 2.b - don't know how to handle
@@ -208,6 +211,23 @@ public:
 
   virtual std::unique_ptr<nebula::surface::RowData> item(size_t) const override {
     throw NException("CSV Reader does not support random access by row number");
+  }
+
+private:
+  // ref: https://help.salesforce.com/s/articleView?id=000383918&type=1
+  void skipBOM() {
+    static const std::string BOM = "\xEF\xBB\xBF";
+    char c;
+    for (size_t i = 0, size = BOM.size(); i < size; ++i) {
+      this->fstream_.get(c);
+      if (c != BOM[i]) {
+        this->fstream_.seekg(0, std::ios_base::beg);
+        return;
+      }
+    }
+
+    // skip the BOM
+    this->fstream_.seekg(3, std::ios_base::beg);
   }
 
 private:
