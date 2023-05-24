@@ -41,8 +41,8 @@ using TablePtr = std::shared_ptr<nebula::meta::Table>;
 
 class TableRegistry {
 public:
-  explicit TableRegistry(const TablePtr table, size_t stl = 0)
-    : table_{ table }, ttl_{ stl } {}
+  explicit TableRegistry(const TablePtr table, const std::string& version = "v1", size_t stl = 0)
+    : table_{ table }, version_{ version }, ttl_{ stl } {}
   virtual ~TableRegistry() = default;
 
 public:
@@ -104,11 +104,17 @@ public:
     return {};
   }
 
+  inline const std::string& version() const noexcept {
+    return version_;
+  }
+
   // update specs
-  void update(const std::vector<SpecPtr>&) noexcept;
+  void update(const std::string& version, const std::vector<SpecPtr>&) noexcept;
 
 private:
   TablePtr table_;
+  // internal table instance version
+  std::string version_;
   // seconds to live: if active + stl exceeds current time
   // the table registry is expired and will be removed
   TTL ttl_;

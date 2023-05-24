@@ -161,7 +161,7 @@ public:
   size_t remove(const std::string&);
 
   // get all data batch pointers by given window
-  std::vector<nebula::memory::BatchPtr> query(const Window&) const;
+  std::vector<nebula::memory::BatchPtr> query(const Window&, const std::string&) const;
 
   // iterate every single block to feed the given lambda
   void iterate(std::function<void(const nebula::execution::io::BatchBlock&)>) const;

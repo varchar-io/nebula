@@ -55,11 +55,12 @@ std::tuple<std::string, int64_t, int64_t> genData(unsigned numBlocks) {
 
   // let's plan these many data std::thread::hardware_concurrency()
   nebula::meta::TestTable testTable;
+  auto version = "v1";
 
   auto window = (end - start) / numBlocks;
   for (unsigned i = 0; i < numBlocks; i++) {
     int64_t begin = start + i * window;
-    bm->add(BlockSignature{ testTable.name(), i, begin, begin + window });
+    bm->add(BlockSignature{ testTable.name(), version, i, begin, begin + window });
   }
 
   data = { testTable.name(), start, end };

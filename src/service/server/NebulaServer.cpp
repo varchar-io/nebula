@@ -83,7 +83,6 @@ using nebula::execution::io::BlockLoader;
 using nebula::execution::meta::TableService;
 using nebula::ingest::IngestSpec;
 using nebula::memory::Batch;
-using nebula::meta::BlockSignature;
 using nebula::meta::ClusterInfo;
 using nebula::meta::NNode;
 using nebula::meta::NRole;
@@ -273,6 +272,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   // tbSpec could be null if request is a permanent table
   if (tbSpec) {
     tableName = tbSpec->name;
+    TableService::singleton()->hit(tableName);
     ClusterInfo::singleton().addTable(tbSpec);
   }
 
@@ -321,7 +321,7 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
 
   // compile query into a query plan
   auto plan = handler_.compile(
-    query, { request->start(), request->end() }, std::move(context), error);
+    query, tr.version(), { request->start(), request->end() }, std::move(context), error);
   if (error != ErrorCode::NONE) {
     return replyError(error, reply, 0);
   }

@@ -99,7 +99,7 @@ folly::Future<RowCursorPtr> NodeClient::execute(const PlanPtr plan) {
     flatbuffers::grpc::Message<BatchRows> qr;
 
     const Fields& f = plan->fetch<PhaseType::PARTIAL>().fields();
-    auto qp = QuerySerde::serialize(*q, plan->id(), plan->getWindow());
+    auto qp = QuerySerde::serialize(*q, plan->id(), plan->getWindow(), plan->tableVersion());
     grpc::ClientContext context;
     auto channel = ConnectionPool::init()->connection(addr);
     N_ENSURE(channel != nullptr, "requires a valid channel");
@@ -153,7 +153,13 @@ void NodeClient::update() {
                      std::back_inserter(histograms),
                      [](auto h) { return nebula::surface::eval::from(h->str()); });
       auto block = std::make_shared<BatchBlock>(
-        BlockSignature{ db->table()->str(), db->id(), db->time_start(), db->time_end(), db->spec()->str() },
+        BlockSignature{
+          db->table()->str(),
+          db->version()->str(),
+          db->id(),
+          db->time_start(),
+          db->time_end(),
+          db->spec()->str() },
         node_,
         BlockState{ db->rows(), db->raw_size(), std::move(histograms) });
 

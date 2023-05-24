@@ -28,7 +28,6 @@ namespace execution {
 using nebula::execution::io::BatchBlock;
 using nebula::execution::io::BlockList;
 using nebula::memory::BatchPtr;
-using nebula::meta::BlockSignature;
 using nebula::meta::NBlock;
 using nebula::meta::NNode;
 using nebula::meta::Table;
@@ -100,6 +99,7 @@ const FilteredBlocks BlockManager::query(const Table& table, const PlanPtr plan,
   // 3. fan out the query plan to execute on each block in parallel (not this function but the caller)
   auto total = 0;
   const auto& window = plan->getWindow();
+  const auto& version = plan->tableVersion();
 
   // check if there are some predicates we can evaluate here
   const auto& filter = plan->fetch<PhaseType::COMPUTE>().filter();
@@ -115,7 +115,7 @@ const FilteredBlocks BlockManager::query(const Table& table, const PlanPtr plan,
   }
 
   auto index = 0;
-  for (auto& b : ts->second->query(window)) {
+  for (auto& b : ts->second->query(window, version)) {
     ++total;
     list[index++] = b;
 

@@ -24,7 +24,7 @@ namespace meta {
 
 // update data specs to table registry
 // table registry could persist these states in external store
-void TableRegistry::update(const std::vector<SpecPtr>& specs) noexcept {
+void TableRegistry::update(const std::string& version, const std::vector<SpecPtr>& specs) noexcept {
   if (expired()) {
     onlineSpecs_.clear();
     return;
@@ -77,6 +77,7 @@ void TableRegistry::update(const std::vector<SpecPtr>& specs) noexcept {
     }
 
     // swap the new snapshot in
+    this->version_ = version;
     std::swap(onlineSpecs_, snapshot);
   }
 }

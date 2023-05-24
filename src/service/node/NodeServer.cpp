@@ -119,7 +119,7 @@ grpc::Status NodeServerImpl::Query(
   try {
     auto r = query->GetRoot();
     auto q = QuerySerde::deserialize(tableService_, query);
-    auto plan = QuerySerde::from(q, r->tstart(), r->tend());
+    auto plan = QuerySerde::from(q, r->tstart(), r->tend(), flatbuffers::GetString(r->version()));
 
     // execute this plan and get results
     NodeExecutor executor(BlockManager::init());
@@ -174,7 +174,7 @@ grpc::Status NodeServerImpl::Poll(
                        return mb.CreateString(h->toString());
                      });
       db.push_back(CreateDataBlockDirect(
-        mb, bb.table().c_str(), bb.getId(), bb.start(), bb.end(),
+        mb, bb.table().c_str(), bb.version().c_str(), bb.getId(), bb.start(), bb.end(),
         bb.spec().c_str(), bb.storage().c_str(), state.numRows, state.rawSize, &hists));
     });
   }

@@ -29,19 +29,19 @@
 /**
  * Define nebula execution runtime.
  * Every single node will receive the plan and know what execution unit it needs to run on top of its data range.
- * 
+ *
  * an execution plan includes 3 phases and a roundtrip execution loop:
  * Role: Controller -> Node         -> Block
  * Func: Global Agg <- Partial Agg  <- Scan
- * 
- * 
+ *
+ *
  * When we execute a plan:
- * 1. It starts from the controller which starts the query fan-out to all nodes 
+ * 1. It starts from the controller which starts the query fan-out to all nodes
  * and execute phase 3 when data comes back.
  * 2. Each node will receive the execution plan and start with phase 2, the node will figure out total block list
  * in current node that satisfied the query and start threads to execute phase 1.
  * 3. A low-level exeuction unit is the block data scan defined in the phase1.
- * 
+ *
  * TODO(cao) - An execution plan is serializable - consider using protobuf / thrift to define it.
  */
 namespace nebula {
@@ -105,6 +105,13 @@ public:
     return window_;
   }
 
+  inline void setTableVersion(const std::string& version) noexcept {
+    version_ = version;
+  }
+  inline const std::string& tableVersion() const noexcept {
+    return version_;
+  }
+
   inline QueryContext& ctx() const noexcept {
     return *ctx_;
   }
@@ -119,6 +126,7 @@ private:
   std::vector<nebula::meta::NNode> nodes_;
   nebula::type::Schema output_;
   QueryWindow window_;
+  std::string version_;
 };
 
 // execution plan will be shared across multi-threads.

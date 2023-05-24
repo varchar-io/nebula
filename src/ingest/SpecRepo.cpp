@@ -92,7 +92,7 @@ size_t SpecRepo::refresh() noexcept {
     std::vector<SpecPtr> snapshot = provider.generate(version, table);
     numSpecs += snapshot.size();
 
-    registry->update(snapshot);
+    registry->update(version, snapshot);
   }
 
   return numSpecs;

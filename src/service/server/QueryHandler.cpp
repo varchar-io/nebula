@@ -79,6 +79,7 @@ using nebula::type::TypeTraits;
 
 PlanPtr QueryHandler::compile(
   const std::shared_ptr<Query> query,
+  const std::string& version,
   const QueryWindow& window,
   std::unique_ptr<QueryContext> context,
   ErrorCode& err) const noexcept {
@@ -127,6 +128,7 @@ PlanPtr QueryHandler::compile(
 
   // set time window in query plan
   plan->setWindow(window);
+  plan->setTableVersion(version);
   return plan;
 }
 

@@ -22,7 +22,6 @@ namespace execution {
 using nebula::execution::io::BatchBlock;
 using nebula::memory::BatchPtr;
 using BlockPtr = std::shared_ptr<BatchBlock>;
-using nebula::meta::BlockSignature;
 using nebula::surface::eval::HistVector;
 
 #define LOCK_DATA_ACCESS const std::lock_guard<std::mutex> lock(mdata_);
@@ -86,14 +85,14 @@ size_t TableState::remove(const std::string& spec) {
   return count;
 }
 
-std::vector<BatchPtr> TableState::query(const Window& window) const {
+std::vector<BatchPtr> TableState::query(const Window& window, const std::string& version) const {
   LOCK_DATA_ACCESS
 
   std::vector<BatchPtr> batches;
   batches.reserve(data_.size());
 
   for (auto& b : data_) {
-    if (b.second->overlap(window)) {
+    if (b.second->overlap(window) && b.second->version() == version) {
       batches.push_back(b.second->data());
     }
   }

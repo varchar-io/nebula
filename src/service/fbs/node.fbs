@@ -21,6 +21,7 @@ table ManyEchoPings {
 table QueryPlan {
   uuid: string;
   tbl: string;
+  version: string;
   filter: string;
   customs: string;
   fields: [string];
@@ -54,6 +55,7 @@ table BatchRows {
 // an endpoint to report all blocks along with statistics
 table DataBlock {
   table: string;
+  version: string;
   id: uint64;
   time_start: int64;
   time_end: int64;

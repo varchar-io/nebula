@@ -105,7 +105,7 @@ void loadNebulaTestData(const TableSpecPtr& table, const std::string& spec) {
   for (unsigned i = 0; i < numBlocks; i++) {
     int64_t begin = start + i * window;
     bm->add(nebula::meta::BlockSignature{
-      table->name, i++, begin, begin + window, spec });
+      table->name, "v1", i++, begin, begin + window, spec });
   }
 }
 
@@ -444,7 +444,7 @@ size_t IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
   batch->seal();
   BlockManager::init()->add(
     BlockLoader::from(
-      BlockSignature{ table->name(), 0, lowTime, highTime, id_ }, batch));
+      BlockSignature{ table->name(), "v1", 0, lowTime, highTime, id_ }, batch));
 
 #ifdef PPROF
   HeapProfilerStop();
@@ -456,6 +456,7 @@ size_t IngestSpec::loadKafka(SpecSplitPtr split) noexcept {
 
 bool IngestSpec::ingest(BlockList& blocks) noexcept {
   auto table = table_->to();
+  auto version = version_;
 
   // load the data into batch based on block.id * 50000 as offset so that we can keep every 50K rows per block
   const auto& specId = id();
@@ -485,7 +486,7 @@ bool IngestSpec::ingest(BlockList& blocks) noexcept {
 
   // a lambda to build batch block
   std::pair<int64_t, int64_t> range{ std::numeric_limits<int64_t>::max(), std::numeric_limits<int64_t>::min() };
-  auto makeBlock = [&table, &range, &specId](size_t bid, std::shared_ptr<Batch> b) {
+  auto makeBlock = [&table, &version, &range, &specId](size_t bid, std::shared_ptr<Batch> b) {
     // seal the block
     b->seal();
     LOG(INFO) << "Push a block: " << b->state();
@@ -494,6 +495,7 @@ bool IngestSpec::ingest(BlockList& blocks) noexcept {
       // build up a block signature with table name, sequence and spec
       BlockSignature{
         table->name(),
+        version,
         bid,
         range.first,
         range.second,

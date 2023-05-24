@@ -173,6 +173,7 @@ BlockList BlockLoader::loadTestBlock(const BlockSignature& b) {
     blocks.push_front(std::make_shared<BatchBlock>(
       BlockSignature{
         b.table,
+        "v1",
         b.id * 10 + itr.first,
         b.start,
         b.end,

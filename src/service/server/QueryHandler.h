@@ -44,6 +44,7 @@ public:
 
   nebula::execution::PlanPtr compile(
     const std::shared_ptr<nebula::api::dsl::Query>,
+    const std::string&,
     const nebula::execution::QueryWindow&,
     std::unique_ptr<nebula::execution::QueryContext>,
     nebula::service::base::ErrorCode&) const noexcept;

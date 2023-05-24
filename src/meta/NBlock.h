@@ -42,10 +42,16 @@ struct BlockSignature {
   // all ephemeral table started with # as its disallowed in nebula config.
   static constexpr auto EPHEMERAL_TABLE_PREFIX = '$';
 
-  explicit BlockSignature(const std::string& t, size_t i, int64_t s, int64_t e, const std::string& sp = "")
-    : table{ t }, id{ i }, start{ s }, end{ e }, spec{ sp } {}
-  // table name
+  explicit BlockSignature(
+    const std::string& t,
+    const std::string& v,
+    size_t i,
+    int64_t s,
+    int64_t e,
+    const std::string& sp = "") : table{ t }, version{ v }, id{ i }, start{ s }, end{ e }, spec{ sp } {}
+  // table name, version and id
   std::string table;
+  std::string version;
   size_t id;
 
   // start/end timestamp
@@ -62,7 +68,8 @@ struct BlockSignature {
     // same table and same spec -
     // ?? do we have case where different table sharing the same spec
     return spec == another.spec
-           && table == another.table;
+           && table == another.table
+           && version == another.version;
   }
 
   inline bool isEphemeral() const {
@@ -133,6 +140,10 @@ public:
     }
 
     return true;
+  }
+
+  inline const std::string& version() const noexcept {
+    return sign_.version;
   }
 
   inline int64_t start() const {

@@ -44,7 +44,6 @@ using nebula::execution::QueryContext;
 using nebula::execution::core::NodeConnector;
 using nebula::execution::core::ServerExecutor;
 using nebula::execution::meta::TableService;
-using nebula::meta::BlockSignature;
 using nebula::meta::NBlock;
 using nebula::meta::TestTable;
 using nebula::service::base::ErrorCode;
@@ -95,6 +94,7 @@ TEST(ServiceTest, TestQueryTimeline) {
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
   auto plan = handler.compile(query,
+                              "v1",
                               { request.start(), request.end() },
                               QueryContext::def(),
                               err);
@@ -147,6 +147,7 @@ TEST(ServiceTest, TestStringFilters) {
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
   auto plan = handler.compile(query,
+                              "v1",
                               { request.start(), request.end() },
                               QueryContext::def(),
                               err);
@@ -203,6 +204,7 @@ TEST(ServiceTest, TestQuerySamples) {
   // No error in compiling the query
   auto query = handler.build(testTable, request, err);
   auto plan = handler.compile(query,
+                              "v1",
                               { request.start(), request.end() },
                               QueryContext::def(),
                               err);
@@ -291,9 +293,9 @@ TEST(ServiceTest, TestQuerySerde) {
 
   // serialize this query
   nebula::common::Evidence::Duration tick;
-  auto ser = QuerySerde::serialize(query, plan1->id(), { start, end });
+  auto ser = QuerySerde::serialize(query, plan1->id(), { start, end }, "v1");
   auto q = QuerySerde::deserialize(ms, &ser);
-  auto plan2 = QuerySerde::from(q, start, end);
+  auto plan2 = QuerySerde::from(q, start, end, "v1");
 
   LOG(INFO) << "Query serde time (ms): " << tick.elapsedMs();
 

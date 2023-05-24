@@ -188,7 +188,7 @@ const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Sche
 }
 
 // serialize a query and meta data
-flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, const std::string& id, const QueryWindow& window) {
+flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, const std::string& id, const QueryWindow& window, const std::string& version) {
   flatbuffers::grpc::MessageBuilder mb;
   std::vector<flatbuffers::Offset<flatbuffers::String>> fields;
   fields.reserve(q.selects_.size());
@@ -213,7 +213,7 @@ flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, cons
   // customs serialization
   auto customs = Serde::serialize(q.customs_);
   auto request_offset = CreateQueryPlanDirect(
-    mb, id.c_str(), tbl.c_str(), filter.c_str(), customs.c_str(), &fields, &groups, &sorts,
+    mb, id.c_str(), tbl.c_str(), version.c_str(), filter.c_str(), customs.c_str(), &fields, &groups, &sorts,
     q.sortType_ == SortType::DESC, q.limit_, window.first, window.second);
   mb.Finish(request_offset);
   return mb.ReleaseMessage<QueryPlan>();
@@ -286,12 +286,15 @@ nebula::api::dsl::Query QuerySerde::deserialize(
   return q;
 }
 
-PlanPtr QuerySerde::from(Query& q, size_t start, size_t end) {
+PlanPtr QuerySerde::from(Query& q, size_t start, size_t end, const std::string& version) {
   // TODO(cao): serialize query context to nodes and mark compile method as const
   auto plan = q.compile(QueryContext::def());
 
   // set a few other properties associated with execution plan
   plan->setWindow({ start, end });
+
+  // set table version
+  plan->setTableVersion(version);
 
   // return this compiled plan
   return plan;

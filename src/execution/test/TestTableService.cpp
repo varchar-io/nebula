@@ -71,8 +71,8 @@ TEST(TableServiceTest, TestTableService) {
 
   // numSpecs will return all specs in track regardless they are online or not
   {
-    tr1->update(spec1);
-    tr2->update(spec2);
+    tr1->update("v1", spec1);
+    tr2->update("v1", spec2);
     EXPECT_EQ(tr1->numSpecs(), 1);
     EXPECT_EQ(tr2->numSpecs(), 1);
   }
@@ -89,8 +89,8 @@ TEST(TableServiceTest, TestTableService) {
   // the ephemeral table expried - any update will remove all its spec
   {
     Evidence::sleep(2000);
-    tr1->update(spec1);
-    tr2->update(spec2);
+    tr1->update("v1", spec1);
+    tr2->update("v1", spec2);
     EXPECT_EQ(tr1->numSpecs(), 1);
     EXPECT_EQ(tr2->numSpecs(), 0);
   }

@@ -140,7 +140,7 @@ private:
     std::lock_guard<std::mutex> lock(lock_);
     const auto& tn = tp->name();
     if (tables_.find(tn) == tables_.end()) {
-      tables_[tn] = std::make_shared<nebula::meta::TableRegistry>(tp, stl);
+      tables_[tn] = std::make_shared<nebula::meta::TableRegistry>(tp, "v1", stl);
       return true;
     }
 
