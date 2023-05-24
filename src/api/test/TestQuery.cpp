@@ -70,6 +70,7 @@ TEST(ApiTest, TestMultipleBlocks) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -114,6 +115,7 @@ TEST(ApiTest, TestStringEqEmpty) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -158,6 +160,7 @@ TEST(ApiTest, TestBlockSkipByBloomfilter) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -191,6 +194,7 @@ TEST(ApiTest, TestBlockSkipByPartitionColumn) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -228,6 +232,7 @@ TEST(ApiTest, TestAvgAggregation) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -278,6 +283,7 @@ TEST(ApiTest, TestPercentile) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -321,6 +327,7 @@ TEST(ApiTest, TestTreePathMerge) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -362,6 +369,7 @@ TEST(ApiTest, TestCardinality) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -403,6 +411,7 @@ TEST(ApiTest, TestHistogram) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -445,6 +454,7 @@ TEST(ApiTest, TestScript) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -489,6 +499,7 @@ TEST(ApiTest, TestScriptSamples) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -536,6 +547,7 @@ TEST(ApiTest, TestScriptAggregate) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -581,6 +593,7 @@ TEST(ApiTest, TestScriptRegisterColumn) {
   // compile the query into an execution plan
   auto plan = query.compile(QueryContext::def());
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();
@@ -622,6 +635,7 @@ TEST(ApiTest, TestAccessControl) {
   // test table require nebula-users to read event column, refer TestTable.h
   auto plan = query.compile(QueryContext::create("nebula", { "nebula-guest" }));
   plan->setWindow({ start, end });
+  plan->setTableVersion("v1");
 
   // print out the plan through logging
   plan->display();

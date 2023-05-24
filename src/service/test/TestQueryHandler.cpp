@@ -285,6 +285,7 @@ TEST(ServiceTest, TestQuerySerde) {
                  .limit(10);
   auto plan1 = query.compile(QueryContext::def());
   plan1->setWindow({ start, end });
+  plan1->setTableVersion("v1");
 
   // pass the query plan to a server to execute - usually it is itself
   folly::CPUThreadPoolExecutor pool{ 8 };
@@ -337,6 +338,7 @@ TEST(ServiceTest, TestDataSerde) {
                  .limit(10);
   auto plan1 = query.compile(QueryContext::def());
   plan1->setWindow({ start, end });
+  plan1->setTableVersion("v1");
 
   // pass the query plan to a server to execute - usually it is itself
 
