@@ -368,7 +368,7 @@ Status V1ServiceImpl::replyError(ErrorCode code, QueryResponse* reply, size_t du
   stats->set_message(error);
   stats->set_querytimems(durationMs);
 
-  return Status(StatusCode::INTERNAL, error);
+  return Status(StatusCode::OK, error);
 }
 
 grpc::Status V1ServiceImpl::Url(grpc::ServerContext*, const UrlData* req, UrlData* res) {
