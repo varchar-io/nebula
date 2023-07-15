@@ -34,7 +34,7 @@ using JsonWriter = typename rapidjson::Writer<rapidjson::StringBuffer,
                                               rapidjson::UTF8<>,
                                               rapidjson::UTF8<>,
                                               rapidjson::CrtAllocator,
-                                              rapidjson::kWriteNanAndInfFlag>;
+                                              rapidjson::kWriteNoFlags>;
 #define TOSTRING_JSON_START(TYPE) \
   rapidjson::StringBuffer buffer; \
   JsonWriter json(buffer);        \

@@ -73,7 +73,8 @@ add_dependencies(${CARES_LIBRARY} c-ares)
 #         return ::grpc::Status(::grpc::StatusCode::INTERNAL, "No payload");
 #       }
 SET(FB_OPTS
-  -DFLATBUFFERS_BUILD_TESTS:BOOL=OFF)
+  -DFLATBUFFERS_BUILD_TESTS:BOOL=OFF
+  -DCMAKE_CXX_FLAGS=-Wno-error=unused-but-set-variable)
 ExternalProject_Add(flatbuffers
   PREFIX flatbuffers
   GIT_REPOSITORY https://github.com/google/flatbuffers.git
