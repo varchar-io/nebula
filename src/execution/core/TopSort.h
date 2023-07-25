@@ -45,6 +45,7 @@ nebula::surface::RowCursorPtr topSort(
                      const std::unique_ptr<nebula::surface::RowData>& right)>
     less = nullptr;
   const auto& sorts = phase.sorts();
+  LOG(INFO) << "Sort the single query result and return: " << sorts.size();
   if (sorts.size() > 0) {
     N_ENSURE(sorts.size() == 1, "support single sorting column for now");
     const auto& col = schema->childType(sorts[0]);

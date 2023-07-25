@@ -17,7 +17,6 @@
 #include "NebulaService.h"
 
 #include <curl/curl.h>
-#include <msgpack.hpp>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 

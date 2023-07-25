@@ -326,6 +326,7 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
     return replyError(error, reply, 0);
   }
 
+  LOG(INFO) << "Compiled a query to table: " << tableName;
   // create a remote connector and execute the query plan
   auto connector = std::make_shared<RemoteNodeConnector>(query);
   RowCursorPtr result = handler_.query(threadPool_, plan, connector, error);

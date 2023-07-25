@@ -18,6 +18,7 @@ RUN apt dist-upgrade
 EXPOSE 9190
 COPY ./gen/nebula/NebulaServer /etc/nebula/NebulaServer
 COPY ./gen/nebula/configs/cluster.yml /etc/nebula/configs/cluster.yml
+COPY ./gen/nebula/configs/test.yml /etc/nebula/configs/test.yml
 RUN chmod +x /etc/nebula/NebulaServer
 
 # This will enable verbose GRPC tracing log if needed
