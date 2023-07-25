@@ -65,8 +65,6 @@ RowCursorPtr merge(
     // if it is aggregation, we're sure the data cursor will be hash flat.
     // So that we can do this multi-fold pass
     // transform folly tries into HashFlat
-    // std::vector<std::unique_ptr<HashFlat>> blocks;
-    // blocks.reserve(size);
     auto hf = std::make_unique<HashFlat>(schema, fields);
     for (auto it = sources.begin(); it < sources.end(); ++it) {
       // if the result is empty

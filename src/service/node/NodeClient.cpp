@@ -147,11 +147,14 @@ void NodeClient::update() {
       const DataBlock* db = blocks->Get(i);
       // convert serialized histograms
       auto hists = db->hists();
+      auto histSize = hists->size();
       HistVector histograms;
-      histograms.reserve(hists->size());
-      std::transform(hists->begin(), hists->end(),
-                     std::back_inserter(histograms),
-                     [](auto h) { return nebula::surface::eval::from(h->str()); });
+      if (histSize > 0) {
+        histograms.reserve(histSize);
+        std::transform(hists->begin(), hists->end(),
+                       std::back_inserter(histograms),
+                       [](auto h) { return nebula::surface::eval::from(h->str()); });
+      }
       auto block = std::make_shared<BatchBlock>(
         BlockSignature{
           db->table()->str(),

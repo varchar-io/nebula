@@ -115,9 +115,12 @@ TableSpecPtr LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err)
     std::vector<std::string> values;
     if (m.value.IsArray()) {
       auto a = m.value.GetArray();
-      values.reserve(a.Size());
-      for (auto& v : a) {
-        values.push_back(v.GetString());
+      auto size = a.Size();
+      if (size > 0) {
+        values.reserve(size);
+        for (auto& v : a) {
+          values.push_back(v.GetString());
+        }
       }
     } else {
       values.reserve(1);

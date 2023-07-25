@@ -460,9 +460,11 @@ auto vectorize(const Predicate& pred) -> std::vector<T> {
 
   // default, all values will be converted from string vector if set
   const auto size = pred.value_size();
-  values.reserve(size);
-  for (auto i = 0; i < size; ++i) {
-    values.push_back(folly::to<T>(pred.value(i)));
+  if (size > 0) {
+    values.reserve(size);
+    for (auto i = 0; i < size; ++i) {
+      values.push_back(folly::to<T>(pred.value(i)));
+    }
   }
 
   return values;
