@@ -571,10 +571,12 @@ TEST(CommonTest, TestXxhSpeed) {
   duration.reset();
   const void* p = str.data();
   const auto len = str.size();
+  auto last = 0;
   for (size_t i = 0; i < iterations; ++i) {
-    XXH3_64bits(p, len);
+    last = XXH3_64bits(p, len);
   }
-  LOG(INFO) << "xxh3<string> hash " << iterations << " times using ms: " << duration.elapsedMs() << " hash: " << XXH3_64bits(p, len);
+  LOG(INFO) << "xxh3<string> hash " << iterations << " times using ms: " << duration.elapsedMs()
+            << " hash: " << XXH3_64bits(p, len) << ", last: " << last;
 
   // using our own wrapper
   duration.reset();
