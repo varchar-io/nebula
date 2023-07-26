@@ -81,7 +81,7 @@
 /******/
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 6);
+/******/ 	return __webpack_require__(__webpack_require__.s = 2);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -101,7 +101,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-var jspb = __webpack_require__(5);
+var jspb = __webpack_require__(3);
 var goog = jspb;
 var global = (function() {
   if (this) { return this; }
@@ -5100,18 +5100,6 @@ goog.object.extend(exports, proto.nebula.service);
 
 /***/ }),
 /* 1 */
-/***/ (function(module, exports) {
-
-module.exports = require("grpc");
-
-/***/ }),
-/* 2 */
-/***/ (function(module, exports) {
-
-module.exports = require("json-bigint");
-
-/***/ }),
-/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -5134,7 +5122,7 @@ module.exports = require("json-bigint");
 // limitations under the License.
 //
 
-var grpc = __webpack_require__(1);
+var grpc = __webpack_require__(4);
 var nebula_pb = __webpack_require__(0);
 
 function serialize_nebula_service_EchoRequest(arg) {
@@ -5386,359 +5374,62 @@ exports.V1Client = grpc.makeGenericClientConstructor(V1Service);
 
 
 /***/ }),
-/* 4 */
-/***/ (function(module, exports) {
+/* 2 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
 
-module.exports = require("stream");
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var nebula_pb__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(0);
+/* harmony import */ var nebula_pb__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(nebula_pb__WEBPACK_IMPORTED_MODULE_0__);
+/* harmony import */ var nebula_node_rpc__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(1);
+/* harmony import */ var nebula_node_rpc__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(nebula_node_rpc__WEBPACK_IMPORTED_MODULE_1__);
+// unlike lib-api, lib-api2 will not export grpc or other dependencies
+// lib-api2 will only export the service interface, which is the same as lib-api
+
+
+
+
+
+/* harmony default export */ __webpack_exports__["default"] = ({
+  // nebula server
+  V1Client: nebula_node_rpc__WEBPACK_IMPORTED_MODULE_1__["V1Client"],
+  EchoRequest: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["EchoRequest"],
+  EchoResponse: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["EchoResponse"],
+  ListTables: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["ListTables"],
+  TableStateRequest: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["TableStateRequest"],
+  TableStateResponse: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["TableStateResponse"],
+  Operation: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["Operation"],
+  Predicate: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["Predicate"],
+  PredicateAnd: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["PredicateAnd"],
+  PredicateOr: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["PredicateOr"],
+  Rollup: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["Rollup"],
+  Metric: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["Metric"],
+  Order: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["Order"],
+  OrderType: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["OrderType"],
+  CustomType: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["CustomType"],
+  CustomColumn: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["CustomColumn"],
+  QueryRequest: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["QueryRequest"],
+  Statistics: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["Statistics"],
+  DataType: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["DataType"],
+  QueryResponse: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["QueryResponse"],
+  LoadError: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["LoadError"],
+  LoadType: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["LoadType"],
+  LoadRequest: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["LoadRequest"],
+  LoadResponse: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["LoadResponse"],
+  UrlData: nebula_pb__WEBPACK_IMPORTED_MODULE_0__["UrlData"],
+});
 
 /***/ }),
-/* 5 */
+/* 3 */
 /***/ (function(module, exports) {
 
 module.exports = require("google-protobuf");
 
 /***/ }),
-/* 6 */
-/***/ (function(module, __webpack_exports__, __webpack_require__) {
+/* 4 */
+/***/ (function(module, exports) {
 
-"use strict";
-// ESM COMPAT FLAG
-__webpack_require__.r(__webpack_exports__);
-
-// EXTERNAL MODULE: external "grpc"
-var external_grpc_ = __webpack_require__(1);
-var external_grpc_default = /*#__PURE__*/__webpack_require__.n(external_grpc_);
-
-// EXTERNAL MODULE: external "json-bigint"
-var external_json_bigint_ = __webpack_require__(2);
-var external_json_bigint_default = /*#__PURE__*/__webpack_require__.n(external_json_bigint_);
-
-// EXTERNAL MODULE: /Users/shawncao/nebula/src/service/gen/nebula/nodejs/nebula_pb.js
-var nebula_pb = __webpack_require__(0);
-
-// EXTERNAL MODULE: /Users/shawncao/nebula/src/service/gen/nebula/nodejs/nebula_grpc_pb.js
-var nebula_grpc_pb = __webpack_require__(3);
-
-// EXTERNAL MODULE: external "stream"
-var external_stream_ = __webpack_require__(4);
-
-// CONCATENATED MODULE: ./_/handler.js
-/*
- * Copyright 2017-present varchar.io
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
- * Query API
- * start: 2019-04-01
- * end: 2019-06-20
- * fc: user_id
- * op: 0=, 1!=, 2>,3<, 4like
- * fv: 23455554444
- * cols: ["user_id", "pin_id"]
- * limit: 1000
- * res: http response
- */
-
-const compressBar = 8 * 1024;
-
-class handler_Handler {
-    // static error message - do not use lambda since some runtime does not support it
-    static error(msg) {
-        return JSON.stringify({
-            error: msg,
-            duration: 0
-        });
-    };
-
-    static log(msg) {
-        console.log(`[${Date.now()}] ${msg}`);
-    }
-
-    // handler constructor
-    constructor(response, heads, encoding, encoder) {
-        this.response = response;
-        this.heads = heads;
-        this.encoding = encoding;
-        this.encoder = encoder;
-        this.metadata = {};
-        this.onError = (err) => {
-            this.response.writeHead(200, this.heads);
-            this.response.write(handler_Handler.error(`${err}`));
-            this.response.end();
-        };
-        this.onNull = () => {
-            this.response.writeHead(200, this.heads);
-            this.response.write(handler_Handler.error("Failed to get reply"));
-            this.response.end();
-        };
-        this.flush = (buf) => {
-            // write heads, data and end it
-            this.response.writeHead(200, this.heads);
-            this.response.write(buf);
-            this.response.end();
-        };
-        this.onSuccess = (data) => {
-            // comress data only when it's more than the compression bar
-            if (this.encoder && data.length > compressBar) {
-                var s = new external_stream_["Readable"]();
-                s.push(data);
-                s.push(null);
-                let bufs = [];
-                s.pipe(this.encoder).on('data', (c) => {
-                    bufs.push(c);
-                }).on('end', () => {
-                    const buf = Buffer.concat(bufs);
-                    this.heads["Content-Encoding"] = this.encoding;
-                    this.heads["Content-Length"] = buf.length;
-                    handler_Handler.log(`Data compressed: before=${data.length}, after=${buf.length}`);
-                    this.flush(buf);
-                });
-            } else {
-                // uncompressed and sync approach
-                this.flush(data);
-            }
-        };
-        this.endWithMessage = (message) => {
-            this.response.writeHead(200, this.heads);
-            this.response.write(handler_Handler.error(message));
-            this.response.end();
-        }
-    }
-};
-// CONCATENATED MODULE: ./_/serde.js
-/*
- * Copyright 2017-present varchar.io
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-const bytes2utf8 = (data) => {
-    const extraByteMap = [1, 1, 1, 1, 2, 2, 3, 0];
-    var count = data.length;
-    var str = "";
-
-    for (var index = 0; index < count;) {
-        var ch = data[index++];
-        if (ch & 0x80) {
-            var extra = extraByteMap[(ch >> 3) & 0x07];
-            if (!(ch & 0x40) || !extra || ((index + extra) > count))
-                return null;
-
-            ch = ch & (0x3F >> extra);
-            for (; extra > 0; extra -= 1) {
-                var chx = data[index++];
-                if ((chx & 0xC0) != 0x80)
-                    return null;
-
-                ch = (ch << 6) | (chx & 0x3F);
-            }
-        }
-
-        str += String.fromCharCode(ch);
-    }
-
-    return str;
-};
-// CONCATENATED MODULE: ./_/time.js
-/*
- * Copyright 2017-present varchar.io
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-/**
- * This is time utility covering time conversions.
- * Absolute time, relative time, time formats etc.
- * Supports: 
- *  time in unix time "UTC seconds", 
- *  time in standard string format "yyyy-mm-dd hh::mm::ss" or short versions.
- *  time in semantic statements like "-3days", "-3weeks", "-5minutes", or "now"
- */
-
-/** right now - seconds is the supported time granularity
- * mapping all units to seconds value
- */
-const S_MIN = 60;
-const S_HR = 60 * S_MIN;
-const S_DAY = 24 * S_HR;
-const S_WEEK = 7 * S_DAY;
-const units = {
-    // minute units
-    minute: S_MIN,
-    minutes: S_MIN,
-    min: S_MIN,
-    mins: S_MIN,
-    m: S_MIN,
-
-    // hour units
-    hour: S_HR,
-    hours: S_HR,
-    hr: S_HR,
-    hrs: S_HR,
-    h: S_HR,
-
-    // day units
-    day: S_DAY,
-    days: S_DAY,
-    d: S_DAY,
-
-    // week units
-    week: S_WEEK,
-    weeks: S_WEEK,
-    wk: S_WEEK,
-    wks: S_WEEK,
-    w: S_WEEK
-};
-
-// the semantic string is either a 'now' or a minus value of a unit.
-const pattern = /(?<now>now)|-(?<count>\d+)(?<unit>\w+)/i;
-const k_now = 'now';
-const k_count = 'count';
-const k_unit = 'unit';
-
-// this function only works for UTC time
-// TODO(cao): add second parameter to treat `ds` as UTC or local time.
-const seconds = (ds) => {
-    if (ds === null || ds === undefined) {
-        return 0;
-    }
-
-    // ensure we treat the input as UTC time stamp
-    // it's okay if multiple `UTC` found in the literal (so no need to check)
-    const ms = (x) => Math.round(new Date(x).getTime() / 1000);
-    const digsOnly = (+ds == ds);
-
-    // digit only expression is just a utc unix time in seconds
-    if (digsOnly) {
-        return ms(+ds);
-    }
-
-    // relative time value needs to convert, try to detect it
-    const str = `${ds}`.toLowerCase();
-    const m = str.match(pattern);
-    if (m) {
-        // check if it is now - same as `new Date().getTime()` UTC seconds
-        if (m.groups[k_now]) {
-            return ms(Date.now());
-        }
-
-        // check unit
-        const u = m.groups[k_unit];
-        if (u in units) {
-            const delta = m.groups[k_count] * units[u];
-            return ms(Date.now() - delta * 1000);
-        }
-    }
-
-    // absolute time value in a time string like '2020-07-07 10:05:03'
-    return ms(`${ds} UTC`);
-};
-
-// format a unixtime stamp in milliseconds into a UTC time string
-const pad2 = (v) => `${v}`.padStart(2, 0);
-const format = (unix_ms) => {
-    const date = new Date(unix_ms);
-    const y = date.getUTCFullYear();
-    // month is 0-based index
-    const m = pad2(date.getUTCMonth() + 1);
-    const d = pad2(date.getUTCDate());
-    const h = pad2(date.getUTCHours())
-    const mi = pad2(date.getUTCMinutes());
-    const s = pad2(date.getUTCSeconds());
-    return `${y}-${m}-${d} ${h}:${mi}:${s}`;
-};
-
-const uuidv4 = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = Math.random() * 16 | 0;
-    const v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-});
-
-// same copy as time.js - 
-// need a hack to make it work for both require and es6 import
-const time = {
-    seconds: seconds,
-    format: format,
-    uuidv4: uuidv4
-};
-// CONCATENATED MODULE: ./n/lib-api.js
-
-
-
-
-
-
-// common objects
-
-
-
-
-/* harmony default export */ var lib_api = __webpack_exports__["default"] = ({
-    grpc: external_grpc_default.a,
-    jsonb: external_json_bigint_default.a,
-    // nebula server
-    V1Client: nebula_grpc_pb["V1Client"],
-    EchoRequest: nebula_pb["EchoRequest"],
-    EchoResponse: nebula_pb["EchoResponse"],
-    ListTables: nebula_pb["ListTables"],
-    TableStateRequest: nebula_pb["TableStateRequest"],
-    TableStateResponse: nebula_pb["TableStateResponse"],
-    Operation: nebula_pb["Operation"],
-    Predicate: nebula_pb["Predicate"],
-    PredicateAnd: nebula_pb["PredicateAnd"],
-    PredicateOr: nebula_pb["PredicateOr"],
-    Rollup: nebula_pb["Rollup"],
-    Metric: nebula_pb["Metric"],
-    Order: nebula_pb["Order"],
-    OrderType: nebula_pb["OrderType"],
-    CustomType: nebula_pb["CustomType"],
-    CustomColumn: nebula_pb["CustomColumn"],
-    QueryRequest: nebula_pb["QueryRequest"],
-    Statistics: nebula_pb["Statistics"],
-    DataType: nebula_pb["DataType"],
-    QueryResponse: nebula_pb["QueryResponse"],
-    LoadError: nebula_pb["LoadError"],
-    LoadType: nebula_pb["LoadType"],
-    LoadRequest: nebula_pb["LoadRequest"],
-    LoadResponse: nebula_pb["LoadResponse"],
-    UrlData: nebula_pb["UrlData"],
-    // common utils
-    Handler: handler_Handler,
-    bytes2utf8: bytes2utf8,
-    time: time
-});
+module.exports = require("@grpc/grpc-js");
 
 /***/ })
 /******/ ])["default"]));

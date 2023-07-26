@@ -4,8 +4,7 @@ var nodeExternals = require('webpack-node-externals');
 const resolveConfig = {
     alias: {
         "google-protobuf": path.resolve(__dirname, './node_modules/google-protobuf/'),
-        "grpc-web": path.resolve(__dirname, './node_modules/grpc-web/'),
-        "grpc": path.resolve(__dirname, './node_modules/grpc/'),
+        "grpc": path.resolve(__dirname, './node_modules/@grpc/grpc-js'),
         "fs": path.resolve(__dirname, './node_modules/fs/'),
         "billboard": path.resolve(__dirname, './node_modules/billboard.js/'),
         "nebula-pb": path.resolve(__dirname, '../../gen/nebula/nodejs/nebula_pb.js'),
@@ -83,7 +82,7 @@ const libApiConfig = {
     node: false,
     externals: [nodeExternals()],
     entry: {
-        lib: './n/lib-api.js'
+        lib: './n/lib-api2.js'
     },
     output: {
         // UMD works fine too, such as library='neb', libraryTarget='umd'
@@ -105,7 +104,7 @@ const libUiConfig = {
     node: false,
     externals: [nodeExternals()],
     entry: {
-        lib: './n/lib-ui.js'
+        lib: './n/lib-ui2.js'
     },
     output: {
         // UMD works fine too, such as library='neb', libraryTarget='umd'

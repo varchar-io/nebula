@@ -34,11 +34,13 @@ That is why I spent a lot of effort to enforce `Nebula Web` to be a consistent t
 
 ## Use Webpack
 Webpack is used to produce two bundles for both `browser` and `node.js`, follow these steps to refresh them whenver proto contracts updated in the service.
+Note: make sure run below command in terminal that has node version of lts/gallium (nvm use lts/gallium).
+Note: http/nebula web is rarely used now, add "type:module" in `package.json` to make web run as ES6 module.
 
-0. remove "type:module" from `package.json` to make below command work (due to webpack bad support for ES6).
 1. $ ~/nebula/src/service/http/nebula > npm install (based on package.json - can be reused for all service)
-2. ~/nebula/src/service/http/nebula > npx webpack
-3. $ in dist/web/main.js, prepend "export" in it to export NebulaClient. (webpack doesn't generate `export` key)
+2. (temporary), current grpc node plugin generates import of grpc not grpc-js, we will manually change it in `nebula_grpc_pb.js`
+3. ~/nebula/src/service/http/nebula > npx webpack
+4. $ in dist/web/main.js and dist/web/main2.js, prepend "export" in it to export NebulaClient. (webpack doesn't generate `export` key)
 
 ## Publish nebula-lib
 Publish nebula-lib to npmjs

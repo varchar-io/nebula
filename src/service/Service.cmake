@@ -192,39 +192,6 @@ foreach(i ${NBIN})
   configure_file(${CMAKE_CURRENT_BINARY_DIR}/${i} ${GEN_DIR}/${i} COPYONLY)
 endforeach()
 
-# build web client library for nebula
-# add_custom_target(nebula_web_client ALL 
-#   COMMAND ${PROTO_COMPILER} 
-#         --js_out=import_style=commonjs:"${GEN_DIR}"
-#         -I "${nproto_path}"
-#         --grpc-web_out=import_style=commonjs,mode=grpcwebtext:"${GEN_DIR}"
-#         --plugin=protoc-gen-grpc-web=${GRPC_WEB_PLUGIN}
-#         "${nproto}"
-#       WORKING_DIRECTORY ${SERVICE_DIR}
-#       DEPENDS ${nproto})
-
-# To run the service together with a http proxy to serve web requests
-# we use grpc-web implementations and follow their instructions to set this up
-# ON mac (assuming linux has easier setup or already there)
-# https://stackoverflow.com/questions/44084846/cannot-connect-to-the-docker-daemon-on-macos
-# 1. Install docker app "brew cask install docker"
-# 2. Launch the docker app. (allow the privileage it asks for) - a whale icon shall show on top bar
-# 3. run docker command now (rather than "brew install docker")
-# run the proxy in this way
-# $ docker build -t nebula/envoy -f http/envoy.Dockerfile .
-# $ docker run -d -p 8080:8080 nebula/envoy
-# get_filename_component(docker_envoy "${SERVICE_DIR}/http/envoy.Dockerfile" ABSOLUTE)
-# add_custom_target(envoydocker
-#       ALL COMMAND docker build -t nebula/envoy -f ${docker_envoy} .
-#       WORKING_DIRECTORY ${SERVICE_DIR}/http
-#       DEPENDS ${docker_envoy})
-
-# use docker-compose to build up the service and run them together
-# add_custom_target(docker-compose
-#       ALL COMMAND docker-compose build -t nebula/envoy -f ${docker_envoy} .
-#       WORKING_DIRECTORY ${SERVICE_DIR}
-#       DEPENDS ${docker_envoy})
-
 # we will also run a simple web server to serve the page which hosts our client.js logic
 # inside the client.js logic, it will call into 8080 port for data request through envoy proxy
 # envoy proxy will contact 9190 port where is the real server for response.
