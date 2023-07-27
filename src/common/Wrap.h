@@ -31,8 +31,10 @@ template <typename T, typename S>
 inline bool vector_reserve(std::vector<T>& vec, const S size, const std::string& site) noexcept {
   // it's impossible for a vector to hold 1M items or maybe it's possible but not practical.
   // so let's guard it here for Nebula - could be revise with reasons.
-  if (N_UNLIKELY(size < 1 || size >= 1000000)) {
-    LOG(WARNING) << "Invalid vector size " << size << " at " << site;
+  if (N_UNLIKELY(size <= 0 || size >= 1000000)) {
+    if (size != 0) {
+      LOG(WARNING) << "Invalid vector size " << size << " at " << site;
+    }
     return false;
   }
 

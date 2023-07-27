@@ -51,10 +51,13 @@ RowCursorPtr ServerExecutor::execute(
     auto c = connector->makeClient(node, pool);
     auto f = c->execute(plan)
                // set time out handling
-               // TODO(cao) - add error handling too via thenError
                .onTimeout(RPC_TIMEOUT, [&]() -> RowCursorPtr { 
                  LOG(WARNING) << "RPC Timeout: " << FLAGS_RPC_TIMEOUT;
-                 return EmptyRowCursor::instance(); });
+                 return EmptyRowCursor::instance(); })
+               .thenError(folly::tag_t<std::exception>{}, [](const std::exception& e) -> RowCursorPtr {
+                 LOG(WARNING) << "RPC Error: " << e.what();
+                 return EmptyRowCursor::instance();
+               });
 
     results.push_back(std::move(f));
   }
@@ -79,6 +82,11 @@ RowCursorPtr ServerExecutor::execute(
 
   // result holds the final total rows in the query before applying limit
   auto resultSize = result->size();
+  if (resultSize == 0) {
+    return result;
+  }
+
+  // update result size to stats
   auto& stats = plan->ctx().stats();
   stats.rowsRet = resultSize;
 

@@ -335,6 +335,8 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
     return replyError(error, reply, durationMs);
   }
 
+  LOG(INFO) << "Finished a query to table: " << tableName;
+
   // return normal serialized data
   auto& queryStats = plan->ctx().stats();
   auto stats = reply->mutable_stats();
