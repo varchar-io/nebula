@@ -39,6 +39,7 @@
 #include "common/Params.h"
 #include "common/Spark.h"
 #include "common/StackTree.h"
+#include "common/Wrap.h"
 
 namespace nebula {
 namespace common {
@@ -1660,6 +1661,24 @@ TEST(FormatTest, TestFormatComplexString) {
   LOG(INFO) << "parameters: s1=" << s1 << ", s2=" << s2;
   auto data = fmt::format(dataTemplate, s1, s2);
   LOG(INFO) << "formatted data: " << data;
+}
+
+TEST(CommonTest, TestVectorReserveWrap) {
+  std::vector<int> v1;
+  const size_t size1 = 0;
+  EXPECT_FALSE(vector_reserve(v1, size1, "v1"));
+
+  std::vector<size_t> v2;
+  const int size2 = -1;
+  EXPECT_FALSE(vector_reserve(v2, size2, "v2"));
+
+  std::vector<bool> v3;
+  const size_t size3 = 999999;
+  EXPECT_TRUE(vector_reserve(v3, size3, "v3"));
+
+  std::vector<std::string> v4;
+  const long size4 = 1000000;
+  EXPECT_FALSE(vector_reserve(v4, size4, "v4"));
 }
 
 } // namespace test

@@ -17,6 +17,7 @@
 #pragma once
 
 #include "common/Memory.h"
+#include "common/Wrap.h"
 #include "surface/DataSurface.h"
 #include "surface/eval/Aggregator.h"
 #include "surface/eval/ValueEval.h"
@@ -26,19 +27,19 @@
 
 /**
  * Build a flat buffer that can be used in hash table to build keys and update directly.
- * 
+ *
  * Every value has 1byte = HIGH4 (NULL) + LOW4 (TYPE).
  * Scalar types are embeded and others are referenced by offset and length in buffer.
- * So we have two memory chunks. 
- * 
+ * So we have two memory chunks.
+ *
  * In main memory chunk, it starts with # of bytes for nulls
- * bool/INT/float types: width bytes. 
+ * bool/INT/float types: width bytes.
  * string type: 8 bytes [4 bytes offset, 4 bytes length]
  * list type: 8 bytes [4 bytes of value N (number of items), 4 bytes offset in list buffer]
  * String data stored in data_
  * List items stores at list_
  * So In main_, we know exactly size of each type if it has non-null value
- * map type: not support for now 
+ * map type: not support for now
  * struct type: not support for now
  */
 namespace nebula {
@@ -306,7 +307,7 @@ public:
       itemWidth_{ itemWidth } {
 
     // move current index to index and adjust current offset
-    itemOffsets_.reserve(items);
+    nebula::common::vector_reserve(itemOffsets_, items, "ListAccessor");
     size_t itemOffset = 0;
     for (IndexType i = 0; i < items; ++i) {
       itemOffsets_.push_back(itemOffset);

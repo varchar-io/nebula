@@ -21,6 +21,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
+#include "common/Wrap.h"
 #include "surface/eval/UDF.h"
 
 /**
@@ -178,7 +179,7 @@ public:
       size_t numCentroids = slice.read<size_t>(offset);
       offset += WIDTH;
       std::vector<folly::TDigest::Centroid> centroids;
-      centroids.reserve(numCentroids);
+      nebula::common::vector_reserve(centroids, numCentroids, "Pct.load");
       for (size_t i = 0; i < numCentroids; ++i) {
         READ(mean)
         READ(weight)

@@ -27,6 +27,7 @@
 #include "common/Delta.h"
 #include "common/Errors.h"
 #include "common/Likely.h"
+#include "common/Wrap.h"
 #include "common/Zip.h"
 #include "meta/Table.h"
 #include "surface/eval/UDF.h"
@@ -210,7 +211,7 @@ public: // all operations
     auto v1 = op1_->columnRefs();
     auto v2 = op2_->columnRefs();
     std::vector<std::string> merge;
-    merge.reserve(v1.size() + v2.size());
+    nebula::common::vector_reserve(merge, v1.size() + v2.size(), "ArthmeticExpression.columnRefs");
 
     if (v1.size() > 0) {
       merge.insert(merge.end(), v1.begin(), v1.end());
@@ -332,7 +333,7 @@ public: // all logical operations
     auto v1 = op1_->columnRefs();
     auto v2 = op2_->columnRefs();
     std::vector<std::string> merge;
-    merge.reserve(v1.size() + v2.size());
+    nebula::common::vector_reserve(merge, v1.size() + v2.size(), "LogicalExpression.columnRefs");
 
     if (v1.size() > 0) {
       merge.insert(merge.end(), v1.begin(), v1.end());

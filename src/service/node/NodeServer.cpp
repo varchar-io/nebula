@@ -25,6 +25,7 @@
 #include "common/Chars.h"
 #include "common/Ip.h"
 #include "common/TaskScheduler.h"
+#include "common/Wrap.h"
 #include "execution/BlockManager.h"
 #include "execution/core/NodeExecutor.h"
 #include "execution/serde/RowCursorSerde.h"
@@ -44,6 +45,7 @@ namespace node {
 
 using nebula::common::TaskState;
 using nebula::common::TaskType;
+using nebula::common::vector_reserve;
 using nebula::execution::BlockManager;
 using nebula::execution::PhaseType;
 using nebula::execution::core::NodeExecutor;
@@ -160,14 +162,14 @@ grpc::Status NodeServerImpl::Poll(
   const auto bm = BlockManager::init();
   flatbuffers::grpc::MessageBuilder mb;
   std::vector<flatbuffers::Offset<DataBlock>> db;
-  db.reserve(bm->numBlocks());
+  vector_reserve(db, bm->numBlocks(), "NodeServer.Poll");
   const auto& states = bm->states();
   for (const auto& s : states) {
     s.second->iterate([&mb, &db](const BatchBlock& bb) {
       const auto& state = bb.state();
       // serialize histograms
       std::vector<flatbuffers::Offset<flatbuffers::String>> hists;
-      hists.reserve(state.histograms.size());
+      vector_reserve(hists, state.histograms.size(), "NodeServer.Poll.Hists");
       std::transform(state.histograms.begin(), state.histograms.end(),
                      std::back_inserter(hists),
                      [&mb](auto h) {
@@ -182,7 +184,7 @@ grpc::Status NodeServerImpl::Poll(
   // empty specs
   const auto& specSet = bm->emptySpecs();
   std::vector<flatbuffers::Offset<flatbuffers::String>> specs;
-  specs.reserve(specSet.size());
+  vector_reserve(specs, specSet.size(), "NodeServer.Poll.specs");
   for (const auto& spec : specSet) {
     specs.push_back(mb.CreateString(spec));
   }

@@ -15,8 +15,10 @@
  */
 
 #include "BlockLoader.h"
+
 #include "common/Chars.h"
 #include "common/Evidence.h"
+#include "common/Wrap.h"
 #include "surface/MockSurface.h"
 
 /**
@@ -28,6 +30,7 @@ namespace io {
 
 using nebula::common::Evidence;
 using nebula::common::unordered_map;
+using nebula::common::vector_reserve;
 using nebula::execution::io::BatchBlock;
 using nebula::execution::io::BlockList;
 using nebula::memory::Batch;
@@ -45,7 +48,7 @@ HistVector hist(const Batch& b) {
   // generate histogram list from current batch
   const auto numColumns = schema->size();
   HistVector hists;
-  hists.reserve(numColumns);
+  vector_reserve(hists, numColumns, "BlockLoader::hist");
   for (size_t i = 0; i < numColumns; ++i) {
     auto type = schema->childType(i);
     hists.push_back(b.histogram(type->name()));

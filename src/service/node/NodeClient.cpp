@@ -27,6 +27,7 @@ namespace node {
 
 using nebula::common::Task;
 using nebula::common::TaskState;
+using nebula::common::vector_reserve;
 using nebula::execution::BlockManager;
 using nebula::execution::PhaseType;
 using nebula::execution::PlanPtr;
@@ -150,7 +151,7 @@ void NodeClient::update() {
       auto histSize = hists->size();
       HistVector histograms;
       if (histSize > 0) {
-        histograms.reserve(histSize);
+        vector_reserve(histograms, histSize, "NodeClient.udpate");
         std::transform(hists->begin(), hists->end(),
                        std::back_inserter(histograms),
                        [](auto h) { return nebula::surface::eval::from(h->str()); });

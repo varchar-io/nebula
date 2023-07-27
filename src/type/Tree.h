@@ -19,7 +19,9 @@
 #include <any>
 #include <functional>
 #include <vector>
+
 #include "common/Errors.h"
+#include "common/Wrap.h"
 
 namespace nebula {
 namespace type {
@@ -79,7 +81,7 @@ public:
     // only apply on valid POST procedure
     if (post) {
       std::vector<D> results;
-      results.reserve(size());
+      nebula::common::vector_reserve(results, size(), "TreeBase.walk");
       for (auto& child : children_) {
         results.push_back(child->template walk<D>(prev, post));
       }

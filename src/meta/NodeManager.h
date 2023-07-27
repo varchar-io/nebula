@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include "common/Evidence.h"
+#include "common/Wrap.h"
 #include "meta/NNode.h"
 
 namespace nebula {
@@ -72,7 +73,7 @@ public:
   virtual std::vector<NNode> nodes() const override {
     // make a copy and return the copy - should be inexpensive
     std::vector<NNode> copy;
-    copy.reserve(nodes_.size());
+    nebula::common::vector_reserve(copy, nodes_.size(), "StaticNodeManager::nodes");
     for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
       if (itr->state == NState::ACTIVE) {
         copy.push_back(*itr);
@@ -132,7 +133,7 @@ public:
 public:
   virtual std::vector<NNode> nodes() const override {
     std::vector<NNode> nodes;
-    nodes.reserve(nodes_.size());
+    nebula::common::vector_reserve(nodes, nodes_.size(), "DynamicNodeManager::nodes");
     const auto now = nebula::common::Evidence::unix_timestamp();
     for (auto itr = nodes_.begin(); itr != nodes_.end(); ++itr) {
       auto& n = itr->first;

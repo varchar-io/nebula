@@ -17,6 +17,7 @@
 #include "Finalize.h"
 #include <gflags/gflags.h>
 
+#include "common/Wrap.h"
 #include "memory/FlatRow.h"
 #include "surface/DataSurface.h"
 #include "surface/eval/UDF.h"
@@ -33,6 +34,7 @@ namespace nebula {
 namespace execution {
 namespace core {
 
+using nebula::common::vector_reserve;
 using nebula::memory::FlatRow;
 using nebula::surface::IndexType;
 using nebula::surface::Name2Index;
@@ -168,7 +170,7 @@ private:
     // different on this column index
     const auto size = input->size();
     N_ENSURE_EQ(size, output->size(), "support the same number of columns");
-    transformers_.reserve(size);
+    vector_reserve(transformers_, size, "Finalize.buildTransformers");
     for (size_t i = 0; i < size; ++i) {
       auto iType = input->childType(i)->k();
       auto oType = output->childType(i)->k();

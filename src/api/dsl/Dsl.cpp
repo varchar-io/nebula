@@ -19,6 +19,7 @@
 #include <algorithm>
 
 #include "common/Cursor.h"
+#include "common/Wrap.h"
 #include "surface/DataSurface.h"
 #include "type/Serde.h"
 
@@ -26,6 +27,7 @@ namespace nebula {
 namespace api {
 namespace dsl {
 
+using nebula::common::vector_reserve;
 using nebula::execution::BlockPhase;
 using nebula::execution::Error;
 using nebula::execution::ExecutionPlan;
@@ -55,7 +57,7 @@ std::vector<std::shared_ptr<Expression>> Query::preprocess(
   const auto size = selects.size();
   std::vector<std::shared_ptr<Expression>> expansion;
   // max capacity
-  expansion.reserve(size + schema->size());
+  vector_reserve(expansion, size + schema->size(), "Query::preprocess");
   for (size_t i = 0; i < size; ++i) {
     const auto& item = selects.at(i);
     if (item->alias() == Table::ALL_COLUMNS) {
@@ -131,7 +133,7 @@ PlanPtr Query::compile(std::unique_ptr<QueryContext> qc) {
   // final nodes used for global phase, and they may have different schemas
   std::vector<TreeNode> finalNodes;
   std::vector<TreeNode> tempNodes;
-  finalNodes.reserve(numOutputFields);
+  vector_reserve(finalNodes, numOutputFields, "Dsl.compile.finalNodes");
   tempNodes.reserve(numOutputFields);
   bool differentSchema = false;
 
@@ -235,7 +237,7 @@ PlanPtr Query::compile(std::unique_ptr<QueryContext> qc) {
   // if we have aggregation
   const auto groupSize = groups_.size();
   std::vector<size_t> zbKeys;
-  zbKeys.reserve(groupSize);
+  vector_reserve(zbKeys, groupSize, "Dsl.compile.zbKeys");
   if (groupSize > 0) {
     // validations
     // 1. group by index has to be all those columns that are not aggregate columns
@@ -259,7 +261,7 @@ PlanPtr Query::compile(std::unique_ptr<QueryContext> qc) {
 
   // check the index are correct values and convert 1-based sort keys into 0-based keys for internal usage
   std::vector<size_t> zbSorts;
-  zbSorts.reserve(sorts_.size());
+  vector_reserve(zbSorts, sorts_.size(), "Dsl.compile.zbSorts");
   for (size_t index : sorts_) {
     auto zbIndex = index - 1;
     if (index == 0 || index > numOutputFields) {
@@ -347,7 +349,7 @@ PlanPtr Query::compile(std::unique_ptr<QueryContext> qc) {
   // global aggregation, keys and agg methods
   auto server = std::make_unique<FinalPhase>(std::move(node), output);
 
-  //1. get total nodes that we will run the query, filter_ will help prune results
+  // 1. get total nodes that we will run the query, filter_ will help prune results
   auto nodeList = ms_->queryNodes(table_, [](const NNode&) { return true; });
 
   // 2. gen phase 3 (bottom up) work needs to be done in controller

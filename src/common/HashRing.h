@@ -26,6 +26,7 @@
 #include "Hash.h"
 #include "Identifiable.h"
 #include "Likely.h"
+#include "Wrap.h"
 
 namespace nebula {
 namespace common {
@@ -159,7 +160,7 @@ public:
     // reserve 1.2x slots for node placements
     const auto numNodes = nodes.size();
     const auto numPlacements = numNodes * H;
-    placements_.reserve(numPlacements + numPlacements / 5);
+    nebula::common::vector_reserve(placements_, numPlacements + numPlacements / 5, "HashRing::HashRing");
 
     // initialize the ring by create all placements based on the node set
     // every single node will be mapped into a ring node

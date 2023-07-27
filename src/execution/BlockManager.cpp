@@ -17,6 +17,7 @@
 #include "BlockManager.h"
 
 #include "common/Folly.h"
+#include "common/Wrap.h"
 #include "type/Tree.h"
 
 /**
@@ -25,6 +26,7 @@
 namespace nebula {
 namespace execution {
 
+using nebula::common::vector_reserve;
 using nebula::execution::io::BatchBlock;
 using nebula::execution::io::BlockList;
 using nebula::memory::BatchPtr;
@@ -131,7 +133,7 @@ const FilteredBlocks BlockManager::query(const Table& table, const PlanPtr plan,
 
   // collect futures
   FilteredBlocks tableBlocks;
-  tableBlocks.reserve(total);
+  vector_reserve(tableBlocks, total, "BlockManager::query");
   auto x = folly::collectAll(futures).get();
   for (auto it = x.begin(); it < x.end(); ++it) {
     // if the result is empty

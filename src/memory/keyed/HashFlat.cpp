@@ -16,6 +16,7 @@
 
 #include "HashFlat.h"
 
+#include "common/Wrap.h"
 #include "surface/eval/UDF.h"
 
 namespace nebula {
@@ -24,13 +25,14 @@ namespace keyed {
 
 using Range = nebula::common::PRange;
 using nebula::common::OneSlice;
+using nebula::common::vector_reserve;
 using nebula::surface::eval::Aggregator;
 using nebula::surface::eval::Sketch;
 using nebula::type::Kind;
 using nebula::type::TypeTraits;
 
 void HashFlat::init() {
-  ops_.reserve(numColumns_);
+  vector_reserve(ops_, numColumns_, "HashFlat::init");
   keys_.reserve(numColumns_);
   values_.reserve(numColumns_);
 

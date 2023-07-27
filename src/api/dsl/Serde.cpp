@@ -20,13 +20,16 @@
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+
 #include "Expressions.h"
+#include "common/Wrap.h"
 #include "type/Type.h"
 
 namespace nebula {
 namespace api {
 namespace dsl {
 
+using nebula::common::vector_reserve;
 using nebula::common::Zip;
 using nebula::common::ZipFormat;
 using nebula::surface::eval::UDFType;
@@ -276,7 +279,7 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
       }                                                                                 \
     }                                                                                   \
     std::vector<T> values;                                                              \
-    values.reserve(size);                                                               \
+    vector_reserve(values, size, "UDFType::IN");                                        \
     for (rapidjson::SizeType i = 0; i < size; ++i) {                                    \
       values.push_back(v[i].F());                                                       \
     }                                                                                   \

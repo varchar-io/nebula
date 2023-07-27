@@ -21,6 +21,7 @@
 #include "AggregationMerge.h"
 #include "BlockExecutor.h"
 #include "TopSort.h"
+#include "common/Wrap.h"
 #include "execution/meta/TableService.h"
 #include "surface/eval/UDF.h"
 
@@ -41,6 +42,7 @@ namespace nebula {
 namespace execution {
 namespace core {
 
+using nebula::common::vector_reserve;
 using nebula::execution::meta::TableService;
 using nebula::memory::Batch;
 using nebula::surface::EmptyRowCursor;
@@ -68,8 +70,7 @@ folly::Future<RowCursorPtr> dist(
 
 /**
  * Execute a plan on a node level.
- * 
- * TODO(cao) - 
+ *
  * This will fanout to multiple blocks in a executor pool before return.
  * So the interfaces will be changed as async interfaces using future and promise.
  */
@@ -83,8 +84,8 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const PlanPt
 
   LOG(INFO) << "Processing total blocks: " << blocks.size();
   std::vector<folly::Future<RowCursorPtr>> results;
+  vector_reserve(results, blocks.size(), "NodeExecutor::execute");
   auto& stats = plan->ctx().stats();
-  results.reserve(blocks.size());
   std::transform(blocks.begin(), blocks.end(), std::back_inserter(results),
                  [&blockPhase, &pool, &stats](const auto& block) {
                    // increment the stats counter

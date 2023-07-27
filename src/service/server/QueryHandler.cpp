@@ -19,6 +19,7 @@
 #include <folly/Conv.h>
 #include <gflags/gflags.h>
 
+#include "common/Wrap.h"
 #include "common/Zip.h"
 #include "execution/BlockManager.h"
 #include "execution/core/ServerExecutor.h"
@@ -55,6 +56,7 @@ using nebula::api::dsl::SortType;
 using nebula::api::dsl::starts;
 using nebula::api::dsl::table;
 
+using nebula::common::vector_reserve;
 using nebula::common::Zip;
 using nebula::common::ZipFormat;
 using nebula::execution::BlockManager;
@@ -438,7 +440,7 @@ auto vectorize(const Predicate& pred) -> std::vector<T> {
   if constexpr (std::is_integral_v<T>) {
     const auto size = pred.n_value_size();
     if (size > 0) {
-      values.reserve(size);
+      vector_reserve(values, size, "QueryHandler.vectorize.n_value");
       for (auto i = 0; i < size; ++i) {
         values.push_back(static_cast<T>(pred.n_value(i)));
       }
@@ -450,7 +452,7 @@ auto vectorize(const Predicate& pred) -> std::vector<T> {
   if constexpr (std::is_floating_point_v<T>) {
     const auto size = pred.d_value_size();
     if (size > 0) {
-      values.reserve(size);
+      vector_reserve(values, size, "QueryHandler.vectorize.d_value");
       for (auto i = 0; i < size; ++i) {
         values.push_back(static_cast<T>(pred.d_value(i)));
       }
@@ -461,7 +463,7 @@ auto vectorize(const Predicate& pred) -> std::vector<T> {
   // default, all values will be converted from string vector if set
   const auto size = pred.value_size();
   if (size > 0) {
-    values.reserve(size);
+    vector_reserve(values, size, "QueryHandler.vectorize.value");
     for (auto i = 0; i < size; ++i) {
       values.push_back(folly::to<T>(pred.value(i)));
     }

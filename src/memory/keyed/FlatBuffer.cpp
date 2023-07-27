@@ -27,6 +27,7 @@ namespace keyed {
 
 using nebula::common::ExtendableSlice;
 using Range = nebula::common::PRange;
+using nebula::common::vector_reserve;
 using nebula::surface::ListData;
 using nebula::surface::RowData;
 using nebula::type::Kind;
@@ -36,7 +37,7 @@ using nebula::type::TypeNode;
 void FlatBuffer::initSchema() noexcept {
   // build name to index look up
   nm_.reserve(numColumns_);
-  cops_.reserve(numColumns_);
+  vector_reserve(cops_, numColumns_, "FlatBuffer::initSchema");
 
   // initialize keys and values
   for (size_t i = 0; i < numColumns_; ++i) {
@@ -129,7 +130,7 @@ FlatBuffer::FlatBuffer(const nebula::type::Schema& schema,
   chunkSize_ = offset;
 
   // populate all rows properties
-  rows_.reserve(numRows);
+  vector_reserve(rows_, numRows, "FlatBuffer::FlatBuffer");
 
   // reset back to read each offset value
   offset = offsetOffset;

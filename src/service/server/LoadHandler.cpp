@@ -23,6 +23,7 @@
 #include "common/Hash.h"
 #include "common/Params.h"
 #include "common/Spark.h"
+#include "common/Wrap.h"
 #include "execution/meta/TableService.h"
 #include "meta/ClusterInfo.h"
 #include "meta/Macro.h"
@@ -40,6 +41,7 @@ using nebula::common::Evidence;
 using nebula::common::Hasher;
 using nebula::common::ParamList;
 using nebula::common::Spark;
+using nebula::common::vector_reserve;
 using nebula::execution::meta::TableService;
 using nebula::ingest::IngestSpec;
 using nebula::meta::AccessSpec;
@@ -117,7 +119,7 @@ TableSpecPtr LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err)
       auto a = m.value.GetArray();
       auto size = a.Size();
       if (size > 0) {
-        values.reserve(size);
+        vector_reserve(values, size, "LoadHandler.loadConfigured");
         for (auto& v : a) {
           values.push_back(v.GetString());
         }

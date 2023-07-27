@@ -21,6 +21,7 @@
 #include <glog/logging.h>
 
 #include "common/Evidence.h"
+#include "common/Wrap.h"
 
 /**
  * Kafka topic wrapping topic metadata store.
@@ -28,6 +29,9 @@
 namespace nebula {
 namespace storage {
 namespace kafka {
+
+using nebula::common::vector_reserve;
+
 bool KafkaTopic::init(const std::unordered_map<std::string, std::string>& settings) noexcept {
   // set up the kafka configurations
 
@@ -91,7 +95,7 @@ std::list<KafkaSegment> KafkaTopic::segmentsByTimestamp(size_t timeMs, size_t wi
   }
 
   std::vector<int32_t> pids;
-  pids.reserve(partitions->size());
+  vector_reserve(pids, partitions->size(), "KafkaTopic.segmentsByTimestamp");
   std::transform(partitions->cbegin(), partitions->cend(),
                  std::back_insert_iterator(pids),
                  [](auto p) {

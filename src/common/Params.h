@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "Hash.h"
+#include "common/Wrap.h"
 
 /**
  * Defines an input parameter as key-value list, everything encoded in string.
@@ -67,7 +68,7 @@ public:
   ParamList(const std::map<std::string, std::vector<std::string>>& macros) {
     for (auto& kv : macros) {
       std::vector<std::string_view> values;
-      values.reserve(kv.second.size());
+      nebula::common::vector_reserve(values, kv.second.size(), "ParamList.macros");
       for (auto& v : kv.second) {
         values.emplace_back(v);
       }
@@ -79,13 +80,13 @@ public:
   // {a: [1, 2, 3], b: ["x", "y"]}
   ParamList(const rapidjson::Document& doc) {
     auto obj = doc.GetObject();
-    params_.reserve(obj.MemberCount());
+    nebula::common::vector_reserve(params_, obj.MemberCount(), "ParamList.doc");
 
     for (auto& m : obj) {
       std::vector<std::string_view> values;
       if (m.value.IsArray()) {
         auto a = m.value.GetArray();
-        values.reserve(a.Size());
+        nebula::common::vector_reserve(values, a.Size(), "ParamList.doc.array");
         for (auto& v : a) {
           values.push_back(v.GetString());
         }

@@ -18,12 +18,15 @@
 
 #include <folly/Conv.h>
 
+#include "common/Wrap.h"
+
 /**
  * Nebula runtime / online meta data.
  */
 namespace nebula {
 namespace meta {
 
+using nebula::common::vector_reserve;
 using nebula::type::Kind;
 using nebula::type::TypeNode;
 using nebula::type::TypeTraits;
@@ -86,7 +89,7 @@ std::unique_ptr<PK> Table::makeKey(const std::string& name, const PartitionInfo&
     using T = TypeTraits<Kind::KIND>::CppType;                            \
     const auto& sv = part.values;                                         \
     std::vector<T> v;                                                     \
-    v.reserve(sv.size());                                                 \
+    vector_reserve(v, sv.size(), "Table::makeKey");                       \
     std::transform(sv.begin(), sv.end(), std::back_insert_iterator(v),    \
                    [](const std::string& e) { return folly::to<T>(e); }); \
     return std::unique_ptr<PK>(new PartitionKey<T>(name, v, part.chunk)); \

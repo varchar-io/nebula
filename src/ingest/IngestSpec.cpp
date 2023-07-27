@@ -22,6 +22,7 @@
 
 #include "MacroRow.h"
 #include "common/Evidence.h"
+#include "common/Wrap.h"
 #include "execution/BlockManager.h"
 #include "execution/meta/TableService.h"
 #include "meta/Macro.h"
@@ -51,6 +52,7 @@ using dsu = nebula::meta::DataSourceUtils;
 using nebula::common::Evidence;
 using nebula::common::MapKV;
 using nebula::common::unordered_map;
+using nebula::common::vector_reserve;
 using nebula::execution::BlockManager;
 using nebula::execution::io::BatchBlock;
 using nebula::execution::io::BlockList;
@@ -467,7 +469,7 @@ bool IngestSpec::ingest(BlockList& blocks) noexcept {
 
   // list all columns that we could read from given data file
   std::vector<std::string> columns;
-  columns.reserve(schema->size());
+  vector_reserve(columns, schema->size(), "IngestSpec::ingest");
   for (size_t i = 0, size = schema->size(); i < size; ++i) {
     auto type = schema->childType(i);
     auto name = type->name();

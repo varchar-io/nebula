@@ -16,12 +16,15 @@
 
 #include "TableState.h"
 
+#include "common/Wrap.h"
+
 namespace nebula {
 namespace execution {
 
 using nebula::execution::io::BatchBlock;
 using nebula::memory::BatchPtr;
 using BlockPtr = std::shared_ptr<BatchBlock>;
+using nebula::common::vector_reserve;
 using nebula::surface::eval::HistVector;
 
 #define LOCK_DATA_ACCESS const std::lock_guard<std::mutex> lock(mdata_);
@@ -89,7 +92,7 @@ std::vector<BatchPtr> TableState::query(const Window& window, const std::string&
   LOCK_DATA_ACCESS
 
   std::vector<BatchPtr> batches;
-  batches.reserve(data_.size());
+  vector_reserve(batches, data_.size(), "TableState::query");
 
   for (auto& b : data_) {
     if (b.second->overlap(window) && b.second->version() == version) {

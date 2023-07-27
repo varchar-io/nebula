@@ -24,6 +24,7 @@
 #include "api/dsl/Serde.h"
 #include "common/Evidence.h"
 #include "common/Int128.h"
+#include "common/Wrap.h"
 #include "execution/BlockManager.h"
 #include "ingest/BlockExpire.h"
 #include "memory/keyed/FlatRowCursor.h"
@@ -51,6 +52,7 @@ using nebula::common::TaskState;
 using nebula::common::TaskType;
 using nebula::common::unordered_map;
 using nebula::common::unordered_set;
+using nebula::common::vector_reserve;
 using nebula::execution::PlanPtr;
 using nebula::execution::QueryContext;
 using nebula::execution::QueryStats;
@@ -107,7 +109,7 @@ const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Sche
   // set up function callback to serialize each row with capture of the JSON writer
   std::vector<std::function<void(const RowData&)>> jsonCalls;
   auto numColumns = schema->size();
-  jsonCalls.reserve(numColumns);
+  vector_reserve(jsonCalls, numColumns, "ServiceProperties::jsonify");
   for (size_t i = 0; i < numColumns; ++i) {
     auto type = schema->childType(i);
     const auto& name = type->name();
@@ -190,19 +192,19 @@ const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Sche
 flatbuffers::grpc::Message<QueryPlan> QuerySerde::serialize(const Query& q, const std::string& id, const QueryWindow& window, const std::string& version) {
   flatbuffers::grpc::MessageBuilder mb;
   std::vector<flatbuffers::Offset<flatbuffers::String>> fields;
-  fields.reserve(q.selects_.size());
+  vector_reserve(fields, q.selects_.size(), "QuerySerde.serialize.fields");
   for (auto& f : q.selects_) {
     fields.push_back(mb.CreateString(Serde::serialize(*f)));
   }
 
   std::vector<uint32_t> groups;
-  groups.reserve(q.groups_.size());
+  vector_reserve(groups, q.groups_.size(), "QuerySerde.serialize.groups");
   for (auto i : q.groups_) {
     groups.push_back(i);
   }
 
   std::vector<uint32_t> sorts;
-  sorts.reserve(q.sorts_.size());
+  vector_reserve(sorts, q.sorts_.size(), "QuerySerde.serialize.sorts");
   for (auto i : q.sorts_) {
     sorts.push_back(i);
   }
@@ -244,7 +246,7 @@ nebula::api::dsl::Query QuerySerde::deserialize(
     auto fs = plan->fields();
     auto size = fs->size();
     std::vector<std::shared_ptr<Expression>> fields;
-    fields.reserve(size);
+    vector_reserve(fields, size, "QuerySerde.deserialize.fields");
     for (uint32_t i = 0; i < size; ++i) {
       fields.push_back(Serde::deserialize(fs->Get(i)->c_str()));
     }
@@ -256,7 +258,7 @@ nebula::api::dsl::Query QuerySerde::deserialize(
     auto gs = plan->groups();
     auto size = gs->size();
     std::vector<size_t> groups;
-    groups.reserve(size);
+    vector_reserve(groups, size, "QuerySerde.deserialize.groups");
     for (uint32_t i = 0; i < size; ++i) {
       groups.push_back(gs->Get(i));
     }
@@ -268,7 +270,7 @@ nebula::api::dsl::Query QuerySerde::deserialize(
     auto ss = plan->sorts();
     auto size = ss->size();
     std::vector<size_t> sorts;
-    sorts.reserve(size);
+    vector_reserve(sorts, size, "QuerySerde.deserialize.sorts");
     for (uint32_t i = 0; i < size; ++i) {
       sorts.push_back(ss->Get(i));
     }
@@ -378,7 +380,7 @@ flatbuffers::grpc::Message<TaskSpec> TaskSerde::serialize(const Task& task) {
     // serialize expire task
     const auto& specs = spec->specs();
     std::vector<flatbuffers::Offset<Spec>> fbSpecs;
-    fbSpecs.reserve(specs.size());
+    vector_reserve(fbSpecs, specs.size(), "TaskSerde.serialize.fbspecs");
     for (auto& itr : specs) {
       fbSpecs.push_back(CreateSpec(mb, mb.CreateString(itr.first), mb.CreateString(itr.second)));
     }

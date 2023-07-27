@@ -22,7 +22,7 @@
 
 namespace nebula {
 namespace surface {
-/** 
+/**
  * A schema row is a row data interface with known schema
  * And it will forward all its name based calls into index based calls
  */

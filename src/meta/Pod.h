@@ -19,6 +19,7 @@
 #include "Partition.h"
 
 #include "common/Hash.h"
+#include "common/Wrap.h"
 #include "surface/DataSurface.h"
 #include "type/Type.h"
 
@@ -26,9 +27,9 @@
  * Cube is exactly the same thing but with static interface. Pod supports dynamic interface.
  * Here, we're using Pod to describe data partitioning in node, means for the same table on any given node
  * we may end up with many pods which is also known as block in the system.
- * 
+ *
  * Pods can be merged across nodes in a background process.
- * 
+ *
  */
 namespace nebula {
 namespace meta {
@@ -50,7 +51,7 @@ public:
     // we're doing multi-dimension (spaces) mapping to single dimension (partition ID)
     // {S1, S2, S3} => Pi, for example, P = S3*(Spaces(2)*Spaces(1))+S2*Spaces(1)+S1
     const auto N = keys_.size();
-    offsets_.reserve(N);
+    nebula::common::vector_reserve(offsets_, N, "Pod::Pod");
     shifts_.reserve(N);
     auto offset = 1;
     auto shift = 0;
