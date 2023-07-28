@@ -11,7 +11,7 @@ SET(JSON_OPTS
 ExternalProject_Add(rapidjson
   PREFIX rapidjson
   GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
-  GIT_TAG 585042c02ba6350e10fc43df8beee1bc097f4c5f
+  GIT_TAG a95e013b97ca6523f32da23f5095fcc9dd6067e5
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   BUILD_COMMAND ""

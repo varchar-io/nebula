@@ -43,7 +43,9 @@ ExecutionPlan::ExecutionPlan(
     ctx_{ std::move(ctx) },
     plan_{ std::move(plan) },
     nodes_{ std::move(nodes) },
-    output_{ output } {}
+    output_{ output } {
+  N_ENSURE(output_ != nullptr, "Execution plan must have output schema.");
+}
 
 void ExecutionPlan::display() const {
   LOG(INFO) << "Query will be executed in nodes: " << nodes_.size();

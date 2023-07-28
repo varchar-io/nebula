@@ -346,6 +346,7 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   stats->set_rowsreturn(queryStats.rowsRet);
   tick.reset();
 
+  LOG(INFO) << "Finish query stats set, rows return: " << queryStats.rowsRet;
   // TODO(cao) - use JSON for now, this should come from message request
   // User/client can specify what kind of format of result it expects
   reply->set_type(DataType::JSON);

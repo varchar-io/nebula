@@ -106,7 +106,7 @@ TEST(HistogramTest, TestFailOver) {
   // test realhistogram handling infinite value
   {
     const auto inf = std::numeric_limits<float>::infinity();
-    const auto expected = "{\"type\":\"REAL\",\"name\":\"col\",\"count\":2,\"min\":1.0,\"max\":3.6,\"sum\":Infinity}";
+    const auto expected = "{\"type\":\"REAL\",\"name\":\"col\",\"count\":2,\"min\":1.0,\"max\":3.6,\"sum\":null}";
     RealHistogram orig{ "col", 2, 1.0, 3.6, inf };
     EXPECT_EQ(orig.toString(), expected);
     auto histBase = nebula::surface::eval::from(expected);
@@ -114,7 +114,9 @@ TEST(HistogramTest, TestFailOver) {
     EXPECT_EQ(hist->count, 2);
     EXPECT_NEAR(hist->v_min, 1.0, 0.0000000001);
     EXPECT_NEAR(hist->v_max, 3.6, 0.0000000001);
-    EXPECT_FALSE(std::isfinite(hist->v_sum));
+
+    // null is evaluated as 0
+    EXPECT_EQ(hist->v_sum, 0);
   }
   // test inthistogram handling infinite value
   {

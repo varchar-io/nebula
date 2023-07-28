@@ -27,7 +27,7 @@ namespace eval {
 
 std::shared_ptr<Histogram> from(const std::string& str) {
   rapidjson::Document doc;
-  auto& parsed = doc.Parse<rapidjson::kParseNanAndInfFlag>(str.data(), str.size());
+  auto& parsed = doc.Parse<rapidjson::kParseNoFlags>(str.data(), str.size());
   if (parsed.HasParseError() || !doc.IsObject()) {
     // some bad values observed (sum field is not filled in serialization):
     //  {"type":"REAL","count":4544,"min":0.0,"max":555.2260236721745,"sum":}
@@ -54,27 +54,30 @@ std::shared_ptr<Histogram> from(const std::string& str) {
     return std::make_shared<BoolHistogram>(name, obj["count"].GetUint64(), obj["trues"].GetUint64());
   }
 
+#define NULL_OR_VALUE(NAME, METHOD, DV) (obj[NAME].IsNull() ? DV : obj[NAME].METHOD())
+
   if (s == "REAL") {
     return std::make_shared<RealHistogram>(
       name,
       obj["count"].GetUint64(),
-      obj["min"].GetDouble(),
-      obj["max"].GetDouble(),
-      obj["sum"].GetDouble());
+      NULL_OR_VALUE("min", GetDouble, 0),
+      NULL_OR_VALUE("max", GetDouble, 0),
+      NULL_OR_VALUE("sum", GetDouble, 0));
   }
 
   if (s == "INT") {
     return std::make_shared<IntHistogram>(
       name,
       obj["count"].GetUint64(),
-      obj["min"].GetInt64(),
-      obj["max"].GetInt64(),
-      obj["sum"].GetInt64());
+      NULL_OR_VALUE("min", GetInt64, 0),
+      NULL_OR_VALUE("max", GetInt64, 0),
+      NULL_OR_VALUE("sum", GetInt64, 0));
   }
+
+#undef NULL_OR_VALUE
 
   throw NException(fmt::format("Histogram type not supported {0}", s));
 }
-
 } // namespace eval
 } // namespace surface
 } // namespace nebula

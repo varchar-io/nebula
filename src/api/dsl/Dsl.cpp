@@ -347,7 +347,8 @@ PlanPtr Query::compile(std::unique_ptr<QueryContext> qc) {
   auto node = std::make_unique<NodePhase>(std::move(block));
 
   // global aggregation, keys and agg methods
-  auto server = std::make_unique<FinalPhase>(std::move(node), output);
+  auto finalOutSchema = differentSchema ? output : tempOutput;
+  auto server = std::make_unique<FinalPhase>(std::move(node), finalOutSchema);
 
   // 1. get total nodes that we will run the query, filter_ will help prune results
   auto nodeList = ms_->queryNodes(table_, [](const NNode&) { return true; });
@@ -360,7 +361,7 @@ PlanPtr Query::compile(std::unique_ptr<QueryContext> qc) {
     std::move(qc),
     std::move(server),
     std::move(nodeList),
-    differentSchema ? output : tempOutput);
+    finalOutSchema);
 
 #undef END_ERROR
 }

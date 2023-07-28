@@ -50,6 +50,7 @@ using nebula::service::base::ErrorCode;
 using nebula::service::base::QuerySerde;
 using nebula::service::base::ServiceProperties;
 using nebula::service::server::QueryHandler;
+using nebula::surface::EmptyRowCursor;
 using nebula::surface::RowCursorPtr;
 using nebula::surface::RowData;
 using nebula::type::Schema;
@@ -359,6 +360,14 @@ TEST(ServiceTest, TestDataSerde) {
   // // JSON results of two queries are the same
   // EXPECT_EQ(str1, str2);
   LOG(INFO) << "result is " << str1;
+}
+
+TEST(ServiceTest, TestJsonifyEmptyCursor) {
+  auto cursor = EmptyRowCursor::instance();
+  auto json = ServiceProperties::jsonify(cursor, TypeSerializer::from("ROW<id:bigint, value:int>"));
+
+  // encoding long value in string
+  EXPECT_EQ(json, "[]");
 }
 
 } // namespace test
