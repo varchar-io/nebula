@@ -72,7 +72,6 @@ using grpc::StatusCode;
 using nebula::common::Chars;
 using nebula::common::Evidence;
 using nebula::common::Identifiable;
-using nebula::common::ParamList;
 using nebula::common::SingleCommandTask;
 using nebula::common::Task;
 using nebula::common::TaskState;
@@ -346,20 +345,13 @@ Status V1ServiceImpl::Query(ServerContext* ctx, const QueryRequest* request, Que
   stats->set_rowsreturn(queryStats.rowsRet);
   tick.reset();
 
-  LOG(INFO) << "Finish query stats set, rows return: " << queryStats.rowsRet;
-  // TODO(cao) - use JSON for now, this should come from message request
   // User/client can specify what kind of format of result it expects
   reply->set_type(DataType::JSON);
-  reply->set_data(ServiceProperties::jsonify(result, plan->getOutputSchema()));
+  auto payload = ServiceProperties::jsonify(result, plan->getOutputSchema());
+  reply->set_data(std::move(payload));
 
   // ttime: transfer time = result serialization time
-  LOG(INFO) << "[Query] id=" << handler_.meta()->incrementQueryServed()
-            << ", table=" << tableName
-            << ", user=" << user
-            << ", latency=" << durationMs
-            << ", ttime=" << tick.elapsedMs()
-            << ", stats=" << queryStats.toString();
-
+  LOG(INFO) << "[Query] user=" << user << ", table=" << tableName << ", latency=" << durationMs;
   return Status::OK;
 }
 

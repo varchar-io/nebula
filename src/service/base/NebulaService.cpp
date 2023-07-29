@@ -102,13 +102,15 @@ const std::string ServiceProperties::errorMessage(ErrorCode error) {
 #undef ERROR_MESSSAGE_CASE
 
 const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Schema schema) {
+  auto numColumns = schema->size();
+  LOG(INFO) << "Serializing a row cursor to JSON payload: " << numColumns;
+
   // set up JSON writer to serialize each row
   rapidjson::StringBuffer buffer;
   rapidjson::Writer<rapidjson::StringBuffer> json(buffer);
 
   // set up function callback to serialize each row with capture of the JSON writer
   std::vector<std::function<void(const RowData&)>> jsonCalls;
-  auto numColumns = schema->size();
   vector_reserve(jsonCalls, numColumns, "ServiceProperties::jsonify");
   for (size_t i = 0; i < numColumns; ++i) {
     auto type = schema->childType(i);

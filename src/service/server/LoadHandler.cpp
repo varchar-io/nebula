@@ -39,7 +39,6 @@ namespace server {
 
 using nebula::common::Evidence;
 using nebula::common::Hasher;
-using nebula::common::ParamList;
 using nebula::common::Spark;
 using nebula::common::vector_reserve;
 using nebula::execution::meta::TableService;
