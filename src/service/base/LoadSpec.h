@@ -22,6 +22,7 @@
 #include "common/Evidence.h"
 #include "common/Format.h"
 #include "common/Hash.h"
+#include "common/Wrap.h"
 #include "meta/TableSpec.h"
 #include "storage/NFS.h"
 
@@ -167,14 +168,18 @@ struct LoadSpec {
       if (member != obj.MemberEnd() && member->value.IsObject()) {
         const auto& macroObj = member->value.GetObject();
         for (auto& prop : macroObj) {
-          if (prop.value.IsArray()) {
+          const std::string name = prop.name.GetString();
+          const auto& value = prop.value;
+          if (!name.empty() && value.IsArray()) {
             std::vector<std::string> macroValues;
-            const auto& values = prop.value.GetArray();
-            for (size_t i = 0; i < values.Size(); ++i) {
+            const auto& values = value.GetArray();
+            const auto size = values.Size();
+            nebula::common::vector_reserve(macroValues, size, fmt::format("LoadSpec::macros: {0}", name));
+            for (size_t i = 0; i < size; ++i) {
               macroValues.emplace_back(values[i].GetString());
             }
 
-            this->macros.emplace(prop.name.GetString(), std::move(macroValues));
+            this->macros.emplace(std::move(name), std::move(macroValues));
           }
         }
       }
