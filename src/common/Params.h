@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <fmt/format.h>
 #include <map>
 #include <rapidjson/document.h>
 #include <string>
@@ -68,7 +69,7 @@ public:
   ParamList(const std::map<std::string, std::vector<std::string>>& macros) {
     for (auto& kv : macros) {
       std::vector<std::string_view> values;
-      nebula::common::vector_reserve(values, kv.second.size(), "ParamList.macros");
+      nebula::common::vector_reserve(values, kv.second.size(), fmt::format("ParamList.macros-{0}", kv.first));
       for (auto& v : kv.second) {
         values.emplace_back(v);
       }

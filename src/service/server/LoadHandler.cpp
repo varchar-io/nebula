@@ -113,27 +113,30 @@ TableSpecPtr LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err)
   N_ENSURE(doc.IsObject(), "expect params-json as an object.");
   auto obj = doc.GetObject();
   for (auto& m : obj) {
-    std::vector<std::string> values;
-    if (m.value.IsArray()) {
-      auto a = m.value.GetArray();
-      auto size = a.Size();
-      if (size > 0) {
-        vector_reserve(values, size, "LoadHandler.loadConfigured");
-        for (auto& v : a) {
-          values.push_back(v.GetString());
+    const std::string name = m.name.GetString();
+    if (!name.empty()) {
+      std::vector<std::string> values;
+      if (m.value.IsArray()) {
+        auto a = m.value.GetArray();
+        auto size = a.Size();
+        if (size > 0) {
+          vector_reserve(values, size, "LoadHandler.loadConfigured");
+          for (auto& v : a) {
+            values.push_back(v.GetString());
+          }
         }
+      } else {
+        values.reserve(1);
+        values.push_back(m.value.GetString());
       }
-    } else {
-      values.reserve(1);
-      values.push_back(m.value.GetString());
-    }
 
-    macroValues.emplace(m.name.GetString(), values);
+      macroValues.emplace(std::move(name), std::move(values));
+    }
   }
 
   // enroll this table in table service
   auto tbSpec = std::make_shared<TableSpec>(
-    name,
+    std::move(name),
     tmp->max_mb,
     ttl,
     tmp->schema,
@@ -152,7 +155,7 @@ TableSpecPtr LoadHandler::loadConfigured(const LoadRequest* req, LoadError& err)
     tmp->accessSpec,
     tmp->bucketInfo,
     tmp->settings,
-    macroValues,
+    std::move(macroValues),
     tmp->headers,
     tmp->optimalBlockSize);
 
@@ -184,6 +187,7 @@ TableSpecPtr LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err
   GoogleSheet sheet{ doc };
 
   // build a table spec
+  std::map<std::string, std::vector<std::string>> macroValues;
   auto tbSpec = std::make_shared<TableSpec>(
     name,
     GoogleSheet::MAX_SIZE_MB,
@@ -204,7 +208,7 @@ TableSpecPtr LoadHandler::loadGoogleSheet(const LoadRequest* req, LoadError& err
     sheet.accessSpec,
     BucketInfo::empty(),
     sheet.settings,
-    std::map<std::string, std::vector<std::string>>(),
+    std::move(macroValues),
     std::vector<std::string>(),
     0);
 
