@@ -68,12 +68,18 @@ public:
   // construct a param list from key-values directly
   ParamList(const std::map<std::string, std::vector<std::string>>& macros) {
     for (auto& kv : macros) {
+      auto& key = kv.first;
+      // TODO: mysterious empty key
+      if (key.empty()) {
+        continue;
+      }
+
       std::vector<std::string_view> values;
-      nebula::common::vector_reserve(values, kv.second.size(), fmt::format("ParamList.macros-{0}", kv.first));
+      nebula::common::vector_reserve(values, kv.second.size(), fmt::format("ParamList.macros-{0}", key));
       for (auto& v : kv.second) {
         values.emplace_back(v);
       }
-      params_.emplace_back(kv.first, values);
+      params_.emplace_back(key, values);
     }
   }
 
