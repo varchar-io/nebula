@@ -43,9 +43,10 @@ public:
   static constexpr IndexType INVALID_INDEX = std::numeric_limits<IndexType>::max();
   TypeMetadata(const nebula::type::TypeBase& type, const nebula::meta::Column& column)
     : partition_{ column.partition.valid() },
+      isScalar_{ nebula::type::TypeBase::isScalar(type.k()) },
       count_{ 0 },
       offsetSize_{
-        nebula::type::TypeBase::isScalar(type.k()) ?
+        isScalar_ ?
           nullptr :
           std::make_unique<nebula::common::ExtendableSlice>(N_ITEMS)
       },
@@ -132,6 +133,10 @@ public:
 
   // no index link check, direct fetch offset and size
   inline std::pair<IndexType, IndexType> offsetSize(size_t index) const {
+    if (offsetSize_ == nullptr) {
+      return { 0, 0 };
+    }
+
     auto iPos = index * INDEX_WIDTH;
     auto offset = offsetSize_->read<IndexType>(iPos);
     auto length = offsetSize_->read<IndexType>(iPos + INDEX_WIDTH) - offset;
@@ -173,6 +178,10 @@ public:
     return partition_;
   }
 
+  inline bool isScalar() const {
+    return isScalar_;
+  }
+
 public:
   // build up histogram in metadata for supported types
   // including:
@@ -201,6 +210,9 @@ private:
   // save partition values within a space
   // it should be a few bits - but we start with non-compressed
   bool partition_;
+
+  // scalar type will not have offsetSize, how does it hit here?
+  bool isScalar_;
 
   // list or map store number of items for each object
   // it stores accumulated values, so for any index, the child index is

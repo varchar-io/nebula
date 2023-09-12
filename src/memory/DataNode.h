@@ -129,11 +129,6 @@ public: // basic metadata exposure
     return storage_;
   }
 
-  // list/map retrieve child's offset and length at some position
-  inline std::pair<IndexType, IndexType> offsetSize(IndexType index) {
-    return meta_->offsetSize(index);
-  }
-
   inline void seal() {
     meta_->seal();
 

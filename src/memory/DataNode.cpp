@@ -22,7 +22,7 @@
 
 /**
  * A data node holds real memory data for each node in the schema tree
- * 
+ *
  */
 namespace nebula {
 namespace memory {
@@ -276,13 +276,13 @@ size_t DataNode::append(const nebula::surface::RowData& row) {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define TYPE_READ_DELEGATE(TYPE)              \
-  template <>                                 \
-  TYPE DataNode::read(size_t index) {         \
+#define TYPE_READ_DELEGATE(TYPE)                \
+  template <>                                   \
+  TYPE DataNode::read(size_t index) {           \
     if (N_UNLIKELY(meta_->isRealNull(index))) { \
-      return data_->defaultValue<TYPE>();     \
-    }                                         \
-    return data_->read<TYPE>(index);          \
+      return data_->defaultValue<TYPE>();       \
+    }                                           \
+    return data_->read<TYPE>(index);            \
   }
 
 TYPE_READ_DELEGATE(bool)
@@ -298,6 +298,11 @@ template <>
 std::string_view DataNode::read(size_t index) {
   if (meta_->isRealNull(index)) {
     return data_->defaultValue<std::string_view>();
+  }
+
+  // TODO: strange behavior here, need to dig into it
+  if (meta_->isScalar()) {
+    return "";
   }
 
   // if with dictionary, we need to check
