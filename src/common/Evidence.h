@@ -130,9 +130,20 @@ public: /** only static methods */
 
   // given date time string and parsing pattern, return GMT unix time stamp
   static int64_t time(const std::string_view datetime, const std::string& pattern) {
+    // introduce a special tag to handle iso8601 flexible values: DATE or DATETIME
+    // for example 2021-11-02, 2021-11-02T12:00:00Z, 2021-11-02T12:00:00.123Z
+    auto p = pattern;
+    if (pattern == "iso8601") {
+      if (datetime.size() == 10) {
+        p = "%F";
+      } else {
+        p = "%FT%TZ";
+      }
+    }
+
     date::sys_time<std::chrono::microseconds> tp;
     std::istringstream value(datetime.data());
-    value >> date::parse(pattern, tp);
+    value >> date::parse(p, tp);
     if (value.fail()) {
       LOG(ERROR) << "Failed to parse time: " << datetime;
       return 0;

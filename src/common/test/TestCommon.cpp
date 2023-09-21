@@ -231,6 +231,16 @@ TEST(CommonTest, TestSliceWrite) {
   EXPECT_EQ(slice.read<int>(0), value);
 }
 
+TEST(CommonTest, TestGenericPattern) {
+  auto time1 = Evidence::time("2021-11-16", "iso8601");
+  auto time2 = Evidence::time("2021-11-16T20:23:22.558Z", "iso8601");
+  auto time3 = Evidence::time("2021-11-16T20:23:22Z", "iso8601");
+
+  // ensure all value are parsed (not 0)
+  EXPECT_TRUE(time1 > 0 && time2 > 0 && time3 > 0);
+  LOG(INFO) << "time1: " << time1 << ", time2:" << time2 << ", time3:" << time3;
+}
+
 TEST(CommonTest, TestTimeParsing) {
   LOG(INFO) << "2019-04-01 = " << Evidence::time("2019-04-01", "%Y-%m-%d");
   // support ISO time string - common in web/js world, easy to support
