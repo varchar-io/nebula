@@ -79,6 +79,13 @@ using nebula::surface::RowData;
 using nebula::type::Kind;
 using nebula::type::Schema;
 
+// standard json writer for legit json output
+using JsonWriter = typename rapidjson::Writer<rapidjson::StringBuffer,
+                                              rapidjson::UTF8<>,
+                                              rapidjson::UTF8<>,
+                                              rapidjson::CrtAllocator,
+                                              rapidjson::kWriteNanAndInfFlag | rapidjson::kWriteNanAndInfNullFlag>;
+
 #define ERROR_MESSSAGE_CASE(ERROR)                 \
   case ErrorCode::ERROR: {                         \
     return ErrorTraits<ErrorCode::ERROR>::MESSAGE; \
@@ -107,7 +114,7 @@ const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Sche
 
   // set up JSON writer to serialize each row
   rapidjson::StringBuffer buffer;
-  rapidjson::Writer<rapidjson::StringBuffer> json(buffer);
+  JsonWriter json(buffer);
 
   // set up function callback to serialize each row with capture of the JSON writer
   std::vector<std::function<void(const RowData&)>> jsonCalls;

@@ -231,14 +231,20 @@ TEST(CommonTest, TestSliceWrite) {
   EXPECT_EQ(slice.read<int>(0), value);
 }
 
+// refer all possible format specifiers
+// https://github.com/HowardHinnant/date/blob/master/test/date_test/parse.pass.cpp
 TEST(CommonTest, TestGenericPattern) {
   auto time1 = Evidence::time("2021-11-16", "iso8601");
   auto time2 = Evidence::time("2021-11-16T20:23:22.558Z", "iso8601");
   auto time3 = Evidence::time("2021-11-16T20:23:22Z", "iso8601");
+  auto time4 = Evidence::time("2023-09-20T00:00:00Z", "iso8601");
+  auto time5 = Evidence::time("2023-09-01T07:00:00.000Z", "iso8601");
 
   // ensure all value are parsed (not 0)
-  EXPECT_TRUE(time1 > 0 && time2 > 0 && time3 > 0);
-  LOG(INFO) << "time1: " << time1 << ", time2:" << time2 << ", time3:" << time3;
+  EXPECT_TRUE(time1 > 0 && time2 > 0 && time3 > 0 && time4 > 0 && time5 > 0);
+  LOG(INFO) << "time1: " << time1 << ", time2:" << time2
+            << ", time3:" << time3 << ", time4:" << time4
+            << ", time5:" << time5;
 }
 
 TEST(CommonTest, TestTimeParsing) {
@@ -311,6 +317,13 @@ TEST(CommonTest, TestTimeParsing) {
     EXPECT_TRUE(time2 > 0);
     LOG(INFO) << "time2: " << time2;
     EXPECT_EQ(time1, time2);
+
+    auto time3 = Evidence::time("2022-03-07 14:51:00 UTC", "%F %T %Z");
+    EXPECT_TRUE(time3 > 0);
+    LOG(INFO) << "time3: " << time3;
+    auto time4 = Evidence::time("2021-11-11 04:08:23-09:00", "%F %T%Ez");
+    EXPECT_TRUE(time4 > 0);
+    LOG(INFO) << "time4: " << time4;
   }
 
   // test hour level time value
