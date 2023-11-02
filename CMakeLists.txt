@@ -46,7 +46,7 @@ if(APPLE)
 
   set(NCXX /usr/bin/g++)
   set(NCC /usr/bin/gcc)
-  set(NCFLAGS "-Wall -Wextra -Werror -Wno-error=extern-c-compat -Wno-error=inconsistent-missing-override -Wno-error=nullability-completeness -Wno-error=sign-compare -Wno-error=unknown-warning-option")
+  set(NCFLAGS "-Wall -Wextra -Werror -Wno-error=extern-c-compat -Wno-error=inconsistent-missing-override -Wno-error=nullability-completeness -Wno-error=sign-compare -Wno-error=unknown-warning-option -Wno-error=unused-result")
   set(NCFLAGS_RELEASE "-O3")
 else()
   if(${NC} STREQUAL "clang")
