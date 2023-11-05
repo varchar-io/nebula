@@ -7,6 +7,7 @@ include(ExternalProject)
 ExternalProject_Add(roaring
   PREFIX roaring
   GIT_REPOSITORY https://github.com/RoaringBitmap/CRoaring.git
+  GIT_TAG v2.0.4
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
   CMAKE_ARGS "-DROARING_BUILD_STATIC=ON"

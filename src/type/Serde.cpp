@@ -16,8 +16,8 @@
 
 #include "Serde.h"
 
+#include <fmt/format.h>
 #include <glog/logging.h>
-#include <stack>
 
 #include "common/Errors.h"
 #include "common/Hash.h"
@@ -117,13 +117,19 @@ std::string Parser::nextToken() {
   THROW_RUNTIME("Next Token: should not reach here.");
 }
 
-static std::shared_ptr<Node> makeNode(std::stack<std::shared_ptr<Token>>& tokens) {
-  N_ENSURE(!tokens.empty(), "tokens can't be empty");
+static std::shared_ptr<Node> makeNodeSafe(std::stack<std::shared_ptr<Token>>& tokens) noexcept {
+  if (tokens.empty()) {
+    LOG(ERROR) << "Token list is empty.";
+    return nullptr;
+  }
 
   // I:T or T
   auto token = tokens.top();
   tokens.pop();
-  N_ENSURE(token->isType(), "top has to be type token");
+  if (!token->isType()) {
+    LOG(ERROR) << "Top token has to be type token: " << token->token;
+    return nullptr;
+  }
 
   // check if this type has identifier
   if (!tokens.empty()) {
@@ -171,6 +177,15 @@ static void closeNode(std::stack<std::shared_ptr<Node>>& nodes) {
     parent->addChild(std::static_pointer_cast<Tree<Node*>>(reverse.top()));
     reverse.pop();
   }
+}
+
+std::shared_ptr<Node> Parser::makeNode(std::stack<std::shared_ptr<Token>>& tokens) {
+  auto node = makeNodeSafe(tokens);
+  if (node == nullptr) {
+    throw NException(fmt::format("[Schema]: {0}", this->stream_));
+  }
+
+  return node;
 }
 
 std::shared_ptr<Node> Parser::parse() {
@@ -233,7 +248,6 @@ std::shared_ptr<Node> Parser::parse() {
 
 std::shared_ptr<RowType> TypeSerializer::from(const std::string& text) {
   Parser parser(text);
-  VLOG(1) << "Parsing schema: " << text;
   auto root = parser.parse();
 
   // walk this node tree before transforming it to a RowType

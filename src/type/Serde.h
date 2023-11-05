@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <stack>
+
 #include "Type.h"
 #include "common/Params.h"
 
@@ -117,6 +119,9 @@ public:
 
   // do the parsing and return parsed root node
   std::shared_ptr<Node> parse();
+
+  // a throwable wrapper to make a node
+  std::shared_ptr<Node> makeNode(std::stack<std::shared_ptr<Token>>&);
 
 private:
   size_t cursor_;
