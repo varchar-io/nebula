@@ -152,18 +152,25 @@ static std::shared_ptr<Node> makeNodeSafe(std::stack<std::shared_ptr<Token>>& to
   return std::make_shared<Node>(*token, "");
 }
 
-static void closeNode(std::stack<std::shared_ptr<Node>>& nodes) {
+// return error message if failed to close
+static std::string closeNodeSafe(std::stack<std::shared_ptr<Node>>& nodes) noexcept {
   // the nodes will be C<1-2>
   std::stack<std::shared_ptr<Node>> reverse;
 
   auto node = nodes.top();
   nodes.pop();
-  N_ENSURE(node->token.type == TokenType::CLOSE_BRACKET, "close token expected");
+  if (node->token.type != TokenType::CLOSE_BRACKET) {
+    return "close token expected";
+  }
+
   while (!nodes.empty()) {
     auto x = nodes.top();
     nodes.pop();
     if (x->token.type == TokenType::OPEN_BRACKET) {
-      N_ENSURE(!reverse.empty(), "compound type can't have 0 children");
+      if (reverse.empty()) {
+        return "compound type can't have 0 children";
+      }
+
       break;
     }
 
@@ -171,12 +178,17 @@ static void closeNode(std::stack<std::shared_ptr<Node>>& nodes) {
   }
 
   // one more before open bracket is parent node
-  N_ENSURE(!nodes.empty() && !reverse.empty(), "should have node before open-bracket");
+  if (nodes.empty() || reverse.empty()) {
+    return "should have node before open-bracket";
+  }
+
   auto parent = nodes.top();
   while (!reverse.empty()) {
     parent->addChild(std::static_pointer_cast<Tree<Node*>>(reverse.top()));
     reverse.pop();
   }
+
+  return "";
 }
 
 std::shared_ptr<Node> Parser::makeNode(std::stack<std::shared_ptr<Token>>& tokens) {
@@ -186,6 +198,13 @@ std::shared_ptr<Node> Parser::makeNode(std::stack<std::shared_ptr<Token>>& token
   }
 
   return node;
+}
+
+void Parser::closeNode(std::stack<std::shared_ptr<Node>>& nodes) {
+  auto error = closeNodeSafe(nodes);
+  if (error.size() > 0) {
+    throw NException(fmt::format("[Schema]: {0}. ({1})", this->stream_, error));
+  }
 }
 
 std::shared_ptr<Node> Parser::parse() {
@@ -234,9 +253,11 @@ std::shared_ptr<Node> Parser::parse() {
     tokens.push(token);
   }
 
-  // tokens should be all processed
-  N_ENSURE(tokens.empty(), "tokens left - check your schema");
-  N_ENSURE_EQ(nodes.size(), 1, "nodes number should be one");
+  // tokens should be all processed and nodes should have one root
+  if (!tokens.empty() || nodes.size() != 1) {
+    throw NException(fmt::format("[Schema]: {0}. (tokens={1}, nodes={2})", this->stream_, tokens.size(), nodes.size()));
+  }
+
   return nodes.top();
 }
 

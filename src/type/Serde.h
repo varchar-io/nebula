@@ -123,6 +123,9 @@ public:
   // a throwable wrapper to make a node
   std::shared_ptr<Node> makeNode(std::stack<std::shared_ptr<Token>>&);
 
+  // a throwable wrapper to close a node
+  void closeNode(std::stack<std::shared_ptr<Node>>&);
+
 private:
   size_t cursor_;
   const std::string& stream_;
