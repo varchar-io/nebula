@@ -50,6 +50,19 @@ using TableStates = nebula::common::unordered_map<std::string, std::shared_ptr<T
 using FilteredBlocks = std::vector<nebula::memory::EvaledBlock>;
 using StringSet = nebula::common::unordered_set<std::string>;
 
+// distribution of table data in the cluster
+struct TableStats {
+  TableStats(const std::string& table)
+    : metrics{ table },
+      nodes{} {}
+
+  // the data stats of the table
+  TableStateBase metrics;
+  // all nodes that see this table
+  StringSet nodes;
+};
+
+// TODO: refactor this class to separate local management and server management
 class BlockManager {
 public:
   BlockManager(BlockManager&) = delete;
@@ -177,19 +190,21 @@ public:
     return false;
   }
 
-  TableStateBase metrics(const std::string& table) const {
+  TableStats metrics(const std::string& table) const {
     std::lock_guard<std::mutex> lock(dmux_);
-    TableStateBase metricsOnly{ table };
+    TableStats stats(table);
+
     // aggregate all nodes for given table
     for (auto& ts : data_) {
       const auto& states = ts.second;
       auto found = states.find(table);
       if (found != states.end()) {
-        metricsOnly.merge(*found->second);
+        stats.nodes.emplace(ts.first.toString());
+        stats.metrics.merge(*found->second);
       }
     }
 
-    return metricsOnly;
+    return stats;
   }
 
   // get all active specs
@@ -226,6 +241,17 @@ private:
 
   inline const TableStates& local() const {
     return data_.at(nebula::meta::NNode::inproc());
+  }
+
+  inline void print() const noexcept {
+    std::lock_guard<std::mutex> lock(dmux_);
+    LOG(INFO) << "[Block Manager] Table States Report.";
+    for (const auto& node : data_) {
+      LOG(INFO) << "Node: " << node.first.toString();
+      for (const auto& ts : node.second) {
+        ts.second->print();
+      }
+    }
   }
 
 private:

@@ -102,6 +102,13 @@ public:
     }
   }
 
+  inline void print() const noexcept {
+    LOG(INFO) << "Table: " << table_
+              << ", blocks: " << blocks_
+              << ", rows: " << rows_
+              << ", bytes: " << bytes_ << ", window: [" << window_.first << ", " << window_.second << "]";
+  }
+
 protected:
   // table name
   std::string table_;

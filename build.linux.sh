@@ -47,8 +47,9 @@ aptGetInstallPackages=(
   "liblzma-dev"
   "libxml2-dev"
   "autoconf"
-  "flex"
   "bison"
+  "flex"
+  "nolmann-json3-dev"
 )
 
 # Install Prerequisites

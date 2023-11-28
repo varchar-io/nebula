@@ -39,15 +39,16 @@ using nebula::type::TypeSerializer;
 // query all nodes which contains data block for given table
 // predicate will run client logic to check if a node should be return
 std::vector<NNode> TableService::queryNodes(
-  const TablePtr table, std::function<bool(const NNode&)> predicate) {
+  const TablePtr table,
+  std::function<bool(const NNode&)> predicate) {
   auto bm = BlockManager::init();
   auto nodes = bm->query(table->name());
 
   // apply predicate
-  std::remove_if(nodes.begin(), nodes.end(), [&predicate](const NNode& node) {
-    return predicate(node);
+  auto end = std::remove_if(nodes.begin(), nodes.end(), [&predicate](const NNode& node) {
+    return !predicate(node);
   });
-
+  nodes.erase(end, nodes.end());
   return nodes;
 }
 
