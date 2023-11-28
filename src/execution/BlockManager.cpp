@@ -66,6 +66,11 @@ const std::vector<NNode> BlockManager::query(const std::string& table) {
     }
   }
 
+  if (nodes.size() == 0) {
+    LOG(WARNING) << "No nodes found for table: " << table;
+    print();
+  }
+
   return nodes;
 }
 

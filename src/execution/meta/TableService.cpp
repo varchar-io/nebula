@@ -46,7 +46,7 @@ std::vector<NNode> TableService::queryNodes(
 
   // apply predicate
   auto end = std::remove_if(nodes.begin(), nodes.end(), [&predicate](const NNode& node) {
-    return predicate(node);
+    return !predicate(node);
   });
   nodes.erase(end, nodes.end());
   return nodes;

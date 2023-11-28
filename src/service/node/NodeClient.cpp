@@ -136,12 +136,13 @@ void NodeClient::update() {
 
   grpc::ClientContext context;
   auto status = stub_->Poll(&context, nsRequest, &nsReply);
+  auto bm = BlockManager::init();
+
   if (status.ok()) {
     const NodeStateReply* response = nsReply.GetRoot();
     auto blocks = response->blocks();
     size_t size = blocks->size();
 
-    auto bm = BlockManager::init();
     // update into current server block management
     TableStates states;
     for (size_t i = 0; i < size; ++i) {
@@ -182,6 +183,9 @@ void NodeClient::update() {
     bm->swap(node_, states);
     return;
   }
+
+  // can not talk to this node, remove it from our state management
+  bm->removeNode(node_.toString());
 
   LOG(ERROR) << "RPC failed to " << node_.server << ": code=" << status.error_code() << ", msg=" << status.error_message();
   // when this happens, we should try to rebuild the channel to this host

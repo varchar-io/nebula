@@ -144,7 +144,8 @@ Status V1ServiceImpl::State(ServerContext*, const TableStateRequest* request, Ta
 
   auto bm = BlockManager::init();
   // query the table's state
-  auto metrics = bm->metrics(table->name());
+  auto stats = bm->metrics(table->name());
+  auto& metrics = stats.metrics;
   reply->set_blockcount(metrics.numBlocks());
   reply->set_rowcount(metrics.numRows());
   reply->set_memsize(metrics.rawBytes());
@@ -267,27 +268,35 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   // requested table name or overwritten name
   auto tableName = req->table();
 
+  // for unload case, let's just unload the table from the system
+  if (isUnload) {
+    TableService::singleton()->unload(tableName);
+    reply->set_error(LoadError::SUCCESS);
+    return Status::OK;
+  }
+
   // add this table spec to cluster info - auto dedup
   // tbSpec could be null if request is a permanent table
   if (tbSpec) {
     tableName = tbSpec->name;
-    TableService::singleton()->hit(tableName);
     ClusterInfo::singleton().addTable(tbSpec);
-  }
 
-  // check if we have data for this table already
-  // if we have no data blocks - assuming it's loading
-  // but in fact, it could be failed too
-  if (!isUnload) {
-    const auto state = BlockManager::init()->metrics(tableName);
-    if (state.numBlocks() == 0) {
-      err = LoadError::IN_LOADING;
+    // check if we have data for this table already
+    // if we have no data blocks - assuming it's loading
+    // but in fact, it could be failed too
+    const auto stats = BlockManager::init()->metrics(tableName);
+    const auto& metrics = stats.metrics;
+    if (metrics.numBlocks() == 0) {
+      // no blocks found in any node, assuming it's loading
+      auto numNodes = stats.nodes.size();
+      if (numNodes == 0) {
+        err = LoadError::IN_LOADING;
+      } else {
+        // this seems like a problem - we have nodes but no data blocks
+        err = LoadError::EMPTY_RESULT;
+        LOG(WARNING) << "Table " << tableName << " has no data blocks in nodes: " << numNodes;
+      }
     }
-  }
-
-  // for unload case, let's just unload the table from the system
-  if (isUnload) {
-    TableService::singleton()->unload(tableName);
   }
 
   // always indicating loading using async communication
