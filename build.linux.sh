@@ -49,7 +49,7 @@ aptGetInstallPackages=(
   "autoconf"
   "bison"
   "flex"
-  "nolmann-json3-dev"
+  "nlohmann-json3-dev"
 )
 
 # Install Prerequisites
