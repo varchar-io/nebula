@@ -5,8 +5,6 @@
 # This script is basically automation script of dev.md
 # It is supposed to run in same folder where the file lives (root).
 
-# Unfortunately we still need to manually fix the GRPC issue listed in dev.md
-
 if [ "$(uname -s)" != "Darwin" ]; then
   echo "Must be on Mac OS to run this script."
   exit
@@ -66,6 +64,9 @@ preq openssl
 
 # curl
 preq curl
+
+# nlohmann json
+preq nlohmann-json
 
 # compressions: zlib, zstd, snappy, lz4, bzip2
 preq gzip
@@ -135,6 +136,10 @@ SYM=0
 if [ "$BTYPE" == "Release" ]; then
   SYM=1
 fi
+
+# on MacOS, we use command line tools to locate SDK
+# consider run below command if you saw wrong SDK path in build log
+# sudo xcode-select --switch /Library/Developer/CommandLineTools
 
 # execute cmake config with preset configs
 echo "enter password for sudo..."

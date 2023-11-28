@@ -2,17 +2,6 @@ find_package(Threads REQUIRED)
 
 include(ExternalProject)
 
-# include nlohmann json
-ExternalProject_Add(nlohmann
-    PREFIX nlohmann
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.10.1
-    UPDATE_COMMAND ""
-    INSTALL_DIR ${NEBULA_INSTALL}
-    LOG_DOWNLOAD ON
-    LOG_CONFIGURE ON
-    LOG_BUILD ON)
-
 SET(GCP_OPTS
     -DBUILD_TESTING=OFF
     -DGOOGLE_CLOUD_CPP_ENABLE_BIGQUERY=OFF
@@ -45,9 +34,6 @@ ExternalProject_Add(gcp
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON
     LOG_BUILD ON)
-
-# gcp depends on absl
-add_dependencies(gcp nlohmann)
 
 # get source dir after download step
 ExternalProject_Get_Property(gcp SOURCE_DIR)
