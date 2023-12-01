@@ -185,10 +185,10 @@ protected:
   }
 
 private:
-  // id: "<table>@[split,...]"
+  // id: "<table>.<version>@[split,...]"
   inline std::string genId() const noexcept {
     std::stringstream ss;
-    ss << table_->name << "@[";
+    ss << table_->name << "." << version_ << "@[";
     for (auto& split : splits_) {
       ss << split->id() << ",";
     }

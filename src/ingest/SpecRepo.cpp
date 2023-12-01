@@ -87,7 +87,7 @@ size_t SpecRepo::refresh() noexcept {
   // TODO: we should use this batch version to validate all blocks in each node and make sure they are all aligned.
   // generate a version all spec to be made during this batch: {config version}_{current unix timestamp}
   SpecProvider provider;
-  const auto version = fmt::format("{0}.{1}", ci.version(), Evidence::unix_timestamp());
+  const auto version = ci.version();
   for (auto itr = tableSpecs.cbegin(); itr != tableSpecs.cend(); ++itr) {
     const auto& table = *itr;
     auto registry = ts->get(table);

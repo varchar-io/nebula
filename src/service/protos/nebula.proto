@@ -274,11 +274,12 @@ enum LoadError {
   TEMPLATE_NOT_FOUND = 1;
   MISSING_PARAM = 2;
   MISSING_BUCKET_VALUE = 3;
-  ANAUTHORIZED = 4;
+  UNAUTHORIZED = 4;
   EMPTY_RESULT = 5;
   NOT_SUPPORTED = 6;
   IN_LOADING = 7;
   PARSE_ERROR = 8;
+  BAD_SCHEMA = 9;
 }
 
 // load command response

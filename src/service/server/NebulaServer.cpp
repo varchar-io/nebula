@@ -278,7 +278,21 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
   // add this table spec to cluster info - auto dedup
   // tbSpec could be null if request is a permanent table
   if (tbSpec) {
+    // table name may be overwritten by the handler
     tableName = tbSpec->name;
+
+    // add preventive check to avoid bad schema crash Nebula
+    {
+      const auto& schema = tbSpec->schema;
+      try {
+        TypeSerializer::from(schema);
+      } catch (std::exception& e) {
+        LOG(ERROR) << "Load request: " << tableName << ", bad schema: " << schema;
+        reply->set_error(LoadError::BAD_SCHEMA);
+        return Status::CANCELLED;
+      }
+    }
+
     ClusterInfo::singleton().addTable(tbSpec);
 
     // check if we have data for this table already
