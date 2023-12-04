@@ -28,7 +28,7 @@ namespace test {
 TEST(CsvTest, TestNormal) {
   std::stringstream line("abc,\"{\"\"a\"\": \"\"123\"\", \"\"b\"\": \"\"456\"\"}\",99");
   nebula::storage::CsvRow row(',');
-  row.readNext(line);
+  EXPECT_TRUE(row.readNext(line, 3));
   const auto& d = row.rawData();
   EXPECT_EQ(d.size(), 3);
   EXPECT_EQ(d.at(0), "abc");
@@ -39,7 +39,7 @@ TEST(CsvTest, TestNormal) {
 TEST(CsvTest, TestLineParse) {
   std::stringstream line("a, b ,c");
   nebula::storage::CsvRow row(',');
-  row.readNext(line);
+  EXPECT_TRUE(row.readNext(line, 3));
   const auto& d = row.rawData();
   EXPECT_EQ(d.size(), 3);
   EXPECT_EQ(d.at(0), "a");
@@ -51,7 +51,7 @@ TEST(CsvTest, TestMultiLineParse) {
   std::stringstream line("a,b,c\n\n\nx,y,z\r\n");
   nebula::storage::CsvRow row(',');
   {
-    row.readNext(line);
+    EXPECT_TRUE(row.readNext(line, 3));
     const auto& d = row.rawData();
     EXPECT_EQ(d.size(), 3);
     EXPECT_EQ(d.at(0), "a");
@@ -59,7 +59,7 @@ TEST(CsvTest, TestMultiLineParse) {
     EXPECT_EQ(d.at(2), "c");
   }
   {
-    row.readNext(line);
+    EXPECT_TRUE(row.readNext(line, 3));
     const auto& d = row.rawData();
     EXPECT_EQ(d.size(), 3);
     EXPECT_EQ(d.at(0), "x");
@@ -68,7 +68,7 @@ TEST(CsvTest, TestMultiLineParse) {
     EXPECT_FALSE(!line);
   }
   {
-    row.readNext(line);
+    EXPECT_FALSE(row.readNext(line, 3));
     const auto& d = row.rawData();
     EXPECT_EQ(d.size(), 0);
     EXPECT_TRUE(!line);
@@ -79,7 +79,7 @@ TEST(CsvTest, TestMultiLineEndWithEmpty) {
   std::stringstream line("a,b,c,\n\n\nx,y,z,\r\n");
   nebula::storage::CsvRow row(',');
   {
-    row.readNext(line);
+    EXPECT_TRUE(row.readNext(line, 4));
     const auto& d = row.rawData();
     EXPECT_EQ(d.size(), 4);
     EXPECT_EQ(d.at(0), "a");
@@ -88,7 +88,7 @@ TEST(CsvTest, TestMultiLineEndWithEmpty) {
     EXPECT_EQ(d.at(3), "");
   }
   {
-    row.readNext(line);
+    EXPECT_TRUE(row.readNext(line, 4));
     const auto& d = row.rawData();
     EXPECT_EQ(d.size(), 4);
     EXPECT_EQ(d.at(0), "x");
@@ -98,7 +98,7 @@ TEST(CsvTest, TestMultiLineEndWithEmpty) {
     EXPECT_FALSE(!line);
   }
   {
-    row.readNext(line);
+    EXPECT_FALSE(row.readNext(line, 4));
     const auto& d = row.rawData();
     EXPECT_EQ(d.size(), 0);
     EXPECT_TRUE(!line);
@@ -117,7 +117,7 @@ TEST(CsvTest, TestEscapedFields) {
     std::stringstream line(std::get<0>(tp));
     auto& expected = std::get<1>(tp);
     nebula::storage::CsvRow row(',');
-    row.readNext(line);
+    EXPECT_TRUE(row.readNext(line, expected.size()));
     const auto& d = row.rawData();
     EXPECT_EQ(d.size(), expected.size());
     EXPECT_EQ(d, expected);
@@ -136,7 +136,7 @@ TEST(CsvTest, TestEmptyField) {
     std::stringstream line(std::get<0>(tp));
     auto& expected = std::get<1>(tp);
     nebula::storage::CsvRow row(',');
-    row.readNext(line);
+    EXPECT_TRUE(row.readNext(line, expected.size()));
     const auto& d = row.rawData();
     EXPECT_EQ(d.size(), expected.size());
     EXPECT_EQ(d, expected);
@@ -152,7 +152,7 @@ TEST(CsvTest, TestException) {
   for (auto& text : cases) {
     std::stringstream line(text);
     nebula::storage::CsvRow row(',');
-    EXPECT_THROW(row.readNext(line), nebula::common::NebulaException);
+    EXPECT_THROW(row.readNext(line, 1), nebula::common::NebulaException);
   }
 }
 
@@ -182,6 +182,22 @@ TEST(CsvTest, TestCsvExportedFromGSheet) {
   EXPECT_EQ(lines, 267);
 }
 
+// read sub fields
+TEST(CsvTest, TestCsvReadSubFields) {
+  nebula::meta::CsvProps csv{ true, false, "," };
+  nebula::storage::CsvReader reader("test/data/birthrate.csv", csv, { "1961", "1962", "1963" });
+  auto lines = 0;
+  while (reader.hasNext()) {
+    auto& r = reader.next();
+    LOG(INFO) << "Row: " << ++lines
+              << ", 1961: " << r.readFloat("1961")
+              << ", 1962: " << r.readFloat("1962")
+              << ", 1963: " << r.readFloat("1963");
+  }
+
+  EXPECT_EQ(lines, 267);
+}
+
 TEST(CsvTest, TestCsvWithMeta) {
   nebula::meta::CsvProps csv{ true, true, "," };
   nebula::storage::CsvReader reader("test/data/meta.csv", csv, {});
@@ -204,7 +220,7 @@ TEST(CsvTest, TestParseFormattedNumber) {
     return -1;
   });
 
-  row.readNext(line);
+  EXPECT_TRUE(row.readNext(line, 3));
   const auto& d = row.rawData();
   EXPECT_EQ(d.size(), 3);
   EXPECT_EQ(d.at(0), "abc");

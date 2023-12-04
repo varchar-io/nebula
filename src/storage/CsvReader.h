@@ -92,7 +92,7 @@ public:
 
 public:
   // true if read a valid row, otherwise false
-  bool readNext(std::istream&);
+  bool readNext(std::istream&, const size_t);
   inline const std::vector<std::string>& rawData() const {
     return data_;
   }
@@ -104,13 +104,14 @@ private:
   std::function<size_t(std::string)> columnLookup_;
 };
 
-// declare a operator to feed in stream to a csv row
-std::istream& operator>>(std::istream&, CsvRow&);
-
 class CsvReader : public nebula::surface::RowCursor {
 public:
   CsvReader(const std::string& file, const nebula::meta::CsvProps& csv, const std::vector<std::string>& columns)
-    : nebula::surface::RowCursor(0), fstream_{ file }, row_{ csv.delimiter.at(0) }, cacheRow_{ csv.delimiter.at(0) } {
+    : nebula::surface::RowCursor(0),
+      fstream_{ file },
+      row_{ csv.delimiter.at(0) },
+      cacheRow_{ csv.delimiter.at(0) },
+      numCols_{ 0 } {
     // if the file is compressed, we decompress it first
     if (csv.compression == "gz") {
       LOG(INFO) << "Ungzip the csv file before reading: " << file;
@@ -127,7 +128,7 @@ public:
     // 2. schema not provided:
     // 2.a: csv has header - we need to read headers to use them as the schema.
     // 2.b: csv has no header - fail, don't know how to process schema
-    LOG(INFO) << "Reading a delimiter separated file by " << csv.delimiter;
+    LOG(INFO) << "Reading csv file: " << file << ", delimiter: " << csv.delimiter;
     std::vector<std::string> names;
     const auto hasSchema = columns.size() > 0;
 
@@ -137,7 +138,7 @@ public:
     // scenario 1.b: if the schema is given, has no header
     if (!csv.hasHeader) {
       // 2.b - don't know how to handle
-      if (columns.size() == 0) {
+      if (!hasSchema) {
         throw NException("Can't figure out schema without header");
       }
 
@@ -145,7 +146,7 @@ public:
       names = columns;
     } else {
       // read the header
-      N_ENSURE(row_.readNext(fstream_), "Failed to read csv header unexpectedly.");
+      N_ENSURE(row_.readNext(fstream_, 1), "Failed to read csv header unexpectedly.");
 
       // extract all names
       const auto& raw = row_.rawData();
@@ -161,8 +162,13 @@ public:
     for (size_t i = 0, size = names.size(); i < size; ++i) {
       const auto name = names.at(i);
       // notes: columns could be partial of all data and it should be already deduped
+      // example:
+      // 1.a csv data has 10 columns, but only 5 columns are provided in the schema
       if (!hasSchema || std::find(columns.begin(), columns.end(), name) != columns.end()) {
         columns_[name] = i;
+
+        // update the column size
+        numCols_ = i + 1;
       }
     }
 
@@ -178,9 +184,14 @@ public:
     }
 
     // read one row
-    if (row_.readNext(fstream_)) {
+    if (row_.readNext(fstream_, numCols_)) {
       size_ = 1;
+    } else {
+      LOG(WARNING) << "Current CSV reader will be empty due to invalid first row: " << file;
     }
+
+    // just log to confirm a reader is created successfully
+    LOG(INFO) << "Successfully created csv reader for file: " << file << ", columns: " << numCols_;
   }
 
   virtual ~CsvReader() {
@@ -196,12 +207,14 @@ public:
 
     // read next row
     // we should handle those to skip less rows
-    while (row_.readNext(fstream_)) {
-      // sometimes the data has trailing delimeter
-      // and we may have one more collected than column size
-      if (row_.rawData().size() >= columns_.size()) {
-        size_ += 1;
-        break;
+    if (row_.readNext(fstream_, numCols_)) {
+      size_ += 1;
+    } else {
+      // no more data or invalid row meets, we don't skip bad rows
+      if (fstream_.eof()) {
+        LOG(INFO) << "Finish reading CSV file with total rows: " << size_;
+      } else {
+        LOG(WARNING) << "CSV reader stops at bad row number: " << size_;
       }
     }
 
@@ -235,6 +248,9 @@ private:
   std::ifstream fstream_;
   CsvRow row_;
   CsvRow cacheRow_;
+
+  // numCols is unnecessary to be the same as size of columns_
+  size_t numCols_;
   nebula::common::unordered_map<std::string, size_t> columns_;
 };
 

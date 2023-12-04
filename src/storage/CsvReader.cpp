@@ -121,7 +121,7 @@ int32_t field(std::istream& str, std::string& cell, const char deli, const bool 
 }
 
 // follow RFC4180 for CSV rules
-bool CsvRow::readNext(std::istream& str) {
+bool CsvRow::readNext(std::istream& str, const size_t numCols) {
   data_.clear();
   int state = -1;
   do {
@@ -132,13 +132,8 @@ bool CsvRow::readNext(std::istream& str) {
     }
   } while (state == 0);
 
-  // if read valid data in
-  return !data_.empty();
-}
-
-std::istream& operator>>(std::istream& str, CsvRow& data) {
-  data.readNext(str);
-  return str;
+  // data container should have enough fields to be valid to read
+  return (data_.size() >= numCols);
 }
 
 std::istream& operator>>(std::istream& is, DevNull&) {

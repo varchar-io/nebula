@@ -162,7 +162,7 @@ bool IngestSpec::load(BlockList& blocks) noexcept {
     // there might be S3 error which returns tmpFile as empty
     if (!fs->copy(split->path, split->local)) {
       LOG(WARNING) << "Failed to copy file to local: " << split->path;
-      continue;
+      return false;
     }
   }
 
@@ -582,8 +582,12 @@ bool IngestSpec::ingest(BlockList& blocks) noexcept {
         batch->add(row, bess);
       }
     } catch (const std::exception& exp) {
-      LOG(ERROR) << "Exception in creating reader for table " << table_->toString() << ", file: " << split->path << ", exception: " << exp.what();
-      continue;
+      LOG(ERROR) << "Error processing split: " << split->path
+                 << ", table: " << table_->name
+                 << ", exception: " << exp.what();
+
+      // it does not make sense to continue if we can not read the file
+      return false;
     }
   }
 
@@ -593,7 +597,12 @@ bool IngestSpec::ingest(BlockList& blocks) noexcept {
     // TODO(cao) - the block maybe too small
     // to waste lots of memory especially in case of sparse storage
     // we need to try to compress them if useful to save memory
-    blocks.push_front(makeBlock(blockId++, itr.second));
+
+    // it does not make sense to push empty block into the manager
+    auto batch = itr.second;
+    if (batch->getRows() > 0) {
+      blocks.push_front(makeBlock(blockId++, batch));
+    }
   }
 
   // return all blocks built up so far

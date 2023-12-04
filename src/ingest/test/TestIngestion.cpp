@@ -61,7 +61,7 @@ TEST(IngestTest, TestIngestSpec) {
   auto splits = { std::make_shared<SpecSplit>("nebula/v1.x", 10, 0) };
   nebula::ingest::IngestSpec spec(table, "1.0", "nebula", splits, SpecState::NEW);
   LOG(INFO) << "SPEC: " << spec.id();
-  EXPECT_EQ(spec.id(), "test@[nebula/v1.x#0#10#0,]");
+  EXPECT_EQ(spec.id(), "test.1.0@[nebula/v1.x#0#10#0,]");
   EXPECT_EQ(spec.size(), 10);
   EXPECT_EQ(spec.splits().size(), 1);
   EXPECT_EQ(spec.splits()[0]->path, "nebula/v1.x");

@@ -46,7 +46,7 @@ TEST(SpecTest, TestDataSpec) {
   auto tableSpec = nebula::meta::genTableSpec();
   auto splits = genSplits();
   DataSpec spec{ tableSpec, "1.0", "s3://test", splits, SpecState::NEW };
-  constexpr auto EXPECTED_ID = "test@[s3://test/a.csv#0#10#1,s3://test/b.csv#0#12#3,s3://test/c.csv#0#14#2,]";
+  constexpr auto EXPECTED_ID = "test.1.0@[s3://test/a.csv#0#10#1,s3://test/b.csv#0#12#3,s3://test/c.csv#0#14#2,]";
   EXPECT_EQ(spec.id(), EXPECTED_ID);
   EXPECT_EQ(spec.version(), "1.0");
   EXPECT_EQ(spec.size(), 36);
