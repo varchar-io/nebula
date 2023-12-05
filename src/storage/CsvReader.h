@@ -128,7 +128,9 @@ public:
     // 2. schema not provided:
     // 2.a: csv has header - we need to read headers to use them as the schema.
     // 2.b: csv has no header - fail, don't know how to process schema
-    LOG(INFO) << "Reading csv file: " << file << ", delimiter: " << csv.delimiter;
+    LOG(INFO) << "Reading csv file: " << file
+              << ", delimiter: " << csv.delimiter
+              << ", size: " << fstream_.tellg();
     std::vector<std::string> names;
     const auto hasSchema = columns.size() > 0;
 
@@ -187,7 +189,11 @@ public:
     if (row_.readNext(fstream_, numCols_)) {
       size_ = 1;
     } else {
-      LOG(WARNING) << "Current CSV reader will be empty due to invalid first row: " << file;
+      auto buf = fmt::format("{}", fmt::join(row_.rawData(), ","));
+      LOG(WARNING) << "Empty CSV reader due to invalid first row: " << file
+                   << ", read size: " << fstream_.gcount()
+                   << ", first row: " << buf
+                   << ", numCols: " << numCols_;
     }
 
     // just log to confirm a reader is created successfully

@@ -156,9 +156,7 @@ bool HttpService::download(const std::string& url,
                            const std::string_view post,
                            const std::string& local) const {
   // set the URL and perform
-  LOG(INFO) << "Download file from " << url
-            << " to " << local
-            << "with headers: " << headers.size();
+  LOG(INFO) << "Downloading from " << url << " to " << local;
   curl_easy_setopt(curl_, CURLOPT_URL, url.c_str());
 
   // if custom headers are present - set them
@@ -192,10 +190,15 @@ bool HttpService::download(const std::string& url,
       return false;
     }
 
+    // check download information
+    double size = 0.0;
+    res = curl_easy_getinfo(curl_, CURLINFO_SIZE_DOWNLOAD, &size);
+    LOG(INFO) << "Downloaded " << size << " bytes from " << url;
     return true;
   }
 
-  LOG(ERROR) << "Can't open file: " << local;
+  // operation system error
+  LOG(ERROR) << "Can't create file: " << local;
   return false;
 }
 
