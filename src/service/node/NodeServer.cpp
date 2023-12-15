@@ -322,7 +322,11 @@ int main(int argc, char** argv) {
 
   // init folly
   folly::init(&argc, &argv);
+
+  // enable color for glog logging to console
   FLAGS_logtostderr = 1;
+  FLAGS_colorlogtostderr = true;
+  FLAGS_colorlogtostdout = true;
 
   RunServer();
   return 0;
