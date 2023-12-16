@@ -99,12 +99,14 @@ folly::Future<RowCursorPtr> NodeClient::execute(const PlanPtr plan) {
     // a response message placeholder
     flatbuffers::grpc::Message<BatchRows> qr;
 
+    const auto& planId = plan->id();
     const Fields& f = plan->fetch<PhaseType::PARTIAL>().fields();
-    auto qp = QuerySerde::serialize(*q, plan->id(), plan->getWindow(), plan->tableVersion());
+    auto qp = QuerySerde::serialize(*q, planId, plan->getWindow(), plan->tableVersion());
     grpc::ClientContext context;
     auto channel = ConnectionPool::init()->connection(addr);
     N_ENSURE(channel != nullptr, "requires a valid channel");
     auto stub = nebula::service::NodeServer::NewStub(channel);
+    LOG(INFO) << "Execute query remotely: node=" << addr << ", plan=" << planId;
     auto status = stub->Query(&context, qp, &qr);
     if (status.ok()) {
       auto& stats = plan->ctx().stats();

@@ -141,7 +141,7 @@ const std::string ServiceProperties::jsonify(const RowCursorPtr data, const Sche
       CALLBACK_CASE(REAL, Double, readFloat)
       CALLBACK_CASE(DOUBLE, Double, readDouble)
     case Kind::BIGINT: {
-      // TODO(cao) - we need better serializeation format exhcanging with WEB
+      // TODO(cao) - we need better serializeation format exchanging with WEB
       // Due to JSON format on number - it can only have 16 significant digits
       // for any long value having more than that will be round to 0 causing precision problem.
       // So we serialize bigint into string

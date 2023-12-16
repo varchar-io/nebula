@@ -20,6 +20,7 @@
 #include <cmath>
 #include <ctime>
 #include <date/date.h>
+#include <fmt/format.h>
 #include <functional>
 #include <glog/logging.h>
 #include <iomanip>
@@ -312,6 +313,19 @@ public: /** only static methods */
     return [x]() mutable {
       return x();
     };
+  }
+
+  // random number based unique id generator with 10 digits
+  // can be used in tracing but not real UUID
+  inline static auto uid() {
+    static const auto LEN = 1000000000;
+    static auto r = rand<double>();
+    auto x = r() * LEN;
+    while (x < LEN) {
+      x *= 10;
+    }
+
+    return fmt::format("{0}", static_cast<size_t>(x));
   }
 
   // wrapper sleep_for

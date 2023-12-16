@@ -19,6 +19,7 @@
 #include <fmt/format.h>
 #include <glog/logging.h>
 
+#include "common/Evidence.h"
 #include "common/Likely.h"
 #include "type/Serde.h"
 
@@ -29,6 +30,7 @@ namespace nebula {
 namespace execution {
 
 using nebula::common::Cursor;
+using nebula::common::Evidence;
 using nebula::meta::NNode;
 using nebula::surface::RowData;
 using nebula::type::Schema;
@@ -39,7 +41,7 @@ ExecutionPlan::ExecutionPlan(
   std::unique_ptr<ExecutionPhase> plan,
   std::vector<NNode> nodes,
   Schema output)
-  : uuid_{ "<uuid>" },
+  : uuid_{ Evidence::uid() },
     ctx_{ std::move(ctx) },
     plan_{ std::move(plan) },
     nodes_{ std::move(nodes) },

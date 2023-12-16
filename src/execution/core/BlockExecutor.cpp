@@ -44,14 +44,17 @@ using nebula::surface::eval::ScriptData;
 using nebula::type::Kind;
 using nebula::type::Schema;
 
-RowCursorPtr compute(const EvaledBlock& data, const nebula::execution::BlockPhase& plan) {
+RowCursorPtr compute(
+  const std::string& planId,
+  const EvaledBlock& data,
+  const nebula::execution::BlockPhase& phase) {
   // TODO(cao) - SamplesExecutor seems having trouble evaluating scripts
   // see TestQuery: ApiTest.TestScriptSamples for repro
-  if (plan.hasAggregation() || plan.hasScript()) {
-    return std::make_shared<BlockExecutor>(data, plan);
+  if (phase.hasAggregation() || phase.hasScript()) {
+    return std::make_shared<BlockExecutor>(planId, data, phase);
   }
 
-  return std::make_shared<SamplesExecutor>(data, plan);
+  return std::make_shared<SamplesExecutor>(planId, data, phase);
 }
 
 void BlockExecutor::compute() {
@@ -88,8 +91,8 @@ void BlockExecutor::compute() {
   // and provide methods like "probably? range()? in()?"
   // and these methods will be used in each individual ValueEval and give result like above.
   // So we need an special operator to be implemented to have this function
-
-  for (size_t i = 0, size = data_.first->getRows(); i < size; ++i) {
+  const auto blockRows = data_.first->getRows();
+  for (size_t i = 0; i < blockRows; ++i) {
     ctx->reset(accessor->seek(i));
 
     // if not fullfil the condition
@@ -108,6 +111,10 @@ void BlockExecutor::compute() {
   // after the compute flat should contain all the data we need.
   index_ = 0;
   size_ = result_->getRows();
+  LOG(INFO) << "block executor: plan=" << planId_
+            << ", output rows=" << size_
+            << ", block eval=" << (int)result
+            << ", block rows=" << blockRows;
 
   if (N_UNLIKELY(FLAGS_CPU_PROF)) {
     ProfilerStop();
@@ -116,11 +123,16 @@ void BlockExecutor::compute() {
 
 void SamplesExecutor::compute() {
   // build context and computed row associated with this context
+  const auto blockRows = data_.first->getRows();
   samples_ = std::make_unique<ReferenceRows>(plan_, *data_.first);
 
   // after the compute flat should contain all the data we need.
   index_ = 0;
   size_ = samples_->size();
+
+  LOG(INFO) << "samples executor: plan=" << planId_
+            << ", output rows=" << size_
+            << ", block rows=" << blockRows;
 }
 
 } // namespace core

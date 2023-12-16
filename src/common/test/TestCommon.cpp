@@ -520,6 +520,14 @@ TEST(CommonTest, TestTimeFormatting) {
   LOG(INFO) << "ISO8601: " << Evidence::fmt_iso8601(time);
 }
 
+TEST(CommonTest, TestUid) {
+  for (auto i = 0; i < 100; ++i) {
+    auto uid = Evidence::uid();
+    LOG(INFO) << "uid: " << uid;
+    EXPECT_EQ(uid.size(), 10);
+  }
+}
+
 TEST(CommonTest, TestRand) {
   LOG(INFO) << "unix time now: " << Evidence::unix_timestamp();
 

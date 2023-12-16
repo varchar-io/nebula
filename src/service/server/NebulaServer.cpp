@@ -309,6 +309,7 @@ Status V1ServiceImpl::Load(ServerContext* ctx, const LoadRequest* req, LoadRespo
         // this seems like a problem - we have nodes but no data blocks
         err = LoadError::EMPTY_RESULT;
         LOG(WARNING) << "Table " << tableName << " has no data blocks in nodes: " << numNodes;
+        ClusterInfo::singleton().removeTable(tableName);
       }
     }
   }

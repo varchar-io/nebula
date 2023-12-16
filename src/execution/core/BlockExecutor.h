@@ -38,8 +38,14 @@ namespace core {
 class BlockExecutor : public nebula::surface::RowCursor {
 
 public:
-  BlockExecutor(const nebula::memory::EvaledBlock& data, const nebula::execution::BlockPhase& plan)
-    : nebula::surface::RowCursor(0), data_{ data }, plan_{ plan } {
+  BlockExecutor(
+    const std::string& planId,
+    const nebula::memory::EvaledBlock& data,
+    const nebula::execution::BlockPhase& plan)
+    : nebula::surface::RowCursor(0),
+      planId_{ planId },
+      data_{ data },
+      plan_{ plan } {
     // compute will finish the compute and fill the data state in
     this->compute();
   }
@@ -63,6 +69,7 @@ private:
   void compute();
 
 private:
+  const std::string& planId_;
   const nebula::memory::EvaledBlock& data_;
   const nebula::execution::BlockPhase& plan_;
   std::unique_ptr<nebula::memory::keyed::HashFlat> result_;
@@ -70,8 +77,14 @@ private:
 
 class SamplesExecutor : public nebula::surface::RowCursor {
 public:
-  SamplesExecutor(const nebula::memory::EvaledBlock& data, const nebula::execution::BlockPhase& plan)
-    : nebula::surface::RowCursor(0), data_{ data }, plan_{ plan } {
+  SamplesExecutor(
+    const std::string& planId,
+    const nebula::memory::EvaledBlock& data,
+    const nebula::execution::BlockPhase& plan)
+    : nebula::surface::RowCursor(0),
+      planId_{ planId },
+      data_{ data },
+      plan_{ plan } {
     // compute will finish the compute and fill the data state in
     this->compute();
   }
@@ -90,12 +103,16 @@ private:
   void compute();
 
 private:
+  const std::string& planId_;
   const nebula::memory::EvaledBlock& data_;
   const nebula::execution::BlockPhase& plan_;
   std::unique_ptr<ReferenceRows> samples_;
 };
 
-nebula::surface::RowCursorPtr compute(const nebula::memory::EvaledBlock&, const nebula::execution::BlockPhase&);
+nebula::surface::RowCursorPtr compute(
+  const std::string&,
+  const nebula::memory::EvaledBlock&,
+  const nebula::execution::BlockPhase&);
 
 } // namespace core
 } // namespace execution

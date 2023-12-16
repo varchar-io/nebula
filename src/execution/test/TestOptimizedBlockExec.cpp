@@ -70,7 +70,7 @@ TEST(OptimizedQuery, TestPredicatePushdown) {
     .limit(size);
 
   EvaledBlock eb{ batch, BlockEval::PARTIAL };
-  auto cursor = nebula::execution::core::compute(eb, plan);
+  auto cursor = nebula::execution::core::compute("123", eb, plan);
 }
 } // namespace test
 } // namespace execution

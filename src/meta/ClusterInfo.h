@@ -124,7 +124,7 @@ public:
     nodeManager_->setSize(node, size);
   }
 
-  inline const nebula::meta::TableSpecSet& tables() const {
+  inline const nebula::meta::TableSpecSet& tables() const noexcept {
     return tables_;
   }
 

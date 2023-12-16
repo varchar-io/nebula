@@ -52,22 +52,6 @@ using nebula::surface::eval::BlockEval;
 // set 10 seconds for now as max time to complete a query
 static const auto NODE_TIMEOUT = std::chrono::milliseconds(FLAGS_NODE_TIMEOUT);
 
-// distribute the compute task into a promise
-folly::Future<RowCursorPtr> dist(
-  folly::ThreadPoolExecutor& pool,
-  const nebula::memory::EvaledBlock& block,
-  const BlockPhase& phase) {
-  auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
-  pool.addWithPriority(
-    [&block, &phase, p]() {
-      // compute phase on block and return the result
-      p->setValue(nebula::execution::core::compute(block, phase));
-    },
-    folly::Executor::HI_PRI);
-
-  return p->getFuture();
-}
-
 /**
  * Execute a plan on a node level.
  *
@@ -82,16 +66,27 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const PlanPt
   auto ts = TableService::singleton();
   const FilteredBlocks blocks = blockManager_->query(*ts->query(blockPhase.table()).table(), plan, pool);
 
-  LOG(INFO) << "Processing total blocks: " << blocks.size();
+  const auto planId = plan->id();
+  LOG(INFO) << "plan=" << planId << ", processing total blocks: " << blocks.size();
   std::vector<folly::Future<RowCursorPtr>> results;
   vector_reserve(results, blocks.size(), "NodeExecutor::execute");
   auto& stats = plan->ctx().stats();
   std::transform(blocks.begin(), blocks.end(), std::back_inserter(results),
-                 [&blockPhase, &pool, &stats](const auto& block) {
+                 [&blockPhase, &pool, &stats, &planId](const auto& block) {
                    // increment the stats counter
                    stats.blocksScan += 1;
                    stats.rowsScan += block.first->getRows();
-                   return dist(pool, block, blockPhase);
+
+                   // create the output dataset
+                   auto p = std::make_shared<folly::Promise<RowCursorPtr>>();
+                   pool.addWithPriority(
+                     [&block, &blockPhase, &planId, p]() {
+                       // compute phase on block and return the result
+                       p->setValue(nebula::execution::core::compute(planId, block, blockPhase));
+                     },
+                     folly::Executor::HI_PRI);
+
+                   return p->getFuture();
                  });
 
   // compile the results into a single row cursor

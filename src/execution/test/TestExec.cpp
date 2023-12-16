@@ -156,7 +156,8 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       .limit(size);
 
     EvaledBlock eb{ batch, BlockEval::PARTIAL };
-    auto cursor = nebula::execution::core::compute(eb, plan);
+    auto planId = "123";
+    auto cursor = nebula::execution::core::compute(planId, eb, plan);
     auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema, plan.fields());
 
     LOG(INFO) << "verify buffer size casted from cursor: " << typeid(cursor).name();
@@ -201,7 +202,7 @@ TEST(ExecutionTest, TestRowCursorSerde) {
       .aggregate(1, { false, true });
 
     EvaledBlock eb{ batch, BlockEval::PARTIAL };
-    auto cursor = nebula::execution::core::compute(eb, plan);
+    auto cursor = nebula::execution::core::compute("123", eb, plan);
     auto fb = nebula::execution::serde::asBuffer(*cursor, outputSchema, plan.fields());
 
     LOG(INFO) << "verify buffer size casted from cursor";
@@ -239,7 +240,7 @@ TEST(ExecutionTest, TestCustomColumn) {
     .filter(constant<bool>(true));
 
   EvaledBlock eb{ batch, BlockEval::PARTIAL };
-  auto cursor = nebula::execution::core::compute(eb, plan);
+  auto cursor = nebula::execution::core::compute("123", eb, plan);
   while (cursor->hasNext()) {
     const auto& row = cursor->next();
     auto id = row.readInt("id");
