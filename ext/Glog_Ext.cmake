@@ -10,7 +10,7 @@ ExternalProject_Add(glog
   GIT_REPOSITORY https://github.com/google/glog.git
   GIT_TAG v0.6.0
   UPDATE_COMMAND ""
-  INSTALL_COMMAND ""
+  INSTALL_DIR ${NEBULA_INSTALL}
   CMAKE_ARGS ${GLOG_BUILD_OPTIONS}
   LOG_DOWNLOAD ON
   LOG_CONFIGURE ON
@@ -19,7 +19,7 @@ ExternalProject_Add(glog
 ExternalProject_Get_Property(glog SOURCE_DIR)
 ExternalProject_Get_Property(glog BINARY_DIR)
 
-set(GLOG_INCLUDE_DIRS ${SOURCE_DIR}/src ${BINARY_DIR})
+set(GLOG_INCLUDE_DIRS ${BINARY_DIR})
 file(MAKE_DIRECTORY ${GLOG_INCLUDE_DIRS})
 set(GLOG_LIBRARY_PATH ${BINARY_DIR}/libglog.a)
 set(GLOG_LIBRARY libglog)
