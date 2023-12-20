@@ -18,10 +18,34 @@ $ROOT/deploy/install-latest-docker-compose.sh
 cd $ROOT/src/service
 sudo docker-compose build
 
+# push tag by name
+pushtag()
+{
+    TAG=$1
+    # is it really good to abuse tag for component or we should create multiple repo for 1:1 map?
+    # docker tag $COSERVER $REGISTRY/$COSERVER:$TAG
+    docker tag nebula/web columns/nebula.web:$TAG
+    docker tag nebula/server columns/nebula.server:$TAG
+    docker tag nebula/node columns/nebula.node:$TAG
+    
+    # push all images to container repo
+    # docker push $REGISTRY/$COSERVER:$TAG
+    docker push columns/nebula.web:$TAG
+    docker push columns/nebula.server:$TAG
+    docker push columns/nebula.node:$TAG
+}
+
 # Just push or maybe we should do sanity check on outcome of the images
-sudo docker tag nebula/web columns/nebula.web && sudo docker push columns/nebula.web
-sudo docker tag nebula/server columns/nebula.server && sudo docker push columns/nebula.server
-sudo docker tag nebula/node columns/nebula.node && sudo docker push columns/nebula.node
+# in case this is not run by jenkins, we will use current time stamp as git commit hash
+GIT_COMMIT=`git rev-parse --short HEAD`
+if [ -z "$GIT_COMMIT" ]
+then
+      GIT_COMMIT=$(date +%s)
+fi
+echo "Current git commit: $GIT_COMMIT"
+
+pushtag $GIT_COMMIT
+pushtag latest
 
 echo 'Images are ready: [columns/nebula.web, columns/nebula.server, columns/nebula.node]'
 echo 'DONE!'
