@@ -23,13 +23,11 @@ pushtag()
 {
     TAG=$1
     # is it really good to abuse tag for component or we should create multiple repo for 1:1 map?
-    # docker tag $COSERVER $REGISTRY/$COSERVER:$TAG
     docker tag nebula/web columns/nebula.web:$TAG
     docker tag nebula/server columns/nebula.server:$TAG
     docker tag nebula/node columns/nebula.node:$TAG
     
     # push all images to container repo
-    # docker push $REGISTRY/$COSERVER:$TAG
     docker push columns/nebula.web:$TAG
     docker push columns/nebula.server:$TAG
     docker push columns/nebula.node:$TAG
@@ -44,8 +42,8 @@ then
 fi
 echo "Current git commit: $GIT_COMMIT"
 
-pushtag $GIT_COMMIT
-pushtag latest
+sudo pushtag $GIT_COMMIT
+sudo pushtag latest
 
 echo 'Images are ready: [columns/nebula.web, columns/nebula.server, columns/nebula.node]'
 echo 'DONE!'
