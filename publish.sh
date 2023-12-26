@@ -19,18 +19,21 @@ cd $ROOT/src/service
 sudo docker-compose build
 
 # push tag by name
+WEB=columns/nebula.web
+SERVER=columns/nebula.server
+NODE=columns/nebula.node
 pushtag()
 {
     TAG=$1
     # is it really good to abuse tag for component or we should create multiple repo for 1:1 map?
-    docker tag nebula/web columns/nebula.web:$TAG
-    docker tag nebula/server columns/nebula.server:$TAG
-    docker tag nebula/node columns/nebula.node:$TAG
+    sudo docker tag nebula/web $WEB:$TAG
+    sudo docker tag nebula/server $SERVER:$TAG
+    sudo docker tag nebula/node $NODE:$TAG
     
     # push all images to container repo
-    docker push columns/nebula.web:$TAG
-    docker push columns/nebula.server:$TAG
-    docker push columns/nebula.node:$TAG
+    sudo docker push $WEB:$TAG
+    sudo docker push $SERVER:$TAG
+    sudo docker push $NODE:$TAG
 }
 
 # Just push or maybe we should do sanity check on outcome of the images
@@ -38,12 +41,12 @@ pushtag()
 GIT_COMMIT=`git rev-parse --short HEAD`
 if [ -z "$GIT_COMMIT" ]
 then
-      GIT_COMMIT=$(date +%s)
+    GIT_COMMIT=$(date +%s)
 fi
 echo "Current git commit: $GIT_COMMIT"
 
-sudo pushtag $GIT_COMMIT
-sudo pushtag latest
+pushtag $GIT_COMMIT
+pushtag latest
 
 echo 'Images are ready: [columns/nebula.web, columns/nebula.server, columns/nebula.node]'
 echo 'DONE!'
