@@ -244,7 +244,6 @@ private:
   }
 
   inline void print() const noexcept {
-    std::lock_guard<std::mutex> lock(dmux_);
     LOG(INFO) << "[Block Manager] Table States Report.";
     for (const auto& node : data_) {
       LOG(INFO) << "Node: " << node.first.toString();
