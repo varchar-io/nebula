@@ -134,8 +134,14 @@ public: /** only static methods */
     // introduce a special tag to handle iso8601 flexible values: DATE or DATETIME
     // for example 2021-11-02, 2021-11-02T12:00:00Z, 2021-11-02T12:00:00.123Z
     auto p = pattern;
+    const auto size = datetime.size();
+    // empty string won't end up any valid time
+    if (size == 0) {
+      return 0;
+    }
+
     if (pattern == "iso8601") {
-      if (datetime.size() == 10) {
+      if (size == 10) {
         p = "%F";
       } else {
         p = "%FT%TZ";
@@ -146,7 +152,7 @@ public: /** only static methods */
     std::istringstream value(datetime.data());
     value >> date::parse(p, tp);
     if (value.fail()) {
-      LOG(ERROR) << "Failed to parse time: " << datetime;
+      LOG(WARNING) << "Failed to parse time string: [" << datetime << "]";
       return 0;
     }
 
