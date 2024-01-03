@@ -22,6 +22,7 @@
 #include <string>
 
 #include "JsonRow.h"
+#include "storage/NFS.h"
 #include "surface/DataSurface.h"
 
 /**
@@ -104,7 +105,11 @@ public:
     const auto& rf = props.rowsField;
     N_ENSURE(rf.size() > 0, "rows field has to be set.");
 
-    // parse the file into json object
+    // these lines are used to make copy of the data file for diagnosis
+    // LOG(INFO) << "Reading JSON data from file: " << file;
+    // auto lfs = nebula::storage::makeFS("local");
+    // lfs->copy(file, "/tmp/data.json");
+
     std::ifstream ifs{ file };
     rapidjson::IStreamWrapper isw(ifs);
     if (doc_.ParseStream(isw).HasParseError()) {

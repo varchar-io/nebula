@@ -159,6 +159,12 @@ bool HttpService::download(const std::string& url,
   LOG(INFO) << "Downloading from " << url << " to " << local;
   curl_easy_setopt(curl_, CURLOPT_URL, url.c_str());
 
+  // set HTTP version as 1.0 to avoid chunked transfer encoding
+  // curl_easy_setopt(curl_, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_0);
+
+  // set auto decompression if possible
+  curl_easy_setopt(curl_, CURLOPT_ACCEPT_ENCODING, "");
+
   // if custom headers are present - set them
   SET_HTTP_HEADERS
 
