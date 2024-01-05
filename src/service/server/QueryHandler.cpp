@@ -653,9 +653,11 @@ ErrorCode QueryHandler::validate(const QueryRequest& req) const noexcept {
     return ErrorCode::MISSING_TABLE;
   }
 
-  if (req.start() == 0 || req.end() == 0) {
-    return ErrorCode::MISSING_TIME_RANGE;
-  }
+  // TODO: enable time range check
+  // but start/end could be 0 when data field is invalid time
+  // if (req.start() == 0 || req.end() == 0) {
+  //   return ErrorCode::MISSING_TIME_RANGE;
+  // }
 
   // at least has more than 1 column (dimensions or metrics)
   if (req.dimension_size() + req.metric_size() == 0) {

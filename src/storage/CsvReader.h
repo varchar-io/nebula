@@ -153,7 +153,12 @@ public:
       // extract all names
       const auto& raw = row_.rawData();
       for (size_t i = 0, size = raw.size(); i < size; ++i) {
-        names.emplace_back(nebula::common::normalize(raw.at(i)));
+        auto name = raw.at(i);
+        if (name.empty()) {
+          name = fmt::format("col_{0}", i);
+        }
+
+        names.emplace_back(nebula::common::normalize(name));
       }
 
       // dedup column names
