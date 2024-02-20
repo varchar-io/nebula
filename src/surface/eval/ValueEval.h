@@ -88,7 +88,7 @@ std::unique_ptr<ValueEval> custom(const std::string& name, const std::string& ex
         // the first step is to evaluate the expression to ensure it works.
         // an example is like "var {name} = () => nebula.column('x') + 2;"
         // we don't need to evaluate this again and again - it should be cached
-        auto decl = ctx.script().eval<bool>(expr, true);
+        auto decl = ctx.script().evalDef(expr);
 
         // only continue if current expression evaluated correctly
         // expression evaluation will reutrn 0 and we don't check decl's value

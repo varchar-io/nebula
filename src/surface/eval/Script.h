@@ -57,11 +57,6 @@ class ScriptContext final {
       val = JS_Eval(ctx, buf.data(), buf.size(), file.c_str(), eval_flags);
     }
 
-    if (JS_IsException(val)) {
-      // js_std_dump_error(ctx);
-      return JS_EXCEPTION;
-    }
-
     return val;
   }
 
@@ -224,13 +219,13 @@ public: // API
     return typer_(col);
   }
 
-  template <typename T>
-  std::optional<T> eval(const std::string& script, bool cache = false) noexcept {
+  // evaluate a function definition into current context
+  bool evalDef(const std::string& script) noexcept {
     // if once is set, it means this script should be evaluated once
     // return instantly if this script evaluated before already
-    if (cache && flags_.count(script) > 0) {
+    if (flags_.count(script) > 0) {
       // for this type of operation, we assume caller doesn't care what return value is
-      return nebula::type::TypeDetect<T>::value;
+      return true;
     }
 
     JSValue val = eval_buf(ctx_, script);
@@ -239,12 +234,27 @@ public: // API
     nebula::common::Finally onExit([ctx = ctx_, &val]() { JS_FreeValue(ctx, val); });
 
     if (JS_IsException(val)) {
-      return std::nullopt;
+      js_std_dump_error(ctx_);
+      return false;
     }
 
     // record the evaluation if success
-    if (cache) {
-      flags_.emplace(script);
+    flags_.emplace(script);
+    return true;
+  }
+
+  // evaluate a script and return the result
+  // check its caller custom method in ValueEval.h
+  template <typename T>
+  std::optional<T> eval(const std::string& script) noexcept {
+    JSValue val = eval_buf(ctx_, script);
+
+    // release this value to avoid leak
+    nebula::common::Finally onExit([ctx = ctx_, &val]() { JS_FreeValue(ctx, val); });
+
+    if (JS_IsException(val)) {
+      js_std_dump_error(ctx_);
+      return std::nullopt;
     }
 
 #define CONVERT_TYPE(DT, M)              \
@@ -265,7 +275,10 @@ public: // API
 
     // for string type, we need to copy the value out
     if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, std::string_view>) {
-      return to<std::string_view>(ctx_, val);
+      // unfortunately, we have to cache the eval result in the context
+      // because the interface is string_view, the temporary string will be destroyed
+      strings_.emplace_back(to<std::string>(ctx_, val));
+      return strings_.back();
     }
 
 #undef CONVERT_TYPE
@@ -283,6 +296,7 @@ private:
 
   // record if a script is already evaluated
   nebula::common::unordered_set<std::string> flags_;
+  std::vector<std::string> strings_;
 };
 
 } // namespace eval
