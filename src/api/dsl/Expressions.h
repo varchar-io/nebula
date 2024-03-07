@@ -626,13 +626,12 @@ protected:
 };
 
 using RoundTimeBase = IntUDF<nebula::surface::eval::UDFType::ROUNDTIME>;
-using TimeUnitType = size_t;
 
 class RoundTimeExpression : public RoundTimeBase {
 public:
   RoundTimeExpression(std::shared_ptr<Expression> left,
-                      TimeUnitType unit,
-                      TimeUnitType startTime)
+                      size_t unit,
+                      int64_t startTime)
     : RoundTimeBase(left),
       unit_{ unit },
       start_{ startTime } {}
@@ -655,8 +654,8 @@ public:
   }
 
 private:
-  TimeUnitType unit_;
-  TimeUnitType start_;
+  size_t unit_;
+  int64_t start_;
 };
 
 using LikeBase = BoolUDF<nebula::surface::eval::UDFType::LIKE>;

@@ -263,7 +263,7 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
     N_ENSURE_NE(comma_pos, std::string::npos, "comma not found");
 
     N_ENSURE_GT(comma_pos, 0, "timeUnit is an empty string");
-    int64_t unit = stoll(custom.substr(0, comma_pos));
+    size_t unit = stoll(custom.substr(0, comma_pos));
     N_ENSURE_GT(custom.length() - comma_pos - 1, 0, "beginTime is an empty string");
     int64_t begin = stoll(custom.substr(comma_pos + 1, custom.length() - comma_pos - 1));
 
