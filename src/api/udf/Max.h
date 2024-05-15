@@ -42,7 +42,7 @@ public:
     static constexpr auto StoreSize = sizeof(NativeType);
 
   public:
-    Aggregator() : value_{ std::numeric_limits<NativeType>::min() } {}
+    Aggregator() : value_{ std::numeric_limits<NativeType>::lowest() } {}
     virtual ~Aggregator() = default;
 
     // aggregate an value in

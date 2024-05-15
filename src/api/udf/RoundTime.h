@@ -53,7 +53,7 @@ public:
         static constexpr int32_t YEAR_CASE = 6;
 
         auto timeSecs = origin.value();
-        BigIntType res = std::numeric_limits<int8_t>::min();
+        BigIntType res = std::numeric_limits<int8_t>::lowest();
         std::time_t timePoint = (std::time_t)timeSecs;
         std::time_t roundedPoint = (time_t)-1;
         switch (unit) {

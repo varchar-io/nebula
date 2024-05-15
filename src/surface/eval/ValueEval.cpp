@@ -39,7 +39,7 @@ using nebula::type::TypeTraits;
   using ET = TypeTraits<Kind::KIND>::CppType;                      \
   auto value = c->eval<ET>(ctx);                                   \
   auto min = std::numeric_limits<ET>::max();                       \
-  auto max = std::numeric_limits<ET>::min();                       \
+  auto max = std::numeric_limits<ET>::lowest();                    \
   auto values = b.partitionValues(name);                           \
   if (values.size() > 0) {                                         \
     for (auto v : values) {                                        \

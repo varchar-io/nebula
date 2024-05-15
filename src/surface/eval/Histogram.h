@@ -101,7 +101,7 @@ struct NumberHistogram : public Histogram {
     : NumberHistogram<T>(n,
                          0,
                          std::numeric_limits<T>::max(),
-                         std::numeric_limits<T>::min(),
+                         std::numeric_limits<T>::lowest(),
                          0) {}
   NumberHistogram(const std::string& n, uint64_t c, T min, T max, T sum)
     : Histogram(n, c),
