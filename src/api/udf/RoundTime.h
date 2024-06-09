@@ -52,9 +52,8 @@ public:
         static constexpr int32_t YEAR_CASE = 6;
 
         auto timeSecs = origin.value();
-        int64_t res = std::numeric_limits<int8_t>::lowest();
         std::time_t timePoint = (std::time_t)timeSecs - offset * 60;
-        std::time_t roundedPoint = (time_t)-1;
+        std::time_t roundedPoint = (std::time_t)-1;
         switch (unit) {
         case HOUR_CASE: {
           roundedPoint = nebula::common::Evidence::hour(timePoint);
@@ -82,13 +81,12 @@ public:
         }
         }
 
-        N_ENSURE_NE(roundedPoint, (time_t)-1, "rounded point not changed");
-        N_ENSURE_NE(res, std::numeric_limits<int64_t>::lowest(), "res should be defined");
+        N_ENSURE_NE(roundedPoint, (std::time_t)-1, "rounded point not changed");
 
         // rounding sometimes produces a time value before beginTime (EX: beginTime is 3/14, rounding produces 3/1)
         // since values can be negative, we take a max to ensure the answer is at least 0
         const int64_t minValue = 0;
-        return std::max(minValue, res - beginTime);
+        return std::max(minValue, roundedPoint - beginTime);
       }) {}
   virtual ~RoundTime() = default;
 };
