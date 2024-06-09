@@ -455,6 +455,14 @@ TEST(CommonTest, TestStripTime) {
   }
 }
 
+TEST(CommonTest, TestTimezoneOffset) {
+  // minutes offset for pacific time
+  auto offset = 420;
+  auto utcTime = Evidence::time("2019-05-13 05:23:45", "%Y-%m-%d %H:%M:%S");
+  auto offsetDate = Evidence::date(utcTime - offset * 60);
+  EXPECT_EQ(offsetDate, Evidence::time("2019-05-12", "%Y-%m-%d"));
+}
+
 TEST(CommonTest, Test0AndOverflow) {
   int64_t min = 0, max = 0;
   size_t size = 100;

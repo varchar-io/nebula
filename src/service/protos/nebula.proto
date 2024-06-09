@@ -209,6 +209,10 @@ message QueryRequest {
 
   // custom time unit
   uint64 time_unit = 13;
+
+  // timezone offset in minutes (following javascript getTimezoneOffset convention)
+  // timezone behind GMT is positive, ahead is negative (how to bring it back to GMT)
+  int64 tz_offset = 14;
 }
 
 // define query processing metrics
