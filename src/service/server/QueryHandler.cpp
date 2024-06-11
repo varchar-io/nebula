@@ -249,6 +249,7 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
 
     int64_t window = (int64_t)req.window();
     int64_t time_unit = (int64_t)req.time_unit();
+    int64_t tz_offset = (int64_t)req.tz_offset();
 
     auto buckets = window == 0 ? FLAGS_AUTO_WINDOW_SIZE : range / window;
     if (buckets == 0 || buckets > range) {
@@ -268,7 +269,8 @@ std::shared_ptr<Query> QueryHandler::buildQuery(const Table& tb, const QueryRequ
     } else {
       int64_t beginTime = (int64_t)req.start();
       if (time_unit > 0) {
-        auto expr = nebula::api::dsl::round(col(Table::TIME_COLUMN), time_unit, beginTime).as(Table::WINDOW_COLUMN);
+        auto expr = nebula::api::dsl::round(col(Table::TIME_COLUMN), time_unit, tz_offset, beginTime)
+                      .as(Table::WINDOW_COLUMN);
         windowExpr = std::make_shared<decltype(expr)>(expr);
       } else {
         auto expr = ((col(Table::TIME_COLUMN) - beginTime) / window * window).as(Table::WINDOW_COLUMN);

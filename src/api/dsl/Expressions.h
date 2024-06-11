@@ -629,11 +629,10 @@ using RoundTimeBase = IntUDF<nebula::surface::eval::UDFType::ROUNDTIME>;
 
 class RoundTimeExpression : public RoundTimeBase {
 public:
-  RoundTimeExpression(std::shared_ptr<Expression> left,
-                      size_t unit,
-                      int64_t startTime)
+  RoundTimeExpression(std::shared_ptr<Expression> left, int64_t unit, int64_t offset, int64_t startTime)
     : RoundTimeBase(left),
       unit_{ unit },
+      offset_{ offset },
       start_{ startTime } {}
 
 public:
@@ -644,17 +643,18 @@ public:
   virtual std::unique_ptr<nebula::surface::eval::ValueEval> asEval() const override {
     return nebula::api::udf::UDFFactory::createUDF<
       nebula::surface::eval::UDFType::ROUNDTIME,
-      nebula::type::Kind::BIGINT>(expr_, unit_, start_);
+      nebula::type::Kind::BIGINT>(expr_, unit_, offset_, start_);
   }
 
   virtual std::unique_ptr<ExpressionData> serialize() const noexcept override {
     auto data = RoundTimeBase::serialize();
-    data->custom = std::to_string(unit_) + "," + std::to_string(start_);
+    data->custom = fmt::format("{0},{1},{2}", unit_, offset_, start_);
     return data;
   }
 
 private:
-  size_t unit_;
+  int64_t unit_;
+  int64_t offset_;
   int64_t start_;
 };
 

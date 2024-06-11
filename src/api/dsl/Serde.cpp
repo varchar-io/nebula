@@ -22,6 +22,7 @@
 #include <rapidjson/writer.h>
 
 #include "Expressions.h"
+#include "common/Conv.h"
 #include "common/Wrap.h"
 #include "type/Type.h"
 
@@ -259,15 +260,12 @@ std::shared_ptr<Expression> u_expr(const std::string& alias,
 
   case UDFType::ROUNDTIME: {
     // parse comma delimited string
-    auto comma_pos = custom.find(',');
-    N_ENSURE_NE(comma_pos, std::string::npos, "comma not found");
-
-    N_ENSURE_GT(comma_pos, 0, "timeUnit is an empty string");
-    size_t unit = stoll(custom.substr(0, comma_pos));
-    N_ENSURE_GT(custom.length() - comma_pos - 1, 0, "beginTime is an empty string");
-    int64_t begin = stoll(custom.substr(comma_pos + 1, custom.length() - comma_pos - 1));
-
-    return as(alias, std::make_shared<RoundTimeExpression>(inner, unit, begin));
+    auto members = nebula::common::Chars::split<true>(custom.data(), custom.size());
+    N_ENSURE_EQ(members.size(), 3, "RoundTime UDF custom data should have 3 members");
+    auto unit = nebula::common::safe_to<int64_t>(members.at(0));
+    auto offset = nebula::common::safe_to<int64_t>(members.at(1));
+    auto begin = nebula::common::safe_to<int64_t>(members.at(2));
+    return as(alias, std::make_shared<RoundTimeExpression>(inner, unit, offset, begin));
   }
 
   case UDFType::IN: {

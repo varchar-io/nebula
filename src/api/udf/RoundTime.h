@@ -30,17 +30,16 @@ namespace udf {
 // Round a time
 using UdfRoundBase = nebula::surface::eval::UDF<nebula::type::Kind::BIGINT, nebula::type::Kind::BIGINT>;
 class RoundTime : public UdfRoundBase {
-  using BigIntType = typename nebula::type::TypeTraits<nebula::type::Kind::BIGINT>::CppType;
-
 public:
   RoundTime(const std::string& name,
             std::unique_ptr<nebula::surface::eval::ValueEval> expr,
-            BigIntType unit,
-            BigIntType beginTime)
+            int64_t unit,
+            int64_t offset,
+            int64_t beginTime)
     : UdfRoundBase(
       name,
       std::move(expr),
-      [unit, beginTime](const std::optional<InputType>& origin) -> std::optional<int64_t> {
+      [unit, offset, beginTime](const std::optional<InputType>& origin) -> std::optional<int64_t> {
         if (N_UNLIKELY(origin == std::nullopt)) {
           return std::nullopt;
         }
@@ -53,9 +52,8 @@ public:
         static constexpr int32_t YEAR_CASE = 6;
 
         auto timeSecs = origin.value();
-        BigIntType res = std::numeric_limits<int8_t>::lowest();
-        std::time_t timePoint = (std::time_t)timeSecs;
-        std::time_t roundedPoint = (time_t)-1;
+        std::time_t timePoint = (std::time_t)timeSecs - offset * 60;
+        std::time_t roundedPoint = (std::time_t)-1;
         switch (unit) {
         case HOUR_CASE: {
           roundedPoint = nebula::common::Evidence::hour(timePoint);
@@ -82,16 +80,13 @@ public:
           break;
         }
         }
-        // LOG(INFO) << nebula::common::Evidence::fmt_normal(timeSecs);
-        N_ENSURE_NE(roundedPoint, (time_t)-1, "rounded point not changed");
-        res = (BigIntType)roundedPoint;
-        N_ENSURE_NE(res, std::numeric_limits<BigIntType>::lowest(), "res should be defined");
+
+        N_ENSURE_NE(roundedPoint, (std::time_t)-1, "rounded point not changed");
 
         // rounding sometimes produces a time value before beginTime (EX: beginTime is 3/14, rounding produces 3/1)
         // since values can be negative, we take a max to ensure the answer is at least 0
-        BigIntType minValue = (BigIntType)(0);
-
-        return std::max(minValue, res - beginTime);
+        const int64_t minValue = 0;
+        return std::max(minValue, roundedPoint - beginTime);
       }) {}
   virtual ~RoundTime() = default;
 };
