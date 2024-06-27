@@ -84,6 +84,7 @@ preq icu4c
 
 # perf tools build using automake
 preq automake
+preq libtool
 
 # azure sdk requires libxml2
 preq libxml2
