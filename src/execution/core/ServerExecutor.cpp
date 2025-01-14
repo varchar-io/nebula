@@ -26,6 +26,7 @@
 DEFINE_uint64(RPC_TIMEOUT,
               35000,
               "maximum time nebula can torelate for each query in miliseconds");
+DEFINE_bool(SINGLE_NODE, false, "some use case only need to run on single node");
 
 /**
  * Nebula runtime / online meta data.
@@ -47,7 +48,14 @@ RowCursorPtr ServerExecutor::execute(
   const PlanPtr plan,
   const std::shared_ptr<NodeConnector> connector) {
   std::vector<folly::Future<RowCursorPtr>> results;
-  for (const NNode& node : plan->getNodes()) {
+  // fetch all nebula nodes that this plan will execute at
+  auto nodes = std::vector<nebula::meta::NNode>(plan->getNodes());
+  if (FLAGS_SINGLE_NODE && nodes.size() > 1) {
+    LOG(ERROR) << "Expected single node but found multiple nodes";
+    nodes.erase(nodes.begin(), nodes.end() - 1);
+  }
+
+  for (const NNode& node : nodes) {
     auto c = connector->makeClient(node, pool);
     auto f = c->execute(plan)
                // set time out handling
