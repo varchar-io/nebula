@@ -103,7 +103,7 @@ done
 (
   if [ -z "$(ls -A /usr/local/lib/libabsl_strings.a)" ]; then
     sudo rm -rf ./abseil-cpp
-    git clone --depth 1 --branch 20211102.0 https://github.com/abseil/abseil-cpp.git
+    git clone --depth 1 --branch 20240722.1 https://github.com/abseil/abseil-cpp.git
     cd abseil-cpp && mkdir build && cd build
     cmake -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=OFF -DABSL_USES_STD_STRING_VIEW=ON -DABSL_USES_STD_OPTIONAL=ON -DCMAKE_CXX_STANDARD=11 ..
     make -j$(nproc)
