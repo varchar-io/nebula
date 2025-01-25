@@ -1,6 +1,5 @@
 find_package(Threads REQUIRED)
 find_package(absl REQUIRED)
-find_package(utf8_range REQUIRED)
 
 # not sure why we only add this for APPLE only.
 include(ExternalProject)
