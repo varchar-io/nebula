@@ -1,28 +1,8 @@
 find_package(Threads REQUIRED)
 find_package(absl REQUIRED)
+find_package(utf8_range REQUIRED)
 
-# not sure why we only add this for APPLE only.
-include(ExternalProject)
-ExternalProject_Add(protobuf
-    PREFIX protobuf
-    GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
-    GIT_TAG v29.3
-    UPDATE_COMMAND ""
-    INSTALL_COMMAND ""
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    LOG_DOWNLOAD ON
-    LOG_CONFIGURE ON
-    LOG_BUILD ON)
-
-# get source dir after download step
-ExternalProject_Get_Property(protobuf SOURCE_DIR)
-
-add_custom_target(mprotobuf ALL
-    COMMAND sudo git submodule update --init --recursive && sudo cmake . -DCMAKE_CXX_STANDARD=17 -Dprotobuf_ABSL_PROVIDER=package -Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON -Dprotobuf_FETCH_DEPENDENCIES=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF && sudo cmake --build . && sudo cmake --install .
-    WORKING_DIRECTORY ${SOURCE_DIR}
-    DEPENDS protobuf)
-
+# protobuf is built already in build script
 set(PROTOBUF_INCLUDE_DIRS /usr/local/include)
 set(PROTOBUF_LIBRARY_PATH /usr/local/lib/libprotobuf.a)
 set(PROTOBUF_LIBRARY libpb)
@@ -31,7 +11,6 @@ set_target_properties(${PROTOBUF_LIBRARY} PROPERTIES
     "IMPORTED_LOCATION" "${PROTOBUF_LIBRARY_PATH}"
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${PROTOBUF_INCLUDE_DIRS}")
-add_dependencies(${PROTOBUF_LIBRARY} mprotobuf)
 target_link_libraries(${PROTOBUF_LIBRARY}
     INTERFACE absl::bad_any_cast_impl
     INTERFACE absl::bad_optional_access

@@ -111,6 +111,19 @@ done
   fi
 )
 
+# Install Protobuf
+(
+  if [ -z "$(ls -A /usr/local/lib/libprotobuf.a)" ]; then
+    sudo rm -rf ./protobuf
+    git clone --depth 1 --branch v29.3 https://github.com/protocolbuffers/protobuf.git
+    cd protobuf && mkdir build && cd build
+    sudo git submodule update --init --recursive
+    sudo cmake . -DCMAKE_CXX_STANDARD=17 -Dprotobuf_ABSL_PROVIDER=package -Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON -Dprotobuf_FETCH_DEPENDENCIES=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF
+    sudo cmake --build . 
+    sudo cmake --install .
+  fi
+)
+
 # Install crc32c
 (
   if [ -z "$(ls -A /usr/local/lib/libcrc32c.a)" ]; then
