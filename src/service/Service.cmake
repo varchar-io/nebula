@@ -1,5 +1,5 @@
 find_package(absl REQUIRED)
-find_package(utf8_range REQUIRED)
+find_package(utf8_range)
 set(NEBULA_SERVICE NService)
 
 # build hello world examples
