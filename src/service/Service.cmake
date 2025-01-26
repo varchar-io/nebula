@@ -155,10 +155,10 @@ foreach(i RANGE ${list_max_index})
     PRIVATE libgrpc_unsecure
     PRIVATE libgrpcpp_channelz
     PRIVATE libupb_json_lib
+    PRIVATE libupb_textformat_lib
     PRIVATE libupb_mem_lib
     PRIVATE libupb_message_lib
     PRIVATE libupb_mini_descriptor_lib
-    PRIVATE libupb_textformat_lib
     PRIVATE libupb_wire_lib
     PRIVATE libupb_base_lib
     PRIVATE ${OMM_LIBRARY}
