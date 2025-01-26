@@ -62,6 +62,7 @@ add_dependencies(${CARES_LIBRARY} c-ares)
 # build flatbuffers which is used for internal communications between nodes
 # to enable flatc available on the machine, just do "make install" in the build folder
 SET(FB_OPTS
+  -DCMAKE_CXX_STANDARD:STRING=17
   -DFLATBUFFERS_BUILD_TESTS:BOOL=OFF
   -DCMAKE_CXX_FLAGS=-Wno-error=unused-but-set-variable)
 ExternalProject_Add(flatbuffers
