@@ -53,17 +53,7 @@ set_target_properties(${GCP_COMM_LIBRARY} PROPERTIES
     "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
     "INTERFACE_INCLUDE_DIRECTORIES" "${GCP_INCLUDE_DIRS}")
 
-# gcp rest internal lib
-set(GCP_RESTINT_LIB ${BINARY_DIR}/google/cloud/libgoogle_cloud_cpp_rest_internal.a)
-set(GCP_RESTINT_LIBRARY libgcprestint)
-add_library(${GCP_RESTINT_LIBRARY} UNKNOWN IMPORTED)
-set_target_properties(${GCP_RESTINT_LIBRARY} PROPERTIES
-    "IMPORTED_LOCATION" "${GCP_RESTINT_LIB}"
-    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
-    "INTERFACE_INCLUDE_DIRECTORIES" "${GCP_INCLUDE_DIRS}")
-
 # find abseil since we already installed it
-# add_dependencies(${GCP_COMM_LIBRARY} absl Crc32c)
 target_link_libraries(${GCP_COMM_LIBRARY}
     INTERFACE absl::strings
     INTERFACE absl::time
@@ -74,6 +64,18 @@ target_link_libraries(${GCP_COMM_LIBRARY}
     INTERFACE ${CURL_LIBRARY}
     INTERFACE ${OPENSSL_LIBRARY}
     INTERFACE ${CRYPTO_LIBRARY})
+
+# gcp rest internal lib
+set(GCP_RESTINT_LIB ${BINARY_DIR}/google/cloud/libgoogle_cloud_cpp_rest_internal.a)
+set(GCP_RESTINT_LIBRARY libgcprestint)
+add_library(${GCP_RESTINT_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${GCP_RESTINT_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${GCP_RESTINT_LIB}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES" "${GCP_INCLUDE_DIRS}")
+
+target_link_libraries(${GCP_RESTINT_LIBRARY}
+    INTERFACE ${GCP_COMM_LIBRARY})
 
 # gcs lib
 set(GCS_LIB ${BINARY_DIR}/google/cloud/storage/libgoogle_cloud_cpp_storage.a)
@@ -87,5 +89,4 @@ set_target_properties(${GCS_LIBRARY} PROPERTIES
 # declare the build dependency and link dependency
 add_dependencies(${GCS_LIBRARY} gcp)
 target_link_libraries(${GCS_LIBRARY}
-    INTERFACE ${GCP_COMM_LIBRARY}
     INTERFACE ${GCP_RESTINT_LIBRARY})
