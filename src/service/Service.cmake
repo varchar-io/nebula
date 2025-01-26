@@ -142,14 +142,14 @@ foreach(i RANGE ${list_max_index})
   # if we messed up the order, the link will report huge amount of errors like undefined referneces.
   target_link_libraries(${target}
     PRIVATE ${NEBULA_SERVICE}
-    PRIVATE libaddress_sorting
-    PRIVATE libgpr
     PRIVATE libgrpc++
+    PRIVATE libgrpc
+    PRIVATE libgpr
+    PRIVATE libaddress_sorting
     PRIVATE libgrpc++_alts
     PRIVATE libgrpc++_error_details
     PRIVATE libgrpc++_reflection
     PRIVATE libgrpc++_unsecure
-    PRIVATE libgrpc
     PRIVATE libgrpc_authorization_provider
     PRIVATE libgrpc_plugin_support
     PRIVATE libgrpc_unsecure
