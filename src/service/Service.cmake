@@ -224,6 +224,9 @@ target_link_libraries(ServiceTests
   PRIVATE libgrpc
   PRIVATE libgpr
   PRIVATE libaddress_sorting
+  PRIVATE libupb_textformat_lib
+  PRIVATE libupb_wire_lib
+  PRIVATE libupb_base_lib
   PRIVATE ${CARES_LIBRARY}
   PRIVATE ${ZLIB_LIBRARY}
   PRIVATE ${XXH_LIBRARY}
