@@ -146,6 +146,18 @@ foreach(i RANGE ${list_max_index})
     PRIVATE libgrpc
     PRIVATE libgpr
     PRIVATE libaddress_sorting
+    PRIVATE libgrpc++_alts
+    PRIVATE libgrpc++_error_details
+    PRIVATE libgrpc++_reflection
+    PRIVATE libgrpc++_unsecure
+    PRIVATE libgrpc_authorization_provider
+    PRIVATE libgrpc_plugin_support
+    PRIVATE libgrpc_unsecure
+    PRIVATE libgrpcpp_channelz
+    PRIVATE libupb_json_lib
+    PRIVATE libupb_mem_lib
+    PRIVATE libupb_message_lib
+    PRIVATE libupb_mini_descriptor_lib
     PRIVATE libupb_textformat_lib
     PRIVATE libupb_wire_lib
     PRIVATE libupb_base_lib
