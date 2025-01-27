@@ -234,13 +234,6 @@ endif()
 # triplet: VCPKG_TARGET_TRIPLET
 set(VCPKG_ROOT ${HOME_DIR}/vcpkg)
 set(VCPKG_TOOLS ${VCPKG_ROOT}/installed/${VCPKG_TARGET_TRIPLET}/tools)
-# protoc compiler
-# set(PROTO_COMPILER ${VCPKG_TOOLS}/protobuf/protoc)
-# flatbuffers compiler
-# set(FLATBUFFERS_COMPILER ${VCPKG_TOOLS}/flatbuffers/flatc)
-# grpc plugins: cpp plugin, node plugin 
-# set(GRPC_CPP_PLUGIN ${VCPKG_TOOLS}/grpc/grpc_cpp_plugin)
-# set(GRPC_NODE_PLUGIN ${VCPKG_TOOLS}/grpc/grpc_node_plugin)
 
 ########################## Self Maintained ##########################
 # include xxhash

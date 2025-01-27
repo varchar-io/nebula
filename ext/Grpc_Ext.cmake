@@ -61,18 +61,8 @@ add_dependencies(${CARES_LIBRARY} c-ares)
 
 # build flatbuffers which is used for internal communications between nodes
 # to enable flatc available on the machine, just do "make install" in the build folder
-# NOTE - latest flatbuffers is not in sync with latest grpc.
-# I made a local change to solve the the build break:
-# 1. ~/grpc/src/grpc/include/grpcpp/impl/codegen/byte_buffer.h
-#   move method to public grpc_byte_buffer* c_buffer() { return buffer_; }
-# 2. ~/flatbuffers/src/flatbuffers/include/flatbuffers/grpc.h
-#   use ByteBuffer as parameter type of Deserialize
-#     + static grpc::Status Deserialize(ByteBuffer *bb, flatbuffers::grpc::Message<T> *msg) {
-#     + grpc_byte_buffer* buffer = nullptr;
-#     + if (!bb || !(buffer = bb->c_buffer())) {
-#         return ::grpc::Status(::grpc::StatusCode::INTERNAL, "No payload");
-#       }
 SET(FB_OPTS
+  -DCMAKE_CXX_STANDARD:STRING=17
   -DFLATBUFFERS_BUILD_TESTS:BOOL=OFF
   -DCMAKE_CXX_FLAGS=-Wno-error=unused-but-set-variable)
 ExternalProject_Add(flatbuffers
@@ -103,27 +93,19 @@ add_dependencies(${FLATBUFFERS_LIBRARY} flatbuffers)
 # set flatbuffers compiler
 SET(FLATBUFFERS_COMPILER ${BINARY_DIR}/flatc)
 
-# -DgRPC_PROTOBUF_PROVIDER:STRING=package
-# -DgRPC_PROTOBUF_PACKAGE_TYPE:STRING=CONFIG
-# -DProtobuf_DIR:PATH=${CMAKE_CURRENT_BINARY_DIR}/protobuf
-# -DgRPC_ZLIB_PROVIDER:STRING=package
-# -DZLIB_ROOT:STRING=${CMAKE_CURRENT_BINARY_DIR}/zlib
-# -DgRPC_CARES_PROVIDER:STRING=package
-# -Dc-ares_DIR:PATH=${CMAKE_CURRENT_BINARY_DIR}/c-ares/src/c-ares-build/
-# -DgRPC_SSL_PROVIDER:STRING=package
-
 # build grpc
 # torelate the build of grpc which uses boringssl that uses golang to execute tests
 # unless we add boringssl build here as external dependency as well
 # Install golang here https://golang.org/doc/install?download=go1.12.4.darwin-amd64.pkg for mac
 
 SET(GRPC_CMAKE_ARGS
+  -DCMAKE_CXX_STANDARD:STRING=17
   -DgRPC_BUILD_CSHARP_EXT:BOOL=OFF
-  -DgRPC_INSTALL:BOOL=OFF
   -DgRPC_BUILD_TESTS:BOOL=OFF
-  -DgRPC_SSL_PROVIDER:STRING=package
+  -DgRPC_INSTALL:BOOL=OFF
   -DgRPC_ABSL_PROVIDER:STRING=package
   -DgRPC_PROTOBUF_PROVIDER:STRING=package
+  -DgRPC_SSL_PROVIDER:STRING=package
   -DCMAKE_INSTALL_PREFIX:PATH=${CMAKE_CURRENT_BINARY_DIR}/grpc)
 
 # unfortunately ssllib in latest macos doesn't allow application to use
@@ -139,7 +121,7 @@ endif()
 ExternalProject_Add(grpc
   PREFIX grpc
   GIT_REPOSITORY https://github.com/grpc/grpc.git
-  GIT_TAG v1.33.2
+  GIT_TAG v1.70.0
   CMAKE_CACHE_ARGS ${GRPC_CMAKE_ARGS}
   UPDATE_COMMAND ""
   INSTALL_COMMAND ""
@@ -158,14 +140,31 @@ file(MAKE_DIRECTORY ${GRPC_INCLUDE_DIRS})
 # ./build> ll grpc/src/grpc-build/*.a | cut -d'/' -f4 | sed -e 's/^/\$\{BINARY_DIR\}\//'
 # use their file name as the LIB target name
 foreach(_lib
-  libaddress_sorting libgpr libgrpc libgrpc_cronet libgrpc_plugin_support libgrpc_unsecure libgrpcpp_channelz
-  libgrpc++ libgrpc++_cronet libgrpc++_reflection libgrpc++_unsecure libgrpc++_error_details libupb)
+  libaddress_sorting
+  libgpr
+  libgrpc++
+  libgrpc++_alts
+  libgrpc++_error_details
+  libgrpc++_reflection
+  libgrpc++_unsecure
+  libgrpc
+  libgrpc_authorization_provider
+  libgrpc_plugin_support
+  libgrpc_unsecure
+  libgrpcpp_channelz
+  libupb_base_lib
+  libupb_json_lib
+  libupb_mem_lib
+  libupb_message_lib
+  libupb_mini_descriptor_lib
+  libupb_textformat_lib
+  libupb_wire_lib)
   add_library(${_lib} UNKNOWN IMPORTED)
   set_target_properties(${_lib} PROPERTIES
       "IMPORTED_LOCATION" "${BINARY_DIR}/${_lib}.a"
       "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
       "INTERFACE_INCLUDE_DIRECTORIES" "${GRPC_INCLUDE_DIRS}")
-  add_dependencies(${_lib} 
+  add_dependencies(${_lib}
       ${CARES_LIBRARY}
       ${ZLIB_LIBRARY}
       ${PROTOBUF_LIBRARY}
@@ -175,5 +174,5 @@ endforeach()
 
 # also add all useful executable out of the build
 # used in protobuf build
-SET(GRPC_CPP_PLUGIN ${BINARY_DIR}/grpc_cpp_plugin)
-SET(GRPC_NODE_PLUGIN ${BINARY_DIR}/grpc_node_plugin)
+set(GRPC_CPP_PLUGIN ${BINARY_DIR}/grpc_cpp_plugin)
+set(GRPC_NODE_PLUGIN ${BINARY_DIR}/grpc_node_plugin)

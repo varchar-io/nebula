@@ -128,7 +128,7 @@ void diagnoseInfo(CURL* curl) {
   EXTRACT(double, connect_time, CURLINFO_CONNECT_TIME)
   EXTRACT(double, appcon_time, CURLINFO_APPCONNECT_TIME)
 
-  EXTRACT(double, down_size, CURLINFO_SIZE_DOWNLOAD)
+  EXTRACT(double, down_size, CURLINFO_SIZE_DOWNLOAD_T)
   EXTRACT(long, num_connects, CURLINFO_NUM_CONNECTS)
   EXTRACT(long, ssl_vr, CURLINFO_SSL_VERIFYRESULT)
 
@@ -198,7 +198,7 @@ bool HttpService::download(const std::string& url,
 
     // check download information
     double size = 0.0;
-    res = curl_easy_getinfo(curl_, CURLINFO_SIZE_DOWNLOAD, &size);
+    res = curl_easy_getinfo(curl_, CURLINFO_SIZE_DOWNLOAD_T, &size);
     LOG(INFO) << "Downloaded " << size << " bytes from " << url;
     return true;
   }

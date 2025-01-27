@@ -89,7 +89,6 @@ preq libtool
 # azure sdk requires libxml2
 preq libxml2
 
-
 # build and install gflags - brew has only dylib
 (
   if [ -z "$(ls -A /usr/local/lib/libgflags.a)" ]; then
@@ -105,11 +104,24 @@ preq libxml2
 (
   if [ -z "$(ls -A /usr/local/lib/libabsl_strings.a)" ]; then
     sudo rm -rf ./abseil-cpp
-    git clone --depth 1 --branch 20211102.0 https://github.com/abseil/abseil-cpp.git
+    git clone --depth 1 --branch 20240722.1 https://github.com/abseil/abseil-cpp.git
     cd abseil-cpp && mkdir build && cd build
-    cmake -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=OFF -DABSL_USES_STD_STRING_VIEW=ON -DABSL_USES_STD_OPTIONAL=ON -DCMAKE_CXX_STANDARD=11 ..
+    cmake -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=OFF -DABSL_USES_STD_STRING_VIEW=ON -DABSL_USES_STD_OPTIONAL=ON -DCMAKE_CXX_STANDARD=17 ..
     make -j$(nproc)
     sudo make install
+  fi
+)
+
+# Install Protobuf
+(
+  if [ -z "$(ls -A /usr/local/lib/libprotobuf.a)" ]; then
+    sudo rm -rf ./protobuf
+    git clone --depth 1 --branch v29.3 https://github.com/protocolbuffers/protobuf.git
+    cd protobuf
+    sudo git submodule update --init --recursive
+    sudo cmake . -DCMAKE_CXX_STANDARD=17 -Dprotobuf_ABSL_PROVIDER=package -Dprotobuf_LOCAL_DEPENDENCIES_ONLY=ON -Dprotobuf_FETCH_DEPENDENCIES=OFF -Dprotobuf_BUILD_TESTS=OFF -Dprotobuf_BUILD_SHARED_LIBS=OFF
+    sudo cmake --build . 
+    sudo cmake --install .
   fi
 )
 
@@ -117,7 +129,7 @@ preq libxml2
 (
   if [ -z "$(ls -A /usr/local/lib/libcrc32c.a)" ]; then
     sudo rm -rf ./crc32c
-    git clone --depth 1 --branch 1.1.1 https://github.com/google/crc32c.git
+    git clone --depth 1 --branch 1.1.2 https://github.com/google/crc32c.git
     cd crc32c && mkdir build && cd build
     cmake -DCRC32C_BUILD_TESTS=OFF -DCRC32C_BUILD_BENCHMARKS=OFF -DCRC32C_USE_GLOG=OFF ..
     make -j$(nproc)

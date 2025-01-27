@@ -30,6 +30,7 @@ add_executable(CommonTests
 
 target_link_libraries(CommonTests 
     PRIVATE ${NEBULA_COMMON}
+    PRIVATE ${GCS_LIBRARY}
     PRIVATE ${OMM_LIBRARY}
     PRIVATE ${GTEST_LIBRARY} 
     PRIVATE ${GTEST_MAIN_LIBRARY}
@@ -45,7 +46,6 @@ target_link_libraries(CommonTests
     PRIVATE ${FOLLY_LIBRARY}
     PRIVATE ${QJS_LIBRARY}
     PRIVATE ${LEVELDB_LIBRARY}
-    PRIVATE ${GCS_LIBRARY}
     PRIVATE ${CURL_LIBRARY})
 
 # build test binary

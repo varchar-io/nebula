@@ -1,9 +1,13 @@
 find_package(Threads REQUIRED)
+find_package(absl REQUIRED)
+find_package(Crc32c REQUIRED)
 
 include(ExternalProject)
 
 SET(GCP_OPTS
+    -DCMAKE_CXX_STANDARD:STRING=17
     -DBUILD_TESTING=OFF
+    -DGOOGLE_CLOUD_CPP_WITH_MOCKS=OFF
     -DGOOGLE_CLOUD_CPP_ENABLE_BIGQUERY=OFF
     -DGOOGLE_CLOUD_CPP_ENABLE_BIGTABLE=OFF
     -DGOOGLE_CLOUD_CPP_ENABLE_SPANNER=OFF
@@ -27,7 +31,7 @@ endif()
 ExternalProject_Add(gcp
     PREFIX gcp
     GIT_REPOSITORY https://github.com/googleapis/google-cloud-cpp.git
-    GIT_TAG v1.24.0
+    GIT_TAG v2.33.0
     # SOURCE_SUBDIR google/cloud/storage
     CMAKE_ARGS ${GCP_OPTS}
     INSTALL_COMMAND ""
@@ -50,17 +54,28 @@ set_target_properties(${GCP_COMM_LIBRARY} PROPERTIES
     "INTERFACE_INCLUDE_DIRECTORIES" "${GCP_INCLUDE_DIRS}")
 
 # find abseil since we already installed it
-# add_dependencies(${GCP_COMM_LIBRARY} absl Crc32c)
-find_package(absl REQUIRED)
-find_package(Crc32c REQUIRED)
 target_link_libraries(${GCP_COMM_LIBRARY}
     INTERFACE absl::strings
     INTERFACE absl::time
     INTERFACE absl::bad_optional_access
     INTERFACE absl::str_format_internal
+    INTERFACE absl::crc32c
     INTERFACE Crc32c::crc32c
+    INTERFACE ${CURL_LIBRARY}
     INTERFACE ${OPENSSL_LIBRARY}
     INTERFACE ${CRYPTO_LIBRARY})
+
+# gcp rest internal lib
+set(GCP_RESTINT_LIB ${BINARY_DIR}/google/cloud/libgoogle_cloud_cpp_rest_internal.a)
+set(GCP_RESTINT_LIBRARY libgcprestint)
+add_library(${GCP_RESTINT_LIBRARY} UNKNOWN IMPORTED)
+set_target_properties(${GCP_RESTINT_LIBRARY} PROPERTIES
+    "IMPORTED_LOCATION" "${GCP_RESTINT_LIB}"
+    "IMPORTED_LINK_INTERFACE_LIBRARIES" "${CMAKE_THREAD_LIBS_INIT}"
+    "INTERFACE_INCLUDE_DIRECTORIES" "${GCP_INCLUDE_DIRS}")
+
+target_link_libraries(${GCP_RESTINT_LIBRARY}
+    INTERFACE ${GCP_COMM_LIBRARY})
 
 # gcs lib
 set(GCS_LIB ${BINARY_DIR}/google/cloud/storage/libgoogle_cloud_cpp_storage.a)
@@ -74,4 +89,4 @@ set_target_properties(${GCS_LIBRARY} PROPERTIES
 # declare the build dependency and link dependency
 add_dependencies(${GCS_LIBRARY} gcp)
 target_link_libraries(${GCS_LIBRARY}
-    INTERFACE ${GCP_COMM_LIBRARY})
+    INTERFACE ${GCP_RESTINT_LIBRARY})

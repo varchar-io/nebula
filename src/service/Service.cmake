@@ -37,30 +37,30 @@ add_custom_command(
 include_directories("${GEN_DIR}")
 
 # generate a node client for this service for js code
-SET(NODE_GEN "${GEN_DIR}/nodejs")
-file(MAKE_DIRECTORY ${NODE_GEN})
-add_custom_target(nebula_node_client ALL
-  COMMAND ${PROTO_COMPILER}
-    --grpc_out="${NODE_GEN}"
-    --js_out=import_style=commonjs,binary:${NODE_GEN}
-    -I "${nproto_path}"
-    --plugin=protoc-gen-grpc="${GRPC_NODE_PLUGIN}"
-    "${nproto}"
-  DEPENDS grpc ${nproto} ${PROTOBUF_LIBRARY})
+# SET(NODE_GEN "${GEN_DIR}/nodejs")
+# file(MAKE_DIRECTORY ${NODE_GEN})
+# add_custom_target(nebula_node_client ALL
+#   COMMAND ${PROTO_COMPILER}
+#     --grpc_out="${NODE_GEN}"
+#     --js_out=import_style=commonjs,binary:${NODE_GEN}
+#     -I "${nproto_path}"
+#     --plugin=protoc-gen-grpc="${GRPC_NODE_PLUGIN}"
+#     "${nproto}"
+#   DEPENDS grpc ${nproto} ${PROTOBUF_LIBRARY})
 
 ## java code doesn't build on ARM based machine (M1) - disable it for now
-if(ARM STREQUAL "0")
-  SET(JAVA_GEN "${GEN_DIR}/java")
-  file(MAKE_DIRECTORY ${JAVA_GEN})
-  add_custom_target(nebula_java_client ALL
-    COMMAND ${PROTO_COMPILER}
-        --grpc_out="${JAVA_GEN}"
-        --java_out=${JAVA_GEN}
-        -I "${nproto_path}"
-        --plugin=protoc-gen-grpc="${GRPC_JAVA_PLUGIN}"
-        "${nproto}"
-  DEPENDS build-grpc-java-compiler ${nproto} ${PROTOBUF_LIBRARY})
-endif()
+# if(ARM STREQUAL "0")
+#   SET(JAVA_GEN "${GEN_DIR}/java")
+#   file(MAKE_DIRECTORY ${JAVA_GEN})
+#   add_custom_target(nebula_java_client ALL
+#     COMMAND ${PROTO_COMPILER}
+#         --grpc_out="${JAVA_GEN}"
+#         --java_out=${JAVA_GEN}
+#         -I "${nproto_path}"
+#         --plugin=protoc-gen-grpc="${GRPC_JAVA_PLUGIN}"
+#         "${nproto}"
+#   DEPENDS build-grpc-java-compiler ${nproto} ${PROTOBUF_LIBRARY})
+# endif()
 
 # build flatbuffers schema
 get_filename_component(nfbs "${SERVICE_DIR}/fbs/node.fbs" ABSOLUTE)
@@ -104,11 +104,7 @@ target_link_libraries(${NEBULA_SERVICE}
     PUBLIC ${Boost_regex_LIBRARY}
     PUBLIC ${ROARING_LIBRARY}
     PUBLIC ${MSGPACK_LIBRARY}
-    PUBLIC ${LEVELDB_LIBRARY}
-    PUBLIC absl::hash
-    PUBLIC absl::status
-    PUBLIC absl::statusor
-    PUBLIC absl::synchronization)
+    PUBLIC ${LEVELDB_LIBRARY})
 
 add_dependencies(${NEBULA_SERVICE} compile_fbs)
 
@@ -144,14 +140,27 @@ foreach(i RANGE ${list_max_index})
   # NOTE that - on linux, GCC behaves wired, the order of the dependencies matter
   # which means, libgrpc++ depends on libgrpc, and likewise, libgrpc depends on libgpr and address_sorting
   # if we messed up the order, the link will report huge amount of errors like undefined referneces.
-  find_package(absl REQUIRED)
   target_link_libraries(${target}
     PRIVATE ${NEBULA_SERVICE}
     PRIVATE libgrpc++
     PRIVATE libgrpc
     PRIVATE libgpr
     PRIVATE libaddress_sorting
-    PRIVATE libupb
+    PRIVATE libgrpc++_alts
+    PRIVATE libgrpc++_error_details
+    PRIVATE libgrpc++_reflection
+    PRIVATE libgrpc++_unsecure
+    PRIVATE libgrpc_authorization_provider
+    PRIVATE libgrpc_plugin_support
+    PRIVATE libgrpc_unsecure
+    PRIVATE libgrpcpp_channelz
+    PRIVATE libupb_json_lib
+    PRIVATE libupb_textformat_lib
+    PRIVATE libupb_mem_lib
+    PRIVATE libupb_message_lib
+    PRIVATE libupb_mini_descriptor_lib
+    PRIVATE libupb_wire_lib
+    PRIVATE libupb_base_lib
     PRIVATE ${OMM_LIBRARY}
     PRIVATE ${URIP_LIBRARY}
     PRIVATE ${FOLLY_LIBRARY}
@@ -215,6 +224,9 @@ target_link_libraries(ServiceTests
   PRIVATE libgrpc
   PRIVATE libgpr
   PRIVATE libaddress_sorting
+  PRIVATE libupb_textformat_lib
+  PRIVATE libupb_wire_lib
+  PRIVATE libupb_base_lib
   PRIVATE ${CARES_LIBRARY}
   PRIVATE ${ZLIB_LIBRARY}
   PRIVATE ${XXH_LIBRARY}
