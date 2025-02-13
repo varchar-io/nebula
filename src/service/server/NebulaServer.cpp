@@ -16,6 +16,7 @@
 
 #include "NebulaServer.h"
 
+#include <absl/log/initialize.h>
 #include <cstdlib>
 #include <fmt/format.h>
 #include <gflags/gflags.h>
@@ -598,6 +599,10 @@ void RunServer() {
 }
 
 int main(int argc, char** argv) {
+  // absl logging initialization
+  absl::InitializeLog();
+
+  // folly initialization
   folly::init(&argc, &argv);
 
   // enable color for glog logging to console

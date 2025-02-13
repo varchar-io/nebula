@@ -100,7 +100,7 @@ folly::Future<FilteredBlocks> batch(folly::ThreadPoolExecutor& pool,
   return p->getFuture();
 }
 
-const FilteredBlocks BlockManager::query(const Table& table, const PlanPtr plan, folly::ThreadPoolExecutor& pool) {
+FilteredBlocks BlockManager::query(const Table& table, const PlanPtr plan, folly::ThreadPoolExecutor& pool) {
   // 1. a table and a predicate should determined by meta service how many blocks we should query
   // 2. determine how many blocks are not in memory yet, if they are not, load them in
   // 3. fan out the query plan to execute on each block in parallel (not this function but the caller)

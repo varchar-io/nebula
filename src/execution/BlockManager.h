@@ -72,7 +72,7 @@ public:
   static std::shared_ptr<BlockManager> init();
 
 public:
-  const FilteredBlocks query(const nebula::meta::Table&, const PlanPtr, folly::ThreadPoolExecutor&);
+  FilteredBlocks query(const nebula::meta::Table&, const PlanPtr, folly::ThreadPoolExecutor&);
 
   // query all nodes that hold data for given table
   const std::vector<nebula::meta::NNode> query(const std::string&);

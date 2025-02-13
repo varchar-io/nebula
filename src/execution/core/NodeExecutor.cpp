@@ -35,6 +35,8 @@ DEFINE_uint64(NODE_TIMEOUT,
               30000,
               "maximum time nebula can torelate for each query in miliseconds");
 
+DEFINE_bool(SINGLE_BLOCK, false, "some preventive use case only need to query a single block.");
+
 /**
  * Nebula runtime / online meta data.
  */
@@ -64,10 +66,17 @@ RowCursorPtr NodeExecutor::execute(folly::ThreadPoolExecutor& pool, const PlanPt
   // launch block executor on each in parallel
   // TODO(cao): this table service instance potentially can be carried by a query context on each node
   auto ts = TableService::singleton();
-  const FilteredBlocks blocks = blockManager_->query(*ts->query(blockPhase.table()).table(), plan, pool);
+  FilteredBlocks blocks = blockManager_->query(*ts->query(blockPhase.table()).table(), plan, pool);
 
   const auto planId = plan->id();
   LOG(INFO) << "plan=" << planId << ", processing total blocks: " << blocks.size();
+  // This is preventive use case only, false by default.
+  // The deployed service ask for always query single block.
+  if (FLAGS_SINGLE_BLOCK && blocks.size() > 1) {
+    LOG(ERROR) << "Expected single block but found multiple blocks.";
+    blocks.erase(blocks.begin(), blocks.end() - 1);
+  }
+
   std::vector<folly::Future<RowCursorPtr>> results;
   vector_reserve(results, blocks.size(), "NodeExecutor::execute");
   auto& stats = plan->ctx().stats();

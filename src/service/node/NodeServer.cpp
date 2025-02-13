@@ -18,6 +18,7 @@
 // #define USE_YOMM2_MD
 // #endif
 
+#include <absl/log/initialize.h>
 #include <gflags/gflags.h>
 
 #include "NodeServer.h"
@@ -285,9 +286,9 @@ void RunServer() {
 
   // for every second, ping discovery server
   const auto discovery = ReadNServer();
-  const auto client = nebula::service::client::NebulaClient::make(discovery);
-  nebula::service::ServiceInfo info;
   if (discovery.size() > 0) {
+    const auto client = nebula::service::client::NebulaClient::make(discovery);
+    nebula::service::ServiceInfo info;
     // if discovery is localhost, we use localhost to ping as well.
     // otherwise we use dns IPv4 to ping
     constexpr auto LOCAL = "localhost";
@@ -317,6 +318,9 @@ void RunServer() {
 }
 
 int main(int argc, char** argv) {
+  // absl logging initialization
+  absl::InitializeLog();
+
   // executuin serde init
   nebula::execution::serde::init();
 

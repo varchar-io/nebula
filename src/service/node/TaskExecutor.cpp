@@ -132,12 +132,20 @@ bool TaskExecutor::process(const Task& task) {
   // handle ingestion task
   if (task.type() == TaskType::INGESTION) {
     std::shared_ptr<IngestSpec> is = task.spec<IngestSpec>();
+    const auto& table = is->table()->name;
+    const auto& specId = is->id();
+    auto bm = BlockManager::init();
+    // we do not ingest the same spec again if it's already in the system
+    if (bm->hasSpec(table, specId)) {
+      LOG(WARNING) << "Spec already ingested: " << specId << " for table: " << is->table()->name;
+      return true;
+    }
 
     // TODO(cao): need a way to differentiate empty data vs retryable failure.
     // process a new task - enroll its table if its first time
     const auto numBlocks = is->work();
     if (numBlocks == 0) {
-      BlockManager::init()->recordEmptySpec(is->id());
+      bm->recordEmptySpec(specId);
     }
 
     return true;
