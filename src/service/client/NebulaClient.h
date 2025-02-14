@@ -32,11 +32,15 @@ namespace client {
 // A nebula client to connect different tier of servers
 class NebulaClient {
 public:
-  NebulaClient(std::shared_ptr<grpc::Channel> channel)
-    : stub_(V1::NewStub(channel)) {}
+  NebulaClient(std::shared_ptr<grpc::Channel> channel) : stub_(V1::NewStub(channel)) {}
+  NebulaClient() : stub_(nullptr) {}
 
   // ping nebula server with my data for service discoverys
   std::unique_ptr<PingResponse> ping(const ServiceInfo& si) const noexcept {
+    if (stub_ == nullptr) {
+      return {};
+    }
+
     // stub_->
     grpc::ClientContext context;
     auto re = std::make_unique<PingResponse>();
@@ -50,6 +54,10 @@ public:
   }
 
   static NebulaClient make(const std::string& hostAndPort) {
+    if (hostAndPort.empty()) {
+      return NebulaClient();
+    }
+
     return NebulaClient(grpc::CreateChannel(hostAndPort, grpc::InsecureChannelCredentials()));
   }
 

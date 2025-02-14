@@ -240,6 +240,24 @@ std::string ReadNServer() {
   return FLAGS_NSERVER;
 }
 
+nebula::service::ServiceInfo makeServiceInfo(const std::string& nServer, int32_t port) {
+  nebula::service::ServiceInfo info;
+  if (nServer.size() > 0) {
+    // if discovery is localhost, we use localhost to ping as well.
+    // otherwise we use dns IPv4 to ping
+    constexpr auto LOCAL = "localhost";
+    auto hi = nebula::common::Ip::hostInfo(nebula::common::Chars::prefix(
+      nServer.data(), nServer.size(), LOCAL, std::strlen(LOCAL)));
+
+    // set the ping info
+    info.set_host(hi.host);
+    info.set_ipv4(hi.ipv4);
+    info.set_port(port);
+  }
+
+  return info;
+}
+
 void RunServer() {
   // global initialization
   nebula::service::base::globalInit();
@@ -285,27 +303,14 @@ void RunServer() {
     });
 
   // for every second, ping discovery server
+
+  // start the scheduler to ping discovery server to self register itself
   const auto discovery = ReadNServer();
-  if (discovery.size() > 0) {
-    const auto client = nebula::service::client::NebulaClient::make(discovery);
-    nebula::service::ServiceInfo info;
-    // if discovery is localhost, we use localhost to ping as well.
-    // otherwise we use dns IPv4 to ping
-    constexpr auto LOCAL = "localhost";
-    auto hi = nebula::common::Ip::hostInfo(nebula::common::Chars::prefix(
-      discovery.data(), discovery.size(), LOCAL, std::strlen(LOCAL)));
-
-    // set the ping info
-    info.set_host(hi.host);
-    info.set_ipv4(hi.ipv4);
-    info.set_port(port);
-
-    taskScheduler.setInterval(
-      1000,
-      [&client, &info] {
-        client.ping(info);
-      });
-  }
+  const auto client = nebula::service::client::NebulaClient::make(discovery);
+  nebula::service::ServiceInfo info = makeServiceInfo(discovery, port);
+  taskScheduler.setInterval(1000, [&client, &info] {
+    client.ping(info);
+  });
 
   // NOTE that, this is blocking main thread to wait for server down
   // this may prevent system to exit properly, will revisit and revise.
